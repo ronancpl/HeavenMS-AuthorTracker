@@ -1,0 +1,1613 @@
+diff --git a/.gitignore b/.gitignore
+index 525979118..12bf4644a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -55,6 +55,10 @@
+ /tools/MapleQuestItemFetcher/dist/
+ /tools/MapleQuestItemFetcher/nbproject/
+ 
++/tools/MapleQuestlineFetcher/build/
++/tools/MapleQuestlineFetcher/dist/
++/tools/MapleQuestlineFetcher/nbproject/
++
+ /tools/MapleQuestMesoFetcher/build/
+ /tools/MapleQuestMesoFetcher/dist/
+ /tools/MapleQuestMesoFetcher/nbproject/
+diff --git a/README.md b/README.md
+index 7e3b4d68a..d703f1024 100644
+--- a/README.md
++++ b/README.md
+@@ -64,16 +64,6 @@ Now install the Java 7 Development Kit:
+ * jdk-7u79-windows-x64.exe
+ * netbeans-8.0.2-javase-windows.exe -> It's a NetBeans project, use other IDE at your own risk.
+ 
+-Overwrite whenever prompted with the JAR files under "jce_policy-7/UnlimitedJCEPolicy" in these Java folders:
+-
+-* C:\Program Files\Java\jre7\lib
+-* C:\Program Files\Java\jre7\lib\ext
+-* C:\Program Files\Java\jre7\lib\security
+-* C:\Program Files\Java\jdk1.7.0_01\lib
+-* C:\Program Files\Java\jdk1.7.0_01\jre\lib
+-* C:\Program Files\Java\jdk1.7.0_01\jre\lib\ext
+-* C:\Program Files\Java\jdk1.7.0_01\jre\lib\security
+-
+ Now that the tools have been installed, test if they are working.
+ 
+ For WampServer:
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 39984d3ac..a03310182 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -126,6 +126,7 @@ External tools:
+ * MapleMesoFetcher - Creates meso drop data for mobs with more than 4 items (thus overworld mobs), calculations based on mob level and whether it's a boss or not.
+ * MapleMobBookIndexer - Generates a SQL table with all relations of cardid and mobid present in the mob book.
+ * MapleMobBookUpdate - Generates a wz.xml that is a copy of the original MonsterBook.wz.xml, except it updates the drop data info in the book with those currently on DB.
++* MapleQuestlineFetcher - Searches the quest WZ files and reports in all questids that currently doesn't have script files.
+ * MapleQuestItemCountFetcher - Searches the quest WZ files and reports in all relevant data regarding missing "count" labels on item acts at "complete quest".
+ * MapleQuestItemFetcher - Searches the SQL tables and project files and reports in all relevant data regarding missing/erroneous quest items.
+ * MapleQuestMesoFetcher - Searches the quest WZ files and reports in all relevant data regarding missing/erroneous quest fee checks.
+@@ -141,6 +142,12 @@ Project:
+ * Heavily reviewed future task management inside the project. Way less trivial schedules are spawned now, relieving task overload on the TimerManager.
+ * ThreadTracker: embedded auditing tool for run-time deadlock scanning throughout the server source (relies heavily on memory usage, designed only for debugging purposes).
+ 
++Exploits patched:
++
++* Player being given free access to any character of any account once they have authenticated their account on login phase.
++* Player being given permission to delete any character of any account once they have authenticated their account on login phase.
++* Player being able to start/complete any quest freely.
++
+ Localhost:
+ 
+ * Removed the 'n' problem within NPC dialog.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 0c3f27b31..fd56727d0 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -872,4 +872,8 @@ Adicionado scripts para a questline de Full Swing de Aran.
+ 
+ 19 Março 2018,
+ Tentativa de correção em reactors desconectando jogadores que tentam ativá-los com ataque básico ao mesmo tempo.
+-Adicionado feature de AutoJCE (créditos ao Kradi-a).
+\ No newline at end of file
++Adicionado feature de AutoJCE (créditos aos Acernis devs).
++
++20 - 22 Março 2018,
++Resolvido exploit com login, onde qualquer um (via packet editing) podia logar livremente com personagem de outras contas.
++Nova ferramenta: MapleQuestlineFetcher. Busca nos XMLs e registra questids que ainda não possuem quest scripts.
+\ No newline at end of file
+diff --git a/docs/todo.txt b/docs/todo.txt
+index 185df6d10..087ff5a20 100644
+--- a/docs/todo.txt
++++ b/docs/todo.txt
+@@ -46,8 +46,6 @@ ToDo / Missing features list:
+ 
+ ---------------------------
+ ** Jobs **
+-- Check Aran
+-- Check Cygnus Knights
+ ---------------------------
+ 
+ 
+diff --git a/scripts/npc/9201050.js b/scripts/npc/9201050.js
+index f687b4a38..19513862d 100644
+--- a/scripts/npc/9201050.js
++++ b/scripts/npc/9201050.js
+@@ -47,7 +47,7 @@ function action(mode, type, selection) {
+                     selStr += "\r\n#L" + i + "# " + info[i] + "#l";
+                 cm.sendSimple(selStr);
+             }
+-            else if (!cm.getQuestStarted(4911)){
++            else if (!cm.isQuestStarted(4911)){
+                 cm.sendNext("Good job! You've solved all of my questions about NLC. Enjoy of your trip!");
+                 cm.dispose();
+                 return;
+diff --git a/scripts/quest/21749.js b/scripts/quest/21749.js
+new file mode 100644
+index 000000000..962e18df6
+--- /dev/null
++++ b/scripts/quest/21749.js
+@@ -0,0 +1,47 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("So we have lost #btwo seal stones#k so far, from the neighboring areas of #rOrbis#k and #rMu Lung#k... Things are starting to get out of control, it seems.");
++        } else if (status == 1) {
++            qm.sendNext("Aran, your next objective will be to use the #btime gate to Ellin#k again. This time you will be retrieving the long lost #rSeal Stone of Ellin Forest#k. According to informations our network have gathered, #b#p2131002##k of that time have a clue about that gem, #rfind her#k. Please be successful on this task, our world is relying on you more than ever!");
++        } else {
++            qm.gainExp(500 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+diff --git a/scripts/quest/21750.js b/scripts/quest/21750.js
+index d40883b12..5538f24c0 100644
+--- a/scripts/quest/21750.js
++++ b/scripts/quest/21750.js
+@@ -36,8 +36,8 @@ function end(mode, type, selection) {
+         
+         if (status == 0) {
+             qm.sendNext("Aran, you're finally back!!! How you've been doing? Where did you go for so long? We have so much to catch up...");
++        } else {
+             qm.forceCompleteQuest();
+-            
+             qm.dispose();
+         }
+     }
+diff --git a/scripts/quest/21757.js b/scripts/quest/21757.js
+index dbc7df187..c4afbf998 100644
+--- a/scripts/quest/21757.js
++++ b/scripts/quest/21757.js
+@@ -36,6 +36,7 @@ function end(mode, type, selection) {
+         
+         if (status == 0) {
+             qm.sendNext("Oh, a letter for the #rempress#k? From the #bheroes#k?!");
++        } else {
+             qm.gainExp(1000 * qm.getPlayer().getExpRate());
+             qm.gainItem(4032330, -1);
+             qm.forceCompleteQuest();
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 1904fc7e8..2faac327c 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1716,27 +1716,26 @@ public void deleteBuddy(int otherCid) {
+     }
+     
+     public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+-            int cid = player.getId(), accId = -1, world = 0;
++            int cid = player.getId();
++            if(!Server.getInstance().haveCharacterid(senderAccId, cid)) {
++                    return false;
++            }
+             
++            int accId = senderAccId, world = 0;
+             Connection con = null;
+             try {
+                     con = DatabaseConnection.getConnection();
+                     
+-                    try (PreparedStatement ps = con.prepareStatement("SELECT accountid, world FROM characters WHERE id = ?")) {
++                    try (PreparedStatement ps = con.prepareStatement("SELECT world FROM characters WHERE id = ?")) {
+                             ps.setInt(1, cid);
+ 
+                             try (ResultSet rs = ps.executeQuery()) {
+                                     if(rs.next()) {
+-                                            accId = rs.getInt("accountid");
+                                             world = rs.getInt("world");
+                                     }
+                             }
+                     }
+                     
+-                    if(senderAccId != accId) {
+-                            return false;
+-                    }
+-                    
+                     try (PreparedStatement ps = con.prepareStatement("SELECT buddyid FROM buddies WHERE characterid = ?")) {
+                             ps.setInt(1, cid);
+ 
+@@ -1896,6 +1895,7 @@ public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+                     }
+                     
+                     con.close();
++                    Server.getInstance().deleteCharacterid(accId, cid);
+                     return true;
+             } catch (SQLException e) {
+                     e.printStackTrace();
+diff --git a/src/client/inventory/Equip.java b/src/client/inventory/Equip.java
+index 1c7fecb1b..5f4aa4a02 100644
+--- a/src/client/inventory/Equip.java
++++ b/src/client/inventory/Equip.java
+@@ -470,7 +470,7 @@ private void gainLevel(MapleClient c) {
+             lvupStr += "+UPGSLOT ";
+         }
+         
+-        showLevelupMessage(showStr, c); // thx to polaris devs !
++        showLevelupMessage(showStr, c); // thx to Polaris dev team !
+         c.getPlayer().dropMessage(6, lvupStr);
+         
+         c.announce(MaplePacketCreator.showEquipmentLevelUp());
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 25ed9b47d..ea9e94cec 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -42,7 +42,6 @@
+ import java.util.Set;
+ import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.ScheduledFuture;
+ 
+ import net.MapleServerHandler;
+ import net.mina.MapleCodecFactory;
+@@ -88,10 +87,13 @@
+     private List<World> worlds = new ArrayList<>();
+     private final Properties subnetInfo = new Properties();
+     private static Server instance = null;
++    private final Map<Integer, Set<Integer>> accountChars = new HashMap<>();
++    private final Map<String, Integer> transitioningChars = new HashMap<>();
+     private List<Pair<Integer, String>> worldRecommendedList = new LinkedList<>();
+     private final Map<Integer, MapleGuild> guilds = new HashMap<>(100);
+     private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
+     private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
++    private final Lock lgnLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
+     private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
+@@ -751,6 +753,106 @@ public World getWorld(int id) {
+         return worlds;
+     }
+ 
++    private static void loadCharacteridsFromDb(Integer accountid, Set<Integer> accChars) {
++        try {
++            try (Connection con = DatabaseConnection.getConnection()) {
++                try (PreparedStatement ps = con.prepareStatement("SELECT id FROM characters WHERE accountid = ?")) {
++                    ps.setInt(1, accountid);
++
++                    try (ResultSet rs = ps.executeQuery()) {
++                        while(rs.next()) {
++                            accChars.add(rs.getInt("id"));
++                        }
++                    }
++                }
++            }
++        } catch (SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++    
++    public boolean haveCharacterid(Integer accountid, Integer chrid) {
++        lgnLock.lock();
++        try {
++            Set<Integer> accChars = accountChars.get(accountid);
++            if(accChars == null) {
++                accChars = new HashSet<>(5);
++                loadCharacteridsFromDb(accountid, accChars);
++
++                accountChars.put(accountid, accChars);
++            }
++
++            return accChars.contains(chrid);
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    
++    public void createCharacterid(Integer accountid, Integer chrid) {
++        lgnLock.lock();
++        try {
++            Set<Integer> accChars = accountChars.get(accountid);
++            if(accChars == null) {
++                accChars = new HashSet<>(5);
++                accountChars.put(accountid, accChars);
++            }
++
++            accChars.add(chrid);
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    
++    public void deleteCharacterid(Integer accountid, Integer chrid) {
++        lgnLock.lock();
++        try {
++            Set<Integer> accChars = accountChars.get(accountid);
++            if(accChars != null) {
++                accChars.remove(chrid);
++            }
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    
++    /*
++    public void deleteAccount(Integer accountid) { is this even a thing?
++        lgnLock.lock();
++        try {
++            accountChars.remove(accountid);
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    */
++    
++    private static String getRemoteIp(InetSocketAddress isa) {
++        return isa.getAddress().getHostAddress();
++    }
++    
++    public void setCharacteridInTransition(InetSocketAddress isa, int charId) {
++        String remoteIp = getRemoteIp(isa);
++        
++        lgnLock.lock();
++        try {
++            transitioningChars.put(remoteIp, charId);
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    
++    public boolean validateCharacteridInTransition(InetSocketAddress isa, int charId) {
++        String remoteIp = getRemoteIp(isa);
++        
++        lgnLock.lock();
++        try {
++            Integer cid = transitioningChars.remove(remoteIp);
++            return cid != null && cid.equals(charId);
++        } finally {
++            lgnLock.unlock();
++        }
++    }
++    
+     public void registerLoginState(MapleClient c) {
+         srvLock.lock();
+         try {
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 11dd88b90..7087812a6 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -53,6 +53,7 @@
+ import client.inventory.MaplePet;
+ import constants.GameConstants;
+ import constants.ServerConstants;
++import java.net.InetSocketAddress;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Map;
+@@ -71,6 +72,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         MapleCharacter player = c.getWorldServer().getPlayerStorage().getCharacterById(cid);
+         boolean newcomer = false;
+         if (player == null) {
++            if(!server.validateCharacteridInTransition((InetSocketAddress) c.getSession().getRemoteAddress(), cid)) {
++                c.disconnect(true, false);
++                return;
++            }
++            
+             try {
+                 player = MapleCharacter.loadCharFromDB(cid, c, true);
+                 newcomer = true;
+diff --git a/src/net/server/handlers/login/CharSelectedHandler.java b/src/net/server/handlers/login/CharSelectedHandler.java
+index 851b777b1..4fe992196 100644
+--- a/src/net/server/handlers/login/CharSelectedHandler.java
++++ b/src/net/server/handlers/login/CharSelectedHandler.java
+@@ -23,6 +23,7 @@
+ 
+ import client.MapleClient;
+ import java.net.InetAddress;
++import java.net.InetSocketAddress;
+ import java.net.UnknownHostException;
+ import net.AbstractMaplePacketHandler;
+ import net.server.Server;
+@@ -35,16 +36,26 @@
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         int charId = slea.readInt();
+         String macs = slea.readMapleAsciiString();
++        String hwid = slea.readMapleAsciiString();
+         c.updateMacs(macs);
+-        if (c.hasBannedMac()) {
++        c.updateHWID(hwid);
++        
++        if (c.hasBannedMac() || c.hasBannedHWID()) {
+             c.getSession().close(true);
+             return;
+         }
+ 
+-        Server.getInstance().unregisterLoginState(c);
++        Server server = Server.getInstance();
++        if(!server.haveCharacterid(c.getAccID(), charId)) {
++            c.getSession().close(true);
++            return;
++        }
++        
++        server.unregisterLoginState(c);
+         c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++        server.setCharacteridInTransition((InetSocketAddress) c.getSession().getRemoteAddress(), charId);
+         
+-        String[] socket = Server.getInstance().getIP(c.getWorld(), c.getChannel()).split(":");
++        String[] socket = server.getIP(c.getWorld(), c.getChannel()).split(":");
+         try {
+             c.announce(MaplePacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
+         } catch (UnknownHostException | NumberFormatException e) {
+diff --git a/src/net/server/handlers/login/CharSelectedWithPicHandler.java b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+index df5b8b07b..8b2fef33d 100644
+--- a/src/net/server/handlers/login/CharSelectedWithPicHandler.java
++++ b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+@@ -1,6 +1,7 @@
+ package net.server.handlers.login;
+ 
+ import java.net.InetAddress;
++import java.net.InetSocketAddress;
+ import java.net.UnknownHostException;
+ 
+ import net.AbstractMaplePacketHandler;
+@@ -13,7 +14,6 @@
+ 
+     @Override
+     public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-
+         String pic = slea.readMapleAsciiString();
+         int charId = slea.readInt();
+         String macs = slea.readMapleAsciiString();
+@@ -25,11 +25,19 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             c.getSession().close(true);
+             return;
+         }
++        
++        Server server = Server.getInstance();
++        if(!server.haveCharacterid(c.getAccID(), charId)) {
++            c.getSession().close(true);
++            return;
++        }
++        
+         if (c.checkPic(pic)) {
+-            Server.getInstance().unregisterLoginState(c);
++            server.unregisterLoginState(c);
+             c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++            server.setCharacteridInTransition((InetSocketAddress) c.getSession().getRemoteAddress(), charId);
+ 
+-            String[] socket = Server.getInstance().getIP(c.getWorld(), c.getChannel()).split(":");
++            String[] socket = server.getIP(c.getWorld(), c.getChannel()).split(":");
+             try {
+                 c.announce(MaplePacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
+             } catch (UnknownHostException | NumberFormatException e) {
+diff --git a/src/net/server/handlers/login/CreateCharHandler.java b/src/net/server/handlers/login/CreateCharHandler.java
+index 010126b24..18d90d0c5 100644
+--- a/src/net/server/handlers/login/CreateCharHandler.java
++++ b/src/net/server/handlers/login/CreateCharHandler.java
+@@ -112,17 +112,21 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		}
+ 
+ 		MapleInventory equipped = newchar.getInventory(MapleInventoryType.EQUIPPED);
+-
+-		Item eq_top = MapleItemInformationProvider.getInstance().getEquipById(top);
++                MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                
++		Item eq_top = ii.getEquipById(top);
+ 		eq_top.setPosition((byte) -5);
+ 		equipped.addFromDB(eq_top);
+-		Item eq_bottom = MapleItemInformationProvider.getInstance().getEquipById(bottom);
++                
++		Item eq_bottom = ii.getEquipById(bottom);
+ 		eq_bottom.setPosition((byte) -6);
+ 		equipped.addFromDB(eq_bottom);
+-		Item eq_shoes = MapleItemInformationProvider.getInstance().getEquipById(shoes);
++                
++		Item eq_shoes = ii.getEquipById(shoes);
+ 		eq_shoes.setPosition((byte) -7);
+ 		equipped.addFromDB(eq_shoes);
+-		Item eq_weapon = MapleItemInformationProvider.getInstance().getEquipById(weapon);
++                
++		Item eq_weapon = ii.getEquipById(weapon);
+ 		eq_weapon.setPosition((byte) -11);
+ 		equipped.addFromDB(eq_weapon.copy());
+ 
+@@ -131,6 +135,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 			return;
+ 		}
+ 		c.announce(MaplePacketCreator.addNewCharEntry(newchar));
+-		Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[NEW CHAR]: " + c.getAccountName() + " has created a new character with IGN " + name));
++                
++                Server.getInstance().createCharacterid(newchar.getAccountID(), newchar.getId());
++                Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[NEW CHAR]: " + c.getAccountName() + " has created a new character with IGN " + name));
+ 	}
+ }
+\ No newline at end of file
+diff --git a/src/tools/AutoJCE.java b/src/tools/AutoJCE.java
+index d84b0e6fe..5ab9a175e 100644
+--- a/src/tools/AutoJCE.java
++++ b/src/tools/AutoJCE.java
+@@ -6,7 +6,7 @@
+ import java.security.PermissionCollection;
+ import java.util.Map;
+ 
+-public class AutoJCE{   // AutoJCE into server source thanks to Kradi-a
++public class AutoJCE{   // AutoJCE into server source thanks to Acernis dev team
+ 
+ 	/**
+ 	 * Credits: ntoskrnl of StackOverflow
+diff --git a/src/tools/MapleAESOFB.java b/src/tools/MapleAESOFB.java
+index 28ccbe537..6b14b821e 100644
+--- a/src/tools/MapleAESOFB.java
++++ b/src/tools/MapleAESOFB.java
+@@ -63,7 +63,7 @@ public MapleAESOFB(byte iv[], short mapleVersion) {
+         } catch (NoSuchPaddingException e) {
+             System.out.println("ERROR " + e);
+         } catch (InvalidKeyException e) {
+-            System.out.println("Error initalizing the encryption cipher.  Make sure you're using the Unlimited Strength cryptography jar files.");
++            System.out.println("Error initializing the encryption cipher.  Make sure you're using the Unlimited Strength cryptography jar files.");
+         }
+         this.setIv(iv);
+         this.mapleVersion = (short) (((mapleVersion >> 8) & 0xFF) | ((mapleVersion << 8) & 0xFF00));
+diff --git a/tools/MapleQuestItemCountFetcher/src/maplequestitemcountfetcher/MapleQuestItemCountFetcher.java b/tools/MapleQuestItemCountFetcher/src/maplequestitemcountfetcher/MapleQuestItemCountFetcher.java
+index ddb709ed4..d1ce0d366 100644
+--- a/tools/MapleQuestItemCountFetcher/src/maplequestitemcountfetcher/MapleQuestItemCountFetcher.java
++++ b/tools/MapleQuestItemCountFetcher/src/maplequestitemcountfetcher/MapleQuestItemCountFetcher.java
+@@ -27,16 +27,11 @@ This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
+ import java.io.PrintWriter;
+ import java.sql.Connection;
+ import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.Comparator;
+-import java.util.LinkedList;
+ import java.util.List;
+ import java.util.LinkedHashMap;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Map.Entry;
+-import java.util.HashSet;
+-import java.util.Set;
+ 
+ /**
+  *
+diff --git a/tools/MapleQuestlineFetcher/build.xml b/tools/MapleQuestlineFetcher/build.xml
+new file mode 100644
+index 000000000..c18acb607
+--- /dev/null
++++ b/tools/MapleQuestlineFetcher/build.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!-- You may freely edit this file. See commented blocks below for -->
++<!-- some examples of how to customize the build. -->
++<!-- (If you delete it and reopen the project it will be recreated.) -->
++<!-- By default, only the Clean and Build commands use this build script. -->
++<!-- Commands such as Run, Debug, and Test only use this build script if -->
++<!-- the Compile on Save feature is turned off for the project. -->
++<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
++<!-- in the project's Project Properties dialog box.-->
++<project name="MapleQuestlineFetcher" default="default" basedir=".">
++    <description>Builds, tests, and runs the project MapleQuestlineFetcher.</description>
++    <import file="nbproject/build-impl.xml"/>
++    <!--
++
++    There exist several targets which are by default empty and which can be 
++    used for execution of your tasks. These targets are usually executed 
++    before and after some main targets. They are: 
++
++      -pre-init:                 called before initialization of project properties
++      -post-init:                called after initialization of project properties
++      -pre-compile:              called before javac compilation
++      -post-compile:             called after javac compilation
++      -pre-compile-single:       called before javac compilation of single file
++      -post-compile-single:      called after javac compilation of single file
++      -pre-compile-test:         called before javac compilation of JUnit tests
++      -post-compile-test:        called after javac compilation of JUnit tests
++      -pre-compile-test-single:  called before javac compilation of single JUnit test
++      -post-compile-test-single: called after javac compilation of single JUunit test
++      -pre-jar:                  called before JAR building
++      -post-jar:                 called after JAR building
++      -post-clean:               called after cleaning build products
++
++    (Targets beginning with '-' are not intended to be called on their own.)
++
++    Example of inserting an obfuscator after compilation could look like this:
++
++        <target name="-post-compile">
++            <obfuscate>
++                <fileset dir="${build.classes.dir}"/>
++            </obfuscate>
++        </target>
++
++    For list of available properties check the imported 
++    nbproject/build-impl.xml file. 
++
++
++    Another way to customize the build is by overriding existing main targets.
++    The targets of interest are: 
++
++      -init-macrodef-javac:     defines macro for javac compilation
++      -init-macrodef-junit:     defines macro for junit execution
++      -init-macrodef-debug:     defines macro for class debugging
++      -init-macrodef-java:      defines macro for class execution
++      -do-jar:                  JAR building
++      run:                      execution of project 
++      -javadoc-build:           Javadoc generation
++      test-report:              JUnit report generation
++
++    An example of overriding the target for project execution could look like this:
++
++        <target name="run" depends="MapleQuestlineFetcher-impl.jar">
++            <exec dir="bin" executable="launcher.exe">
++                <arg file="${dist.jar}"/>
++            </exec>
++        </target>
++
++    Notice that the overridden target depends on the jar target and not only on 
++    the compile target as the regular run target does. Again, for a list of available 
++    properties which you can use, check the target you are overriding in the
++    nbproject/build-impl.xml file. 
++
++    -->
++</project>
+diff --git a/tools/MapleQuestlineFetcher/lib/QuestReport.txt b/tools/MapleQuestlineFetcher/lib/QuestReport.txt
+new file mode 100644
+index 000000000..c4ef7db9f
+--- /dev/null
++++ b/tools/MapleQuestlineFetcher/lib/QuestReport.txt
+@@ -0,0 +1,373 @@
++ # Report File autogenerated from the MapleQuestlineFetcher feature by Ronan Lana.
++ # Generated data takes into account several data info from the server-side WZ.xmls.
++
++SKILL-RELATED NON-SCRIPTED QUESTS
++  20500 EXPIRED
++  20502 EXPIRED
++
++
++COMMON NON-SCRIPTED QUESTS
++  1028
++  1048 EXPIRED
++  1049 EXPIRED
++  1050 EXPIRED
++  1051 EXPIRED
++  1052 EXPIRED
++  1053 EXPIRED
++  1054 EXPIRED
++  2147 EXPIRED
++  2228
++  2232
++  2233
++  2234
++  2238
++  2245
++  2257
++  2258
++  2259
++  2260
++  2291
++  2338
++  3305 EXPIRED
++  3306 EXPIRED
++  3529
++  3714
++  4482 EXPIRED
++  4483 EXPIRED
++  4490 EXPIRED
++  4676 EXPIRED
++  6700 EXPIRED
++  8247 EXPIRED
++  9432 EXPIRED
++  9633 EXPIRED
++  9680 EXPIRED
++  9682 EXPIRED
++  9683 EXPIRED
++  9684 EXPIRED
++  9685 EXPIRED
++  9690 EXPIRED
++  9691 EXPIRED
++  9692 EXPIRED
++  9693 EXPIRED
++  9694 EXPIRED
++  9695 EXPIRED
++  9696 EXPIRED
++  9697 EXPIRED
++  9698 EXPIRED
++  9699 EXPIRED
++  9700 EXPIRED
++  9701 EXPIRED
++  9702 EXPIRED
++  9703 EXPIRED
++  9730 EXPIRED
++  9731 EXPIRED
++  9732 EXPIRED
++  9733 EXPIRED
++  9734 EXPIRED
++  9735 EXPIRED
++  9745 EXPIRED
++  9746 EXPIRED
++  9747 EXPIRED
++  9840 EXPIRED
++  9841 EXPIRED
++  9842 EXPIRED
++  9844 EXPIRED
++  9845 EXPIRED
++  9846 EXPIRED
++  9847 EXPIRED
++  9849 EXPIRED
++  9850 EXPIRED
++  9851 EXPIRED
++  9860 EXPIRED
++  9875 EXPIRED
++  9878 EXPIRED
++  9880 EXPIRED
++  9881 EXPIRED
++  9882 EXPIRED
++  9883 EXPIRED
++  9884 EXPIRED
++  9885 EXPIRED
++  9887 EXPIRED
++  9890 EXPIRED
++  9891 EXPIRED
++  9892 EXPIRED
++  9893 EXPIRED
++  9900 EXPIRED
++  9901 EXPIRED
++  9902 EXPIRED
++  9903 EXPIRED
++  9904 EXPIRED
++  9905 EXPIRED
++  9906 EXPIRED
++  9907 EXPIRED
++  9908 EXPIRED
++  9909 EXPIRED
++  9920 EXPIRED
++  9922 EXPIRED
++  9924 EXPIRED
++  9925 EXPIRED
++  9926 EXPIRED
++  9927 EXPIRED
++  9928 EXPIRED
++  9929 EXPIRED
++  9930 EXPIRED
++  9931 EXPIRED
++  9932 EXPIRED
++  9933 EXPIRED
++  9934 EXPIRED
++  9935 EXPIRED
++  9936 EXPIRED
++  9937 EXPIRED
++  9938 EXPIRED
++  9939 EXPIRED
++  9943 EXPIRED
++  9947 EXPIRED
++  9950 EXPIRED
++  9951 EXPIRED
++  9961 EXPIRED
++  9965 EXPIRED
++  9970 EXPIRED
++  9980 EXPIRED
++  9981 EXPIRED
++  9982 EXPIRED
++  9983 EXPIRED
++  9984 EXPIRED
++  9985 EXPIRED
++  9990 EXPIRED
++  9991 EXPIRED
++  9997 EXPIRED
++  10002 EXPIRED
++  10008 EXPIRED
++  10010 EXPIRED
++  10011 EXPIRED
++  10012 EXPIRED
++  10014 EXPIRED
++  10034 EXPIRED
++  10036 EXPIRED
++  10037 EXPIRED
++  10039 EXPIRED
++  10043 EXPIRED
++  10046 EXPIRED
++  10050 EXPIRED
++  10052 EXPIRED
++  10059 EXPIRED
++  10066 EXPIRED
++  10069 EXPIRED
++  10074 EXPIRED
++  10075 EXPIRED
++  10076 EXPIRED
++  10077 EXPIRED
++  10078 EXPIRED
++  10079 EXPIRED
++  10082 EXPIRED
++  10083 EXPIRED
++  10084 EXPIRED
++  10085 EXPIRED
++  10086 EXPIRED
++  10087 EXPIRED
++  10088 EXPIRED
++  10089 EXPIRED
++  10090 EXPIRED
++  10091 EXPIRED
++  10092 EXPIRED
++  10093 EXPIRED
++  10094 EXPIRED
++  10095 EXPIRED
++  10096 EXPIRED
++  10097 EXPIRED
++  10098 EXPIRED
++  10099 EXPIRED
++  10100 EXPIRED
++  10101 EXPIRED
++  10102 EXPIRED
++  10103 EXPIRED
++  10104 EXPIRED
++  10105 EXPIRED
++  10106 EXPIRED
++  10108 EXPIRED
++  10110 EXPIRED
++  10206 EXPIRED
++  10207 EXPIRED
++  10208 EXPIRED
++  10209 EXPIRED
++  10210 EXPIRED
++  10211 EXPIRED
++  10212 EXPIRED
++  10213 EXPIRED
++  10214 EXPIRED
++  10215 EXPIRED
++  10216 EXPIRED
++  10217 EXPIRED
++  10218 EXPIRED
++  10219 EXPIRED
++  10220 EXPIRED
++  10222 EXPIRED
++  10224 EXPIRED
++  10231 EXPIRED
++  10240 EXPIRED
++  10241 EXPIRED
++  10242 EXPIRED
++  10243 EXPIRED
++  10244 EXPIRED
++  10245 EXPIRED
++  10246 EXPIRED
++  10247 EXPIRED
++  10248 EXPIRED
++  10249 EXPIRED
++  10250 EXPIRED
++  10251 EXPIRED
++  10252 EXPIRED
++  10253 EXPIRED
++  10254 EXPIRED
++  10255 EXPIRED
++  10256 EXPIRED
++  10260 EXPIRED
++  10261 EXPIRED
++  10262 EXPIRED
++  10263 EXPIRED
++  10264 EXPIRED
++  10265 EXPIRED
++  10266 EXPIRED
++  10267 EXPIRED
++  10268 EXPIRED
++  10270 EXPIRED
++  10271 EXPIRED
++  10272 EXPIRED
++  10274 EXPIRED
++  10275 EXPIRED
++  10276 EXPIRED
++  10277 EXPIRED
++  10278 EXPIRED
++  10279 EXPIRED
++  10280 EXPIRED
++  10281 EXPIRED
++  10282 EXPIRED
++  10283 EXPIRED
++  10284 EXPIRED
++  10287 EXPIRED
++  10300 EXPIRED
++  10301 EXPIRED
++  10302 EXPIRED
++  10311 EXPIRED
++  10312 EXPIRED
++  10313 EXPIRED
++  10314 EXPIRED
++  10315 EXPIRED
++  10316 EXPIRED
++  10317 EXPIRED
++  10318 EXPIRED
++  10319 EXPIRED
++  10320 EXPIRED
++  10321 EXPIRED
++  10324 EXPIRED
++  10325 EXPIRED
++  10326 EXPIRED
++  10327 EXPIRED
++  10329 EXPIRED
++  10330 EXPIRED
++  10331 EXPIRED
++  10332 EXPIRED
++  10333 EXPIRED
++  10340 EXPIRED
++  10341 EXPIRED
++  10342 EXPIRED
++  10344 EXPIRED
++  10345 EXPIRED
++  10346 EXPIRED
++  10347 EXPIRED
++  10348 EXPIRED
++  10349 EXPIRED
++  10350 EXPIRED
++  10351 EXPIRED
++  10352 EXPIRED
++  10353 EXPIRED
++  10354 EXPIRED
++  10355 EXPIRED
++  10356 EXPIRED
++  10360 EXPIRED
++  10370 EXPIRED
++  10380 EXPIRED
++  10394 EXPIRED
++  10395 EXPIRED
++  10396 EXPIRED
++  10397 EXPIRED
++  10398 EXPIRED
++  10400 EXPIRED
++  10401 EXPIRED
++  10415 EXPIRED
++  10417 EXPIRED
++  10418 EXPIRED
++  10419 EXPIRED
++  10420 EXPIRED
++  10450 EXPIRED
++  10451 EXPIRED
++  10452 EXPIRED
++  10453 EXPIRED
++  10454 EXPIRED
++  10455 EXPIRED
++  10456 EXPIRED
++  10457 EXPIRED
++  10470 EXPIRED
++  19000
++  19001
++  19002
++  19005 EXPIRED
++  19006 EXPIRED
++  20015
++  20020
++  20400
++  20401
++  20405
++  20406
++  20408
++  20506 EXPIRED
++  20507 EXPIRED
++  20509 EXPIRED
++  21303
++  28004 EXPIRED
++  28117 EXPIRED
++  28118 EXPIRED
++  28131 EXPIRED
++  28137 EXPIRED
++  28138 EXPIRED
++  28139 EXPIRED
++  28140 EXPIRED
++  28141 EXPIRED
++  28142 EXPIRED
++  28143 EXPIRED
++  28144 EXPIRED
++  28145 EXPIRED
++  28146 EXPIRED
++  28147 EXPIRED
++  28148 EXPIRED
++  28149 EXPIRED
++  28150 EXPIRED
++  28151 EXPIRED
++  28152 EXPIRED
++  28153 EXPIRED
++  28154 EXPIRED
++  28155 EXPIRED
++  28156 EXPIRED
++  28157 EXPIRED
++  28158 EXPIRED
++  28159 EXPIRED
++  28160 EXPIRED
++  28161 EXPIRED
++  28284 EXPIRED
++  28285 EXPIRED
++  28286 EXPIRED
++  28304 EXPIRED
++  28311 EXPIRED
++  28318 EXPIRED
++  28326 EXPIRED
++  28327 EXPIRED
++  28328 EXPIRED
++  28333 EXPIRED
++  28337 EXPIRED
++  29500
++  29501
++  29502
++  29503
++  29505
++  29506
++  29508
+diff --git a/tools/MapleQuestlineFetcher/manifest.mf b/tools/MapleQuestlineFetcher/manifest.mf
+new file mode 100644
+index 000000000..328e8e5bc
+--- /dev/null
++++ b/tools/MapleQuestlineFetcher/manifest.mf
+@@ -0,0 +1,3 @@
++Manifest-Version: 1.0
++X-COMMENT: Main-Class will be added automatically by build
++
+diff --git a/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/MapleQuestlineFetcher.java b/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/MapleQuestlineFetcher.java
+new file mode 100644
+index 000000000..d29de492b
+--- /dev/null
++++ b/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/MapleQuestlineFetcher.java
+@@ -0,0 +1,424 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package maplequestlinefetcher;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.io.PrintWriter;
++import java.sql.Connection;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.Comparator;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.HashSet;
++import java.util.Set;
++import java.util.Stack;
++
++/**
++ *
++ * @author RonanLana
++ 
++ This application parses the Quest.wz file inputted and generates a report showing
++ all cases where quest script files have not been found for quests that requires a
++ script file.
++ As an extension, it highlights missing script files for questlines that hand over
++ skills as rewards.
++ 
++ Running it should generate a report file under "lib" folder with the search results.
++ 
++ */
++public class MapleQuestlineFetcher {
++    static String actName = "../../wz/Quest.wz/Act.img.xml";
++    static String checkName = "../../wz/Quest.wz/Check.img.xml";
++    static String directoryName = "../..";
++    static String newFile = "lib/QuestReport.txt";
++
++    static Connection con = null;
++    static PrintWriter printWriter = null;
++    static InputStreamReader fileReader = null;
++    static BufferedReader bufferedReader = null;
++    
++    static int initialLength = 200;
++    static int initialStringLength = 50;
++    
++    static byte status = 0;
++    static int questId = -1;
++    static int isCompleteState = 0;
++    static boolean isScriptedQuest;
++    static boolean isExpiredQuest;
++    static List<Integer> questDependencyList;
++    
++    static int curQuestId;
++    static int curQuestState;
++    
++    static Stack<Integer> skillObtainableQuests = new Stack<>();
++    static Set<Integer> scriptedQuestFiles = new HashSet<>();
++    static Set<Integer> expiredQuests = new HashSet<>();
++    
++    static Map<Integer, List<Integer>> questDependencies = new HashMap<>();
++    
++    static Set<Integer> nonScriptedQuests = new HashSet<>();
++    static Set<Integer> skillObtainableNonScriptedQuests = new HashSet<>();
++    
++    private static String getName(String token) {
++        int i, j;
++        char[] dest;
++        String d;
++
++        i = token.lastIndexOf("name");
++        i = token.indexOf("\"", i) + 1; //lower bound of the string
++        j = token.indexOf("\"", i);     //upper bound
++
++        dest = new char[initialStringLength];
++        token.getChars(i, j, dest, 0);
++
++        d = new String(dest);
++        return(d.trim());
++    }
++    
++    private static String getValue(String token) {
++        int i, j;
++        char[] dest;
++        String d;
++
++        i = token.lastIndexOf("value");
++        i = token.indexOf("\"", i) + 1; //lower bound of the string
++        j = token.indexOf("\"", i);     //upper bound
++
++        dest = new char[initialStringLength];
++        token.getChars(i, j, dest, 0);
++
++        d = new String(dest);
++        return(d.trim());
++    }
++    
++    private static void forwardCursor(int st) {
++        String line = null;
++
++        try {
++            while(status >= st && (line = bufferedReader.readLine()) != null) {
++                simpleToken(line);
++            }
++        }
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    private static void simpleToken(String token) {
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            status += 1;
++        }
++    }
++    
++    private static void translateTokenCheck(String token) {
++        String d;
++        
++        if(token.contains("/imgdir")) {
++            status -= 1;
++            
++            if(status == 1) {
++                evaluateCurrentQuest();
++            }
++            else if(status == 4) {
++                evaluateCurrentQuestDependency();
++            }
++        }
++        else if(token.contains("imgdir")) {
++            if(status == 1) {           //getting QuestId
++                d = getName(token);
++                questId = Integer.parseInt(d);
++                
++                isScriptedQuest = false;
++                isExpiredQuest = false;
++                questDependencyList = new LinkedList<>();
++            }
++            else if(status == 2) {      //start/complete
++                d = getName(token);
++                isCompleteState = Integer.parseInt(d);
++            }
++            else if(status == 3) {
++                if(isCompleteState == 1 || !token.contains("quest")) {
++                    forwardCursor(status);
++                }
++            }
++            
++            status += 1;
++        }
++        else {
++            if(status == 3) {
++                d = getName(token);
++                
++                if(d.contains("script")) {
++                    isScriptedQuest = true;
++                } else if(d.contains("end")) {
++                    isExpiredQuest = true;
++                }
++            }
++            else if(status == 5) {
++                readQuestLabel(token);
++            }
++        }
++    }
++    
++    private static void translateTokenAct(String token) {
++        String d;
++        
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            if(status == 1) {           //getting QuestId
++                d = getName(token);
++                questId = Integer.parseInt(d);
++            }
++            else if(status == 2) {      //start/complete
++                d = getName(token);
++                isCompleteState = Integer.parseInt(d);
++            }
++            else if(status == 3) {
++                if(isCompleteState == 1 && token.contains("skill")) {
++                    skillObtainableQuests.add(questId);
++                }
++                
++                forwardCursor(status);
++            }
++            
++            status += 1;
++        }
++    }
++
++    private static void readQuestLabel(String token) {
++        String name = getName(token);
++        String value = getValue(token);
++
++        switch(name) {
++            case "id":
++                curQuestId = Integer.parseInt(value);
++                break;
++
++            case "state":
++                curQuestState = Integer.parseInt(value);
++                break;
++        }
++    }
++    
++    private static void evaluateCurrentQuestDependency() {
++        if(curQuestState == 2) {
++            questDependencyList.add(curQuestId);
++        }
++    }
++    
++    private static void evaluateCurrentQuest() {
++        if(isScriptedQuest && !scriptedQuestFiles.contains(questId)) {
++            nonScriptedQuests.add(questId);
++        }
++        if(isExpiredQuest) {
++            expiredQuests.add(questId);
++        }
++        
++        questDependencies.put(questId, questDependencyList);
++    }
++    
++    private static void instantiateQuestScriptFiles(String directoryName) {
++        File directory = new File(directoryName);
++
++        // get all the files from a directory
++        File[] fList = directory.listFiles();
++        for (File file : fList) {
++            if (file.isFile()) {
++                String fname = file.getName();
++                
++                try {
++                    Integer questid = Integer.parseInt(fname.substring(0, fname.indexOf('.')));
++                    scriptedQuestFiles.add(questid);
++                } catch(NumberFormatException nfe) {}
++            }
++        }
++    }
++    
++    private static void readQuestsWithMissingScripts() throws IOException {
++        String line;
++        
++        fileReader = new InputStreamReader(new FileInputStream(checkName), "UTF-8");
++        bufferedReader = new BufferedReader(fileReader);
++
++        while((line = bufferedReader.readLine()) != null) {
++            translateTokenCheck(line);
++        }
++
++        bufferedReader.close();
++        fileReader.close();
++    }
++    
++    private static void readQuestsWithSkillReward() throws IOException {
++        String line;
++        
++        fileReader = new InputStreamReader(new FileInputStream(actName), "UTF-8");
++        bufferedReader = new BufferedReader(fileReader);
++
++        while((line = bufferedReader.readLine()) != null) {
++            translateTokenAct(line);
++        }
++
++        bufferedReader.close();
++        fileReader.close();
++    }
++    
++    private static void calculateSkillRelatedMissingQuestScripts() {
++        Stack<Integer> frontierQuests = skillObtainableQuests;
++        Set<Integer> solvedQuests = new HashSet<>();
++        
++        while(!frontierQuests.isEmpty()) {
++            Integer questid = frontierQuests.pop();
++            solvedQuests.add(questid);
++            
++            if(nonScriptedQuests.contains(questid)) {
++                skillObtainableNonScriptedQuests.add(questid);
++                nonScriptedQuests.remove(questid);
++            }
++            
++            List<Integer> questDependency = questDependencies.get(questid);
++            for(Integer i : questDependency) {
++                if(!solvedQuests.contains(i)) {
++                    frontierQuests.add(i);
++                }
++            }
++        }
++    }
++    
++    private static void printReportFileHeader() {
++        printWriter.println(" # Report File autogenerated from the MapleQuestlineFetcher feature by Ronan Lana.");
++        printWriter.println(" # Generated data takes into account several data info from the server-side WZ.xmls.");
++        printWriter.println();
++    }
++    
++    private static List<Integer> getSortedListEntries(Set<Integer> set) {
++        List<Integer> list = new ArrayList<>(set);
++        Collections.sort(list);
++        
++        return list;
++    }
++    
++    private static void printReportFileResults() {
++        if(!skillObtainableNonScriptedQuests.isEmpty()) {
++            printWriter.println("SKILL-RELATED NON-SCRIPTED QUESTS");
++            for(Integer nsq : getSortedListEntries(skillObtainableNonScriptedQuests)) {
++                printWriter.println("  " + nsq + (expiredQuests.contains(nsq) ? " EXPIRED" : ""));
++            }
++            
++            printWriter.println();
++        }
++        
++        printWriter.println("\nCOMMON NON-SCRIPTED QUESTS");
++        for(Integer nsq : getSortedListEntries(nonScriptedQuests)) {
++            printWriter.println("  " + nsq + (expiredQuests.contains(nsq) ? " EXPIRED" : ""));
++        }
++    }
++    
++    private static void ReportQuestlineData() {
++        // This will reference one line at a time
++        
++        try {
++            System.out.println("Reading quest scripts...");
++            instantiateQuestScriptFiles(directoryName + "/scripts/quest");
++            
++            System.out.println("Reading WZs...");
++            readQuestsWithSkillReward();
++            readQuestsWithMissingScripts();
++            
++            System.out.println("Calculating skill related quests...");
++            calculateSkillRelatedMissingQuestScripts();
++            
++            System.out.println("Reporting results...");
++            printWriter = new PrintWriter(newFile, "UTF-8");
++            
++            printReportFileHeader();
++            printReportFileResults();
++            
++            printWriter.close();
++            System.out.println("Done!");
++        }
++
++        catch(FileNotFoundException ex) {
++            System.out.println("Unable to open quest file.");
++        }
++        catch(IOException ex) {
++            System.out.println("Error reading quest file.");
++        }
++
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++    
++    /*
++    static private List<Pair<Integer, List<Integer>>> getSortedMapEntries(Map<Integer, List<Integer>> map) {
++        List<Pair<Integer, List<Integer>>> list = new ArrayList<>(map.size());
++        for(Map.Entry<Integer, List<Integer>> e : map.entrySet()) {
++            List<Integer> il = new ArrayList<>(2);
++            for(Integer i : e.getValue()) {
++                il.add(i);
++            }
++            
++            Collections.sort(il, new Comparator<Integer>() {
++                @Override
++                public int compare(Integer o1, Integer o2) {
++                    return o1 - o2;
++                }
++            });
++            
++            list.add(new Pair<>(e.getKey(), il));
++        }
++        
++        Collections.sort(list, new Comparator<Pair<Integer, List<Integer>>>() {
++            @Override
++            public int compare(Pair<Integer, List<Integer>> o1, Pair<Integer, List<Integer>> o2) {
++                return o1.getLeft() - o2.getLeft();
++            }
++        });
++        
++        return list;
++    }
++    
++    private static void DumpQuestlineData() {
++        for(Pair<Integer, List<Integer>> questDependency : getSortedMapEntries(questDependencies)) {
++            if(!questDependency.right.isEmpty()) {
++                System.out.println(questDependency);
++            }
++        }
++    }
++    */
++    
++    public static void main(String[] args) {
++        ReportQuestlineData();
++    }
++    
++}
+diff --git a/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/Pair.java b/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/Pair.java
+new file mode 100644
+index 000000000..cbf35bed6
+--- /dev/null
++++ b/tools/MapleQuestlineFetcher/src/maplequestlinefetcher/Pair.java
+@@ -0,0 +1,121 @@
++/*
++This file is part of the OdinMS Maple Story Server
++Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
++Matthias Butz <matze@odinms.de>
++Jan Christian Meyer <vimes@odinms.de>
++
++This program is free software: you can redistribute it and/or modify
++it under the terms of the GNU Affero General Public License version 3
++as published by the Free Software Foundation. You may not use, modify
++or distribute this program under any other version of the
++GNU Affero General Public License.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU Affero General Public License for more details.
++
++You should have received a copy of the GNU Affero General Public License
++along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package maplequestlinefetcher;
++
++/**
++ * Represents a pair of values.
++ * 
++ * @author Frz
++ * @since Revision 333
++ * @version 1.0
++ * 
++ * @param <E> The type of the left value.
++ * @param <F> The type of the right value.
++ */
++public class Pair<E, F> {
++
++    public E left;
++    public F right;
++
++    /**
++     * Class constructor - pairs two objects together.
++     *
++     * @param left The left object.
++     * @param right The right object.
++     */
++    public Pair(E left, F right) {
++        this.left = left;
++        this.right = right;
++    }
++
++    /**
++     * Gets the left value.
++     *
++     * @return The left value.
++     */
++    public E getLeft() {
++        return left;
++    }
++
++    /**
++     * Gets the right value.
++     *
++     * @return The right value.
++     */
++    public F getRight() {
++        return right;
++    }
++
++    /**
++     * Turns the pair into a string.
++     *
++     * @return Each value of the pair as a string joined by a colon.
++     */
++    @Override
++    public String toString() {
++        return left.toString() + ":" + right.toString();
++    }
++
++    /**
++     * Gets the hash code of this pair.
++     */
++    @Override
++    public int hashCode() {
++        final int prime = 31;
++        int result = 1;
++        result = prime * result + ((left == null) ? 0 : left.hashCode());
++        result = prime * result + ((right == null) ? 0 : right.hashCode());
++        return result;
++    }
++
++    /**
++     * Checks to see if two pairs are equal.
++     */
++    @SuppressWarnings("unchecked")
++    @Override
++    public boolean equals(Object obj) {
++        if (this == obj) {
++            return true;
++        }
++        if (obj == null) {
++            return false;
++        }
++        if (getClass() != obj.getClass()) {
++            return false;
++        }
++        final Pair other = (Pair) obj;
++        if (left == null) {
++            if (other.left != null) {
++                return false;
++            }
++        } else if (!left.equals(other.left)) {
++            return false;
++        }
++        if (right == null) {
++            if (other.right != null) {
++                return false;
++            }
++        } else if (!right.equals(other.right)) {
++            return false;
++        }
++        return true;
++    }
++}
+\ No newline at end of file
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 995419f46..f9f7f46f0 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -22801,6 +22801,12 @@
+         <int name="1" value="2111"/>
+         <int name="2" value="2112"/>
+       </imgdir>
++      <imgdir name="quest">
++        <imgdir name="0">
++          <int name="id" value="21749"/>
++          <int name="state" value="2"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="2131000"/>

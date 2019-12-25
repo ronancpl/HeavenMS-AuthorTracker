@@ -1,0 +1,74 @@
+diff --git a/src/server/gachapon/GachaponItems.java b/src/server/gachapon/GachaponItems.java
+index d850c4199..febe23839 100644
+--- a/src/server/gachapon/GachaponItems.java
++++ b/src/server/gachapon/GachaponItems.java
+@@ -33,13 +33,23 @@
+ 	public abstract int [] getUncommonItems();
+ 	public abstract int [] getRareItems();
+ 	
+-	public int[] getItems(int tier) {
+-		if (tier == 0){
+-			return getCommonItems();
+-		} else if (tier == 1){
+-			return getUncommonItems();
+-		} else if (tier == 2){
+-			return getRareItems();
++	private final int [] commonItems;
++	private final int [] uncommonItems;
++	private final int [] rareItems;
++	
++	public GachaponItems() {
++		this.commonItems = getCommonItems();
++		this.uncommonItems = getUncommonItems();
++		this.rareItems = getRareItems();
++	}
++
++	public final int[] getItems(int tier) {
++		if (tier == 0) {
++			return commonItems;
++		} else if (tier == 1) {
++			return uncommonItems;
++		} else if (tier == 2) {
++			return rareItems;
+ 		}
+ 		return null;
+ 	}
+diff --git a/src/server/gachapon/MapleGachapon.java b/src/server/gachapon/MapleGachapon.java
+index 3fcdb6c89..49dcf4dc0 100644
+--- a/src/server/gachapon/MapleGachapon.java
++++ b/src/server/gachapon/MapleGachapon.java
+@@ -49,6 +49,8 @@ public static MapleGachapon getInstance() {
+ 		NEW_LEAF_CITY(9100109, 90, 8, 2, new NewLeafCity()),
+ 		NAUTILUS_HARBOR(9100117, 90, 8, 2, new NautilusHarbor());
+ 
++		private static final Gachapon[] values = Gachapon.values();
++
+ 		private GachaponItems gachapon;
+ 		private int npcId;
+ 		private int common;
+@@ -56,11 +58,11 @@ public static MapleGachapon getInstance() {
+ 		private int rare;
+ 
+ 		private Gachapon(int npcid, int c, int u, int r, GachaponItems g) {
+-			npcId = npcid;
+-			gachapon = g;
+-			common = c;
+-			uncommon = u;
+-			rare = r;
++			this.npcId = npcid;
++			this.gachapon = g;
++			this.common = c;
++			this.uncommon = u;
++			this.rare = r;
+ 		}
+ 
+ 		private int getTier() {
+@@ -85,7 +87,7 @@ public int getItem(int tier) {
+ 		}
+ 
+ 		public static Gachapon getByNpcId(int npcId) {
+-			for (Gachapon gacha : Gachapon.values()) {
++			for (Gachapon gacha : values) {
+ 				if (npcId == gacha.npcId) {
+ 					return gacha;
+ 				}

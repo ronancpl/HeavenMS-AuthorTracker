@@ -1,0 +1,3201 @@
+diff --git a/README.md b/README.md
+index 007d76256..7ba64be0d 100644
+--- a/README.md
++++ b/README.md
+@@ -12,6 +12,8 @@ Being a NetBeans 8.2 Project, this means that it's easier to install the project
+ 
+ In this project, many gameplay-wise issues generated from either the original WZ files and the server source have been partially or completely solved. Considering the use of the provided edited WZ's and server-side wz.xml files should be of the greatest importance when dealing with this instance of server source, in order to perceive it at it's full potential. My opinion, though!
+ 
++- In other case, as fallback from the provided ones, consider using **whole clean set**. Selecting part of the provided ones to play pretty much *may eventually* lead to unexpected issues.
++
+ The main objective of this project is to try as best as possible to recreate what once was the original MapleStory v83, while adding up some flavors that spices up the gameplay. In other words, aim to get the best of the MapleStory of that era.
+ 
+ ---
+diff --git a/config.yaml b/config.yaml
+index 314d71997..7a8ac3c06 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -310,7 +310,6 @@ server:
+     MAX_AP: 32767                               #Max AP allotted on the auto-assigner.
+     MAX_EVENT_LEVELS: 8                         #Event has different levels of rewarding system.
+     BLOCK_NPC_RACE_CONDT: 500   # (0.5 * 1000) Time the player client must wait before reopening a conversation with an NPC.
+-    PET_LOOT_UPON_ATTACK: 700   # (0.7 * 1000) Time the pet must wait before trying to pick items up.
+     TOT_MOB_QUEST_REQUIREMENT: 77               #Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
+     MOB_REACTOR_REFRESH_TIME: 30000         # (30 * 1000) Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
+     PARTY_SEARCH_REENTRY_LIMIT: 10              #Max amount of times a party leader is allowed to persist on the Party Search before entry expiration (thus needing to manually restart the Party Search to be able to search for members).
+diff --git a/docs/issues.txt b/docs/issues.txt
+index 56f339dda..4cb1acf79 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -18,6 +18,7 @@ Known issues:
+ - Reportedly, there are cases where mob positions fail to sync between player's client-view.
+ - Visual equip EXP watch value will present stuttering for early levels requirement (EXP needed less than 100), and requirement at level 200 will not progress at all due to the level cap in client.
+ - Monster Magnet will crash the player when trying to pull fixed monsters.
++- Some magic skills such as "Energy Bolt" or "Holy Arrow" doesn't display damage to other players when the attacks come from close range to the targeted mob. Oddly enough, using "closeRangeAttack" packet seems to clear the issue on most skills, however in others "Error 5" crash renders this unusable.
+ ---------------------------
+ 
+ ---------------------------
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 22b9a22d8..8e9a567bb 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -2180,4 +2180,20 @@ Corrigido análise de alerta de HP/MP lado-servidor não contando com os atribut
+ 03 Outubro 2019,
+ Corrigido skill "Energy Charge" levando atualização de buff ao tocar em mobs, levando a casos onde o buff nos stats poderia inesperadamente ficar retido além do tempo de atuação previsto.
+ Substituído utilização de "Jackson annotations + SnakeYaml" por "YamlBeans", utilizando-se assim menos artefatos JARs no processo (anteriormente 5, agora somente 1). Nota: na transição, fora constatado que a utilização da tecnologia anterior era mais permissiva perante o arquivo de configurações, porém estrutura do novo arquivo foi normalizado e está agora funcional.
+-Refatorado inicialização de eventos ao iniciar o servidor, em busca de melhorar o tempo de startup.
+\ No newline at end of file
++Refatorado inicialização de eventos ao iniciar o servidor, em busca de melhorar o tempo de startup.
++
++05 - 08 Outubro 2019,
++Refatorado os diversos schedulers que estavam presentes na classe de canais, agora abstraídas e atuando dentro de serviços.
++Corrigido circunstância onde movimentos de mobs poderiam estar sendo processados enquanto jogador está transitando mapas, levando a possível inconsistência na aplicação de movimento do mob na área acessada.
++
++10 - 12 Outubro 2019,
++Modificado uso de "default" de petid nos itens de inventário armazenados na DB (de -1 para nulo), assim permitindo criar chaves únicas.
++Adicionado uso de chaves estrangeiras para o petid.
++Implementado código de suporte para cupons de "associação" de cosméticos de cabelo.
++Corrigido bug recente em bosses com atributo "link" sem HPbar sendo detectados como possuindo HPbar, se o mob base possui.
++Corrigido bug recente na skill "Body Pressure" não aplicando a sua passiva com chance de neutralizar ao tocar mobs.
++Corrigido quest com NPC "Shaman Rock" aplicando progresso que não corresponde com o esperado (progresso extra agora movido para um novo questid).
++Adicionado método que permite executar scripts de mapa no sistema de scripts de portal.
++Corrigido problema recente ao referenciar script com progresso "Touch the Sky" (script de portal utilizando métodos de scripts de mapa).
++Adicionado fallback para scripts de NPC MapleTV.
++Revisado aplicação e abordagem deste código-base nos arquivos XML legado.
+\ No newline at end of file
+diff --git a/src/net/server/channel/task/MobMistScheduler.java b/scripts/map/onUserEnter/highposition.js
+similarity index 62%
+rename from src/net/server/channel/task/MobMistScheduler.java
+rename to scripts/map/onUserEnter/highposition.js
+index f7494b879..815a15c05 100644
+--- a/src/net/server/channel/task/MobMistScheduler.java
++++ b/scripts/map/onUserEnter/highposition.js
+@@ -1,6 +1,8 @@
+ /*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -17,20 +19,11 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
+ 
+-import net.server.audit.locks.MonitoredLockType;
+-
+-/**
++/*
++ * Author: kevintjuh93
+  *
+- * @author Ronan
+- */
+-public class MobMistScheduler extends BaseScheduler {
+-    public MobMistScheduler() {
+-        super(MonitoredLockType.CHANNEL_MOBMIST);
+-    }
+-    
+-    public void registerMistCancelAction(Runnable runAction, long delay) {
+-        registerEntry(runAction, runAction, delay);
+-    }
++*/
++function start(ms) {
++	ms.touchTheSky();
+ }
+diff --git a/scripts/npc/1012103.js b/scripts/npc/1012103.js
+index e1bd30ddf..2984176cd 100644
+--- a/scripts/npc/1012103.js
++++ b/scripts/npc/1012103.js
+@@ -72,7 +72,10 @@ function action(mode, type, selection) {
+         } else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150001)){
++                if (cm.haveItem(5420002)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150001)){
+                     cm.gainItem(5150001, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/1052100.js b/scripts/npc/1052100.js
+index 5be126551..62de216d0 100644
+--- a/scripts/npc/1052100.js
++++ b/scripts/npc/1052100.js
+@@ -78,7 +78,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150003)){
++                if (cm.haveItem(5420003)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150003)){
+                     cm.gainItem(5150003, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/1063012.js b/scripts/npc/1063012.js
+index 282cc42fe..c5d98a2b9 100644
+--- a/scripts/npc/1063012.js
++++ b/scripts/npc/1063012.js
+@@ -21,6 +21,9 @@
+ */
+ var status = -1;
+ 
++/*
++Custom Quest 100300
++*/
+ function activateShamanRock(slot,progress) {
+     var ch = progress[slot];
+     if(ch == '0') {
+@@ -45,10 +48,10 @@ function start() {
+         else if(map == 105070000) activateShamanRock(2,progress);
+         
+         else if(map == 105090000) { // workaround... TWO SAME NPC ID ON SAME MAP
+-            var npcOid = cm.getQuestProgressInt(2236, 1);
++            var npcOid = cm.getQuestProgressInt(100300, 1);
+             if (npcOid == 0) {
+                 activateShamanRock(3,progress);
+-                cm.setQuestProgress(2236, 1, cm.getNpcObjectId());
++                cm.setQuestProgress(100300, 1, cm.getNpcObjectId());
+             } else if (cm.getNpcObjectId() != npcOid) {
+                 activateShamanRock(4,progress);
+             }
+diff --git a/scripts/npc/1063013.js b/scripts/npc/1063013.js
+index 282cc42fe..c5d98a2b9 100644
+--- a/scripts/npc/1063013.js
++++ b/scripts/npc/1063013.js
+@@ -21,6 +21,9 @@
+ */
+ var status = -1;
+ 
++/*
++Custom Quest 100300
++*/
+ function activateShamanRock(slot,progress) {
+     var ch = progress[slot];
+     if(ch == '0') {
+@@ -45,10 +48,10 @@ function start() {
+         else if(map == 105070000) activateShamanRock(2,progress);
+         
+         else if(map == 105090000) { // workaround... TWO SAME NPC ID ON SAME MAP
+-            var npcOid = cm.getQuestProgressInt(2236, 1);
++            var npcOid = cm.getQuestProgressInt(100300, 1);
+             if (npcOid == 0) {
+                 activateShamanRock(3,progress);
+-                cm.setQuestProgress(2236, 1, cm.getNpcObjectId());
++                cm.setQuestProgress(100300, 1, cm.getNpcObjectId());
+             } else if (cm.getNpcObjectId() != npcOid) {
+                 activateShamanRock(4,progress);
+             }
+diff --git a/scripts/npc/2010001.js b/scripts/npc/2010001.js
+index 3d10243e8..7d9cbbfc2 100644
+--- a/scripts/npc/2010001.js
++++ b/scripts/npc/2010001.js
+@@ -83,7 +83,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150005) == true){
++                if (cm.haveItem(5420004)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150005) == true){
+                     cm.gainItem(5150005, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/2041007.js b/scripts/npc/2041007.js
+index 0cc2197a5..46646dacf 100644
+--- a/scripts/npc/2041007.js
++++ b/scripts/npc/2041007.js
+@@ -81,7 +81,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150007) == true){
++                if (cm.haveItem(5420005)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150007) == true){
+                     cm.gainItem(5150007, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/2090100.js b/scripts/npc/2090100.js
+index 60609facb..b4320132c 100644
+--- a/scripts/npc/2090100.js
++++ b/scripts/npc/2090100.js
+@@ -81,7 +81,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150025)){
++                if (cm.haveItem(5420006)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150025)){
+                     cm.gainItem(5150025, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/2111013.js b/scripts/npc/2111013.js
+index ab3289b9f..7f4b75ea3 100644
+--- a/scripts/npc/2111013.js
++++ b/scripts/npc/2111013.js
+@@ -40,7 +40,6 @@ function action(mode, type, selection) {
+     
+                 if(status == 0) {
+                         if(cm.isQuestStarted(3311)) {
+-                                var slot = 2;
+                                 var progress = cm.getQuestProgressInt(3311);
+                                 
+                                 if (progress == 4) {
+diff --git a/scripts/npc/2111014.js b/scripts/npc/2111014.js
+index cadbec00e..f6e1e7310 100644
+--- a/scripts/npc/2111014.js
++++ b/scripts/npc/2111014.js
+@@ -40,7 +40,6 @@ function action(mode, type, selection) {
+     
+                 if(status == 0) {
+                         if(cm.isQuestStarted(3311)) {
+-                                var slot = 0;
+                                 var progress = cm.getQuestProgressInt(3311);
+                                 
+                                 if (progress == 4) {
+diff --git a/scripts/npc/9201015.js b/scripts/npc/9201015.js
+index 3d3ade88b..a41d48c24 100644
+--- a/scripts/npc/9201015.js
++++ b/scripts/npc/9201015.js
+@@ -84,7 +84,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150020) == true){
++                if (cm.haveItem(5420000)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150020) == true){
+                     cm.gainItem(5150020, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/scripts/npc/9201064.js b/scripts/npc/9201064.js
+index 7625f74fe..8cc7915ba 100644
+--- a/scripts/npc/9201064.js
++++ b/scripts/npc/9201064.js
+@@ -73,7 +73,10 @@ function action(mode, type, selection) {
+         else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5150031)){
++                if (cm.haveItem(5420001)){
++                    cm.setHair(hairnew[selection]);
++                    cm.sendOk("Enjoy your new and improved hairstyle!");
++                } else if (cm.haveItem(5150031)){
+                     cm.gainItem(5150031, -1);
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+diff --git a/src/net/server/channel/task/MobClearSkillScheduler.java b/scripts/npc/mapleTV.js
+similarity index 59%
+rename from src/net/server/channel/task/MobClearSkillScheduler.java
+rename to scripts/npc/mapleTV.js
+index 7c1880269..59092f758 100644
+--- a/src/net/server/channel/task/MobClearSkillScheduler.java
++++ b/scripts/npc/mapleTV.js
+@@ -17,20 +17,33 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
++/* 
++	Default Maple TV
++ */
+ 
+-import net.server.audit.locks.MonitoredLockType;
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
+ 
+-/**
+- *
+- * @author Ronan
+- */
+-public class MobClearSkillScheduler extends BaseScheduler {
+-    public MobClearSkillScheduler() {
+-        super(MonitoredLockType.CHANNEL_MOBSKILL);
+-    }
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
+     
+-    public void registerClearSkillAction(Runnable runAction, long delay) {
+-        registerEntry(runAction, runAction, delay);
+-    }
+-}
++                if(status == 0) {
++                        // do nothing
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/portal/highposition.js b/scripts/portal/highposition.js
+index 75b838464..e19516f8a 100644
+--- a/scripts/portal/highposition.js
++++ b/scripts/portal/highposition.js
+@@ -20,10 +20,8 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-/*
+- * Author: kevintjuh93
+- *
+-*/
+-function start(ms) {
+-	ms.touchTheSky();
++// Author: Ronan
++function enter(ms) {
++    ms.runMapScript();
++    return false;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2232.js b/scripts/quest/2232.js
+new file mode 100644
+index 000000000..0a674f2c0
+--- /dev/null
++++ b/scripts/quest/2232.js
+@@ -0,0 +1,25 @@
++var status = -1;
++
++function start(mode, type, selection) {
++    var familyEntry = qm.getPlayer().getFamilyEntry();
++    if (familyEntry != null && familyEntry.getJuniorCount() > 0) {
++        qm.forceCompleteQuest();
++        qm.gainExp(3000);
++        qm.sendNext("Good job!");
++    } else {
++        qm.sendNext("I see that you have not successfully find a Junior, ok?");
++    }
++    qm.dispose();
++}
++
++function end(mode, type, selection) {
++    var familyEntry = qm.getPlayer().getFamilyEntry();
++    if (familyEntry != null && familyEntry.getJuniorCount() > 0) {  // script found thanks to kvmba
++        qm.forceCompleteQuest();
++        qm.gainExp(3000);
++        qm.sendNext("Good job!");
++    } else {
++        qm.sendNext("I see that you have not successfully find a Junior, ok?");
++    }
++    qm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2251.js b/scripts/quest/2251.js
+new file mode 100644
+index 000000000..3de79f99d
+--- /dev/null
++++ b/scripts/quest/2251.js
+@@ -0,0 +1,38 @@
++-/*
++	Author: Kevin
++	Quest: Zombie Mushroom Signal 3 (2251)
++	NPC: The Rememberer (1061011)
++	Item: Recording Charm (4032399)
++*/
++
++var status = -1;      // script restored thanks to kvmba
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(!qm.haveItem(4032399, 20)) {
++                qm.sendOk("Please bring me 20 #b#t4032399##k...  #i4032399#");
++            }
++            else {
++                qm.gainItem(4032399, -20);
++                qm.sendOk("Oh, you brought 20 #b#t4032399##k! Thank you.");
++                qm.gainExp(8000);
++                qm.forceCompleteQuest();
++            }
++        } else if (status == 1) {
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 19794a205..2c71f7eb4 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -1,4 +1,4 @@
+-#EXECUTE THIS FIRST, THEN NEXT SQL: 'db_drops.sql'
++﻿#EXECUTE THIS FIRST, THEN NEXT SQL: 'db_drops.sql'
+ 
+ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+ SET time_zone = "+00:00";
+@@ -8,9 +8,9 @@ SET time_zone = "+00:00";
+ /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+ /*!40101 SET NAMES utf8 */;
+ 
+-DROP DATABASE IF EXISTS `heavenms`;
+-CREATE DATABASE `heavenms` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+-USE `heavenms`;
++DROP DATABASE IF EXISTS `heavenms2`;
++CREATE DATABASE `heavenms2` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
++USE `heavenms2`;
+ 
+ CREATE TABLE IF NOT EXISTS `accounts` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+@@ -12968,7 +12968,7 @@ CREATE TABLE IF NOT EXISTS `inventoryitems` (
+   `position` int(11) NOT NULL DEFAULT '0',
+   `quantity` int(11) NOT NULL DEFAULT '0',
+   `owner` tinytext NOT NULL,
+-  `petid` int(11) NOT NULL DEFAULT '-1',
++  `petid` int(11) unsigned UNIQUE DEFAULT NULL,
+   `flag` int(11) NOT NULL,
+   `expiration` bigint(20) NOT NULL DEFAULT '-1',
+   `giftFrom` varchar(26) NOT NULL,
+@@ -16463,7 +16463,7 @@ INSERT INTO `nxcoupons` (`id`, `couponid`, `rate`, `activeday`, `starthour`, `en
+ (40,5360042,2,254,0,24);
+ 
+ CREATE TABLE IF NOT EXISTS `pets` (
+-  `petid` int(10) unsigned NOT NULL AUTO_INCREMENT,
++  `petid` int(11) unsigned NOT NULL AUTO_INCREMENT,
+   `name` varchar(13) DEFAULT NULL,
+   `level` int(10) unsigned NOT NULL,
+   `closeness` int(10) unsigned NOT NULL,
+@@ -16473,11 +16473,14 @@ CREATE TABLE IF NOT EXISTS `pets` (
+   PRIMARY KEY (`petid`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
++ALTER TABLE `inventoryitems` ADD CONSTRAINT `fk_itempetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE SET NULL ;
++
+ CREATE TABLE IF NOT EXISTS `petignores` (
+   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+-  `petid` int(10) unsigned NOT NULL ,
++  `petid` int(11) unsigned NOT NULL ,
+   `itemid` int(10) unsigned NOT NULL ,
+-  PRIMARY KEY (`id`)
++  PRIMARY KEY (`id`),
++  CONSTRAINT `fk_petignorepetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE CASCADE
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `playerdiseases` (
+@@ -20859,6 +20862,25 @@ INSERT INTO `shopitems` (`shopitemid`, `shopid`, `itemid`, `price`, `pitch`, `po
+ (6531, 1337, 2040711, 1, 0, 62),
+ (6532, 1337, 2340000, 1, 0, 63),
+ (20020, 1337, 1082149, 1, 0, 64),
++(20255, 1337, 2044503, 1, 0, 86),	# 20255~20273: thanks to ozanrijen
++(20256, 1337, 2044703, 1, 0, 87),
++(20257, 1337, 2044603, 1, 0, 88),
++(20258, 1337, 2043303, 1, 0, 89),
++(20259, 1337, 2043103, 1, 0, 90),
++(20260, 1337, 2043203, 1, 0, 91),
++(20261, 1337, 2043003, 1, 0, 92),
++(20262, 1337, 2044403, 1, 0, 93),
++(20263, 1337, 2044303, 1, 0, 94),
++(20264, 1337, 2043803, 1, 0, 95),
++(20265, 1337, 2044103, 1, 0, 96),
++(20266, 1337, 2044203, 1, 0, 97),
++(20267, 1337, 2044003, 1, 0, 98),
++(20268, 1337, 2043703, 1, 0, 99),
++(20269, 1337, 2040806, 1, 0, 100),
++(20270, 1337, 2040007, 1, 0, 101),
++(20271, 1337, 2040506, 1, 0, 102),
++(20272, 1337, 2040710, 1, 0, 103),
++(20273, 1337, 2040711, 1, 0, 104),
+ (6533, 9000069, 2022503, 0, 5, 1),
+ (6534, 9000069, 2000004, 0, 5, 2),
+ (6535, 9000069, 2022514, 0, 10, 3),
+@@ -21470,4 +21492,4 @@ ALTER TABLE `skills`
+ 
+ /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+ /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
++/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 43ad05aae..1488258ec 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -142,7 +142,6 @@
+ import constants.game.ExpTable;
+ import constants.game.GameConstants;
+ import constants.inventory.ItemConstants;
+-import constants.net.ServerConstants;
+ import constants.skills.Aran;
+ import constants.skills.Beginner;
+ import constants.skills.Bishop;
+@@ -172,6 +171,9 @@
+ import constants.skills.Sniper;
+ import constants.skills.Warrior;
+ import constants.skills.ThunderBreaker;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.BaseService;
++import net.server.channel.services.task.FaceExpressionService;
+ import org.apache.mina.util.ConcurrentHashSet;
+ 
+ public class MapleCharacter extends AbstractMapleCharacterObject {
+@@ -320,7 +322,6 @@
+     private boolean loggedIn = false;
+     private boolean useCS;  //chaos scroll upon crafting item.
+     private long npcCd;
+-    private long petLootCd;
+     private long lastHpDec = 0;
+     private int newWarpMap = -1;
+     private boolean canWarpMap = true;  //only one "warp" must be used per call, and this will define the right one.
+@@ -398,8 +399,6 @@ public void onAnnounceStatPoolUpdate() {
+         }
+         quests = new LinkedHashMap<>();
+         setPosition(new Point(0, 0));
+-        
+-        petLootCd = Server.getInstance().getCurrentTime();
+     }
+     
+     private static MapleJob getJobStyleInternal(int jobid, byte opt) {
+@@ -439,7 +438,7 @@ public MapleJob getJobStyle() {
+     public static MapleCharacter getDefault(MapleClient c) {
+         MapleCharacter ret = new MapleCharacter();
+         ret.client = c;
+-        ret.gmLevel = 0;
++        ret.setGMLevel(0);
+         ret.hp = 50;
+         ret.setMaxHp(50);
+         ret.mp = 5;
+@@ -569,14 +568,6 @@ public void setSessionTransitionState() {
+         client.getSession().setAttribute(MapleClient.CLIENT_TRANSITION);
+     }
+     
+-    public long getPetLootCd() {
+-        return petLootCd;
+-    }
+-    
+-    public void setPetLootCd(long cd) {
+-        petLootCd = cd;
+-    }
+-    
+     public boolean getCS() {
+         return useCS;
+     }
+@@ -822,7 +813,7 @@ public int calculateMaxBaseDamage(int watk, MapleWeaponType weapon) {
+             mainstat = localstr;
+             secondarystat = localdex;
+         }
+-        return (int) (((weapon.getMaxDamageMultiplier() * mainstat + secondarystat) / 100.0) * watk);
++        return (int) Math.ceil(((weapon.getMaxDamageMultiplier() * mainstat + secondarystat) / 100.0) * watk);
+     }
+ 
+     public int calculateMaxBaseDamage(int watk) {
+@@ -838,7 +829,7 @@ public int calculateMaxBaseDamage(int watk) {
+                 }
+ 
+                 int attack = (int) Math.min(Math.floor((2 * getLevel() + 31) / 3), 31);
+-                maxbasedamage = (int) (localstr * weapMulti + localdex) * attack / 100;
++                maxbasedamage = (int) Math.ceil((localstr * weapMulti + localdex) * attack / 100.0);
+             } else {
+                 maxbasedamage = 1;
+             }
+@@ -2346,6 +2337,10 @@ public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+                             ps.setInt(1, cid);
+                             ps.executeUpdate();
+                     }
++                    try (PreparedStatement ps = con.prepareStatement("DELETE FROM family_character WHERE cid = ?")) {
++                            ps.setInt(1, cid);
++                            ps.executeUpdate();
++                    }
+                     try (PreparedStatement ps = con.prepareStatement("DELETE FROM famelog WHERE characterid_to = ?")) {
+                             ps.setInt(1, cid);
+                             ps.executeUpdate();
+@@ -2383,7 +2378,7 @@ public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+                                             }
+                                             
+                                             int petid = rs.getInt("petid");
+-                                            if(petid > -1) {
++                                            if(!rs.wasNull()) {
+                                                     try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM pets WHERE petid = ?")) {
+                                                             ps2.setInt(1, petid);
+                                                             ps2.executeUpdate();
+@@ -2850,7 +2845,9 @@ public void changeFaceExpression(int emote) {
+         long timeNow = Server.getInstance().getCurrentTime();
+         if(timeNow - lastExpression > 2000) {
+             lastExpression = timeNow;
+-            client.getChannelServer().registerFaceExpression(map, this, emote);
++            
++            FaceExpressionService service = (FaceExpressionService) client.getChannelServer().getServiceAccess(ServiceType.FACE_EXPRESSION);
++            service.registerFaceExpression(map, this, emote);
+         }
+     }
+ 
+@@ -5614,6 +5611,8 @@ public MapleRockPaperScissor getRPS() { // thanks inhyuk for suggesting RPS addi
+     public void setGMLevel(int level) {
+         this.gmLevel = Math.min(level, 6);
+         this.gmLevel = Math.max(level, 0);
++        
++        whiteChat = gmLevel >= 4;   // thanks ozanrijen for suggesting default white chat
+     }
+     
+     public void closePartySearchInteractions() {
+@@ -6975,8 +6974,7 @@ public static MapleCharacter loadCharacterEntryFromDB(ResultSet rs, List<Item> e
+             ret.gachaexp.set(rs.getInt("gachaexp"));
+             ret.mapid = rs.getInt("map");
+             ret.initialSpawnPoint = rs.getInt("spawnpoint");
+-            
+-            ret.gmLevel = rs.getInt("gm");
++            ret.setGMLevel(rs.getInt("gm"));
+             ret.world = rs.getByte("world");
+             ret.rank = rs.getInt("rank");
+             ret.rankMove = rs.getInt("rankMove");
+@@ -7029,7 +7027,7 @@ public MapleCharacter generateCharacterEntry() {
+         
+         ret.inventory[MapleInventoryType.EQUIPPED.ordinal()] = this.getInventory(MapleInventoryType.EQUIPPED);
+         
+-        ret.gmLevel = this.gmLevel();
++        ret.setGMLevel(this.gmLevel());
+         ret.world = this.getWorld();
+         ret.rank = this.getRank();
+         ret.rankMove = this.getRankMove();
+@@ -7091,7 +7089,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ret.loadCharSkillPoints(rs.getString("sp").split(","));
+             ret.meso.set(rs.getInt("meso"));
+             ret.merchantmeso = rs.getInt("MerchantMesos");
+-            ret.gmLevel = rs.getInt("gm");
++            ret.setGMLevel(rs.getInt("gm"));
+             ret.skinColor = MapleSkinColor.getById(rs.getInt("skincolor"));
+             ret.gender = rs.getInt("gender");
+             ret.job = MapleJob.getById(rs.getInt("job"));
+@@ -7187,11 +7185,14 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             PreparedStatement ps2, ps3;
+             ResultSet rs2, rs3;
+             
+-            ps3 = con.prepareStatement("SELECT petid FROM inventoryitems WHERE characterid = ? AND petid > -1");
++            ps3 = con.prepareStatement("SELECT petid FROM inventoryitems WHERE characterid = ? AND petid IS NOT NULL");
+             ps3.setInt(1, charid);
+             rs3 = ps3.executeQuery();
+             while(rs3.next()) {
+                 int petId = rs3.getInt("petid");
++                if (rs3.wasNull()) {
++                    petId = -1;
++                }
+ 
+                 ps2 = con.prepareStatement("SELECT itemid FROM petignores WHERE petid = ?");
+                 ps2.setInt(1, petId);
+@@ -7371,7 +7372,11 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 ps.setInt(1, charid);
+                 rs = ps.executeQuery();
+                 while (rs.next()) {
+-                    ret.skills.put(SkillFactory.getSkill(rs.getInt("skillid")), new SkillEntry(rs.getByte("skilllevel"), rs.getInt("masterlevel"), rs.getLong("expiration")));
++                    Skill pSkill = SkillFactory.getSkill(rs.getInt("skillid"));
++                    if(pSkill != null)  // edit reported by shavit, thanks Zein for noticing an NPE here
++                    {
++                        ret.skills.put(pSkill, new SkillEntry(rs.getByte("skilllevel"), rs.getInt("masterlevel"), rs.getLong("expiration")));
++                    }
+                 }
+                 rs.close();
+                 ps.close();
+diff --git a/src/client/inventory/Item.java b/src/client/inventory/Item.java
+index 0f33769d7..fdd871229 100644
+--- a/src/client/inventory/Item.java
++++ b/src/client/inventory/Item.java
+@@ -126,7 +126,11 @@ public void setOwner(String owner) {
+     public int getPetId() {
+         return petid;
+     }
+- 
++    
++    public Integer getPetIdForDb() {
++        return petid > -1 ? petid : null;
++    }
++    
+     @Override
+     public int compareTo(Item other) {
+         if (this.id < other.getItemId()) {
+diff --git a/src/client/inventory/ItemFactory.java b/src/client/inventory/ItemFactory.java
+index bce04120a..fa7f4fac9 100644
+--- a/src/client/inventory/ItemFactory.java
++++ b/src/client/inventory/ItemFactory.java
+@@ -173,7 +173,12 @@ private static Equip loadEquipFromResultSet(ResultSet rs) throws SQLException {
+                 if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
+                     items.add(new Pair<Item, MapleInventoryType>(loadEquipFromResultSet(rs), mit));
+                 } else {
+-                    Item item = new Item(rs.getInt("itemid"), (byte) rs.getInt("position"), (short) rs.getInt("quantity"), rs.getInt("petid"));
++                    int petid = rs.getInt("petid");
++                    if (rs.wasNull()) {
++                        petid = -1;
++                    }
++                    
++                    Item item = new Item(rs.getInt("itemid"), (byte) rs.getInt("position"), (short) rs.getInt("quantity"), petid);
+                     item.setOwner(rs.getString("owner"));
+                     item.setExpiration(rs.getLong("expiration"));
+                     item.setGiftFrom(rs.getString("giftFrom"));
+@@ -229,7 +234,7 @@ private void saveItemsCommon(List<Pair<Item, MapleInventoryType>> items, int id,
+                     ps.setInt(6, item.getPosition());
+                     ps.setInt(7, item.getQuantity());
+                     ps.setString(8, item.getOwner());
+-                    ps.setInt(9, item.getPetId());
++                    ps.setObject(9, item.getPetIdForDb(), java.sql.Types.INTEGER);
+                     ps.setInt(10, item.getFlag());
+                     ps.setLong(11, item.getExpiration());
+                     ps.setString(12, item.getGiftFrom());
+@@ -329,7 +334,12 @@ private void saveItemsCommon(List<Pair<Item, MapleInventoryType>> items, int id,
+                     items.add(new Pair<Item, MapleInventoryType>(loadEquipFromResultSet(rs), mit));
+                 } else {
+                     if(bundles > 0) {
+-                        Item item = new Item(rs.getInt("itemid"), (byte) rs.getInt("position"), (short)(bundles * rs.getInt("quantity")), rs.getInt("petid"));
++                        int petid = rs.getInt("petid");
++                        if (rs.wasNull()) {
++                            petid = -1;
++                        }
++                        
++                        Item item = new Item(rs.getInt("itemid"), (byte) rs.getInt("position"), (short)(bundles * rs.getInt("quantity")), petid);
+                         item.setOwner(rs.getString("owner"));
+                         item.setExpiration(rs.getLong("expiration"));
+                         item.setGiftFrom(rs.getString("giftFrom"));
+@@ -404,7 +414,7 @@ private void saveItemsMerchant(List<Pair<Item, MapleInventoryType>> items, List<
+                     ps.setInt(6, item.getPosition());
+                     ps.setInt(7, item.getQuantity());
+                     ps.setString(8, item.getOwner());
+-                    ps.setInt(9, item.getPetId());
++                    ps.setObject(9, item.getPetIdForDb(), java.sql.Types.INTEGER);
+                     ps.setInt(10, item.getFlag());
+                     ps.setLong(11, item.getExpiration());
+                     ps.setString(12, item.getGiftFrom());
+diff --git a/src/client/inventory/MaplePet.java b/src/client/inventory/MaplePet.java
+index a3cd38cb4..f26944c5f 100644
+--- a/src/client/inventory/MaplePet.java
++++ b/src/client/inventory/MaplePet.java
+@@ -98,75 +98,11 @@ public static MaplePet loadFromDb(int itemid, short position, int petid) {
+         }
+     }
+     
+-    private static void unreferenceMissingPetsFromInventoryDb() {
+-        PreparedStatement ps = null;
+-        Connection con = null;
+-        try {
+-            con = DatabaseConnection.getConnection();
+-            
+-            ps = con.prepareStatement("UPDATE inventoryitems SET petid = -1, expiration = 0 WHERE petid != -1 AND petid NOT IN (SELECT petid FROM pets)");
+-            ps.executeUpdate();
+-            
+-            ps.close();
+-            con.close();
+-        } catch(SQLException ex) {
+-            ex.printStackTrace();
+-        } finally {
+-            try {
+-                if(ps != null && !ps.isClosed()) {
+-                    ps.close();
+-                }
+-                if(con != null && !con.isClosed()) {
+-                    con.close();
+-                }
+-            } catch (SQLException e) {
+-                e.printStackTrace();
+-            }
+-        }
+-    }
+-    
+-    private static void deleteMissingPetsFromDb() {
+-        PreparedStatement ps = null;
+-        Connection con = null;
+-        try {
+-            con = DatabaseConnection.getConnection();
+-            
+-            ps = con.prepareStatement("DELETE FROM pets WHERE petid NOT IN (SELECT petid FROM inventoryitems WHERE petid != -1)");
+-            ps.executeUpdate();
+-            
+-            ps.close();
+-            con.close();
+-        } catch(SQLException ex) {
+-            ex.printStackTrace();
+-        } finally {
+-            try {
+-                if(ps != null && !ps.isClosed()) {
+-                    ps.close();
+-                }
+-                if(con != null && !con.isClosed()) {
+-                    con.close();
+-                }
+-            } catch (SQLException e) {
+-                e.printStackTrace();
+-            }
+-        }
+-    }
+-    
+-    public static void clearMissingPetsFromDb() {
+-        unreferenceMissingPetsFromInventoryDb();
+-        deleteMissingPetsFromDb();
+-    }
+-    
+     public static void deleteFromDb(MapleCharacter owner, int petid) {
+         try {
+             Connection con = DatabaseConnection.getConnection();
+             
+-            PreparedStatement ps = con.prepareStatement("DELETE FROM pets WHERE `petid` = ?");
+-            ps.setInt(1, petid);
+-            ps.executeUpdate();
+-            ps.close();
+-            
+-            ps = con.prepareStatement("DELETE FROM petignores WHERE `petid` = ?");  // thanks Vcoc for detecting petignores remaining after deletion
++            PreparedStatement ps = con.prepareStatement("DELETE FROM pets WHERE `petid` = ?");  // thanks Vcoc for detecting petignores remaining after deletion
+             ps.setInt(1, petid);
+             ps.executeUpdate();
+             ps.close();
+diff --git a/src/client/inventory/manipulator/MapleCashidGenerator.java b/src/client/inventory/manipulator/MapleCashidGenerator.java
+index cba7bf1e1..52fd28f8d 100644
+--- a/src/client/inventory/manipulator/MapleCashidGenerator.java
++++ b/src/client/inventory/manipulator/MapleCashidGenerator.java
+@@ -41,7 +41,10 @@ private static void loadExistentCashIdsFromQuery(Connection con, String query) t
+         ResultSet rs = ps.executeQuery();
+         
+         while (rs.next()) {
+-            existentCashids.add(rs.getInt(1));
++            int id = rs.getInt(1);
++            if (!rs.wasNull()) {
++                existentCashids.add(id);
++            }
+         }
+         
+         rs.close();
+diff --git a/src/client/processor/action/SpawnPetProcessor.java b/src/client/processor/action/SpawnPetProcessor.java
+index 0c95d973f..0f45f86c7 100644
+--- a/src/client/processor/action/SpawnPetProcessor.java
++++ b/src/client/processor/action/SpawnPetProcessor.java
+@@ -62,7 +62,7 @@ public static void processSpawnPet(MapleClient c, byte slot, boolean lead) {
+                         long expiration = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getExpiration();
+                         MapleInventoryManipulator.removeById(c, MapleInventoryType.CASH, petid, (short) 1, false, false);
+                         MapleInventoryManipulator.addById(c, evolveid, (short) 1, null, petId, expiration);
+-                        MaplePet.deleteFromDb(chr, petid);
++                        
+                         c.announce(MaplePacketCreator.enableActions());
+                         return;
+                     }
+diff --git a/src/config/ServerConfig.java b/src/config/ServerConfig.java
+index ccc0a8f7c..b8b0a59df 100644
+--- a/src/config/ServerConfig.java
++++ b/src/config/ServerConfig.java
+@@ -154,7 +154,6 @@
+     public int MAX_AP;
+     public int MAX_EVENT_LEVELS;
+     public long BLOCK_NPC_RACE_CONDT;
+-    public long PET_LOOT_UPON_ATTACK;
+     public int TOT_MOB_QUEST_REQUIREMENT;
+     public int MOB_REACTOR_REFRESH_TIME;
+     public int PARTY_SEARCH_REENTRY_LIMIT;
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 9ca9dfdf3..1f1fbb739 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -21,7 +21,6 @@
+  */
+ package net.server;
+ 
+-import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.net.InetSocketAddress;
+ import java.security.Security;
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index 13542c73b..889774edb 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -50,7 +50,6 @@
+ 
+ import net.server.PlayerStorage;
+ import net.server.Server;
+-import net.server.channel.task.*;
+ 
+ import net.server.world.World;
+ import net.server.world.MapleParty;
+@@ -77,7 +76,9 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import client.MapleCharacter;
+-import client.status.MonsterStatusEffect;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.ServicesManager;
++import net.server.channel.services.task.BaseService;
+ import server.maps.MapleMiniDungeonInfo;
+ 
+ public final class Channel {
+@@ -89,13 +90,7 @@
+     private String ip, serverMessage;
+     private MapleMapManager mapManager;
+     private EventScriptManager eventSM;
+-    private MobStatusScheduler mobStatusSchedulers[] = new MobStatusScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private MobAnimationScheduler mobAnimationSchedulers[] = new MobAnimationScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private MobClearSkillScheduler mobClearSkillSchedulers[] = new MobClearSkillScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private MobMistScheduler mobMistSchedulers[] = new MobMistScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private FaceExpressionScheduler faceExpressionSchedulers[] = new FaceExpressionScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private EventScheduler eventSchedulers[] = new EventScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
+-    private OverallScheduler channelSchedulers[] = new OverallScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    private ServicesManager services = new ServicesManager();
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+     private Set<Integer> playersAway = new HashSet<>();
+@@ -173,17 +168,7 @@ public Channel(final int world, final int channel, long startTime) {
+                 dojoTask[i] = null;
+             }
+             
+-            for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+-                faceLock[i] = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_FACEEXPRS, true);
+-                
+-                mobStatusSchedulers[i] = new MobStatusScheduler();
+-                mobAnimationSchedulers[i] = new MobAnimationScheduler();
+-                mobClearSkillSchedulers[i] = new MobClearSkillScheduler();
+-                mobMistSchedulers[i] = new MobMistScheduler();
+-                faceExpressionSchedulers[i] = new FaceExpressionScheduler(faceLock[i]);
+-                eventSchedulers[i] = new EventScheduler();
+-                channelSchedulers[i] = new OverallScheduler();
+-            }
++            services = new ServicesManager();
+             
+             System.out.println("    Channel " + getId() + ": Listening on port " + port);
+         } catch (Exception e) {
+@@ -191,15 +176,23 @@ public Channel(final int world, final int channel, long startTime) {
+         }
+     }
+     
+-    public void reloadEventScriptManager(){
++    public synchronized void reloadEventScriptManager(){
++        if (finishedShutdown) {
++            return;
++        }
++        
+     	eventSM.cancel();
+     	eventSM = null;
+     	eventSM = new EventScriptManager(this, getEvents());
+     	eventSM.init();
+     }
+ 
+-    public final void shutdown() {
++    public final synchronized void shutdown() {
+         try {
++            if (finishedShutdown) {
++                return;
++            }
++            
+             System.out.println("Shutting down Channel " + channel + " on World " + world);
+             
+             closeAllMerchants();
+@@ -227,6 +220,10 @@ public final void shutdown() {
+         }
+     }
+     
++    private void closeChannelServices() {
++        services.shutdown();
++    }
++    
+     private void closeChannelSchedules() {
+         for(int i = 0; i < 20; i++) {
+             if(dojoTask[i] != null) {
+@@ -234,44 +231,8 @@ private void closeChannelSchedules() {
+                 dojoTask[i] = null;
+             }
+         }
+-
+-        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+-            if(mobStatusSchedulers[i] != null) {
+-                mobStatusSchedulers[i].dispose();
+-                mobStatusSchedulers[i] = null;
+-            }
+-            
+-            if(mobAnimationSchedulers[i] != null) {
+-                mobAnimationSchedulers[i].dispose();
+-                mobAnimationSchedulers[i] = null;
+-            }
+-            
+-            if(mobClearSkillSchedulers[i] != null) {
+-                mobClearSkillSchedulers[i].dispose();
+-                mobClearSkillSchedulers[i] = null;
+-            }
+-            
+-            if(mobMistSchedulers[i] != null) {
+-                mobMistSchedulers[i].dispose();
+-                mobMistSchedulers[i] = null;
+-            }
+-            
+-            if(faceExpressionSchedulers[i] != null) {
+-                faceExpressionSchedulers[i].dispose();
+-                faceExpressionSchedulers[i] = null;
+-            }
+-            
+-            if(eventSchedulers[i] != null) {
+-                eventSchedulers[i].dispose();
+-                eventSchedulers[i] = null;
+-            }
+-            
+-            if(channelSchedulers[i] != null) {
+-                channelSchedulers[i].dispose();
+-                channelSchedulers[i] = null;
+-            }
+-        }
+         
++        closeChannelServices();
+         disposeLocks();
+     }
+     
+@@ -315,7 +276,11 @@ private void closeAllMerchants() {
+     public MapleMapManager getMapFactory() {
+         return mapManager;
+     }
+-
++    
++    public BaseService getServiceAccess(ServiceType sv) {
++        return services.getAccess(sv).getService();
++    }
++    
+     public int getWorld() {
+         return world;
+     }
+@@ -1030,84 +995,6 @@ public boolean canInitMonsterCarnival(boolean cpq1, int field) {
+         return !usedMC.contains(getMonsterCarnivalRoom(cpq1, field));
+     }
+     
+-    private static int getChannelSchedulerIndex(int mapid) {
+-        int section = 1000000000 / YamlConfig.config.server.CHANNEL_LOCKS;
+-        return mapid / section;
+-    }
+-    
+-    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration) {
+-        registerMobStatus(mapid, mse, cancelAction, duration, null, -1);
+-    }
+-    
+-    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration, Runnable overtimeAction, int overtimeDelay) {
+-        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].registerMobStatus(mse, cancelAction, duration, overtimeAction, overtimeDelay);
+-    }
+-    
+-    public void interruptMobStatus(int mapid, MonsterStatusEffect mse) {
+-        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].interruptMobStatus(mse);
+-    }
+-    
+-    public boolean registerMobOnAnimationEffect(int mapid, int mobHash, long delay) {
+-        return mobAnimationSchedulers[getChannelSchedulerIndex(mapid)].registerAnimationMode(mobHash, delay);
+-    }
+-    
+-    public void registerMobClearSkillAction(int mapid, Runnable runAction, long delay) {
+-        mobClearSkillSchedulers[getChannelSchedulerIndex(mapid)].registerClearSkillAction(runAction, delay);
+-    }
+-    
+-    public void registerMobMistCancelAction(int mapid, Runnable runAction, long delay) {
+-        mobMistSchedulers[getChannelSchedulerIndex(mapid)].registerMistCancelAction(runAction, delay);
+-    }
+-    
+-    public void registerEventAction(int mapid, Runnable runAction, long delay) {
+-        eventSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
+-    }
+-    
+-    public void registerOverallAction(int mapid, Runnable runAction, long delay) {
+-        channelSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
+-    }
+-    
+-    public void forceRunOverallAction(int mapid, Runnable runAction) {
+-        channelSchedulers[getChannelSchedulerIndex(mapid)].forceRunDelayedAction(runAction);
+-    }
+-    
+-    public void registerFaceExpression(final MapleMap map, final MapleCharacter chr, int emote) {
+-        int lockid = getChannelSchedulerIndex(map.getId());
+-        
+-        Runnable cancelAction = new Runnable() {
+-            @Override
+-            public void run() {
+-                if(chr.isLoggedinWorld()) {
+-                    map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, 0), false);
+-                }
+-            }
+-        };
+-        
+-        faceLock[lockid].lock();
+-        try {
+-            if(!chr.isLoggedinWorld()) {
+-                return;
+-            }
+-            
+-            faceExpressionSchedulers[lockid].registerFaceExpression(chr.getId(), cancelAction);
+-        } finally {
+-            faceLock[lockid].unlock();
+-        }
+-        
+-        map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, emote), false);
+-    }
+-    
+-    public void unregisterFaceExpression(int mapid, MapleCharacter chr) {
+-        int lockid = getChannelSchedulerIndex(mapid);
+-        
+-        faceLock[lockid].lock();
+-        try {
+-            faceExpressionSchedulers[lockid].unregisterFaceExpression(chr.getId());
+-        } finally {
+-            faceLock[lockid].unlock();
+-        }
+-    }
+-    
+     public void debugMarriageStatus() {
+         System.out.println(" ----- WORLD DATA -----");
+         getWorldServer().debugMarriageStatus();
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index cee5019ea..a39a2155d 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -656,7 +656,7 @@ protected AttackInfo parseDamage(LittleEndianAccessor lea, MapleCharacter chr, b
+         
+         // Find the base damage to base futher calculations on.
+         // Several skills have their own formula in this section.
+-        long calcDmgMax = 0;
++        long calcDmgMax;
+         
+         if(magic && ret.skill != 0) {   // thanks onechord for noticing a few false positives stemming from maxdmg as 0
+             calcDmgMax = (long) (Math.ceil((chr.getTotalMagic() * Math.ceil(chr.getTotalMagic() / 1000.0) + chr.getTotalMagic()) / 30.0) + Math.ceil(chr.getTotalInt() / 200.0));
+@@ -846,7 +846,7 @@ else if(orbs >= 5)
+                             }
+                     } else if (ret.skill == Aran.BODY_PRESSURE) {
+                         if (monster != null) {
+-                            int bodyPressureDmg = monster.getMaxHp() * SkillFactory.getSkill(Aran.BODY_PRESSURE).getEffect(ret.skilllevel).getDamage() / 100;
++                            int bodyPressureDmg = (int) Math.ceil(monster.getMaxHp() * SkillFactory.getSkill(Aran.BODY_PRESSURE).getEffect(ret.skilllevel).getDamage() / 100.0);
+                             if (bodyPressureDmg > calcDmgMax) {
+                                 calcDmgMax = bodyPressureDmg;
+                             }
+diff --git a/src/net/server/channel/handlers/CloseRangeDamageHandler.java b/src/net/server/channel/handlers/CloseRangeDamageHandler.java
+index b9240062d..d7792beec 100644
+--- a/src/net/server/channel/handlers/CloseRangeDamageHandler.java
++++ b/src/net/server/channel/handlers/CloseRangeDamageHandler.java
+@@ -26,10 +26,6 @@
+ import java.util.List;
+ 
+ import config.YamlConfig;
+-import server.MapleStatEffect;
+-import tools.MaplePacketCreator;
+-import tools.Pair;
+-import tools.data.input.SeekableLittleEndianAccessor;
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
+@@ -37,7 +33,6 @@
+ import client.Skill;
+ import client.SkillFactory;
+ import constants.game.GameConstants;
+-import constants.net.ServerConstants;
+ import constants.skills.Crusader;
+ import constants.skills.DawnWarrior;
+ import constants.skills.DragonKnight;
+@@ -45,13 +40,16 @@
+ import constants.skills.NightWalker;
+ import constants.skills.Rogue;
+ import constants.skills.WindArcher;
++import server.MapleStatEffect;
++import tools.MaplePacketCreator;
++import tools.Pair;
++import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
+     
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter chr = c.getPlayer();
+-        //chr.setPetLootCd(currentServerTime());
+         
+         /*long timeElapsed = currentServerTime() - chr.getAutobanManager().getLastSpam(8);
+         if(timeElapsed < 300) {
+diff --git a/src/net/server/channel/handlers/MagicDamageHandler.java b/src/net/server/channel/handlers/MagicDamageHandler.java
+index 3a8e812b6..fa82dbfd1 100644
+--- a/src/net/server/channel/handlers/MagicDamageHandler.java
++++ b/src/net/server/channel/handlers/MagicDamageHandler.java
+@@ -21,25 +21,24 @@
+  */
+ package net.server.channel.handlers;
+ 
+-import config.YamlConfig;
+-import server.MapleStatEffect;
+-import tools.MaplePacketCreator;
+-import tools.data.input.SeekableLittleEndianAccessor;
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import client.Skill;
+ import client.SkillFactory;
++import config.YamlConfig;
+ import constants.skills.Bishop;
+ import constants.skills.Evan;
+ import constants.skills.FPArchMage;
+ import constants.skills.ILArchMage;
++import server.MapleStatEffect;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class MagicDamageHandler extends AbstractDealDamageHandler {
+ 	@Override
+ 	public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+ 		MapleCharacter chr = c.getPlayer();
+-                //chr.setPetLootCd(currentServerTime());
+ 
+ 		/*long timeElapsed = currentServerTime() - chr.getAutobanManager().getLastSpam(8);
+ 		if(timeElapsed < 300) {
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 3097dffbf..ebfd0a20f 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -55,6 +55,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 MapleCharacter player = c.getPlayer();
+                 MapleMap map = player.getMap();
+                 
++                if (player.isChangingMaps()) {  // thanks Lame for noticing mob movement shuffle (mob OID on different maps) happening on map transitions
++                    return;
++                }
++                
+ 		int objectid = slea.readInt();
+ 		short moveid = slea.readShort();
+ 		MapleMapObject mmo = map.getMapObject(objectid);
+diff --git a/src/net/server/channel/handlers/NPCTalkHandler.java b/src/net/server/channel/handlers/NPCTalkHandler.java
+index 4c0b97811..71f71c345 100644
+--- a/src/net/server/channel/handlers/NPCTalkHandler.java
++++ b/src/net/server/channel/handlers/NPCTalkHandler.java
+@@ -59,16 +59,19 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     c.announce(MaplePacketCreator.enableActions());
+                     return;
+                 }
+-                if(npc.getId() >= 9100100 && npc.getId() <= 9100200) {
+-                    // Custom handling for gachapon scripts to reduce the amount of scripts needed.
++                
++                // Custom handling to reduce the amount of scripts needed.
++                if (npc.getId() >= 9100100 && npc.getId() <= 9100200) {
+                     NPCScriptManager.getInstance().start(c, npc.getId(), "gachapon", null);
++                } else if (npc.getName().endsWith("Maple TV")) {
++                    NPCScriptManager.getInstance().start(c, npc.getId(), "mapleTV", null);
+                 } else {
+                     boolean hasNpcScript = NPCScriptManager.getInstance().start(c, npc.getId(), oid, null);
+                     if (!hasNpcScript) {
+                         if (!npc.hasShop()) {
+                             FilePrinter.printError(FilePrinter.NPC_UNCODED, "NPC " + npc.getName() + "(" + npc.getId() + ") is not coded.");
+                             return;
+-                        } else if(c.getPlayer().getShop() != null) {
++                        } else if (c.getPlayer().getShop() != null) {
+                             c.announce(MaplePacketCreator.enableActions());
+                             return;
+                         }
+diff --git a/src/net/server/channel/handlers/PetLootHandler.java b/src/net/server/channel/handlers/PetLootHandler.java
+index 9cd57414a..8b794344f 100644
+--- a/src/net/server/channel/handlers/PetLootHandler.java
++++ b/src/net/server/channel/handlers/PetLootHandler.java
+@@ -26,13 +26,11 @@
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import client.inventory.MaplePet;
+-import config.YamlConfig;
+ import net.AbstractMaplePacketHandler;
+ import server.maps.MapleMapItem;
+ import server.maps.MapleMapObject;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+-import constants.net.ServerConstants;
+ 
+ /**
+  * @author TheRamon
+@@ -42,10 +40,6 @@
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter chr = c.getPlayer();
+-        if(currentServerTime() - chr.getPetLootCd() < YamlConfig.config.server.PET_LOOT_UPON_ATTACK) {
+-            c.announce(MaplePacketCreator.enableActions());
+-            return;
+-        }
+         
+         int petIndex = chr.getPetIndex(slea.readInt());
+         MaplePet pet = chr.getPet(petIndex);
+diff --git a/src/net/server/channel/handlers/RangedAttackHandler.java b/src/net/server/channel/handlers/RangedAttackHandler.java
+index bf45884a5..f2d33047f 100644
+--- a/src/net/server/channel/handlers/RangedAttackHandler.java
++++ b/src/net/server/channel/handlers/RangedAttackHandler.java
+@@ -21,13 +21,6 @@
+  */
+ package net.server.channel.handlers;
+ 
+-import client.inventory.manipulator.MapleInventoryManipulator;
+-import config.YamlConfig;
+-import server.MapleItemInformationProvider;
+-import server.MapleStatEffect;
+-import tools.MaplePacketCreator;
+-import tools.Randomizer;
+-import tools.data.input.SeekableLittleEndianAccessor;
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
+@@ -37,8 +30,9 @@
+ import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
+ import client.inventory.MapleWeaponType;
++import client.inventory.manipulator.MapleInventoryManipulator;
++import config.YamlConfig;
+ import constants.inventory.ItemConstants;
+-import constants.net.ServerConstants;
+ import constants.skills.Aran;
+ import constants.skills.Buccaneer;
+ import constants.skills.NightLord;
+@@ -46,13 +40,18 @@
+ import constants.skills.Shadower;
+ import constants.skills.ThunderBreaker;
+ import constants.skills.WindArcher;
++import server.MapleItemInformationProvider;
++import server.MapleStatEffect;
++import tools.MaplePacketCreator;
++import tools.Randomizer;
++import tools.data.input.SeekableLittleEndianAccessor;
++
+ 
+ public final class RangedAttackHandler extends AbstractDealDamageHandler {
+ 
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter chr = c.getPlayer();
+-        //chr.setPetLootCd(currentServerTime());
+         
+         /*long timeElapsed = currentServerTime() - chr.getAutobanManager().getLastSpam(8);
+         if(timeElapsed < 300) {
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 054e6f780..9b2dfd610 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -213,7 +213,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         map.broadcastMessage(chr, MaplePacketCreator.damageMonster(oid, bouncedamage), false, true);
+                         attacker.aggroMonsterDamage(chr, bouncedamage);
+                     }
+-                    MapleStatEffect bPressure = chr.getBuffEffect(MapleBuffStat.COMBO_BARRIER);
++                    MapleStatEffect bPressure = chr.getBuffEffect(MapleBuffStat.BODY_PRESSURE);
+                     if (bPressure != null) {
+                         Skill skill = SkillFactory.getSkill(Aran.BODY_PRESSURE);
+                         if (!attacker.alreadyBuffedStats().contains(MonsterStatus.NEUTRALISE)) {
+diff --git a/src/net/server/channel/task/BaseScheduler.java b/src/net/server/channel/services/BaseScheduler.java
+similarity index 99%
+rename from src/net/server/channel/task/BaseScheduler.java
+rename to src/net/server/channel/services/BaseScheduler.java
+index 57579386c..bf9ed40a0 100644
+--- a/src/net/server/channel/task/BaseScheduler.java
++++ b/src/net/server/channel/services/BaseScheduler.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
++package net.server.channel.services;
+ 
+ import config.YamlConfig;
+ import java.util.Collections;
+diff --git a/src/net/server/channel/task/SchedulerListener.java b/src/net/server/channel/services/SchedulerListener.java
+similarity index 96%
+rename from src/net/server/channel/task/SchedulerListener.java
+rename to src/net/server/channel/services/SchedulerListener.java
+index fa3e82688..2b4865dd6 100644
+--- a/src/net/server/channel/task/SchedulerListener.java
++++ b/src/net/server/channel/services/SchedulerListener.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
++package net.server.channel.services;
+ 
+ import java.util.List;
+ 
+diff --git a/src/net/server/channel/task/OverallScheduler.java b/src/net/server/channel/services/Service.java
+similarity index 55%
+rename from src/net/server/channel/task/OverallScheduler.java
+rename to src/net/server/channel/services/Service.java
+index ffcf9d0e9..580d6fee8 100644
+--- a/src/net/server/channel/task/OverallScheduler.java
++++ b/src/net/server/channel/services/Service.java
+@@ -1,6 +1,6 @@
+ /*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -17,24 +17,36 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
++package net.server.channel.services;
+ 
+-import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.task.BaseService;
+ 
+ /**
+  *
+  * @author Ronan
+  */
+-public class OverallScheduler extends BaseScheduler {
+-    public OverallScheduler() {
+-        super(MonitoredLockType.CHANNEL_OVERALL);
++public class Service <T extends BaseService> {
++    
++    private Class<T> cls;
++    private BaseService service;
++    
++    public Service(Class<T> s) {
++        try {
++            cls = s;
++            service = (BaseService) cls.getConstructor().newInstance();
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
+     }
+     
+-    public void registerDelayedAction(Runnable runAction, long delay) {
+-        registerEntry(runAction, runAction, delay);
++    public T getService() {
++        return cls.cast(service);
+     }
+     
+-    public void forceRunDelayedAction(Runnable runAction) {
+-        interruptEntry(runAction);
++    public void dispose() {
++        service.dispose();
++        service = null;
+     }
++    
+ }
++
+diff --git a/src/net/server/channel/services/ServiceType.java b/src/net/server/channel/services/ServiceType.java
+new file mode 100644
+index 000000000..47e5097ee
+--- /dev/null
++++ b/src/net/server/channel/services/ServiceType.java
+@@ -0,0 +1,48 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services;
++
++import net.server.channel.services.task.*;
++
++/**
++ *
++ * @author Ronan
++ */
++public enum ServiceType {
++    
++    MOB_STATUS(MobStatusService.class),
++    MOB_ANIMATION(MobAnimationService.class),
++    MOB_CLEAR_SKILL(MobClearSkillService.class),
++    MOB_MIST(MobMistService.class),
++    FACE_EXPRESSION(FaceExpressionService.class),
++    EVENT(EventService.class),
++    OVERALL(OverallService.class);
++    
++    private Class<? extends BaseService> s;
++    
++    private ServiceType(Class<? extends BaseService> service) {
++        s = service;
++    }
++    
++    public Service createService() {
++        return new Service(s);
++    }
++    
++}
+diff --git a/src/net/server/channel/task/FaceExpressionScheduler.java b/src/net/server/channel/services/ServicesManager.java
+similarity index 53%
+rename from src/net/server/channel/task/FaceExpressionScheduler.java
+rename to src/net/server/channel/services/ServicesManager.java
+index b4ecc857a..a183f2ca6 100644
+--- a/src/net/server/channel/task/FaceExpressionScheduler.java
++++ b/src/net/server/channel/services/ServicesManager.java
+@@ -1,6 +1,6 @@
+ /*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -17,26 +17,34 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
+-
+-import java.util.Collections;
+-import net.server.audit.locks.MonitoredLockType;
+-import net.server.audit.locks.MonitoredReentrantLock;
++package net.server.channel.services;
+ 
+ /**
+  *
+  * @author Ronan
+  */
+-public class FaceExpressionScheduler extends BaseScheduler {
+-    public FaceExpressionScheduler(final MonitoredReentrantLock channelFaceLock) {
+-        super(MonitoredLockType.CHANNEL_FACESCHDL, Collections.singletonList(channelFaceLock));
++public class ServicesManager {
++    
++    private Service[] services;
++    
++    public ServicesManager() {
++        ServiceType[] serviceTypes = ServiceType.values();
++        
++        services = new Service[serviceTypes.length];
++        for (ServiceType type : serviceTypes) {
++            services[type.ordinal()] = type.createService();
++        }
+     }
+     
+-    public void registerFaceExpression(Integer characterId, Runnable runAction) {
+-        registerEntry(characterId, runAction, 5000);
++    public Service getAccess(ServiceType s) {
++        return services[s.ordinal()];
+     }
+     
+-    public void unregisterFaceExpression(Integer characterId) {
+-        interruptEntry(characterId);
++    public void shutdown() {
++        for (int i = 0; i < ServiceType.values().length; i++) {
++            services[i].dispose();
++        }
++        services = null;
+     }
++    
+ }
+diff --git a/src/net/server/channel/task/EventScheduler.java b/src/net/server/channel/services/task/BaseService.java
+similarity index 65%
+rename from src/net/server/channel/task/EventScheduler.java
+rename to src/net/server/channel/services/task/BaseService.java
+index 6cb5b2539..a17ccf207 100644
+--- a/src/net/server/channel/task/EventScheduler.java
++++ b/src/net/server/channel/services/task/BaseService.java
+@@ -1,6 +1,6 @@
+ /*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -17,20 +17,21 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.task;
++package net.server.channel.services.task;
+ 
+-import net.server.audit.locks.MonitoredLockType;
++import config.YamlConfig;
+ 
+ /**
+  *
+  * @author Ronan
+  */
+-public class EventScheduler extends BaseScheduler {
+-    public EventScheduler() {
+-        super(MonitoredLockType.CHANNEL_EVENTS);
+-    }
++public abstract class BaseService {
+     
+-    public void registerDelayedAction(Runnable runAction, long delay) {
+-        registerEntry(runAction, runAction, delay);
++    protected static int getChannelSchedulerIndex(int mapid) {
++        int section = 1000000000 / YamlConfig.config.server.CHANNEL_LOCKS;
++        return mapid / section;
+     }
++    
++    public abstract void dispose();
++    
+ }
+diff --git a/src/net/server/channel/services/task/EventService.java b/src/net/server/channel/services/task/EventService.java
+new file mode 100644
+index 000000000..f9b6a6c07
+--- /dev/null
++++ b/src/net/server/channel/services/task/EventService.java
+@@ -0,0 +1,65 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import config.YamlConfig;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.BaseScheduler;
++
++/**
++ *
++ * @author Ronan
++ */
++public class EventService extends BaseService {
++    
++    private EventScheduler eventSchedulers[] = new EventScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public EventService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            eventSchedulers[i] = new EventScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(eventSchedulers[i] != null) {
++                eventSchedulers[i].dispose();
++                eventSchedulers[i] = null;
++            }
++        }
++    }
++    
++    public void registerEventAction(int mapid, Runnable runAction, long delay) {
++        eventSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
++    }
++    
++    private class EventScheduler extends BaseScheduler {
++        
++        public EventScheduler() {
++            super(MonitoredLockType.CHANNEL_EVENTS);
++        }
++
++        public void registerDelayedAction(Runnable runAction, long delay) {
++            registerEntry(runAction, runAction, delay);
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/FaceExpressionService.java b/src/net/server/channel/services/task/FaceExpressionService.java
+new file mode 100644
+index 000000000..968b3d6c0
+--- /dev/null
++++ b/src/net/server/channel/services/task/FaceExpressionService.java
+@@ -0,0 +1,128 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import client.MapleCharacter;
++import config.YamlConfig;
++import java.util.Collections;
++import net.server.audit.LockCollector;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReentrantLock;
++import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.channel.services.BaseScheduler;
++import server.maps.MapleMap;
++import tools.MaplePacketCreator;
++
++/**
++ *
++ * @author Ronan
++ */
++public class FaceExpressionService extends BaseService {
++    
++    private FaceExpressionScheduler faceExpressionSchedulers[] = new FaceExpressionScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    private MonitoredReentrantLock faceLock[] = new MonitoredReentrantLock[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public FaceExpressionService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            faceLock[i] = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_FACEEXPRS, true);
++            faceExpressionSchedulers[i] = new FaceExpressionScheduler(faceLock[i]);
++        }
++    }
++    
++    private void emptyLocks() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            faceLock[i] = faceLock[i].dispose();
++        }
++    }
++    
++    private void disposeLocks() {
++        LockCollector.getInstance().registerDisposeAction(new Runnable() {
++            @Override
++            public void run() {
++                emptyLocks();
++            }
++        });
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(faceExpressionSchedulers[i] != null) {
++                faceExpressionSchedulers[i].dispose();
++                faceExpressionSchedulers[i] = null;
++            }
++        }
++        
++        disposeLocks();
++    }
++    
++    public void registerFaceExpression(final MapleMap map, final MapleCharacter chr, int emote) {
++        int lockid = getChannelSchedulerIndex(map.getId());
++        
++        Runnable cancelAction = new Runnable() {
++            @Override
++            public void run() {
++                if(chr.isLoggedinWorld()) {
++                    map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, 0), false);
++                }
++            }
++        };
++        
++        faceLock[lockid].lock();
++        try {
++            if(!chr.isLoggedinWorld()) {
++                return;
++            }
++            
++            faceExpressionSchedulers[lockid].registerFaceExpression(chr.getId(), cancelAction);
++        } finally {
++            faceLock[lockid].unlock();
++        }
++        
++        map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, emote), false);
++    }
++    
++    public void unregisterFaceExpression(int mapid, MapleCharacter chr) {
++        int lockid = getChannelSchedulerIndex(mapid);
++        
++        faceLock[lockid].lock();
++        try {
++            faceExpressionSchedulers[lockid].unregisterFaceExpression(chr.getId());
++        } finally {
++            faceLock[lockid].unlock();
++        }
++    }
++    
++    private class FaceExpressionScheduler extends BaseScheduler {
++        
++        public FaceExpressionScheduler(final MonitoredReentrantLock channelFaceLock) {
++            super(MonitoredLockType.CHANNEL_FACESCHDL, Collections.singletonList(channelFaceLock));
++        }
++
++        public void registerFaceExpression(Integer characterId, Runnable runAction) {
++            registerEntry(characterId, runAction, 5000);
++        }
++
++        public void unregisterFaceExpression(Integer characterId) {
++            interruptEntry(characterId);
++        }
++    
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/MobAnimationService.java b/src/net/server/channel/services/task/MobAnimationService.java
+new file mode 100644
+index 000000000..e3043a016
+--- /dev/null
++++ b/src/net/server/channel/services/task/MobAnimationService.java
+@@ -0,0 +1,125 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import config.YamlConfig;
++import net.server.audit.locks.MonitoredLockType;
++
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++import net.server.audit.LockCollector;
++import net.server.audit.locks.MonitoredReentrantLock;
++import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.channel.services.BaseScheduler;
++import net.server.channel.services.SchedulerListener;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobAnimationService extends BaseService {
++    
++    private MobAnimationScheduler mobAnimationSchedulers[] = new MobAnimationScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public MobAnimationService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            mobAnimationSchedulers[i] = new MobAnimationScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(mobAnimationSchedulers[i] != null) {
++                mobAnimationSchedulers[i].dispose();
++                mobAnimationSchedulers[i] = null;
++            }
++        }
++    }
++    
++    public boolean registerMobOnAnimationEffect(int mapid, int mobHash, long delay) {
++        return mobAnimationSchedulers[getChannelSchedulerIndex(mapid)].registerAnimationMode(mobHash, delay);
++    }
++    
++    private static Runnable r = new Runnable() {
++        @Override
++        public void run() {}    // do nothing
++    };
++    
++    private class MobAnimationScheduler extends BaseScheduler {
++        Set<Integer> onAnimationMobs = new HashSet<>(1000);
++        private MonitoredReentrantLock animationLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_MOBANIMAT, true);
++        
++        public MobAnimationScheduler() {
++            super(MonitoredLockType.CHANNEL_MOBACTION);
++
++            super.addListener(new SchedulerListener() {
++                @Override
++                public void removedScheduledEntries(List<Object> toRemove, boolean update) {
++                    animationLock.lock();
++                    try {
++                        for(Object hashObj : toRemove) {
++                            Integer mobHash = (Integer) hashObj;
++                            onAnimationMobs.remove(mobHash);
++                        }
++                    } finally {
++                        animationLock.unlock();
++                    }
++                }
++            });
++        }
++
++        public boolean registerAnimationMode(Integer mobHash, long animationTime) {
++            animationLock.lock();
++            try {
++                if(onAnimationMobs.contains(mobHash)) {
++                    return false;
++                }
++
++                registerEntry(mobHash, r, animationTime);
++                onAnimationMobs.add(mobHash);
++                return true;
++            } finally {
++                animationLock.unlock();
++            }
++        }
++
++        @Override
++        public void dispose() {
++            disposeLocks();
++            super.dispose();
++        }
++
++        private void disposeLocks() {
++            LockCollector.getInstance().registerDisposeAction(new Runnable() {
++                @Override
++                public void run() {
++                    emptyLocks();
++                }
++            });
++        }
++
++        private void emptyLocks() {
++            animationLock = animationLock.dispose();
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/MobClearSkillService.java b/src/net/server/channel/services/task/MobClearSkillService.java
+new file mode 100644
+index 000000000..7092c48a4
+--- /dev/null
++++ b/src/net/server/channel/services/task/MobClearSkillService.java
+@@ -0,0 +1,65 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import config.YamlConfig;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.BaseScheduler;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobClearSkillService extends BaseService {
++    
++    private MobClearSkillScheduler mobClearSkillSchedulers[] = new MobClearSkillScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public MobClearSkillService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            mobClearSkillSchedulers[i] = new MobClearSkillScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(mobClearSkillSchedulers[i] != null) {
++                mobClearSkillSchedulers[i].dispose();
++                mobClearSkillSchedulers[i] = null;
++            }
++        }    
++    }
++    
++    public void registerMobClearSkillAction(int mapid, Runnable runAction, long delay) {
++        mobClearSkillSchedulers[getChannelSchedulerIndex(mapid)].registerClearSkillAction(runAction, delay);
++    }
++    
++    private class MobClearSkillScheduler extends BaseScheduler {
++        
++        public MobClearSkillScheduler() {
++            super(MonitoredLockType.CHANNEL_MOBSKILL);
++        }
++
++        public void registerClearSkillAction(Runnable runAction, long delay) {
++            registerEntry(runAction, runAction, delay);
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/MobMistService.java b/src/net/server/channel/services/task/MobMistService.java
+new file mode 100644
+index 000000000..6428dd099
+--- /dev/null
++++ b/src/net/server/channel/services/task/MobMistService.java
+@@ -0,0 +1,65 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import config.YamlConfig;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.BaseScheduler;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobMistService extends BaseService {
++    
++    private MobMistScheduler mobMistSchedulers[] = new MobMistScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public MobMistService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            mobMistSchedulers[i] = new MobMistScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(mobMistSchedulers[i] != null) {
++                mobMistSchedulers[i].dispose();
++                mobMistSchedulers[i] = null;
++            }
++        }    
++    }
++    
++    public void registerMobMistCancelAction(int mapid, Runnable runAction, long delay) {
++        mobMistSchedulers[getChannelSchedulerIndex(mapid)].registerMistCancelAction(runAction, delay);
++    }
++    
++    private class MobMistScheduler extends BaseScheduler {
++
++        public MobMistScheduler() {
++            super(MonitoredLockType.CHANNEL_MOBMIST);
++        }
++
++        public void registerMistCancelAction(Runnable runAction, long delay) {
++            registerEntry(runAction, runAction, delay);
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/MobStatusService.java b/src/net/server/channel/services/task/MobStatusService.java
+new file mode 100644
+index 000000000..e6b39b3a7
+--- /dev/null
++++ b/src/net/server/channel/services/task/MobStatusService.java
+@@ -0,0 +1,168 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import client.status.MonsterStatusEffect;
++import config.YamlConfig;
++import java.util.HashMap;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++import net.server.audit.LockCollector;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReentrantLock;
++import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.channel.services.BaseScheduler;
++import net.server.channel.services.SchedulerListener;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobStatusService extends BaseService {
++    
++    private MobStatusScheduler mobStatusSchedulers[] = new MobStatusScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public MobStatusService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            mobStatusSchedulers[i] = new MobStatusScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(mobStatusSchedulers[i] != null) {
++                mobStatusSchedulers[i].dispose();
++                mobStatusSchedulers[i] = null;
++            }
++        }
++    }
++    
++    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration) {
++        registerMobStatus(mapid, mse, cancelAction, duration, null, -1);
++    }
++    
++    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration, Runnable overtimeAction, int overtimeDelay) {
++        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].registerMobStatus(mse, cancelAction, duration, overtimeAction, overtimeDelay);
++    }
++    
++    public void interruptMobStatus(int mapid, MonsterStatusEffect mse) {
++        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].interruptMobStatus(mse);
++    }
++    
++    private class MobStatusScheduler extends BaseScheduler {
++
++        private Map<MonsterStatusEffect, MobStatusOvertimeEntry> registeredMobStatusOvertime = new HashMap<>();
++        private MonitoredReentrantLock overtimeStatusLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_OVTSTATUS, true);
++
++        private class MobStatusOvertimeEntry {
++            private int procCount;
++            private int procLimit;
++            private Runnable r;
++
++            protected MobStatusOvertimeEntry(int delay, Runnable run) {
++                procCount = 0;
++                procLimit = (int)Math.ceil((float) delay / YamlConfig.config.server.MOB_STATUS_MONITOR_PROC);
++                r = run;
++            }
++
++            protected void update(List<Runnable> toRun) {
++                procCount++;
++                if(procCount >= procLimit) {
++                    procCount = 0;
++                    toRun.add(r);
++                }
++            }
++        }
++
++        public MobStatusScheduler() {
++            super(MonitoredLockType.CHANNEL_MOBSTATUS);
++
++            super.addListener(new SchedulerListener() {
++                @Override
++                public void removedScheduledEntries(List<Object> toRemove, boolean update) {
++                    List<Runnable> toRun = new ArrayList<>();
++
++                    overtimeStatusLock.lock();
++                    try {
++                        for(Object mseo : toRemove) {
++                            MonsterStatusEffect mse = (MonsterStatusEffect) mseo;
++                            registeredMobStatusOvertime.remove(mse);
++                        }
++
++                        if(update) {
++                            // it's probably ok to use one thread for both management & overtime actions
++                            List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
++                            for(MobStatusOvertimeEntry mdoe : mdoeList) {
++                                mdoe.update(toRun);
++                            }
++                        }
++                    } finally {
++                        overtimeStatusLock.unlock();
++                    }
++
++                    for(Runnable r : toRun) {
++                        r.run();
++                    }
++                }
++            });
++        }
++
++        public void registerMobStatus(MonsterStatusEffect mse, Runnable cancelStatus, long duration, Runnable overtimeStatus, int overtimeDelay) {
++            if(overtimeStatus != null) {
++                MobStatusOvertimeEntry mdoe = new MobStatusOvertimeEntry(overtimeDelay, overtimeStatus);
++
++                overtimeStatusLock.lock();
++                try {
++                    registeredMobStatusOvertime.put(mse, mdoe);
++                } finally {
++                    overtimeStatusLock.unlock();
++                }
++            }
++
++            registerEntry(mse, cancelStatus, duration);
++        }
++
++        public void interruptMobStatus(MonsterStatusEffect mse) {
++            interruptEntry(mse);
++        }
++
++        @Override
++        public void dispose() {
++            disposeLocks();
++            super.dispose();
++        }
++
++        private void disposeLocks() {
++            LockCollector.getInstance().registerDisposeAction(new Runnable() {
++                @Override
++                public void run() {
++                    emptyLocks();
++                }
++            });
++        }
++
++        private void emptyLocks() {
++            overtimeStatusLock = overtimeStatusLock.dispose();
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/services/task/OverallService.java b/src/net/server/channel/services/task/OverallService.java
+new file mode 100644
+index 000000000..3dad65daa
+--- /dev/null
++++ b/src/net/server/channel/services/task/OverallService.java
+@@ -0,0 +1,74 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.services.task;
++
++import config.YamlConfig;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.BaseScheduler;
++
++/**
++ *
++ * @author Ronan
++ */
++public class OverallService extends BaseService {   // thanks Alex for suggesting a refactor over the several channel schedulers unnecessarily populating the Channel class
++    
++    private OverallScheduler channelSchedulers[] = new OverallScheduler[YamlConfig.config.server.CHANNEL_LOCKS];
++    
++    public OverallService() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            channelSchedulers[i] = new OverallScheduler();
++        }
++    }
++    
++    public void dispose() {
++        for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
++            if(channelSchedulers[i] != null) {
++                channelSchedulers[i].dispose();
++                channelSchedulers[i] = null;
++            }
++        }
++    }
++    
++    public void registerOverallAction(int mapid, Runnable runAction, long delay) {
++        channelSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
++    }
++    
++    public void forceRunOverallAction(int mapid, Runnable runAction) {
++        channelSchedulers[getChannelSchedulerIndex(mapid)].forceRunDelayedAction(runAction);
++    }
++    
++    
++    public class OverallScheduler extends BaseScheduler {
++        
++        public OverallScheduler() {
++            super(MonitoredLockType.CHANNEL_OVERALL);
++        }
++
++        public void registerDelayedAction(Runnable runAction, long delay) {
++            registerEntry(runAction, runAction, delay);
++        }
++
++        public void forceRunDelayedAction(Runnable runAction) {
++            interruptEntry(runAction);
++        }
++        
++    }
++    
++}
+diff --git a/src/net/server/channel/task/MobAnimationScheduler.java b/src/net/server/channel/task/MobAnimationScheduler.java
+deleted file mode 100644
+index b83e634c2..000000000
+--- a/src/net/server/channel/task/MobAnimationScheduler.java
++++ /dev/null
+@@ -1,96 +0,0 @@
+-/*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package net.server.channel.task;
+-
+-import net.server.audit.locks.MonitoredLockType;
+-
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Set;
+-import net.server.audit.LockCollector;
+-import net.server.audit.locks.MonitoredReentrantLock;
+-import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-
+-/**
+- *
+- * @author Ronan
+- */
+-public class MobAnimationScheduler extends BaseScheduler {
+-    Set<Integer> onAnimationMobs = new HashSet<>(1000);
+-    private MonitoredReentrantLock animationLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_MOBANIMAT, true);
+-    
+-    private static Runnable r = new Runnable() {
+-        @Override
+-        public void run() {}    // do nothing
+-    };
+-    
+-    public MobAnimationScheduler() {
+-        super(MonitoredLockType.CHANNEL_MOBACTION);
+-        
+-        super.addListener(new SchedulerListener() {
+-            @Override
+-            public void removedScheduledEntries(List<Object> toRemove, boolean update) {
+-                animationLock.lock();
+-                try {
+-                    for(Object hashObj : toRemove) {
+-                        Integer mobHash = (Integer) hashObj;
+-                        onAnimationMobs.remove(mobHash);
+-                    }
+-                } finally {
+-                    animationLock.unlock();
+-                }
+-            }
+-        });
+-    }
+-    
+-    public boolean registerAnimationMode(Integer mobHash, long animationTime) {
+-        animationLock.lock();
+-        try {
+-            if(onAnimationMobs.contains(mobHash)) {
+-                return false;
+-            }
+-            
+-            registerEntry(mobHash, r, animationTime);
+-            onAnimationMobs.add(mobHash);
+-            return true;
+-        } finally {
+-            animationLock.unlock();
+-        }
+-    }
+-    
+-    @Override
+-    public void dispose() {
+-        disposeLocks();
+-        super.dispose();
+-    }
+-    
+-    private void disposeLocks() {
+-        LockCollector.getInstance().registerDisposeAction(new Runnable() {
+-            @Override
+-            public void run() {
+-                emptyLocks();
+-            }
+-        });
+-    }
+-    
+-    private void emptyLocks() {
+-        animationLock = animationLock.dispose();
+-    }
+-}
+diff --git a/src/net/server/channel/task/MobStatusScheduler.java b/src/net/server/channel/task/MobStatusScheduler.java
+deleted file mode 100644
+index 8de9577e7..000000000
+--- a/src/net/server/channel/task/MobStatusScheduler.java
++++ /dev/null
+@@ -1,131 +0,0 @@
+-/*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package net.server.channel.task;
+-
+-import client.status.MonsterStatusEffect;
+-import config.YamlConfig;
+-import java.util.HashMap;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Map;
+-import net.server.audit.LockCollector;
+-import net.server.audit.locks.MonitoredLockType;
+-import net.server.audit.locks.MonitoredReentrantLock;
+-import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-
+-/**
+- *
+- * @author Ronan
+- */
+-public class MobStatusScheduler extends BaseScheduler {
+-    private Map<MonsterStatusEffect, MobStatusOvertimeEntry> registeredMobStatusOvertime = new HashMap<>();
+-    private MonitoredReentrantLock overtimeStatusLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHANNEL_OVTSTATUS, true);
+-    
+-    private class MobStatusOvertimeEntry {
+-        private int procCount;
+-        private int procLimit;
+-        private Runnable r;
+-        
+-        protected MobStatusOvertimeEntry(int delay, Runnable run) {
+-            procCount = 0;
+-            procLimit = (int)Math.ceil((float) delay / YamlConfig.config.server.MOB_STATUS_MONITOR_PROC);
+-            r = run;
+-        }
+-        
+-        protected void update(List<Runnable> toRun) {
+-            procCount++;
+-            if(procCount >= procLimit) {
+-                procCount = 0;
+-                toRun.add(r);
+-            }
+-        }
+-    }
+-    
+-    public MobStatusScheduler() {
+-        super(MonitoredLockType.CHANNEL_MOBSTATUS);
+-        
+-        super.addListener(new SchedulerListener() {
+-            @Override
+-            public void removedScheduledEntries(List<Object> toRemove, boolean update) {
+-                List<Runnable> toRun = new ArrayList<>();
+-                
+-                overtimeStatusLock.lock();
+-                try {
+-                    for(Object mseo : toRemove) {
+-                        MonsterStatusEffect mse = (MonsterStatusEffect) mseo;
+-                        registeredMobStatusOvertime.remove(mse);
+-                    }
+-                    
+-                    if(update) {
+-                        // it's probably ok to use one thread for both management & overtime actions
+-                        List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
+-                        for(MobStatusOvertimeEntry mdoe : mdoeList) {
+-                            mdoe.update(toRun);
+-                        }
+-                    }
+-                } finally {
+-                    overtimeStatusLock.unlock();
+-                }
+-                
+-                for(Runnable r : toRun) {
+-                    r.run();
+-                }
+-            }
+-        });
+-    }
+-    
+-    public void registerMobStatus(MonsterStatusEffect mse, Runnable cancelStatus, long duration, Runnable overtimeStatus, int overtimeDelay) {
+-        if(overtimeStatus != null) {
+-            MobStatusOvertimeEntry mdoe = new MobStatusOvertimeEntry(overtimeDelay, overtimeStatus);
+-            
+-            overtimeStatusLock.lock();
+-            try {
+-                registeredMobStatusOvertime.put(mse, mdoe);
+-            } finally {
+-                overtimeStatusLock.unlock();
+-            }
+-        }
+-        
+-        registerEntry(mse, cancelStatus, duration);
+-    }
+-    
+-    public void interruptMobStatus(MonsterStatusEffect mse) {
+-        interruptEntry(mse);
+-    }
+-    
+-    @Override
+-    public void dispose() {
+-        disposeLocks();
+-        super.dispose();
+-    }
+-    
+-    private void disposeLocks() {
+-        LockCollector.getInstance().registerDisposeAction(new Runnable() {
+-            @Override
+-            public void run() {
+-                emptyLocks();
+-            }
+-        });
+-    }
+-    
+-    private void emptyLocks() {
+-        overtimeStatusLock = overtimeStatusLock.dispose();
+-    }
+-}
+diff --git a/src/provider/MapleDataTool.java b/src/provider/MapleDataTool.java
+index f06412de2..51b92419e 100644
+--- a/src/provider/MapleDataTool.java
++++ b/src/provider/MapleDataTool.java
+@@ -107,7 +107,12 @@ public static int getInt(MapleData data, int def) {
+         } else if (data.getType() == MapleDataType.STRING) {
+             return Integer.parseInt(getString(data));
+         } else {
+-            return ((Integer) data.getData()).intValue();
++            Object numData = data.getData();
++            if (numData instanceof Integer) {
++                return (Integer) numData;
++            } else {
++                return (Short) numData;
++            }
+         }
+     }
+ 
+diff --git a/src/scripting/portal/PortalPlayerInteraction.java b/src/scripting/portal/PortalPlayerInteraction.java
+index e878d2082..ad23c6703 100644
+--- a/src/scripting/portal/PortalPlayerInteraction.java
++++ b/src/scripting/portal/PortalPlayerInteraction.java
+@@ -27,8 +27,8 @@
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+ import scripting.AbstractPlayerInteraction;
++import scripting.map.MapScriptManager;
+ import server.maps.MaplePortal;
+-import server.quest.MapleQuest;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ 
+@@ -44,6 +44,11 @@ public PortalPlayerInteraction(MapleClient c, MaplePortal portal) {
+     public MaplePortal getPortal() {
+         return portal;
+     }
++    
++    public void runMapScript() {
++        MapScriptManager msm = MapScriptManager.getInstance();
++        msm.runMapScript(c, "onUserEnter/" + portal.getScriptName(), false);
++    }
+ 
+     public boolean hasLevel30Character() {
+         PreparedStatement ps = null;
+diff --git a/src/server/MapleSkillbookInformationProvider.java b/src/server/MapleSkillbookInformationProvider.java
+index 4a559e52b..f144d21c5 100644
+--- a/src/server/MapleSkillbookInformationProvider.java
++++ b/src/server/MapleSkillbookInformationProvider.java
+@@ -21,7 +21,6 @@
+ 
+ import java.io.BufferedReader;
+ import java.io.File;
+-import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.io.InputStreamReader;
+ import java.sql.Connection;
+@@ -38,6 +37,9 @@
+ import java.util.Set;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
++import provider.MapleData;
++import provider.MapleDataProviderFactory;
++import provider.MapleDataTool;
+ import tools.DatabaseConnection;
+ 
+ /**
+@@ -45,6 +47,7 @@
+  * @author RonanLana
+  */
+ public class MapleSkillbookInformationProvider {
++    
+     private final static MapleSkillbookInformationProvider instance = new MapleSkillbookInformationProvider();
+     
+     public static MapleSkillbookInformationProvider getInstance() {
+@@ -86,167 +89,31 @@ public static MapleSkillbookInformationProvider getInstance() {
+     static {
+         loadSkillbooks();
+     }
+-
+-    private static String getName(String token) {
+-        int i, j;
+-        char[] dest;
+-        String d;
+-        
+-        i = token.lastIndexOf("name");
+-        i = token.indexOf("\"", i) + 1; //lower bound of the string
+-        j = token.indexOf("\"", i);     //upper bound
+-
+-        if(j < i) {           //node value containing 'name' in it's scope, cheap fix since we don't deal with strings anyway
+-            System.out.println("[CRITICAL] Found this '" + token + "'");
+-            return "0";
+-        }
+-        
+-        dest = new char[initialStringLength];
+-        token.getChars(i, j, dest, 0);
+-
+-        d = new String(dest);
+-        return(d.trim());
+-    }
+     
+-    private static String getValue(String token) {
+-        int i, j;
+-        char[] dest;
+-        String d;
+-
+-        i = token.lastIndexOf("value");
+-        i = token.indexOf("\"", i) + 1; //lower bound of the string
+-        j = token.indexOf("\"", i);     //upper bound
+-
+-        dest = new char[initialStringLength];
+-        token.getChars(i, j, dest, 0);
+-
+-        d = new String(dest);
+-        return(d.trim());
+-    }
+-    
+-    private static void forwardCursor(int st) {
+-        String line = null;
+-
+-        try {
+-            while(status >= st && (line = bufferedReader.readLine()) != null) {
+-                simpleToken(line);
+-            }
+-        }
+-        catch(Exception e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+-    private static void simpleToken(String token) {
+-        if(token.contains("/imgdir")) {
+-            status -= 1;
+-        }
+-        else if(token.contains("imgdir") && !token.endsWith("/>")) {    // '\>' XML node description not being accounted, issue found thanks to Robin Schulz, CanIGetaPR
+-            status += 1;
+-        }
+-    }
+-    
+-    private static void inspectQuestItemList(int st) {
+-        String line = null;
+-
+-        try {
+-            while(status >= st && (line = bufferedReader.readLine()) != null) {
+-                readItemToken(line);
+-            }
+-        }
+-        catch(Exception e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+     public static boolean isSkillBook(int itemid) {
+         return itemid >= skillbookMinItemid && itemid < skillbookMaxItemid;
+     }
+     
+-    private static void processCurrentItem() {
+-        try {
+-            if(isSkillBook(currentItemid)) {
+-                if(currentCount > 0) {
+-                    foundSkillbooks.put(currentItemid, SkillBookEntry.QUEST);
+-                }
+-            }
+-        } catch(Exception e) {}
+-    }
+-    
+-    private static void readItemToken(String token) {
+-        if(token.contains("/imgdir")) {
+-            status -= 1;
+-            
+-            processCurrentItem();
+-            
+-            currentItemid = 0;
+-            currentCount = 0;
+-        }
+-        else if(token.contains("imgdir") && !token.endsWith("/>")) {
+-            status += 1;
+-        }
+-        else {
+-            String d = getName(token);
+-            
+-            if(d.equals("id")) {
+-                currentItemid = Integer.parseInt(getValue(token));
+-            } else if(d.equals("count")) {
+-                currentCount = Integer.parseInt(getValue(token));
+-            }
+-        }
+-    }
+-
+-    private static void translateActToken(String token) {
+-        String d;
+-        int temp;
+-
+-        if(token.contains("/imgdir")) {
+-            status -= 1;
+-        }
+-        else if(token.contains("imgdir") && !token.endsWith("/>")) {
+-            if(status == 1) {           //getting QuestId
+-                d = getName(token);
+-                questId = Integer.parseInt(d);
+-            }
+-            else if(status == 2) {      //start/complete
+-                d = getName(token);
+-                isCompleteState = Integer.parseInt(d);
+-            }
+-            else if(status == 3) {
+-                d = getName(token);
+-
+-                if(d.contains("item")) {
+-                    temp = status;
+-                    inspectQuestItemList(temp);
+-                } else {
+-                    forwardCursor(status);
+-                }
+-            }
+-
+-            status += 1;
+-        }
+-    }
+-    
+     private static void fetchSkillbooksFromQuests() {
+-        String line = "";
+-        int lineNumber = 0; // add line number, thanks to Alex (CanIGetaPR)
++        MapleData actData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/" + "Quest.wz")).getData("Act.img");
+         
+-        try {
+-            fileReader = new InputStreamReader(new FileInputStream(wzPath + "/Quest.wz/Act.img.xml"), "UTF-8");
+-            bufferedReader = new BufferedReader(fileReader);
+-
+-            while((line = bufferedReader.readLine()) != null) {
+-                lineNumber++;
+-                translateActToken(line);
++        for (MapleData questData : actData.getChildren()) {
++            for (MapleData questStatusData : questData.getChildren()) {
++                for (MapleData questNodeData : questStatusData.getChildren()) {
++                    if (questNodeData.getName().contentEquals("item")) {
++                        for (MapleData questItemData : questNodeData.getChildren()) {
++                            int itemid = MapleDataTool.getInt("id", questItemData, 0);
++                            int itemcount = MapleDataTool.getInt("count", questItemData, 0);
++                            
++                            if (isSkillBook(itemid) && itemcount > 0) {
++                                foundSkillbooks.put(currentItemid, SkillBookEntry.QUEST);
++                            }
++                        }
++                        
++                        break;
++                    }
++                }
+             }
+-
+-            bufferedReader.close();
+-            fileReader.close();
+-        } catch(IOException ioe) {
+-            System.out.println("Failed to read Quest.wz file. Line " + lineNumber + ": " + line);
+-            ioe.printStackTrace();
+-        } catch (Exception e) {
+-            System.out.println("Failed to parse Quest.wz XML file.");   // catch this exception, thanks to YonhNi
+         }
+     }
+     
+diff --git a/src/server/life/MapleLifeFactory.java b/src/server/life/MapleLifeFactory.java
+index 50202629e..3a03929f1 100644
+--- a/src/server/life/MapleLifeFactory.java
++++ b/src/server/life/MapleLifeFactory.java
+@@ -163,11 +163,11 @@ private static void setMonsterAttackInfo(int mid, List<MobAttackInfoHolder> atta
+         }
+         stats.setFirstAttack(firstAttack > 0);
+         stats.setDropPeriod(MapleDataTool.getIntConvert("dropItemPeriod", monsterInfoData, stats.getDropPeriod() / 10000) * 10000);
+-
+-        if (!(stats.isBoss() && !hpbarBosses.contains(mid))) {  // thanks Riizade, Z1peR, Anesthetic for noticing some bosses crashing players due to missing requirements
+-            stats.setTagColor(MapleDataTool.getIntConvert("hpTagColor", monsterInfoData, 0));
+-            stats.setTagBgColor(MapleDataTool.getIntConvert("hpTagBgcolor", monsterInfoData, 0));
+-        }
++        
++        // thanks yuxaij, Riizade, Z1peR, Anesthetic for noticing some bosses crashing players due to missing requirements
++        boolean hpbarBoss = stats.isBoss() && hpbarBosses.contains(mid);
++        stats.setTagColor(hpbarBoss ? MapleDataTool.getIntConvert("hpTagColor", monsterInfoData, 0) : 0);
++        stats.setTagBgColor(hpbarBoss ? MapleDataTool.getIntConvert("hpTagBgcolor", monsterInfoData, 0) : 0);
+         
+         for (MapleData idata : monsterData) {
+             if (!idata.getName().equals("info")) {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 6cb8132a8..cc4aafa00 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -72,6 +72,11 @@
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.MobAnimationService;
++import net.server.channel.services.task.MobClearSkillService;
++import net.server.channel.services.task.MobStatusService;
++import net.server.channel.services.task.OverallService;
+ import net.server.coordinator.world.MapleMonsterAggroCoordinator;
+ import server.MapleStatEffect;
+ import server.loot.MapleLootManager;
+@@ -333,7 +338,8 @@ private boolean applyAnimationIfRoaming(int attackPos, MobSkill skill) {   // ro
+             }
+ 
+             if(animationTime > 0) {
+-                return map.getChannelServer().registerMobOnAnimationEffect(map.getId(), this.hashCode(), animationTime);
++                MobAnimationService service = (MobAnimationService) map.getChannelServer().getServiceAccess(ServiceType.MOB_ANIMATION);
++                return service.registerMobOnAnimationEffect(map.getId(), this.hashCode(), animationTime);
+             } else {
+                 return true;
+             }
+@@ -1197,7 +1203,8 @@ public boolean applyStatus(MapleCharacter from, final MonsterStatusEffect status
+                     if (oldEffect != null) {
+                         oldEffect.removeActiveStatus(stat);
+                         if (oldEffect.getStati().isEmpty()) {
+-                            ch.interruptMobStatus(mapid, oldEffect);
++                            MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                            service.interruptMobStatus(mapid, oldEffect);
+                         }
+                     }
+                 }
+@@ -1303,7 +1310,8 @@ public void run() {
+             statiLock.unlock();
+         }
+         
+-        ch.registerMobStatus(mapid, status, cancelTask, duration + animationTime - 100, overtimeAction, overtimeDelay);
++        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++        service.registerMobStatus(mapid, status, cancelTask, duration + animationTime - 100, overtimeAction, overtimeDelay);
+         return true;
+     }
+     
+@@ -1354,7 +1362,8 @@ public void run() {
+             statiLock.unlock();
+         }
+         
+-        map.getChannelServer().registerMobStatus(map.getId(), effect, cancelTask, duration);
++        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++        service.registerMobStatus(map.getId(), effect, cancelTask, duration);
+     }
+     
+     public void refreshMobPosition() {
+@@ -1552,7 +1561,8 @@ public void run() {
+             }
+         };
+         
+-        mmap.getChannelServer().registerMobClearSkillAction(mmap.getId(), r, cooltime);
++        MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++        service.registerMobClearSkillAction(mmap.getId(), r, cooltime);
+     }
+ 
+     private void clearSkill(int skillId, int level) {
+@@ -1619,8 +1629,9 @@ public void run() {
+                     mons.clearAttack(attackPos);
+                 }
+             };
+-
+-            mmap.getChannelServer().registerMobClearSkillAction(mmap.getId(), r, cooltime);
++            
++            MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++            service.registerMobClearSkillAction(mmap.getId(), r, cooltime);
+         } finally {
+             monsterLock.unlock();
+         }
+@@ -1667,7 +1678,8 @@ private DamageTask(int dealDamage, MapleCharacter chr, MonsterStatusEffect statu
+         public void run() {
+             int curHp = hp.get();
+             if(curHp <= 1) {
+-                map.getChannelServer().interruptMobStatus(map.getId(), status);
++                MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                service.interruptMobStatus(map.getId(), status);
+                 return;
+             }
+             
+@@ -1675,7 +1687,8 @@ public void run() {
+             if (damage >= curHp) {
+                 damage = curHp - 1;
+                 if (type == 1 || type == 2) {
+-                    map.getChannelServer().interruptMobStatus(map.getId(), status);
++                    MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                    service.interruptMobStatus(map.getId(), status);
+                 }
+             }
+             if (damage > 0) {
+@@ -1731,7 +1744,8 @@ public void run() {
+                     }
+                 };
+                 
+-                mmap.getChannelServer().registerMobClearSkillAction(mmap.getId(), r, milli);
++                MobClearSkillService service = (MobClearSkillService) mmap.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++                service.registerMobClearSkillAction(mmap.getId(), r, milli);
+             }
+         } finally {
+             monsterLock.unlock();
+@@ -2213,7 +2227,8 @@ public void run() {
+         };
+         
+         // had to schedule this since mob wouldn't stick to puppet aggro who knows why
+-        this.getMap().getChannelServer().registerOverallAction(this.getMap().getId(), r, YamlConfig.config.server.UPDATE_INTERVAL);
++        OverallService service = (OverallService) this.getMap().getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        service.registerOverallAction(this.getMap().getId(), r, YamlConfig.config.server.UPDATE_INTERVAL);
+     }
+     
+     /**
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 0808dda53..e91b05bd6 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -32,6 +32,8 @@
+ import constants.game.GameConstants;
+ import java.util.LinkedList;
+ import java.util.Map;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.OverallService;
+ import tools.Randomizer;
+ import server.maps.MapleMap;
+ import server.maps.MapleMapObject;
+@@ -115,7 +117,8 @@ public void run() {
+             }
+         };
+ 
+-        monster.getMap().getChannelServer().registerOverallAction(monster.getMap().getId(), toRun, animationTime);
++        OverallService service = (OverallService) monster.getMap().getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        service.registerOverallAction(monster.getMap().getId(), toRun, animationTime);
+     }
+ 
+     public void applyEffect(MapleCharacter player, MapleMonster monster, boolean skill, List<MapleCharacter> banishPlayers) {
+diff --git a/src/server/maps/AbstractMapleMapObject.java b/src/server/maps/AbstractMapleMapObject.java
+index 398c37369..24499433e 100644
+--- a/src/server/maps/AbstractMapleMapObject.java
++++ b/src/server/maps/AbstractMapleMapObject.java
+@@ -37,8 +37,7 @@ public Point getPosition() {
+ 
+     @Override
+     public void setPosition(Point position) {
+-        this.position.x = position.x;
+-        this.position.y = position.y;
++        this.position.move(position.x, position.y);
+     }
+ 
+     @Override
+diff --git a/src/server/maps/MapleDoor.java b/src/server/maps/MapleDoor.java
+index d2860450b..a58f9897b 100644
+--- a/src/server/maps/MapleDoor.java
++++ b/src/server/maps/MapleDoor.java
+@@ -28,7 +28,8 @@
+ import tools.Pair;
+ 
+ import client.MapleCharacter;
+-import constants.net.ServerConstants;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.OverallService;
+ 
+ /**
+  *
+@@ -131,7 +132,9 @@ public static void attemptRemoveDoor(final MapleCharacter owner) {
+             long effectTimeLeft = 3000 - destroyDoor.getElapsedDeployTime();   // portal deployment effect duration
+             if (effectTimeLeft > 0) {
+                 MapleMap town = destroyDoor.getTown();
+-                town.getChannelServer().registerOverallAction(town.getId(), new Runnable() {
++                
++                OverallService service = (OverallService) town.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++                service.registerOverallAction(town.getId(), new Runnable() {
+                     @Override
+                     public void run() {
+                         destroyDoor.broadcastRemoveDoor(owner);   // thanks BHB88 for noticing doors crashing players when instantly cancelling buff
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index efb6f96c5..a5b90e371 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -65,6 +65,10 @@
+ import net.server.Server;
+ import net.server.coordinator.world.MapleMonsterAggroCoordinator;
+ import net.server.channel.Channel;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.FaceExpressionService;
++import net.server.channel.services.task.MobMistService;
++import net.server.channel.services.task.OverallService;
+ import net.server.world.World;
+ import scripting.map.MapScriptManager;
+ import server.MapleItemInformationProvider;
+@@ -1942,7 +1946,8 @@ public void run() {
+     public void dismissRemoveAfter(final MapleMonster monster) {
+         Runnable removeAfterAction = monster.popRemoveAfterAction();
+         if (removeAfterAction != null) {
+-            this.getChannelServer().forceRunOverallAction(mapid, removeAfterAction);
++            OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++            service.forceRunOverallAction(mapid, removeAfterAction);
+         }
+     }
+     
+@@ -2203,7 +2208,8 @@ public void run() {
+             }
+         };
+         
+-        this.getChannelServer().registerMobMistCancelAction(mapid, mistSchedule, duration);
++        MobMistService service = (MobMistService) this.getChannelServer().getServiceAccess(ServiceType.MOB_MIST);
++        service.registerMobMistCancelAction(mapid, mistSchedule, duration);
+     }
+     
+     public void spawnKite(final MapleKite kite) {
+@@ -2302,7 +2308,8 @@ public final void spawnItemDropList(List<Integer> list, int minCopies, int maxCo
+     }
+ 
+     private void registerMapSchedule(Runnable r, long delay) {
+-        this.getChannelServer().registerOverallAction(mapid, r, delay);
++        OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        service.registerOverallAction(mapid, r, delay);
+     }
+     
+     private void activateItemReactors(final MapleMapItem drop, final MapleClient c) {
+@@ -2788,7 +2795,8 @@ public void removePlayerPuppet(MapleCharacter player) {
+     public void removePlayer(MapleCharacter chr) {
+         Channel cserv = chr.getClient().getChannelServer();
+         
+-        cserv.unregisterFaceExpression(mapid, chr);
++        FaceExpressionService service = (FaceExpressionService) this.getChannelServer().getServiceAccess(ServiceType.FACE_EXPRESSION);
++        service.unregisterFaceExpression(mapid, chr);
+         chr.unregisterChairBuff();
+         
+         chrWLock.lock();
+@@ -3548,7 +3556,8 @@ public void run() {
+                             if (reactor.getDelay() > 0) {
+                                 MapleMap reactorMap = reactor.getMap();
+                                 
+-                                reactorMap.getChannelServer().registerOverallAction(reactorMap.getId(), new Runnable() {
++                                OverallService service = (OverallService) reactorMap.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++                                service.registerOverallAction(reactorMap.getId(), new Runnable() {
+                                     @Override
+                                     public void run() {
+                                         reactor.lockReactor();
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index e517ca43f..753030343 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -36,6 +36,8 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.channel.services.ServiceType;
++import net.server.channel.services.task.OverallService;
+ import server.partyquest.GuardianSpawnPoint;
+ 
+ /**
+@@ -368,14 +370,17 @@ public void run() {
+         };
+         
+         delayedRespawnRun = r;
+-        map.getChannelServer().registerOverallAction(map.getId(), r, this.getDelay());
++        
++        OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        service.registerOverallAction(map.getId(), r, this.getDelay());
+     }
+     
+     public boolean forceDelayedRespawn() {
+         Runnable r = delayedRespawnRun;
+         
+         if (r != null) {
+-            map.getChannelServer().forceRunOverallAction(map.getId(), r);
++            OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++            service.forceRunOverallAction(map.getId(), r);
+             return true;
+         } else {
+             return false;
+diff --git a/src/server/quest/actions/InfoAction.java b/src/server/quest/actions/InfoAction.java
+index 5c5830a18..3561475dc 100644
+--- a/src/server/quest/actions/InfoAction.java
++++ b/src/server/quest/actions/InfoAction.java
+@@ -20,6 +20,7 @@
+ package server.quest.actions;
+ 
+ import client.MapleCharacter;
++import client.MapleQuestStatus;
+ import provider.MapleData;
+ import provider.MapleDataTool;
+ import server.quest.MapleQuest;
+diff --git a/tools/MapleInvalidItemWithNoNameFetcher/src/maplenoitemnamefetcher/MapleNoItemNameFetcher.java b/tools/MapleInvalidItemWithNoNameFetcher/src/maplenoitemnamefetcher/MapleNoItemNameFetcher.java
+index 5d1bb4528..096a8c9c7 100644
+--- a/tools/MapleInvalidItemWithNoNameFetcher/src/maplenoitemnamefetcher/MapleNoItemNameFetcher.java
++++ b/tools/MapleInvalidItemWithNoNameFetcher/src/maplenoitemnamefetcher/MapleNoItemNameFetcher.java
+@@ -445,7 +445,7 @@ private static String getMissingEquipName(int itemid) {
+     
+     private static String getMissingEquipDesc(int itemid) {
+         String s = descContentCache.get(itemid);
+-        if (s == null) {
++        if (s == null && itemid >= 2000000) {   // thanks Halcyon for noticing "missing info" on equips
+             s = "MISSING INFO " + itemid;
+         }
+         

@@ -1,0 +1,310 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 9f040c0ed..321e725a5 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -703,4 +703,7 @@ Aprimorado mec
+ 
+ 28 Novembro 2017,
+ Diversas refatorações de classes no projeto.
+-Novo release: HeavenMS.
+\ No newline at end of file
++Novo release: HeavenMS.
++
++02 Dezembro 2017,
++Adicionado informação de classes nos NPCs para os 2o jobs de Explorer.
+\ No newline at end of file
+diff --git a/scripts/npc/1012100.js b/scripts/npc/1012100.js
+index 90d5b136e..a8188ccf6 100644
+--- a/scripts/npc/1012100.js
++++ b/scripts/npc/1012100.js
+@@ -84,9 +84,9 @@ function action(mode, type, selection) {
+             if (cm.canHold(1452051) && cm.canHold(2060000)){
+                 if (cm.getJobId() == 0){
+                     cm.changeJobById(300);
+-					cm.gainItem(1452051, 1);
+-					cm.gainItem(2060000, 1000);
+-					cm.resetStats();
++                    cm.gainItem(1452051, 1);
++                    cm.gainItem(2060000, 1000);
++                    cm.resetStats();
+                 }
+                 cm.sendNext("Alright, from here out, you are a part of us! You'll be living the life of a wanderer at ..., but just be patient as soon, you'll be living the high life. Alright, it ain't much, but I'll give you some of my abilities... HAAAHHH!!!");
+             } else {
+@@ -95,12 +95,14 @@ function action(mode, type, selection) {
+             }
+         } else if (status == 2) 
+             cm.sendNextPrev("You've gotten much stronger now. Plus every single one of your inventories have added slots. A whole row, to be exact. Go see for it yourself. I just gave you a little bit of #bSP#k. When you open up the #bSkill#k menu on the lower left corner of the screen, there are skills you can learn by using SP's. One warning, though: You can't raise it all together all at once. There are also skills you can acquire only after having learned a couple of skills first.");
+-		else
+-			cm.dispose();
+-	} else if(actionx["2ndJob"]){
++	else if (status == 3)
++            cm.sendNextPrev("Now a reminder. Once you have chosen, you cannot change up your mind and try to pick another path. Go now, and live as a proud Bowman.");
++        else
++            cm.dispose();    
++    } else if(actionx["2ndJob"]){
+         if (status == 0){
+             if (cm.haveItem(4031012))
+-                cm.sendSimple("Alright, when you have made your decision, click on [I'll choose my occupation] at the bottom.#b\r\n#L0#Please explain to me what being the Hunter is all about.\r\n#L1#Please explain to me what being the Crossbowman is all about.\r\n#L2#I'll choose my occupation!");
++                cm.sendSimple("Alright, when you have made your decision, click on [I'll choose my occupation] at the bottom.#b\r\n#L0#Please explain to me what being the Hunter is all about.\r\n#L1#Please explain to me what being the Crossbowman is all about.\r\n#L3#I'll choose my occupation!");
+             else {
+                 cm.sendNext("Good decision. You look strong, but I need to see if you really are strong enough to pass the test, it's not a difficult test, so you'll do just fine. Here, take my letter first... make sure you don't lose it!");
+ 		if(!cm.isQuestStarted(100000)) cm.startQuest(100000);
+@@ -117,8 +119,13 @@ function action(mode, type, selection) {
+                     cm.dispose();
+                 }
+             } else {
+-                if (selection < 2){
+-                    cm.sendNext("Not done.");
++                if (selection < 3){
++                    if(selection == 0) {    //hunter
++                        cm.sendNext("Archers that master #rBows#k.\r\n\r\n#bHunters#k have a higher damage/minute output in early levels, with attacks having a faster pace but slightly weaker than Crossbowmans. #bHunters#k get #rArrow Bomb#k, a slightly weaker attack that can cause up to 6 enemies to get stunned.");
++                    } else if(selection == 1) {    //crossbowman
++                        cm.sendNext("Archers that master #rCrossbows#k.\r\n\r\n#bCrossbowmans'#k attack power grows higher the higher level you are, when compared to Hunters. #bCrossbowmans#k get #rIron Arrow#k, a stronger attack that does not home on enemies but can go through walls.");
++                    }
++                    
+                     status -= 2;
+                 } else
+                     cm.sendSimple("Now... have you made up your mind? Please choose the job you'd like to select for your 2nd job advancement. #b\r\n#L0#Hunter\r\n#L1#Crossbowman");
+@@ -138,7 +145,7 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottomleft corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure yo remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 310 ? "Hunter" : "Crossbowman") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 310 ? "Hunter" : "Crossbowman") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     } else if (actionx["3thJobI"]){
+         if (status == 0){
+             if (cm.getPlayer().gotPartyQuestItem("JB3")){
+@@ -258,6 +265,6 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottomleft corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure yo remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 310 ? "Hunter" : "Crossbowman") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 310 ? "Hunter" : "Crossbowman") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     }
+ }*/
+\ No newline at end of file
+diff --git a/scripts/npc/1022000.js b/scripts/npc/1022000.js
+index 547d5d85d..bf25045cf 100644
+--- a/scripts/npc/1022000.js
++++ b/scripts/npc/1022000.js
+@@ -88,7 +88,7 @@ function action(mode, type, selection) {
+                     cm.gainItem(1302077, 1);
+                     cm.resetStats();
+                 }
+-                cm.sendNext("From here on out, you are going to the (Incomplete)");
++                cm.sendNext("From here on out, you are going to the Warrior path. This is not an easy job, but if you have discipline and confidence in your own body and skills, you will overcome any difficulties in your path. Go, young Warrior!");
+             } else {
+                 cm.sendNext("Make some room in your inventory and talk back to me.");
+                 cm.dispose();
+@@ -96,7 +96,9 @@ function action(mode, type, selection) {
+         } else if (status == 2) 
+             cm.sendNextPrev("You've gotten much stronger now. Plus every single one of your inventories have added slots. A whole row, to be exact. Go see for it yourself. I just gave you a little bit of #bSP#k. When you open up the #bSkill#k menu on the lower left corner of the screen, there are skills you can learn by using SP's. One warning, though: You can't raise it all together all at once. There are also skills you can acquire only after having learned a couple of skills first.");
+         else if (status == 3)
+-            cm.sendNextPrev("One more warning. Once you have chosed you (Incomplete)");
++            cm.sendNextPrev("Now a reminder. Once you have chosen, you cannot change up your mind and try to pick another path. Go now, and live as a proud Warrior.");
++        else
++            cm.dispose();
+     } else if(actionx["2ndJob"]){
+         if (status == 0){
+             if (cm.haveItem(4031012))
+@@ -117,7 +119,14 @@ function action(mode, type, selection) {
+                 }
+             }else{
+                 if (selection < 3){
+-                    cm.sendNext("Make up your mind and then talk to me.");  //there goes the explanation of the 3 WARRIOR PATHS.
++                    if(selection == 0) {    //fighter
++                        cm.sendNext("Warriors that master #rSwords or Axes#k.\r\n\r\n#rFighters#k get #bRage#k, which boosts your party's weapon attack by 10. During 2nd job this is strongly appreciated, as it is free (except for -10 wep def, which is not going to impact the damage you take much at all), takes no Use slots and increases each party member's damage (except Mages) by several hundreds. The other classes can give themselves a weapon attack boost as well, but need items to do so. #rFighters#k also get #bPower Guard#k, reducing touch damage by 40% and deals it back to the monster. This is the main reason why #rFighters#k are considered soloers is because this reduces pot costs immensely.");
++                    } else if(selection == 1) {    //page
++                        cm.sendNext("Warriors that master #rSwords or Maces/Blunt weapons#k.\r\n\r\n#rPages#k get #bThreaten#k, a skill that lowers the enemies' weapon defense and weapon attack by 20; this is mostly used to lower damage dealt to you. Pages also get #bPower Guard#k, reducing touch damage by 40% and deals it back to the monster. This is one of the main reason why #bPages/WKs#k are considered soloers, that's because this reduces pot costs immensely. Of course, constant KB and #bIce Charge#k helps also to the soloing factor.");
++                    } else {    //spearman
++                        cm.sendNext("Warriors that master #rSpears or Polearms#k.\r\n\r\n#rSpearmen#k get #bHyper Body#k, which boosts your max HP/MP and that of your party by 60% when maxed. This skill is particularly useful for helping partied Thieves, Archers, and Mages to survive more hits from enemies and/or PQ bosses. They also get #bIron Will#k which gives +20 wep def and +20 mag def for 300 sec. It is basically a nerfed Bless with 100 seconds more duration but gives no accuracy or avoidability bonus. Even with this skill maxed, it isn't even close to being in the same league as Power Guard and is why Spearmen/Dark Knights are not considered a soloing class.");
++                    }
++                    
+                     status -= 2;
+                 } else
+                     cm.sendSimple("Now... have you made up your mind? Please choose the job you'd like to select for your 2nd job advancement. #b\r\n#L0#Fighter\r\n#L1#Page\r\n#L2#Spearman");
+@@ -144,7 +153,7 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottomleft corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure yo remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 110 ? "Fighter" : job == 120 ? "Page" : "Spearman") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 110 ? "Fighter" : job == 120 ? "Page" : "Spearman") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     } else if (actionx["3thJobI"]){
+         if (status == 0){
+             if (cm.getPlayer().gotPartyQuestItem("JB3")){
+diff --git a/scripts/npc/1032001.js b/scripts/npc/1032001.js
+index 7a06592b7..72091c6f4 100644
+--- a/scripts/npc/1032001.js
++++ b/scripts/npc/1032001.js
+@@ -100,7 +100,9 @@ function action(mode, type, selection) {
+         else if (status == 4)
+             cm.sendNextPrev("Now, one more word of warning to you. If you fail in battle from this point on, you will lose a portion of your total EXP. Be extra mindful of this, since you have less HP than most.");
+         else if (status == 5)
+-            cm.sendPrev("This is all I can teach you. Good luck on your journey, young Magician.");
++            cm.sendNextPrev("This is all I can teach you. Good luck on your journey, young Magician.");
++        else
++            cm.dispose();
+     } else if(actionx["2ndJob"]){
+         if (status == 0){
+             if (cm.haveItem(4031012))
+@@ -121,7 +123,14 @@ function action(mode, type, selection) {
+                 }
+             }else{
+                 if (selection < 3){
+-                    cm.sendNext("Not done.");
++                    if(selection == 0) {
++                        cm.sendNext("Magicians that master #rFire/Poison-based magic#k.\r\n\r\n#bWizards#k are a active class that deal magical, elemental damage. These abilities grants them a significant advantage against enemies weak to their element. With their skills #rMeditation#k and #rSlow#k, #bWizards#k can increase their magic attack and reduce the opponent's mobility. #bFire/Poison Wizards#k contains a powerful flame arrow attack and poison attack.");    //f/p mage
++                    } else if(selection == 1) {
++                        cm.sendNext("Magicians that master #rIce/Lightning-based magic#k.\r\n\r\n#bWizards#k are a active class that deal magical, elemental damage. These abilities grants them a significant advantage against enemies weak to their element. With their skills #rMeditation#k and #rSlow#k, #bWizards#k can increase their magic attack and reduce the opponent's mobility. #bIce/Lightning Wizards#k have a freezing ice attack and a striking lightning attack.");    //i/l mage
++                    } else {
++                        cm.sendNext("Magicians that master #rHoly magic#k.\r\n\r\n#bClerics#k are a powerful supportive class, bound to be accepted into any Party. That's because the have the power to #rHeal#k themselves and others in their party. Using #rBless#k, #bClerics#k can buff the attributes and reduce the amount of damage taken. This class is on worth going for if you find it hard to survive. #bClerics#k are especially effective against undead monsters.");    //cleric
++                    }
++                    
+                     status -= 2;
+                 } else
+                     cm.sendSimple("Now... have you made up your mind? Please choose the job you'd like to select for your 2nd job advancement. #b\r\n#L0#Wizard (Fire / Poison)\r\n#L1#Wizard (Ice / Lighting)\r\n#L2#Cleric");
+@@ -145,7 +154,7 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottomleft corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure you remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 210 ? "Wizard (Fire / Poison)" : job == 220 ? "Wizard (Ice / Lighting)" : "Cleric") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 210 ? "Wizard (Fire / Poison)" : job == 220 ? "Wizard (Ice / Lighting)" : "Cleric") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     } else if (actionx["3thJobI"]){
+         if (status == 0){
+             if (cm.getPlayer().gotPartyQuestItem("JB3")){
+diff --git a/scripts/npc/1052001.js b/scripts/npc/1052001.js
+index 0b410f56d..b37275f91 100644
+--- a/scripts/npc/1052001.js
++++ b/scripts/npc/1052001.js
+@@ -98,7 +98,9 @@ function action(mode, type, selection) {
+         } else if (status == 2) 
+             cm.sendNextPrev("You've gotten much stronger now. Plus every single one of your inventories have added slots. A whole row, to be exact. Go see for it yourself. I just gave you a little bit of #bSP#k. When you open up the #bSkill#k menu on the lower left corner of the screen, there are skills you can learn by using SP's. One warning, though: You can't raise it all together all at once. There are also skills you can acquire only after having learned a couple of skills first.");
+         else if (status == 3)
+-            cm.sendNextPrev("One more warning. Once you have chosed you (Incomplete)");
++            cm.sendNextPrev("Now a reminder. Once you have chosen, you cannot change up your mind and try to pick another path. Go now, and live as a proud Thief.");
++        else
++            cm.dispose();
+     } else if(actionx["2ndJob"]){
+         if (status == 0){
+             if (cm.haveItem(4031012))
+@@ -119,7 +121,12 @@ function action(mode, type, selection) {
+                 }
+             }else{
+                 if (selection < 3){
+-                    cm.sendNext("Not done.");
++                    if(selection == 0) {    //assassin
++                        cm.sendNext("Thieves that master #rClaws#k.\r\n\r\n#bAssassins#k are far ranged attackers. They are quite Meso efficient and have good damage potential, but cost more than Bandits.");
++                    } else if(selection == 1) {    //bandit
++                        cm.sendNext("Thieves that master #rDaggers#k.\r\n\r\n#bBandits#k are quick melee attackers and are quite powerful among the 2nd jobs. They aren't as Meso efficient as Assassins and do not have the benefit of ranged attack but make up for it in much greater raw power.");
++                    }
++                    
+                     status -= 2;
+                 } else
+                     cm.sendSimple("Now... have you made up your mind? Please choose the job you'd like to select for your 2nd job advancement. #b\r\n#L0#Assassin\r\n#L1#Bandit");
+@@ -146,7 +153,7 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottomleft corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure yo remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 410 ? "Assassin" : "Bandit") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 410 ? "Assassin" : "Bandit") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     } else if (actionx["3thJobI"]){
+         if (status == 0){
+             if (cm.getPlayer().gotPartyQuestItem("JB3")){
+diff --git a/scripts/npc/1090000.js b/scripts/npc/1090000.js
+index 498a44659..652c54a45 100644
+--- a/scripts/npc/1090000.js
++++ b/scripts/npc/1090000.js
+@@ -82,8 +82,8 @@ function action(mode, type, selection) {
+                 if (cm.getJobId() == 0){
+                     cm.changeJobById(500);
+                     cm.gainItem(1492000, 1);
+-					cm.gainItem(1482000, 1);
+-					cm.gainItem(2330000, 1000);
++                    cm.gainItem(1482000, 1);
++                    cm.gainItem(2330000, 1000);
+                     cm.resetStats();
+                 }
+                 cm.sendNext("Alright, from here out, you are a part of us! You'll be living the life of a wanderer at ..., but just be patient as soon, you'll be living the high life. Alright, it ain't much, but I'll give you some of my abilities... HAAAHHH!!!");
+@@ -94,7 +94,9 @@ function action(mode, type, selection) {
+         } else if (status == 2) 
+             cm.sendNextPrev("You've gotten much stronger now. Plus every single one of your inventories have added slots. A whole row, to be exact. Go see for it yourself. I just gave you a little bit of #bSP#k. When you open up the #bSkill#k menu on the lower left corner of the screen, there are skills you can learn by using SP's. One warning, though: You can't raise it all together all at once. There are also skills you can acquire only after having learned a couple of skills first.");
+         else if (status == 3)
+-            cm.sendNextPrev("One more warning. Once you have chosen, you (Incomplete)");
++            cm.sendNextPrev("Now a reminder. Once you have chosen, you cannot change up your mind and try to pick another path. Go now, and live as a proud Pirate.");
++        else
++            cm.dispose();
+     } else if(actionx["2ndJob"]){
+         if (status == 0){
+             if (cm.isQuestCompleted(2191) || cm.isQuestCompleted(2192))
+@@ -104,11 +106,16 @@ function action(mode, type, selection) {
+         } else if (status == 1){
+             if (!cm.isQuestCompleted(2191) && !cm.isQuestCompleted(2192)){
+                 // Pirate works differently from the other jobs. It warps you directly in.
+-				actionx["2ndJobT"] = true;
+-				cm.sendYesNo("Would you like to take the test now?");
++                actionx["2ndJobT"] = true;
++                cm.sendYesNo("Would you like to take the test now?");
+             } else {
+                 if (selection < 3) {
+-                    cm.sendNext("Not done.");
++                    if(selection == 0) {    //brawler
++                        cm.sendNext("Pirates that master #rKnuckles#k.\r\n\r\n#bBrawlers#k are melee, close-ranged fist fighters who deal lots of damage and have high HP. Armed with #rCorkscrew Blow#k, one can deal massive damage to multiple targets at once. #rOak Barrel#k permits one to scout or disguise themselves in middle of difficult fights, enabling a possible escaping route in front of danger.");
++                    } else if(selection == 1) {    //gunslinger
++                        cm.sendNext("Pirates that master #rGuns#k.\r\n\r\n#bGunslingers#k are faster and ranged attackers. With the #rWings#k skill, Gunslingers can hover in the air, allowing for a longer, more sustained jump than a regular jump. #rBlank Shot#k allows to deal Stun status to multiple targets nearby.");
++                    }
++                    
+                     status -= 2;
+                 } else
+                     cm.sendNextPrev("You have a long road ahead of you still, but being a pirate will help you get there. Just keep that in mind and you will do fine.");
+@@ -129,14 +136,16 @@ function action(mode, type, selection) {
+ 					return;
+                 }
+             } else {
+-				if(cm.isQuestCompleted(2191))
+-					job = 510;
+-				else if(cm.isQuestCompleted(2192))
+-					job = 520;
++                if(cm.isQuestCompleted(2191) && cm.isQuestCompleted(2192))
++                        job = (Math.random() < 0.5) ? 510 : 520;
++                else if(cm.isQuestCompleted(2191))
++                        job = 510;
++                else if(cm.isQuestCompleted(2192))
++                        job = 520;
+ 					
+-				cm.sendYesNo("So you want to make the second job advancement as the " + (job == 510 ? "#bBrawler#k" : "#bGunslinger#k") + "? You know you won't be able to choose a different job for the 2nd job advancement once you make your decision here, right?");
+-			}
+-		} else if (status == 3){
++                cm.sendYesNo("So you want to make the second job advancement as the " + (job == 510 ? "#bBrawler#k" : "#bGunslinger#k") + "? You know you won't be able to choose a different job for the 2nd job advancement once you make your decision here, right?");
++            }
++        } else if (status == 3){
+             if (cm.haveItem(4031012))
+                 cm.gainItem(4031012, -1);
+             
+@@ -150,7 +159,7 @@ function action(mode, type, selection) {
+         else if (status == 5)
+             cm.sendNextPrev("I have also given you a little bit of #bSP#k. Open the #bSkill Menu#k located at the bottom left corner. you'll be able to boost up the newer acquired 2nd level skills. A word of warning, though. You can't boost them up all at once. Some of the skills are only available after you have learned other skills. Make sure yo remember that.");
+         else if (status == 6)
+-            cm.sendNextPrev((job == 510 ? "Brawlers" : "Gunslingers") + " need to be strong. But remember that you can't abuse that power and use it on a weaking. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
++            cm.sendNextPrev((job == 510 ? "Brawlers" : "Gunslingers") + " need to be strong. But remember that you can't abuse that power and use it on a weakling. Please use your enormous power the right way, because... for you to use that the right way, that is much harden than just getting stronger. Please find me after you have advanced much further. I'll be waiting for you.");
+     } else if (actionx["3thJobI"]){
+         if (status == 0){
+             if (cm.getPlayer().gotPartyQuestItem("JB3")){
+diff --git a/src/tools/DatabaseConnection.java b/src/tools/DatabaseConnection.java
+index 1dd519a48..d2f120d87 100644
+--- a/src/tools/DatabaseConnection.java
++++ b/src/tools/DatabaseConnection.java
+@@ -76,9 +76,11 @@ public DatabaseConnection() {
+             config.setUsername(ServerConstants.DB_USER);
+             config.setPassword(ServerConstants.DB_PASS);
+             
+-            int poolSize = getNumberOfAccounts() * 10;     // make sure pool size is comfortable for the worst case scenario
+-            if(poolSize < 100) poolSize = 100;
+-            else if(poolSize > 10000) poolSize = 10000;
++            // Make sure pool size is comfortable for the worst case scenario.
++            // Under 100 accounts? Make it 10. Over 10000 accounts? Make it 30.            
++            int poolSize = (int) Math.ceil(9.889642518 * Math.exp(0.0001109709382 * getNumberOfAccounts()));
++            if(poolSize < 10) poolSize = 10;
++            else if(poolSize > 30) poolSize = 30;
+             
+             config.setConnectionTimeout(30 * 1000);
+             config.setMaximumPoolSize(poolSize);

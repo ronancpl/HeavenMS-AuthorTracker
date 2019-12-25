@@ -1,0 +1,512 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index ca13de9f7..950824373 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -127,4 +127,8 @@ Sparta lv100 n
+ Diversas alterações corretivas em itens das tabelas drop_data e reactordrops no BD.
+ 
+ 04 Abril 2017,
+-Correção na API sobre progresso das quests.
+\ No newline at end of file
++Correção na API sobre progresso das quests.
++
++06 Abril 2017,
++Tentativa de correção em casos de falta de respawn em certas areas do jogo.
++Otimização de funções que lidam com popular ou despopular areas.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 465ac5a66..43285ef1b 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,17 +3,15 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/server/CashShop.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleQuestStatus.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/map/MapScriptMethods.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/AbstractPlayerInteraction.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/npc/NPCConversationManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleClient.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/9201134.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2030010.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2091005.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/life/SpawnPoint.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2012002.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMapFactory.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/src/server/life/MapleMonster.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/MonsterBook.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/tools/MaplePacketCreator.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/event/EventInstanceManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/event/Boats.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/map/onUserEnter/921100300.txt b/scripts/map/onUserEnter/921100300.txt
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/scripts/map/onUserEnter/923010000.txt b/scripts/map/onUserEnter/923010000.txt
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/scripts/npc/world0/2012002.js b/scripts/npc/world0/2012002.js
+index 5bd130461..d8daf4185 100644
+--- a/scripts/npc/world0/2012002.js
++++ b/scripts/npc/world0/2012002.js
+@@ -41,9 +41,12 @@ if (mode == 0 && status == 1) {
+         status++;
+     else
+         cm.dispose();
+-    if (status == 1)
++    
++    if (status == 1) {
+         cm.sendNext ("Alright, see you next time. Take care.");
+-    else if (status == 2)
++    }
++    else if (status == 2) {
+         cm.warp(200000111, 0);// back to Orbis jetty
+-    cm.dispose();
++        cm.dispose();
++    }
+ }
+diff --git a/scripts/npc/world0/2020008.js b/scripts/npc/world0/2020008.js
+index 3c17dedfb..6c66f5a3d 100644
+--- a/scripts/npc/world0/2020008.js
++++ b/scripts/npc/world0/2020008.js
+@@ -26,6 +26,18 @@ var sel;
+ actionx = {"Mental" : false, "Physical" : false};
+ 
+ function start() {
++    if(cm.isQuestStarted(6192)) {
++        if(cm.getWarpMap(921100300).getCharacters().size() > 0)
++            cm.sendOk("There is someone currently in this map, come back later.");
++        else {
++            cm.resetMapObjects(921100300);
++            cm.warp(921100300);
++        }
++            
++        cm.dispose();
++        return;
++    }
++    
+     if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 1)){
+         cm.sendNext("Hi there.");
+         cm.dispose();
+diff --git a/scripts/npc/world0/2022004.js b/scripts/npc/world0/2022004.js
+new file mode 100644
+index 000000000..56ad023df
+--- /dev/null
++++ b/scripts/npc/world0/2022004.js
+@@ -0,0 +1,12 @@
++function start() {
++    cm.sendNext("You did a great job back there, " + cm.getPlayer().getName() + ", well done. Now I will transport you back to El Nath. Have the pendant in your possession and talk to me when you feel ready to receive the new skill.");
++}
++
++function action(mode, type, selection) {
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        cm.warp(211000000,"in01");
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2060005.js b/scripts/npc/world0/2060005.js
+index 605a552ef..99d5393c4 100644
+--- a/scripts/npc/world0/2060005.js
++++ b/scripts/npc/world0/2060005.js
+@@ -22,10 +22,13 @@
+ function start() {
+     if(cm.isQuestCompleted(6002))
+         cm.sendOk("Thanks for saving the pork.");
+-    else if(cm.getClient().getChannelServer().getMapFactory().getMap(923010000).getCharacters().size() > 0)
++    else if(cm.getWarpMap(923010000).getCharacters().size() > 0)
+         cm.sendOk("There is currently someone in this map, come back later.");
+-    else if(cm.isQuestStarted(6002))
++    else if(cm.isQuestStarted(6002)) {
++        cm.resetMapObjects(923010000);
+         cm.warp(923010000);
++    }
++        
+     else cm.sendSimple("Only few adventurers, from a selected public, are eligible to protect the Watch Hog.");
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2091005.js b/scripts/npc/world0/2091005.js
+index b81b0935c..f30643974 100644
+--- a/scripts/npc/world0/2091005.js
++++ b/scripts/npc/world0/2091005.js
+@@ -32,7 +32,7 @@ var belts = Array(1132000, 1132001, 1132002, 1132003, 1132004);
+ var belt_level = Array(25, 35, 45, 60, 75);
+ 
+ /* var belt_points = Array(200, 1800, 4000, 9200, 17000); */
+-var belt_points = Array(5, 45, 100, 230, 425); /* Watered down version */
++var belt_points = Array(10, 90, 200, 460, 850); /* Watered down version */
+ 
+ var status = -1;
+ var selectedMenu = -1;
+diff --git a/scripts/portal/s4common1_exit.js b/scripts/portal/s4common1_exit.js
+new file mode 100644
+index 000000000..8a4e810e9
+--- /dev/null
++++ b/scripts/portal/s4common1_exit.js
+@@ -0,0 +1,9 @@
++//Author: Ronan
++
++function enter(pi) {  
++	if(pi.hasItem(4031495)) pi.warp(921100301);
++        else pi.warp(211040100);
++        
++        pi.getWarpMap(921100300).clearMapObjects();
++	return true;
++}
+\ No newline at end of file
+diff --git a/scripts/portal/tamepig_out2.js b/scripts/portal/tamepig_out2.js
+index e055c35f9..dcb138217 100644
+--- a/scripts/portal/tamepig_out2.js
++++ b/scripts/portal/tamepig_out2.js
+@@ -25,8 +25,10 @@ function enter(pi) {
+         pi.removeAll(4031508);
+     }
+     
+-    if (pi.getClient().getChannelServer().getMapFactory().getMap(923010000).getCharacters().size() < 1)
+-        pi.getClient().getChannelServer().getMapFactory().getMap(923010000).killAllMonsters();
+     pi.warp(230000003, "out00");
++    if (pi.getClient().getChannelServer().getMapFactory().getMap(923010000).getCharacters().size() == 0) {
++        pi.getClient().getChannelServer().getMapFactory().getMap(923010000).clearMapObjects();
++    }
++    
+     return true;
+ }
+\ No newline at end of file
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index e2a1821ac..db346cf8a 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -124,7 +124,7 @@ public void warpParty(int id) {
+ 		return chars;
+ 	}
+ 
+-	protected MapleMap getWarpMap(int map) {
++	public MapleMap getWarpMap(int map) {
+ 		MapleMap target;
+ 		if (getPlayer().getEventInstance() == null) {
+ 			target = c.getChannelServer().getMapFactory().getMap(map);
+@@ -137,6 +137,10 @@ protected MapleMap getWarpMap(int map) {
+ 	public MapleMap getMap(int map) {
+ 		return getWarpMap(map);
+ 	}
++        
++        public void resetMapObjects(int mapid) {
++                getWarpMap(mapid).resetMapObjects();
++        }
+ 
+ 	public EventManager getEventManager(String event) {
+ 		return getClient().getEventManager(event);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index da82f50f9..41290adcf 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -439,14 +439,15 @@ public void run() {
+                 eventInstance.monsterKilled(this);
+             }
+         }
+-        // idk V just a troll
++        
++        MapleCharacter looter = map.getCharacterById(getHighestDamagerId());
++        return looter != null ? looter : killer;
++    }
++    
++    public void dispatchMonsterKilled() {
+         for (MonsterListener listener : listeners.toArray(new MonsterListener[listeners.size()])) {
+             listener.monsterKilled(getAnimationTime("die1"));
+         }
+-
+-        MapleCharacter looter = map.getCharacterById(getHighestDamagerId());
+-
+-        return looter != null ? looter : killer;
+     }
+ 
+     // should only really be used to determine drop owner
+diff --git a/src/server/life/SpawnPoint.java b/src/server/life/SpawnPoint.java
+index b0dec2184..84275bdad 100644
+--- a/src/server/life/SpawnPoint.java
++++ b/src/server/life/SpawnPoint.java
+@@ -26,7 +26,6 @@
+ import java.util.concurrent.atomic.AtomicInteger;
+ 
+ public class SpawnPoint {
+-
+     private int monster, mobTime, team, fh, f;
+     private Point pos;
+     private long nextPossibleSpawn;
+@@ -45,9 +44,17 @@ public SpawnPoint(final MapleMonster monster, Point pos, boolean immobile, int m
+         this.mobInterval = mobInterval;
+         this.nextPossibleSpawn = System.currentTimeMillis();
+     }
++    
++    public int getSpawned() {
++        return spawnedMonsters.intValue();
++    }
++    
++    public void denySpawn(boolean val) {
++        spawnedMonsters.set((val == false) ? 0 : 1);
++    }
+ 
+     public boolean shouldSpawn() {
+-    	if (mobTime < 0 || ((mobTime != 0 || immobile) && spawnedMonsters.get() > 0) || spawnedMonsters.get() > 2) {//lol
++    	if (mobTime < 0 || spawnedMonsters.get() > 0) {
+             return false;
+         }
+        
+@@ -55,7 +62,7 @@ public boolean shouldSpawn() {
+     }
+ 
+     public boolean shouldForceSpawn() {
+-    	if (mobTime < 0 || ((mobTime != 0 || immobile) && spawnedMonsters.get() > 0) || spawnedMonsters.get() > 2) {//lol
++    	if (mobTime < 0 || spawnedMonsters.get() > 0) {
+             return false;
+         }
+        
+@@ -98,4 +105,12 @@ public final int getF() {
+     public final int getFh() {
+         return fh;
+     }
++    
++    public int getMobTime() {
++        return mobTime;
++    }
++    
++    public int getTeam() {
++        return team;
++    }
+ }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index dc2db8900..5a07d69f7 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -85,6 +85,7 @@
+     private static final List<MapleMapObjectType> rangedMapobjectTypes = Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.ITEM, MapleMapObjectType.NPC, MapleMapObjectType.MONSTER, MapleMapObjectType.DOOR, MapleMapObjectType.SUMMON, MapleMapObjectType.REACTOR);
+     private Map<Integer, MapleMapObject> mapobjects = new LinkedHashMap<>();
+     private Collection<SpawnPoint> monsterSpawn = Collections.synchronizedList(new LinkedList<SpawnPoint>());
++    private Collection<SpawnPoint> allMonsterSpawn = Collections.synchronizedList(new LinkedList<SpawnPoint>());
+     private AtomicInteger spawnedMonstersOnMap = new AtomicInteger(0);
+     private Collection<MapleCharacter> characters = new LinkedHashSet<>();
+     private Map<Integer, MaplePortal> portals = new HashMap<>();
+@@ -672,6 +673,8 @@ public void run() {
+             }
+             dropFromMonster(dropOwner, monster);
+         }
++        
++        monster.dispatchMonsterKilled();
+     }
+ 
+     public void killFriendlies(MapleMonster mob) {
+@@ -713,20 +716,20 @@ public void killAllMonstersNotFriendly() {
+             if (monster.getStats().isFriendly()) {
+                 continue;
+             }
+-            spawnedMonstersOnMap.decrementAndGet();
+-            monster.setHp(0);
+-            broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), true), monster.getPosition());
+-            removeMapObject(monster);
++            
++            killMonster(monster, null, false, false, 1);
+         }
+     }
+ 
+     public void killAllMonsters() {
++        for (SpawnPoint spawnPoint : monsterSpawn) {
++            spawnPoint.denySpawn(true);
++        }
++        
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+             MapleMonster monster = (MapleMonster) monstermo;
+-            spawnedMonstersOnMap.decrementAndGet();
+-            monster.setHp(0);
+-            broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), true), monster.getPosition());
+-            removeMapObject(monster);
++            
++            killMonster(monster, null, false, false, 1);
+         }
+     }
+ 
+@@ -1032,6 +1035,7 @@ public void sendPackets(MapleClient c) {
+ 
+     public void spawnMonster(final MapleMonster monster) {
+         if (mobCapacity != -1 && mobCapacity == spawnedMonstersOnMap.get()) {
++            System.out.println("got here");
+             return;//PyPQ
+         }
+         monster.setMap(this);
+@@ -1050,11 +1054,13 @@ public void sendPackets(MapleClient c) {
+         }, null);
+         updateMonsterController(monster);
+ 
+-        if (monster.getDropPeriodTime() > 0) { //9300102 - Watchhog, 9300061 - Moon Bunny (HPQ)
++        if (monster.getDropPeriodTime() > 0) { //9300102 - Watchhog, 9300061 - Moon Bunny (HPQ), 9300093 - Tylus
+             if (monster.getId() == 9300102) {
+                 monsterItemDrop(monster, new Item(4031507, (short) 0, (short) 1), monster.getDropPeriodTime());
+             } else if (monster.getId() == 9300061) {
+                 monsterItemDrop(monster, new Item(4001101, (short) 0, (short) 1), monster.getDropPeriodTime() / 3);
++            } else if (monster.getId() == 9300093) {
++                monsterItemDrop(monster, new Item(4031495, (short) 0, (short) 1), monster.getDropPeriodTime());
+             } else {
+                 FilePrinter.printError(FilePrinter.UNHANDLED_EVENT, "UNCODED TIMED MOB DETECTED: " + monster.getId());
+             }
+@@ -1782,7 +1788,13 @@ public void addMonsterSpawn(MapleMonster monster, int mobTime, int team) {
+         if (sp.shouldSpawn() || mobTime == -1) {// -1 does not respawn and should not either but force ONE spawn
+             spawnMonster(sp.getMonster());
+         }
+-
++    }
++    
++    public void addAllMonsterSpawn(MapleMonster monster, int mobTime, int team) {
++        Point newpos = calcPointBelow(monster.getPosition());
++        newpos.y -= 1;
++        SpawnPoint sp = new SpawnPoint(monster, newpos, !monster.isMobile(), mobTime, mobInterval, team);
++        allMonsterSpawn.add(sp);
+     }
+ 
+     public Collection<MapleCharacter> getCharacters() {
+@@ -2029,6 +2041,13 @@ public void run() {
+             }
+         }
+     }
++    
++    public void instanceMapFirstSpawn() {
++        for(SpawnPoint spawnPoint: allMonsterSpawn) {
++            if(spawnPoint.getMobTime() == -1)   //just those allowed to be spawned only once
++                spawnMonster(spawnPoint.getMonster());
++        }
++    }
+ 
+     public void instanceMapRespawn() {
+         final int numShouldSpawn = (short) ((monsterSpawn.size() - spawnedMonstersOnMap.get()));//Fking lol'd
+@@ -2045,6 +2064,12 @@ public void instanceMapRespawn() {
+             }
+         }
+     }
++    
++    public void restoreMapSpawnPoints() {
++        for (SpawnPoint spawnPoint : monsterSpawn) {
++            spawnPoint.denySpawn(false);
++        }
++    }
+ 
+     public void respawn() {
+         if (characters.isEmpty()) {
+@@ -2059,9 +2084,10 @@ public void respawn() {
+                 if (spawnPoint.shouldSpawn()) {
+                     spawnMonster(spawnPoint.getMonster());
+                     spawned++;
+-                }
+-                if (spawned >= numShouldSpawn) {
+-                    break;
++                    
++                    if (spawned >= numShouldSpawn) {
++                        break;
++                    }
+                 }
+             }
+         }
+@@ -2395,4 +2421,17 @@ public void setMobInterval(short interval) {
+     public short getMobInterval() {
+         return mobInterval;
+     }
++    
++    public void clearMapObjects() {
++        clearDrops();
++        killAllMonsters();
++        resetReactors();
++    }
++    
++    public void resetMapObjects() {
++        clearMapObjects();
++        
++        restoreMapSpawnPoints();
++        instanceMapFirstSpawn();
++    }
+ }
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 5d63b1e97..2a9ad2901 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -52,7 +52,7 @@ public MapleMapFactory(MapleDataProvider source, MapleDataProvider stringSource,
+         this.world = world;
+         this.channel = channel;
+     }
+-
++    
+     public MapleMap getMap(int mapid) {
+         Integer omapid = Integer.valueOf(mapid);
+         MapleMap map = maps.get(omapid);
+@@ -148,6 +148,7 @@ public MapleMap getMap(int mapid) {
+                 } catch (Exception e) {
+                     e.printStackTrace();
+                 }
++                
+                 for (MapleData life : mapData.getChildByPath("life")) {
+                     String id = MapleDataTool.getString(life.getChildByPath("id"));
+                     String type = MapleDataTool.getString(life.getChildByPath("type"));
+@@ -164,10 +165,14 @@ public MapleMap getMap(int mapid) {
+                         } else {
+                             map.addMonsterSpawn(monster, mobTime, team);
+                         }
++                        
++                        //should the map be reseted, use allMonsterSpawn list of monsters to spawn them again
++                        map.addAllMonsterSpawn(monster, mobTime, team);
+                     } else {
+                         map.addMapObject(myLife);
+                     }
+                 }
++                
+                 if (mapData.getChildByPath("reactor") != null) {
+                     for (MapleData reactor : mapData.getChildByPath("reactor")) {
+                         String id = MapleDataTool.getString(reactor.getChildByPath("id"));
+diff --git a/wz/Map.wz/Map/Map9/921100300.img.xml b/wz/Map.wz/Map/Map9/921100300.img.xml
+index 23613dcfb..5603973ae 100644
+--- a/wz/Map.wz/Map/Map9/921100300.img.xml
++++ b/wz/Map.wz/Map/Map9/921100300.img.xml
+@@ -4253,15 +4253,12 @@
+       <string name="tn" value=""/>
+     </imgdir>
+     <imgdir name="2">
+-      <string name="pn" value="out00"/>
+-      <int name="pt" value="2"/>
++      <string name="pn" value="sp"/>
++      <int name="pt" value="0"/>
+       <int name="x" value="-364"/>
+       <int name="y" value="-508"/>
+-      <int name="tm" value="211000000"/>
+-      <string name="tn" value="in01"/>
+-      <string name="script" value=""/>
+-      <int name="hideTooltip" value="0"/>
+-      <int name="delay" value="0"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value=""/>
+     </imgdir>
+     <imgdir name="3">
+       <string name="pn" value="out01"/>
+@@ -4270,7 +4267,7 @@
+       <int name="y" value="-207"/>
+       <int name="tm" value="999999999"/>
+       <string name="tn" value=""/>
+-      <string name="script" value="s4common1_clear"/>
++      <string name="script" value="s4common1_exit"/>
+       <int name="hideTooltip" value="0"/>
+       <int name="delay" value="0"/>
+     </imgdir>
+diff --git a/wz/Mob.wz/9300093.img.xml b/wz/Mob.wz/9300093.img.xml
+index d9b23e2b1..a30e490e8 100644
+--- a/wz/Mob.wz/9300093.img.xml
++++ b/wz/Mob.wz/9300093.img.xml
+@@ -17,6 +17,7 @@
+     <float name="fs" value="10.0"/>
+     <int name="summonType" value="1"/>
+     <int name="damagedByMob" value="1"/>
++    <int name="dropItemPeriod" value="10"/>
+   </imgdir>
+   <imgdir name="stand">
+     <canvas name="0" width="68" height="81">

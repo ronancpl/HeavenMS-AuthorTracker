@@ -1,0 +1,120 @@
+diff --git a/.gitignore b/.gitignore
+index 6d9594aa4..3d50d9137 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1 +1,2 @@
+ /logs/
++.idea/
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index f86d9ae45..736d9fbc3 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -8,9 +8,9 @@ SET time_zone = "+00:00";
+ /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+ /*!40101 SET NAMES utf8 */;
+ 
+-DROP DATABASE IF EXISTS `maplesolaxia2`;
+-CREATE DATABASE `maplesolaxia2` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+-USE `maplesolaxia2`;
++DROP DATABASE IF EXISTS `maplesolaxia`;
++CREATE DATABASE `maplesolaxia` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
++USE `maplesolaxia`;
+ 
+ CREATE TABLE IF NOT EXISTS `accounts` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 88428bc7f..c4217d47a 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -1,7 +1,7 @@
+ ﻿#THIS SQL MUST BE USED AFTER 'db_database.sql'
+ #NEXT SQL 'db_shopupdate.sql' IS OPTIONAL
+ 
+-USE `maplesolaxia2`;
++USE `maplesolaxia`;
+ 
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+   #-- copy+paste inside here as many drop data as possible from the spider (drop generator) files --
+diff --git a/sql/db_shopupdate.sql b/sql/db_shopupdate.sql
+index 014652ed7..4ec4b74f9 100644
+--- a/sql/db_shopupdate.sql
++++ b/sql/db_shopupdate.sql
+@@ -1,7 +1,7 @@
+ ﻿#THIS SQL IS OPTIONAL, TO BE USED AFTER 'db_drops.sql'
+ #THIS REQUIRES PROVIDED WZ FILES
+ 
+-USE `maplesolaxia2`;
++USE `maplesolaxia`;
+ 
+ UPDATE shopitems SET itemid=1812005, price=1000 WHERE shopitemid=18;
+ UPDATE shopitems SET itemid=1812004, price=1000 WHERE shopitemid=19;
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index bcb4d7716..9df6a26f1 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -670,34 +670,36 @@ private static void addMonsterBookInfo(final MaplePacketLittleEndianWriter mplew
+         }
+ 
+         /**
+-         * Gets a successful authentication and PIN Request packet.
++         * Gets a successful authentication packet.
+          *
+          * @param c
+          * @param account The account name.
+-         * @return The PIN request packet.
++         * @return the successful authentication packet
+          */
+         public static byte[] getAuthSuccess(MapleClient c) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.LOGIN_STATUS.getValue());
+                 mplew.writeInt(0);
+                 mplew.writeShort(0);
+-                mplew.writeInt(c.getAccID()); //user id
++                mplew.writeInt(c.getAccID());
+                 mplew.write(c.getGender());
+-                mplew.writeBool(c.getGMLevel() > 0); //admin byte
+-                short toWrite = (short) (c.getGMLevel() * 64);
+-                //toWrite = toWrite |= 0x100; only in higher versions
+-                mplew.write(toWrite >= 0x80 ? 0x80 : 0);//0x80 is admin, 0x20 and 0x40 = subgm
++                
+                 mplew.writeBool(c.getGMLevel() > 0);
+-                //mplew.writeShort(toWrite > 0x80 ? 0x80 : toWrite); only in higher versions...
++                
++                mplew.write(0); // Admin Byte. 0x80,0x40,0x20.. Rubbish.
++                mplew.write(0); // Country Code.
++                
+                 mplew.writeMapleAsciiString(c.getAccountName());
+                 mplew.write(0);
+-                mplew.write(0); //isquietbanned
+-                mplew.writeLong(0);//isquietban time
+-                mplew.writeLong(c.getSessionId()); //creation time
+-                mplew.writeInt(0);
+                 
+-                if (ServerConstants.ENABLE_PIN) mplew.writeShort(0);
+-                else mplew.writeShort(2);
++                mplew.write(0); // IsQuietBan
++        		mplew.writeLong(0);//IsQuietBanTimeStamp
++        		mplew.writeLong(0); //CreationTimeStamp
++
++                mplew.writeInt(1); // 1: Remove the "Select the world you want to play in"
++
++                mplew.write(ServerConstants.ENABLE_PIN ? 0 : 1); // 0 = Pin-System Enabled, 1 = Disabled
++                mplew.write(ServerConstants.ENABLE_PIC ? (c.getPic() == null ? 0 : 1) : 2); // 0 = Register PIC, 1 = Ask for PIC, 2 = Disabled
+                 
+                 return mplew.getPacket();
+         }
+@@ -861,12 +863,8 @@ private static void addMonsterBookInfo(final MaplePacketLittleEndianWriter mplew
+                 for (MapleCharacter chr : chars) {
+                         addCharEntry(mplew, chr, false);      
+                 }
+-                if (ServerConstants.ENABLE_PIC) {
+-                        mplew.write(c.getPic() == null || c.getPic().length() == 0 ? 0 : 1);
+-                } else {
+-                        mplew.write(2);
+-                }
+ 
++                mplew.write(ServerConstants.ENABLE_PIC ? (c.getPic() == null ? 0 : 1) : 2);
+                 mplew.writeInt(c.getCharacterSlots());
+                 return mplew.getPacket();
+         }

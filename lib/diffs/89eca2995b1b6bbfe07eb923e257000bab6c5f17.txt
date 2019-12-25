@@ -1,0 +1,27 @@
+diff --git a/src/client/processor/StorageProcessor.java b/src/client/processor/StorageProcessor.java
+index 59672063b..b2f5f4aa0 100644
+--- a/src/client/processor/StorageProcessor.java
++++ b/src/client/processor/StorageProcessor.java
+@@ -139,6 +139,8 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                                                 c.announce(MaplePacketCreator.enableActions());
+                                                                 return;
+                                                         }
++                                                        
++                                                        item = item.copy();     // thanks Robin Schulz & BHB88 for noticing a inventory glitch when storing items
+                                                 } finally {
+                                                         inv.unlockInventory();
+                                                 }
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index f8e5a89f2..f5a78bab0 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -238,8 +238,7 @@ public void takeItemBack(int slot, MapleCharacter chr) {
+         }
+     }
+     
+-    private static boolean canBuy(MapleClient c, Item newItem) {
+-        System.out.println(newItem.getPet().getName());
++    private static boolean canBuy(MapleClient c, Item newItem) {    // thanks xiaokelvin for noticing a leaked test code here
+         return MapleInventoryManipulator.checkSpace(c, newItem.getItemId(), newItem.getQuantity(), newItem.getOwner()) && MapleInventoryManipulator.addFromDrop(c, newItem, false);
+     }
+     

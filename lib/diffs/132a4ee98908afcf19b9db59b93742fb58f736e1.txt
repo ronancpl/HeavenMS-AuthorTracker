@@ -1,0 +1,14 @@
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 2081c59d6..e6a340636 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -160,6 +160,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         c.lockClient(); // Sync this to prevent wrong login state for double channel changes
+         try {
+             int state = c.getLoginState();
++            if (state == MapleClient.LOGIN_LOGGEDIN) {
++                return;
++            }
+             if (state != MapleClient.LOGIN_SERVER_TRANSITION || !allowLogin) {
+                 c.setPlayer(null);
+                 c.announce(MaplePacketCreator.getAfterLoginError(7));

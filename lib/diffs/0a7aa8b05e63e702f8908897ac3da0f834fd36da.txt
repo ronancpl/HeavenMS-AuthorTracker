@@ -1,0 +1,46 @@
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index ba77848f2..2db15fc0e 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -84,7 +84,7 @@ public MapleCharacter getCharacterById(int id) {
+     public Collection<MapleCharacter> getAllCharacters() {
+         rlock.lock();
+         try {
+-            return storage.values();
++            return new ArrayList<>(storage.values());
+         } finally {
+             rlock.unlock();
+         }
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index df5a70799..3e73d53f4 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -293,7 +293,7 @@ public int getExpRate() {
+     }
+ 
+     public void setExpRate(int exp) {
+-        List<MapleCharacter> list = new LinkedList<>(getPlayerStorage().getAllCharacters());
++        Collection<MapleCharacter> list = getPlayerStorage().getAllCharacters();
+         
+         for(MapleCharacter chr : list) {
+             if(!chr.isLoggedin()) continue;
+@@ -311,7 +311,7 @@ public int getDropRate() {
+     }
+ 
+     public void setDropRate(int drop) {
+-        List<MapleCharacter> list = new LinkedList<>(getPlayerStorage().getAllCharacters());
++        Collection<MapleCharacter> list = getPlayerStorage().getAllCharacters();
+         
+         for(MapleCharacter chr : list) {
+             if(!chr.isLoggedin()) continue;
+@@ -337,8 +337,8 @@ public int getMesoRate() {
+     }
+ 
+     public void setMesoRate(int meso) {
+-        List<MapleCharacter> list = new LinkedList<>(getPlayerStorage().getAllCharacters());
+-        
++        Collection<MapleCharacter> list = getPlayerStorage().getAllCharacters();
++
+         for(MapleCharacter chr : list) {
+             if(!chr.isLoggedin()) continue;
+             chr.revertWorldRates();

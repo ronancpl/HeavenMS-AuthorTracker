@@ -1,0 +1,21 @@
+diff --git a/src/net/server/channel/handlers/AbstractMovementPacketHandler.java b/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
+index 621946e15..2c56a360d 100644
+--- a/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
++++ b/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
+@@ -41,6 +41,7 @@
+     protected List<LifeMovementFragment> parseMovement(LittleEndianAccessor lea) throws EmptyMovementException {
+         List<LifeMovementFragment> res = new ArrayList<>();
+         byte numCommands = lea.readByte();
++        if (numCommands < 1) throw new EmptyMovementException(lea);
+         for (byte i = 0; i < numCommands; i++) {
+             byte command = lea.readByte();
+             switch (command) {
+@@ -236,7 +237,7 @@ protected void updatePosition(LittleEndianAccessor lea, AnimatedMapleMapObject t
+                 }
+                 default:
+                     System.out.println("Unhandled Case:" + command);
+-                    return;
++                    throw new EmptyMovementException(lea);
+             }
+         }
+     }

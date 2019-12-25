@@ -1,0 +1,1013 @@
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 83c13e2af..55c3c0e1d 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -69,6 +69,7 @@ Monsters, Maps & Reactors:
+ * Added meso drop data for basically every missing overworld mob.
+ * Monsterbook displays drop data info conformant with the underlying DB (needs custom wz). See more on the MobBookUpdate feature.
+ * Every skill/mastery book is now droppable by mobs.
++* Mobs now can drop more than one of the same equipment (number of possible drops defined at droptime, uses the minimum/maximum quantity fields on DB).
+ * Added Boss HP Bar for dozens of bosses (needs provided custom wz).
+ * If multiple bosses are on the same area, client will prioritize Boss HP bar of the target of the player.
+ * Boats, elevator and other travelling mechanics fully working.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index b899b3e4e..2e7169a68 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -834,4 +834,9 @@ Modificado "hint" banners para usar menor espaço visual.
+ 16 - 17 Março 2018,
+ Resolvido problema com HP threshold em MoveLifeHandler.
+ Aprimorado quests e eventos de bosses da região de Mushroom Castle, agora sendo repetíveis.
+-Corrigido tempo de duração do Body Pressure sendo resetado sempre que acerta um mob.
+\ No newline at end of file
++Corrigido tempo de duração do Body Pressure sendo resetado sempre que acerta um mob.
++
++26 - 27 Março 2018,
++Corrigido animação de spawn dos bosses do dojo que foi quebrada recentemente.
++Corrigido autoassigner para piratas somente preenchendo requisitos de gunslinger.
++Mobs agora podem dropar mais de um equip de mesmo tipo, sistema utiliza quantidades min/max na tabela de drops.
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 46017e597..a1a611005 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -338,8 +338,8 @@ private MapleCharacter() {
+         petLootCd = System.currentTimeMillis();
+     }
+     
+-    public MapleJob getJobStyle() {
+-        int jobtype = this.getJob().getId() / 100;
++    private static MapleJob getJobStyleInternal(int jobid, byte opt) {
++        int jobtype = jobid / 100;
+         
+         if(jobtype == MapleJob.WARRIOR.getId() / 100 || jobtype == MapleJob.DAWNWARRIOR1.getId() / 100 || jobtype == MapleJob.ARAN1.getId() / 100) {
+             return(MapleJob.WARRIOR);
+@@ -350,7 +350,7 @@ else if(jobtype == MapleJob.MAGICIAN.getId() / 100 || jobtype == MapleJob.BLAZEW
+         }
+         
+         else if(jobtype == MapleJob.BOWMAN.getId() / 100 || jobtype == MapleJob.WINDARCHER1.getId() / 100) {
+-            if(this.getJob().getId() / 10 == MapleJob.CROSSBOWMAN.getId() / 10) return(MapleJob.CROSSBOWMAN);
++            if(jobid / 10 == MapleJob.CROSSBOWMAN.getId() / 10) return(MapleJob.CROSSBOWMAN);
+             else return(MapleJob.BOWMAN);
+         }
+         
+@@ -359,12 +359,20 @@ else if(jobtype == MapleJob.THIEF.getId() / 100 || jobtype == MapleJob.NIGHTWALK
+         }
+         
+         else if(jobtype == MapleJob.PIRATE.getId() / 100 || jobtype == MapleJob.THUNDERBREAKER1.getId() / 100) {
+-            if(this.getStr() > this.getDex()) return(MapleJob.BRAWLER);
++            if(opt == (byte) 0x80) return(MapleJob.BRAWLER);
+             else return(MapleJob.GUNSLINGER);
+         }
+         
+         return(MapleJob.BEGINNER);
+     }
++    
++    public MapleJob getJobStyle(byte opt) {
++        return getJobStyleInternal(this.getJob().getId(), opt);
++    }
++    
++    public MapleJob getJobStyle() {
++        return getJobStyle((byte) ((this.getStr() > this.getDex()) ? 0x80 : 0x40));
++    }
+ 
+     public static MapleCharacter getDefault(MapleClient c) {
+         MapleCharacter ret = new MapleCharacter();
+@@ -846,8 +854,8 @@ public void Hide(boolean hide, boolean login) {
+                     getMap().broadcastMessage(this, MaplePacketCreator.removePlayerFromMap(getId()), false);
+                 }
+                 getMap().broadcastGMMessage(this, MaplePacketCreator.spawnPlayerMapObject(this), false);
+-                List<Pair<MapleBuffStat, Integer>> dsstat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.DARKSIGHT, 0));
+-                getMap().broadcastGMMessage(this, MaplePacketCreator.giveForeignBuff(id, dsstat), false);
++                List<Pair<MapleBuffStat, Integer>> ldsstat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.DARKSIGHT, 0));
++                getMap().broadcastGMMessage(this, MaplePacketCreator.giveForeignBuff(id, ldsstat), false);
+                 for (MapleMonster mon : this.getControlledMonsters()) {
+                     mon.setController(null);
+                     mon.setControllerHasAggro(false);
+@@ -1678,7 +1686,7 @@ public void deleteBuddy(int otherCid) {
+         nextPendingRequest(client);
+     }
+     
+-    public static boolean deleteCharFromDB(MapleCharacter player) {
++    public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+             int cid = player.getId(), accId = -1, world = 0;
+             
+             Connection con = null;
+@@ -1696,6 +1704,10 @@ public static boolean deleteCharFromDB(MapleCharacter player) {
+                             }
+                     }
+                     
++                    if(senderAccId != accId) {
++                            return false;
++                    }
++                    
+                     try (PreparedStatement ps = con.prepareStatement("SELECT buddyid FROM buddies WHERE characterid = ?")) {
+                             ps.setInt(1, cid);
+ 
+@@ -2180,9 +2192,9 @@ public void run() {
+                     try {
+                         long curTime = System.currentTimeMillis();
+                         
+-                        for(Entry<MapleDisease, Long> d : diseaseExpires.entrySet()) {
+-                            if(d.getValue() < curTime) {
+-                                toExpire.add(d.getKey());
++                        for(Entry<MapleDisease, Long> de : diseaseExpires.entrySet()) {
++                            if(de.getValue() < curTime) {
++                                toExpire.add(de.getKey());
+                             }
+                         }
+                     } finally {
+@@ -2972,8 +2984,8 @@ private void updateEffects(Set<MapleBuffStat> removedStats) {
+             }
+             
+             Map<Integer, Pair<MapleStatEffect, Long>> bestEffects = new LinkedHashMap<>();
+-            for(Entry<MapleBuffStat, Pair<Integer, Integer>> lmse: maxStatups.entrySet()) {
+-                Integer srcid = lmse.getValue().getLeft();
++            for(Entry<MapleBuffStat, Pair<Integer, Integer>> lmsee: maxStatups.entrySet()) {
++                Integer srcid = lmsee.getValue().getLeft();
+                 if(!bestEffects.containsKey(srcid)) {
+                     bestEffects.put(srcid, retrievedEffects.get(srcid));
+                 }
+@@ -3156,16 +3168,16 @@ public void cancelBuffStats(MapleBuffStat stat) {
+             Map<MapleBuffStat, MapleBuffStatValueHolder> minStatBuffs = new LinkedHashMap<>();
+             
+             for(Entry<Integer, Map<MapleBuffStat, MapleBuffStatValueHolder>> mbsvhi : buffEffects.entrySet()) {
+-                for(Entry<MapleBuffStat, MapleBuffStatValueHolder> mbsvh : mbsvhi.getValue().entrySet()) {
+-                    MapleBuffStat mbs = mbsvh.getKey();
+-                    Byte it = stats.get(mbs);
++                for(Entry<MapleBuffStat, MapleBuffStatValueHolder> mbsvhe : mbsvhi.getValue().entrySet()) {
++                    MapleBuffStat mbs = mbsvhe.getKey();
++                    Byte b = stats.get(mbs);
+                     
+-                    if(it != null) {
+-                        stats.put(mbs, (byte) (it + 1));
+-                        if(mbsvh.getValue().value < minStatBuffs.get(mbs).value) minStatBuffs.put(mbs, mbsvh.getValue());
++                    if(b != null) {
++                        stats.put(mbs, (byte) (b + 1));
++                        if(mbsvhe.getValue().value < minStatBuffs.get(mbs).value) minStatBuffs.put(mbs, mbsvhe.getValue());
+                     } else {
+                         stats.put(mbs, (byte) 1);
+-                        minStatBuffs.put(mbs, mbsvh.getValue());
++                        minStatBuffs.put(mbs, mbsvhe.getValue());
+                     }
+                 }
+             }
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index cb8586ee9..9082436d3 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -965,38 +965,9 @@ public Channel getChannelServer(byte channel) {
+ 		return Server.getInstance().getChannel(world, channel);
+ 	}
+ 
+-        private boolean hasCharacter(int cid) throws SQLException {
+-                Connection con = null;
+-                PreparedStatement ps = null;
+-                ResultSet rs = null;
+-                
+-                try {
+-                        con = DatabaseConnection.getConnection();
+-                        ps = con.prepareStatement("SELECT id FROM characters WHERE accountid = ?");
+-                        ps.setInt(1, getAccID());
+-                        
+-                        rs = ps.executeQuery();
+-                        while (rs.next()) {
+-                                if (rs.getInt("id") == cid) {
+-                                        return true;
+-                                }
+-                        }
+-                } finally {
+-                        if(rs != null && !rs.isClosed()) rs.close();
+-                        if(ps != null && !ps.isClosed()) ps.close();
+-                        if(con != null && !con.isClosed()) con.close();
+-                }
+-                
+-                return false;
+-        }
+-        
+-	public boolean deleteCharacter(int cid) {
++        public boolean deleteCharacter(int cid, int senderAccId) {
+                 try {
+-                        if(!hasCharacter(cid)) {
+-                                return false;
+-                        }
+-                    
+-                        return MapleCharacter.deleteCharFromDB(MapleCharacter.loadCharFromDB(cid, this, false));
++                        return MapleCharacter.deleteCharFromDB(MapleCharacter.loadCharFromDB(cid, this, false), senderAccId);
+                 } catch(SQLException ex) {
+                         ex.printStackTrace();
+                         return false;
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 8464a822e..e9257c856 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -1447,13 +1447,25 @@ else if (type.equals("cash")) {
+                     
+                 case "job":
+ 			if (sub.length == 2) {
+-				player.changeJob(MapleJob.getById(Integer.parseInt(sub[1])));
++                                int jobid = Integer.parseInt(sub[1]);
++                                if(jobid < 0 || jobid >= 2200) {
++                                        player.message("Jobid " + jobid + " is not available.");
++                                        break;
++                                }
++                            
++				player.changeJob(MapleJob.getById(jobid));
+ 				player.equipChanged();
+ 			} else if (sub.length == 3) {
+ 				victim = c.getChannelServer().getPlayerStorage().getCharacterByName(sub[1]);
+                                 
+                                 if(victim != null) {
+-                                        victim.changeJob(MapleJob.getById(Integer.parseInt(sub[2])));
++                                        int jobid = Integer.parseInt(sub[2]);
++                                        if(jobid < 0 || jobid >= 2200) {
++                                                player.message("Jobid " + jobid + " is not available.");
++                                                break;
++                                        }
++                                    
++                                        victim.changeJob(MapleJob.getById(jobid));
+                                         player.equipChanged();
+                                 } else {
+                                         player.message("Player '" + sub[1] + "' could not be found on this channel.");
+@@ -1581,9 +1593,9 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 			MapleMap newMap = c.getChannelServer().getMapFactory().resetMap(player.getMapId());
+                         int callerid = c.getPlayer().getId();
+                         
+-			for (MapleCharacter ch : oldMap.getCharacters()) {
+-				ch.changeMap(newMap);
+-                                if(ch.getId() != callerid) ch.dropMessage("You have been relocated due to map reloading. Sorry for the inconvenience.");
++			for (MapleCharacter chr : oldMap.getCharacters()) {
++				chr.changeMap(newMap);
++                                if(chr.getId() != callerid) chr.dropMessage("You have been relocated due to map reloading. Sorry for the inconvenience.");
+ 			}
+ 			newMap.respawn();
+                     break;
+diff --git a/src/client/inventory/Equip.java b/src/client/inventory/Equip.java
+index 765dce1e8..1c7fecb1b 100644
+--- a/src/client/inventory/Equip.java
++++ b/src/client/inventory/Equip.java
+@@ -340,7 +340,7 @@ private void gainLevel(MapleClient c) {
+             List<Pair<String, Integer>> elementalStats = MapleItemInformationProvider.getInstance().getItemLevelupStats(getItemId(), itemLevel);
+             
+             for(Pair<String, Integer> p: elementalStats) {
+-                if(p.getRight() > 0) stats.add(new Pair(StatUpgrade.valueOf(p.getLeft()), p.getRight()));
++                if(p.getRight() > 0) stats.add(new Pair<>(StatUpgrade.valueOf(p.getLeft()), p.getRight()));
+             }
+         }
+         
+diff --git a/src/constants/ItemConstants.java b/src/constants/ItemConstants.java
+index 1ae1014bc..8d4f1fbb0 100644
+--- a/src/constants/ItemConstants.java
++++ b/src/constants/ItemConstants.java
+@@ -177,6 +177,6 @@ public static boolean isWeapon(int itemId) {
+     }
+     
+     public static boolean isEquipment(int itemId) {
+-        return itemId < 2000000;
++        return itemId < 2000000 && itemId != 0;
+     }
+ }
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 7703f7998..d0efb470a 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -70,7 +70,8 @@
+     public static final boolean USE_ERASE_PET_ON_EXPIRATION = false;//Forces pets to be removed from inventory when expire time comes, rather than converting it to a doll.
+     public static final boolean USE_BUFF_MOST_SIGNIFICANT = true;   //When applying buffs, the player will stick with the highest stat boost among the listed, rather than overwriting stats.
+     public static final boolean USE_MAKER_FEE_HEURISTICS = true;    //Apply compiled values for stimulants and reagents into the Maker fee calculations (max error revolves around 50k mesos). Set false to use basic constant values instead (results are never higher than requested by the client-side).
+-    public static final boolean USE_QUEST_RATE = false;              //Exp/Meso gained by quests uses fixed server exp/meso rate times quest rate as multiplier, instead of player rates.
++    public static final boolean USE_QUEST_RATE = false;             //Exp/Meso gained by quests uses fixed server exp/meso rate times quest rate as multiplier, instead of player rates.
++    public static final boolean USE_MULTIPLE_SAME_EQUIP_DROP = true;//Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
+     
+     //Server Rates And Experience
+     public static final int EXP_RATE = 10;
+diff --git a/src/dropspider/Main.java b/src/dropspider/Main.java
+index 66ae3aac6..22499e9b7 100644
+--- a/src/dropspider/Main.java
++++ b/src/dropspider/Main.java
+@@ -289,8 +289,8 @@ public static void dumpErrors() {
+             BufferedWriter bw = new BufferedWriter(new FileWriter(f));
+             PrintWriter pw = new PrintWriter(bw);
+ 
+-            for (Errors e : problems.values()) {
+-                pw.write(e.createErrorLog());
++            for (Errors err : problems.values()) {
++                pw.write(err.createErrorLog());
+             }
+ 
+             pw.flush();
+diff --git a/src/net/server/audit/ThreadTracker.java b/src/net/server/audit/ThreadTracker.java
+index 6b6f861b9..8b99d6f34 100644
+--- a/src/net/server/audit/ThreadTracker.java
++++ b/src/net/server/audit/ThreadTracker.java
+@@ -66,11 +66,11 @@ private String printThreadTrackerState(String dateFormat) {
+         Map<MonitoredLockType, List<Integer>> lockValues = new HashMap<>();
+         Set<Long> executingThreads = new HashSet<>();
+         
+-        for(Map.Entry<Long, AtomicInteger> lock : lockCount.entrySet()) {
+-            if(lock.getValue().get() != 0) {
+-                executingThreads.add(lockThreads.get(lock.getKey()));
++        for(Map.Entry<Long, AtomicInteger> lc : lockCount.entrySet()) {
++            if(lc.getValue().get() != 0) {
++                executingThreads.add(lockThreads.get(lc.getKey()));
+                 
+-                MonitoredLockType lockId = lockIds.get(lock.getKey());
++                MonitoredLockType lockId = lockIds.get(lc.getKey());
+                 List<Integer> list = lockValues.get(lockId);
+                 
+                 if(list == null) {
+@@ -78,7 +78,7 @@ private String printThreadTrackerState(String dateFormat) {
+                     lockValues.put(lockId, list);
+                 }
+                 
+-                list.add(lock.getValue().get());
++                list.add(lc.getValue().get());
+             }
+         }
+         
+diff --git a/src/net/server/channel/handlers/AutoAssignHandler.java b/src/net/server/channel/handlers/AutoAssignHandler.java
+index 2931031c6..4fa15c28d 100644
+--- a/src/net/server/channel/handlers/AutoAssignHandler.java
++++ b/src/net/server/channel/handlers/AutoAssignHandler.java
+@@ -58,6 +58,8 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         statGain[0] = 0; statGain[1] = 0; statGain[2] = 0; statGain[3] = 0;
+         
+         slea.skip(8);
++        byte opt = slea.readByte();     // useful for pirate autoassigning
++        
+         if (chr.getRemainingAp() < 1) return;
+         
+         if(ServerConstants.USE_SERVER_AUTOASSIGNER) {
+@@ -106,7 +108,7 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             //c.getPlayer().message("SDL: s" + eqpStr + " d" + eqpDex + " l" + eqpLuk + " BASE STATS --> STR: " + chr.getStr() + " DEX: " + chr.getDex() + " INT: " + chr.getInt() + " LUK: " + chr.getLuk());
+             //c.getPlayer().message("SUM EQUIP STATS -> STR: " + str + " DEX: " + dex + " LUK: " + luk + " INT: " + int_);
+             
+-            MapleJob stance = c.getPlayer().getJobStyle();
++            MapleJob stance = c.getPlayer().getJobStyle(opt);
+             int prStat = 0, scStat = 0, trStat = 0, temp, tempAp = chr.getRemainingAp(), CAP;
+             
+             MapleStat primary, secondary, tertiary = MapleStat.LUK;
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index a038ee7d0..2c35567bc 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -233,10 +233,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+            // if (checkBirthday(c, birthday)) { //We're using a default birthday, so why restrict rings to only people who know of it? 
+                 int toCharge = slea.readInt();
+                 int SN = slea.readInt();
+-                String recipient = slea.readMapleAsciiString();
++                String recipientName = slea.readMapleAsciiString();
+                 String text = slea.readMapleAsciiString();
+-                CashItem ring = CashItemFactory.getItem(SN);
+-                MapleCharacter partner = c.getChannelServer().getPlayerStorage().getCharacterByName(recipient);
++                CashItem itemRing = CashItemFactory.getItem(SN);
++                MapleCharacter partner = c.getChannelServer().getPlayerStorage().getCharacterByName(recipientName);
+                 if (partner == null) {
+                     chr.getClient().announce(MaplePacketCreator.serverNotice(1, "The partner you specified cannot be found.\r\nPlease make sure your partner is online and in the same channel."));
+                 } else {
+@@ -247,14 +247,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         return;
+                     }*/ //Gotta let them faggots marry too, hence why this is commented out <3 
+                 	
+-                    if(ring.toItem() instanceof Equip) {
+-                        Equip item = (Equip) ring.toItem();
+-                        int ringid = MapleRing.createRing(ring.getItemId(), chr, partner);
+-                        item.setRingId(ringid);
+-                        cs.addToInventory(item);
+-                        c.announce(MaplePacketCreator.showBoughtCashItem(item, c.getAccID()));
+-                        cs.gift(partner.getId(), chr.getName(), text, item.getSN(), (ringid + 1));
+-                        cs.gainCash(toCharge, -ring.getPrice());
++                    if(itemRing.toItem() instanceof Equip) {
++                        Equip eqp = (Equip) itemRing.toItem();
++                        int ringid = MapleRing.createRing(itemRing.getItemId(), chr, partner);
++                        eqp.setRingId(ringid);
++                        cs.addToInventory(eqp);
++                        c.announce(MaplePacketCreator.showBoughtCashItem(eqp, c.getAccID()));
++                        cs.gift(partner.getId(), chr.getName(), text, eqp.getSN(), (ringid + 1));
++                        cs.gainCash(toCharge, -itemRing.getPrice());
+                         chr.addCrushRing(MapleRing.loadFromDb(ringid));
+                         try {
+                             chr.sendNote(partner.getName(), text, (byte) 1);
+@@ -286,7 +286,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 int payment = slea.readByte();
+                 slea.skip(3); //0s
+                 int snID = slea.readInt();
+-                CashItem ring = CashItemFactory.getItem(snID);
++                CashItem itemRing = CashItemFactory.getItem(snID);
+                 String sentTo = slea.readMapleAsciiString();
+                 int available = slea.readShort() - 1;
+                 String text = slea.readAsciiString(available);
+@@ -296,14 +296,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     chr.dropMessage("The partner you specified cannot be found.\r\nPlease make sure your partner is online and in the same channel.");
+                 } else {
+                     // Need to check to make sure its actually an equip and the right SN...
+-                    if(ring.toItem() instanceof Equip) {
+-                        Equip item = (Equip) ring.toItem();
+-                        int ringid = MapleRing.createRing(ring.getItemId(), chr, partner);
+-                        item.setRingId(ringid);
+-                        cs.addToInventory(item);
+-                        c.announce(MaplePacketCreator.showBoughtCashItem(item, c.getAccID()));
+-                        cs.gift(partner.getId(), chr.getName(), text, item.getSN(), (ringid + 1));
+-                        cs.gainCash(payment, -ring.getPrice());
++                    if(itemRing.toItem() instanceof Equip) {
++                        Equip eqp = (Equip) itemRing.toItem();
++                        int ringid = MapleRing.createRing(itemRing.getItemId(), chr, partner);
++                        eqp.setRingId(ringid);
++                        cs.addToInventory(eqp);
++                        c.announce(MaplePacketCreator.showBoughtCashItem(eqp, c.getAccID()));
++                        cs.gift(partner.getId(), chr.getName(), text, eqp.getSN(), (ringid + 1));
++                        cs.gainCash(payment, -itemRing.getPrice());
+                         chr.addFriendshipRing(MapleRing.loadFromDb(ringid));
+                         try {
+                             chr.sendNote(partner.getName(), text, (byte) 1);
+diff --git a/src/net/server/channel/handlers/MTSHandler.java b/src/net/server/channel/handlers/MTSHandler.java
+index d2d4a7bf3..3104dde80 100644
+--- a/src/net/server/channel/handlers/MTSHandler.java
++++ b/src/net/server/channel/handlers/MTSHandler.java
+@@ -99,8 +99,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (quantity < 0 || price < 110 || c.getPlayer().getItemQuantity(itemid, false) < quantity) {
+                     return;
+                 }
+-                MapleInventoryType type = ItemConstants.getInventoryType(itemid);
+-                Item i = c.getPlayer().getInventory(type).getItem(slot).copy();
++                MapleInventoryType invType = ItemConstants.getInventoryType(itemid);
++                Item i = c.getPlayer().getInventory(invType).getItem(slot).copy();
+                 if (i != null && c.getPlayer().getMeso() >= 5000) {
+                     Connection con = null;
+                     try {
+@@ -160,7 +160,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             Item item = (Item) i;
+                             ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, seller, price, owner, sellername, sell_ends) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                             ps.setInt(1, 1);
+-                            ps.setInt(2, (int) type.getType());
++                            ps.setInt(2, (int) invType.getType());
+                             ps.setInt(3, item.getItemId());
+                             ps.setInt(4, quantity);
+                             ps.setInt(5, c.getPlayer().getId());
+@@ -172,7 +172,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             Equip equip = (Equip) i;
+                             ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, seller, price, upgradeslots, level, str, dex, `int`, luk, hp, mp, watk, matk, wdef, mdef, acc, avoid, hands, speed, jump, locked, owner, sellername, sell_ends, vicious, flag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                             ps.setInt(1, 1);
+-                            ps.setInt(2, (int) type.getType());
++                            ps.setInt(2, (int) invType.getType());
+                             ps.setInt(3, equip.getItemId());
+                             ps.setInt(4, quantity);
+                             ps.setInt(5, c.getPlayer().getId());
+@@ -203,7 +203,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         }
+                         ps.executeUpdate();
+                         ps.close();
+-                        MapleInventoryManipulator.removeFromSlot(c, type, slot, quantity, false);
++                        MapleInventoryManipulator.removeFromSlot(c, invType, slot, quantity, false);
+                         
+                         con.close();
+                     } catch (SQLException e) {
+diff --git a/src/net/server/channel/handlers/MakerSkillHandler.java b/src/net/server/channel/handlers/MakerSkillHandler.java
+index 5b7235bed..15826ec0a 100644
+--- a/src/net/server/channel/handlers/MakerSkillHandler.java
++++ b/src/net/server/channel/handlers/MakerSkillHandler.java
+@@ -106,11 +106,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 for(int i = 0; i < reagents; i++) {  // crystals
+                     int reagentid = slea.readInt();
+                     if(ItemConstants.isMakerReagent(reagentid)) {
+-                        Short r = reagentids.get(reagentid);
+-                        if(r == null) {
++                        Short rs = reagentids.get(reagentid);
++                        if(rs == null) {
+                             reagentids.put(reagentid, (short) 1);
+                         } else {
+-                            reagentids.put(reagentid, (short) (r + 1));
++                            reagentids.put(reagentid, (short) (rs + 1));
+                         }
+                     }
+                 }
+@@ -126,11 +126,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 
+                 // remove those not present on player inventory
+                 if(!toUpdate.isEmpty()) {
+-                    for(Pair<Integer, Short> r : toUpdate) {
+-                        if(r.getRight() > 0) {
+-                            reagentids.put(r.getLeft(), r.getRight());
++                    for(Pair<Integer, Short> rp : toUpdate) {
++                        if(rp.getRight() > 0) {
++                            reagentids.put(rp.getLeft(), rp.getRight());
+                         } else {
+-                            reagentids.remove(r.getLeft());
++                            reagentids.remove(rp.getLeft());
+                         }
+                     }
+                 }
+@@ -453,12 +453,12 @@ private static boolean addBoostedMakerItem(MapleClient c, int itemid, int stimul
+             
+             ii.improveEquipStats(eqp, stats);
+             
+-            for(Short s : randStat) {
+-                ii.scrollOptionEquipWithChaos(eqp, s, false);
++            for(Short sh : randStat) {
++                ii.scrollOptionEquipWithChaos(eqp, sh, false);
+             }
+             
+-            for(Short s : randOption) {
+-                ii.scrollOptionEquipWithChaos(eqp, s, true);
++            for(Short sh : randOption) {
++                ii.scrollOptionEquipWithChaos(eqp, sh, true);
+             }
+         }
+         
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index e84af4b88..0e13420c7 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -407,10 +407,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         } else if (mode == Action.CONFIRM.getCode()) {
+             MapleTrade.completeTrade(c.getPlayer());
+         } else if (mode == Action.ADD_ITEM.getCode() || mode == Action.PUT_ITEM.getCode()) {
+-            MapleInventoryType type = MapleInventoryType.getByType(slea.readByte());
++            MapleInventoryType ivType = MapleInventoryType.getByType(slea.readByte());
+             short slot = slea.readShort();
+             short bundles = slea.readShort();
+-            if (chr.getInventory(type).getItem(slot) == null || chr.getItemQuantity(chr.getInventory(type).getItem(slot).getItemId(), false) < bundles || chr.getInventory(type).getItem(slot).getFlag() == ItemConstants.UNTRADEABLE) {
++            if (chr.getInventory(ivType).getItem(slot) == null || chr.getItemQuantity(chr.getInventory(ivType).getItem(slot).getItemId(), false) < bundles || chr.getInventory(ivType).getItem(slot).getFlag() == ItemConstants.UNTRADEABLE) {
+                 return;
+             }
+             short perBundle = slea.readShort();
+@@ -420,7 +420,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " might of possibly packet edited Hired Merchants\nperBundle: " + perBundle + "\nperBundle * bundles (This multiplied cannot be greater than 2000): " + perBundle * bundles + "\nbundles: " + bundles + "\nprice: " + price);
+                 return;
+             }
+-            Item ivItem = chr.getInventory(type).getItem(slot);
++            Item ivItem = chr.getInventory(ivType).getItem(slot);
+             Item sellItem = ivItem.copy();
+             if (chr.getItemQuantity(ivItem.getItemId(), false) < perBundle * bundles) {
+                 return;
+@@ -429,22 +429,22 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 return;
+             }
+             sellItem.setQuantity(perBundle);
+-            MaplePlayerShopItem item = new MaplePlayerShopItem(sellItem, bundles, price);
++            MaplePlayerShopItem shopItem = new MaplePlayerShopItem(sellItem, bundles, price);
+             MaplePlayerShop shop = chr.getPlayerShop();
+             MapleHiredMerchant merchant = chr.getHiredMerchant();
+             if (shop != null && shop.isOwner(c.getPlayer())) {
+                 if (ivItem != null && ivItem.getQuantity() >= bundles * perBundle) {
+-                    shop.addItem(item);
++                    shop.addItem(shopItem);
+                     c.announce(MaplePacketCreator.getPlayerShopItemUpdate(shop));
+                 }
+             } else if (merchant != null && merchant.isOwner(c.getPlayer())) {
+-                merchant.addItem(item);
++                merchant.addItem(shopItem);
+                 c.announce(MaplePacketCreator.updateHiredMerchant(merchant, c.getPlayer()));
+             }
+             if (ItemConstants.isRechargable(ivItem.getItemId())) {
+-                MapleInventoryManipulator.removeFromSlot(c, type, slot, ivItem.getQuantity(), true);
++                MapleInventoryManipulator.removeFromSlot(c, ivType, slot, ivItem.getQuantity(), true);
+             } else {
+-                MapleInventoryManipulator.removeFromSlot(c, type, slot, (short) (bundles * perBundle), true);
++                MapleInventoryManipulator.removeFromSlot(c, ivType, slot, (short) (bundles * perBundle), true);
+             }
+         } else if (mode == Action.REMOVE_ITEM.getCode()) {
+             MaplePlayerShop shop = chr.getPlayerShop();
+@@ -456,10 +456,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 	c.disconnect(true, false);
+                 	return;
+                 }
+-                MaplePlayerShopItem item = shop.getItems().get(slot);
+-                Item ivItem = item.getItem().copy();
++                MaplePlayerShopItem shopItem = shop.getItems().get(slot);
++                Item ivItem = shopItem.getItem().copy();
+                 shop.removeItem(slot);
+-                ivItem.setQuantity(item.getBundles());
++                ivItem.setQuantity(shopItem.getBundles());
+                 MapleInventoryManipulator.addFromDrop(c, ivItem, false);
+                 c.announce(MaplePacketCreator.getPlayerShopItemUpdate(shop));
+             }
+@@ -505,35 +505,35 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             c.announce(MaplePacketCreator.updateHiredMerchant(merchant, chr));
+ 
+         } else if (mode == Action.BUY.getCode() || mode == Action.MERCHANT_BUY.getCode()) {
+-            int item = slea.readByte();
++            int itemid = slea.readByte();
+             short quantity = slea.readShort();
+             if (quantity < 1) {
+             	AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with a hired merchant and or player shop.");
+-            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to buy item " + item + " with quantity " + quantity + "\r\n");
++            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to buy item " + itemid + " with quantity " + quantity + "\r\n");
+             	c.disconnect(true, false);
+             	return;
+             }
+             MaplePlayerShop shop = chr.getPlayerShop();
+             MapleHiredMerchant merchant = chr.getHiredMerchant();
+             if (shop != null && shop.isVisitor(c.getPlayer())) {
+-                shop.buy(c, item, quantity);
++                shop.buy(c, itemid, quantity);
+                 shop.broadcast(MaplePacketCreator.getPlayerShopItemUpdate(shop));
+             } else if (merchant != null && !merchant.isOwner(chr)) {
+-                merchant.buy(c, item, quantity);
++                merchant.buy(c, itemid, quantity);
+                 merchant.broadcastToVisitorsThreadsafe(MaplePacketCreator.updateHiredMerchant(merchant, c.getPlayer()));
+             }
+         } else if (mode == Action.TAKE_ITEM_BACK.getCode()) {
+             MapleHiredMerchant merchant = chr.getHiredMerchant();
+             if (merchant != null && merchant.isOwner(c.getPlayer())) {
+                 int slot = slea.readShort();
+-                MaplePlayerShopItem item = merchant.getItems().get(slot);
+-                if (!MapleInventory.checkSpot(chr, item.getItem())) {
++                MaplePlayerShopItem shopItem = merchant.getItems().get(slot);
++                if (!MapleInventory.checkSpot(chr, shopItem.getItem())) {
+                 	c.announce(MaplePacketCreator.enableActions());
+                 	return;
+                 }
+-                if (item.getBundles() > 0) {
+-                    Item iitem = item.getItem();
+-                    iitem.setQuantity((short) (item.getItem().getQuantity() * item.getBundles()));                    
++                if (shopItem.getBundles() > 0) {
++                    Item iitem = shopItem.getItem();
++                    iitem.setQuantity((short) (shopItem.getItem().getQuantity() * shopItem.getBundles()));                    
+                     MapleInventoryManipulator.addFromDrop(c, iitem, true);
+                 }
+                 merchant.removeFromSlot(slot);
+diff --git a/src/net/server/channel/handlers/StorageHandler.java b/src/net/server/channel/handlers/StorageHandler.java
+index 647a52e3e..593907bec 100644
+--- a/src/net/server/channel/handlers/StorageHandler.java
++++ b/src/net/server/channel/handlers/StorageHandler.java
+@@ -114,14 +114,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 			if (chr.getMeso() < meso) {
+ 				c.announce(MaplePacketCreator.getStorageError((byte) 0x0B));
+ 			} else {
+-				MapleInventoryType type = ItemConstants.getInventoryType(itemId);
+-				Item item = chr.getInventory(type).getItem(slot).copy();
++				MapleInventoryType invType = ItemConstants.getInventoryType(itemId);
++				Item item = chr.getInventory(invType).getItem(slot).copy();
+ 				if (item.getItemId() == itemId && (item.getQuantity() >= quantity || ItemConstants.isRechargable(itemId))) {
+ 					if (ItemConstants.isRechargable(itemId)) {
+ 						quantity = item.getQuantity();
+ 					}
+ 					chr.gainMeso(meso, false, true, false);
+-					MapleInventoryManipulator.removeFromSlot(c, type, slot, quantity, false);
++					MapleInventoryManipulator.removeFromSlot(c, invType, slot, quantity, false);
+ 					item.setQuantity(quantity);
+ 					storage.store(item);
+ 					storage.sendStored(c, ItemConstants.getInventoryType(itemId));
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index b27b36720..eee44f570 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -144,9 +144,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         is_deadly = true;
+ 	            }
+ 	            mpattack += attackInfo.getMpBurn();
+-	            MobSkill skill = MobSkillFactory.getMobSkill(attackInfo.getDiseaseSkill(), attackInfo.getDiseaseLevel());
+-	            if (skill != null && damage > 0) {
+-	                skill.applyEffect(chr, attacker, false, banishPlayers);
++	            MobSkill mobSkill = MobSkillFactory.getMobSkill(attackInfo.getDiseaseSkill(), attackInfo.getDiseaseLevel());
++	            if (mobSkill != null && damage > 0) {
++	                mobSkill.applyEffect(chr, attacker, false, banishPlayers);
+ 	            }
+ 	            
+                     attacker.setMp(attacker.getMp() - attackInfo.getMpCon());
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 7b6c9ea11..fc286b62c 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -489,13 +489,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             player.getMap().broadcastMessage(MaplePacketCreator.useChalkboard(player, false));
+             player.getClient().announce(MaplePacketCreator.enableActions());
+         } else if (itemType == 539) {
+-            List<String> lines = new LinkedList<>();
++            List<String> strLines = new LinkedList<>();
+             for (int i = 0; i < 4; i++) {
+-                lines.add(slea.readMapleAsciiString());
++                strLines.add(slea.readMapleAsciiString());
+             }
+             
+             final int world = c.getWorld();
+-            Server.getInstance().broadcastMessage(world, MaplePacketCreator.getAvatarMega(c.getPlayer(), medal, c.getChannel(), itemId, lines, (slea.readByte() != 0)));
++            Server.getInstance().broadcastMessage(world, MaplePacketCreator.getAvatarMega(c.getPlayer(), medal, c.getChannel(), itemId, strLines, (slea.readByte() != 0)));
+             TimerManager.getInstance().schedule(new Runnable() {
+             	@Override
+             	public void run() {
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index 129e3e7da..67cccda65 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -136,8 +136,8 @@ public void buildNotifications() {
+                 if (!mgc.isOnline()) {
+                     continue;
+                 }
+-                List<Integer> ch = notifications.get(mgc.getChannel());
+-                if (ch != null) ch.add(mgc.getId());
++                List<Integer> chl = notifications.get(mgc.getChannel());
++                if (chl != null) chl.add(mgc.getId());
+                 //Unable to connect to Channel... error was here
+             }
+         } finally {
+diff --git a/src/net/server/handlers/login/DeleteCharHandler.java b/src/net/server/handlers/login/DeleteCharHandler.java
+index f31101c37..f6bd4ccae 100644
+--- a/src/net/server/handlers/login/DeleteCharHandler.java
++++ b/src/net/server/handlers/login/DeleteCharHandler.java
+@@ -34,7 +34,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         String pic = slea.readMapleAsciiString();
+         int cid = slea.readInt();
+         if (c.checkPic(pic)) {
+-            if(c.deleteCharacter(cid)) {
++            if(c.deleteCharacter(cid, c.getAccID())) {
+                 FilePrinter.printError(FilePrinter.DELETED_CHARACTERS + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid + "\r\n");			
+                 c.announce(MaplePacketCreator.deleteCharResponse(cid, 0));
+             } else {
+diff --git a/src/server/MapleTrade.java b/src/server/MapleTrade.java
+index 8ea12b4ed..aede92f33 100644
+--- a/src/server/MapleTrade.java
++++ b/src/server/MapleTrade.java
+@@ -194,7 +194,7 @@ public int getExchangeMesos(){
+     private boolean fitsInInventory() {
+         List<Pair<Item, MapleInventoryType>> tradeItems = new LinkedList<>();
+         for (Item item : exchangeItems) {
+-            tradeItems.add(new Pair(item, item.getInventoryType()));
++            tradeItems.add(new Pair<>(item, item.getInventoryType()));
+         }
+         
+         return MapleInventory.checkSpotsAndOwnership(chr, tradeItems);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index cfb19f11a..62af84306 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -869,12 +869,12 @@ public void run() {
+         } else if (venom) {
+             if (from.getJob() == MapleJob.NIGHTLORD || from.getJob() == MapleJob.SHADOWER || from.getJob().isA(MapleJob.NIGHTWALKER3)) {
+                 int poisonLevel, matk, jobid = from.getJob().getId();
+-                int skill = (jobid == 412 ? NightLord.VENOMOUS_STAR : (jobid == 422 ? Shadower.VENOMOUS_STAB : NightWalker.VENOM));
+-                poisonLevel = from.getSkillLevel(SkillFactory.getSkill(skill));
++                int skillid = (jobid == 412 ? NightLord.VENOMOUS_STAR : (jobid == 422 ? Shadower.VENOMOUS_STAB : NightWalker.VENOM));
++                poisonLevel = from.getSkillLevel(SkillFactory.getSkill(skillid));
+                 if (poisonLevel <= 0) {
+                     return false;
+                 }
+-                matk = SkillFactory.getSkill(skill).getEffect(poisonLevel).getMatk();
++                matk = SkillFactory.getSkill(skillid).getEffect(poisonLevel).getMatk();
+                 int luk = from.getLuk();
+                 int maxDmg = (int) Math.ceil(Math.min(Short.MAX_VALUE, 0.2 * luk * matk));
+                 int minDmg = (int) Math.ceil(Math.min(Short.MAX_VALUE, 0.1 * luk * matk));
+diff --git a/src/server/life/MapleMonsterInformationProvider.java b/src/server/life/MapleMonsterInformationProvider.java
+index eb0bdcbc6..b24a3679f 100644
+--- a/src/server/life/MapleMonsterInformationProvider.java
++++ b/src/server/life/MapleMonsterInformationProvider.java
+@@ -20,6 +20,8 @@
+  */
+ package server.life;
+ 
++import constants.ItemConstants;
++import constants.ServerConstants;
+ import java.io.File;
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+@@ -27,9 +29,11 @@
+ import java.sql.SQLException;
+ import java.util.ArrayList;
+ import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import provider.MapleData;
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+@@ -37,15 +41,18 @@
+ import server.MapleItemInformationProvider;
+ import tools.DatabaseConnection;
+ import tools.Pair;
++import tools.Randomizer;
+ 
+ public class MapleMonsterInformationProvider {
+ 	// Author : LightPepsi
+ 
+ 	private static final MapleMonsterInformationProvider instance = new MapleMonsterInformationProvider();
+-	private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<>();
++        private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<>();        
+ 	private final List<MonsterGlobalDropEntry> globaldrops = new ArrayList<>();
+         
+         private final Map<Integer, List<Integer>> dropsChancePool = new HashMap<>();    // thanks to ronan
++        private final Set<Integer> hasNoMultiEquipDrops = new HashSet<>();
++        private final Map<Integer, List<MonsterDropEntry>> extraMultiEquipDrops = new HashMap<>();
+ 
+ 	protected MapleMonsterInformationProvider() {
+ 		retrieveGlobal();
+@@ -103,6 +110,46 @@ private void retrieveGlobal() {
+ 		}
+ 	}
+ 
++        public List<MonsterDropEntry> retrieveEffectiveDrop(final int monsterId) {
++                // this reads the drop entries searching for multi-equip, properly processing them
++            
++                List<MonsterDropEntry> list = retrieveDrop(monsterId);
++                if (hasNoMultiEquipDrops.contains(monsterId) || !ServerConstants.USE_MULTIPLE_SAME_EQUIP_DROP) {
++			return list;
++		}
++                
++                List<MonsterDropEntry> multiDrops = extraMultiEquipDrops.get(monsterId), extra = new LinkedList<>();
++                if(multiDrops == null) {
++                        multiDrops = new LinkedList<>();
++                        
++                        for(MonsterDropEntry mde : list) {
++                                if(ItemConstants.isEquipment(mde.itemId) && mde.Maximum > 1) {
++                                        multiDrops.add(mde);
++                                    
++                                        int rnd = Randomizer.rand(mde.Minimum, mde.Maximum);
++                                        for(int i = 0; i < rnd - 1; i++) {
++                                                extra.add(mde);   // this passes copies of the equips' MDE with min/max quantity > 1, but idc it'll be unused anyways
++                                        }
++                                }
++                        }
++                        
++                        if(!multiDrops.isEmpty()) extraMultiEquipDrops.put(monsterId, multiDrops);
++                        else hasNoMultiEquipDrops.add(monsterId);
++                } else {
++                        for(MonsterDropEntry mde : multiDrops) {
++                                int rnd = Randomizer.rand(mde.Minimum, mde.Maximum);
++                                for(int i = 0; i < rnd - 1; i++) {
++                                        extra.add(mde);
++                                }
++                        }
++                }
++                
++                List<MonsterDropEntry> ret = new LinkedList<>(list);
++                ret.addAll(extra);
++                
++                return ret;
++        }
++        
+ 	public final List<MonsterDropEntry> retrieveDrop(final int monsterId) {
+ 		if (drops.containsKey(monsterId)) {
+ 			return drops.get(monsterId);
+@@ -234,6 +281,8 @@ public static String getMobNameFromID(int id)
+ 
+ 	public final void clearDrops() {
+ 		drops.clear();
++                hasNoMultiEquipDrops.clear();
++                extraMultiEquipDrops.clear();
+                 dropsChancePool.clear();
+ 		globaldrops.clear();
+ 		retrieveGlobal();
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 36491eb7c..701e540cb 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -559,7 +559,7 @@ public static String getRoundedCoordinate(double angle) {
+         }
+         
+         distn = Math.sqrt(distn);
+-        return new Pair(getRoundedCoordinate(angle), Integer.valueOf((int)distn));
++        return new Pair<>(getRoundedCoordinate(angle), Integer.valueOf((int)distn));
+     }
+ 
+     private static void sortDropEntries(List<MonsterDropEntry> from, List<MonsterDropEntry> item, List<MonsterDropEntry> quest) {
+@@ -667,7 +667,7 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob, f
+         
+         final List<MonsterDropEntry>  dropEntry = new ArrayList<>();
+         final List<MonsterDropEntry> questEntry = new ArrayList<>();
+-        sortDropEntries(mi.retrieveDrop(mob.getId()), dropEntry, questEntry);
++        sortDropEntries(mi.retrieveEffectiveDrop(mob.getId()), dropEntry, questEntry);
+         
+         // Normal Drops
+         d = dropItemsFromMonsterOnMap(dropEntry, pos, d, chRate, droptype, mobpos, chr, mob);
+@@ -1347,9 +1347,9 @@ public final void shuffleReactors(List<Object> list) {
+         
+         objectRLock.lock();
+         try {
+-            for (Object obj : list) {
+-                if(obj instanceof MapleMapObject) {
+-                    MapleMapObject mmo = (MapleMapObject) obj;
++            for (Object ob : list) {
++                if(ob instanceof MapleMapObject) {
++                    MapleMapObject mmo = (MapleMapObject) ob;
+                     
+                     if(mapobjects.containsValue(mmo) && mmo.getType() == MapleMapObjectType.REACTOR) {
+                         listObjects.add(mmo);
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index a3356eed8..8bebb849a 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -272,9 +272,9 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid) {
+         try {
+             for (MapleData layer : mapData.getChildByPath("back")) { // yolo
+                 int layerNum = Integer.parseInt(layer.getName());
+-                int type = MapleDataTool.getInt(layer.getChildByPath("type"), 0);
++                int btype = MapleDataTool.getInt(layer.getChildByPath("type"), 0);
+ 
+-                backTypes.put(layerNum, type);
++                backTypes.put(layerNum, btype);
+             }
+         } catch (Exception e) {
+             e.printStackTrace();
+diff --git a/src/server/maps/MapleMist.java b/src/server/maps/MapleMist.java
+index 407267c29..51704ccae 100644
+--- a/src/server/maps/MapleMist.java
++++ b/src/server/maps/MapleMist.java
+@@ -71,12 +71,14 @@ public MapleMist(Rectangle mistPosition, MapleCharacter owner, MapleStatEffect s
+         this.isRecoveryMist = false;
+         this.isPoisonMist = false;
+         switch (source.getSourceId()) {
+-        	case Evan.RECOVERY_AURA:
+-        		isRecoveryMist = true;
+-        		break;
++            case Evan.RECOVERY_AURA:
++                isRecoveryMist = true;
++                break;
++                
+             case Shadower.SMOKE_SCREEN: // Smoke Screen
+                 isPoisonMist = false;
+                 break;
++                
+             case FPMage.POISON_MIST: // FP mist
+             case BlazeWizard.FLAME_GEAR: // Flame Gear
+             case NightWalker.POISON_BOMB: // Poison Bomb
+diff --git a/src/server/quest/actions/ItemAction.java b/src/server/quest/actions/ItemAction.java
+index b33ed728c..e06c16c40 100644
+--- a/src/server/quest/actions/ItemAction.java
++++ b/src/server/quest/actions/ItemAction.java
+@@ -131,26 +131,26 @@ public void run(MapleCharacter chr, Integer extSelection) {
+                 
+                 // must take all needed items before giving others
+                 
+-                for(Pair<Integer, Integer> iEntry: takeItem) {
+-                        MapleInventoryType type = ItemConstants.getInventoryType(iEntry.getLeft());
+-                        int quantity = iEntry.getRight() * -1; // Invert
++                for(Pair<Integer, Integer> iPair: takeItem) {
++                        MapleInventoryType type = ItemConstants.getInventoryType(iPair.getLeft());
++                        int quantity = iPair.getRight() * -1; // Invert
+                         if(type.equals(MapleInventoryType.EQUIP)) {
+-                                if(chr.getInventory(type).countById(iEntry.getLeft()) < quantity) {
++                                if(chr.getInventory(type).countById(iPair.getLeft()) < quantity) {
+                                         // Not enough in the equip inventoty, so check Equipped...
+-                                        if(chr.getInventory(MapleInventoryType.EQUIPPED).countById(iEntry.getLeft()) > quantity) {
++                                        if(chr.getInventory(MapleInventoryType.EQUIPPED).countById(iPair.getLeft()) > quantity) {
+                                                 // Found it equipped, so change the type to equipped.
+                                                 type = MapleInventoryType.EQUIPPED;
+                                         }
+                                 }
+                         }
+ 
+-                        MapleInventoryManipulator.removeById(chr.getClient(), type, iEntry.getLeft(), quantity, true, false);
+-                        chr.announce(MaplePacketCreator.getShowItemGain(iEntry.getLeft(), (short) iEntry.getRight().shortValue(), true));
++                        MapleInventoryManipulator.removeById(chr.getClient(), type, iPair.getLeft(), quantity, true, false);
++                        chr.announce(MaplePacketCreator.getShowItemGain(iPair.getLeft(), (short) iPair.getRight().shortValue(), true));
+                 }
+                 
+-                for(Pair<Integer, Integer> iEntry: giveItem) {
+-                        MapleInventoryManipulator.addById(chr.getClient(), iEntry.getLeft(), (short) iEntry.getRight().shortValue());
+-                        chr.announce(MaplePacketCreator.getShowItemGain(iEntry.getLeft(), (short) iEntry.getRight().shortValue(), true));
++                for(Pair<Integer, Integer> iPair: giveItem) {
++                        MapleInventoryManipulator.addById(chr.getClient(), iPair.getLeft(), (short) iPair.getRight().shortValue());
++                        chr.announce(MaplePacketCreator.getShowItemGain(iPair.getLeft(), (short) iPair.getRight().shortValue(), true));
+                 }
+ 	}
+ 	
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 2147bd217..fdd0f2749 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1394,6 +1394,18 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 return spawnMonsterInternal(life, true, false, false, 0, true);
+         }
+ 
++        private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter mplew, boolean newSpawn, int effect) {
++                if (effect > 0) {
++                        mplew.write(effect);
++                        mplew.write(0);
++                        mplew.writeShort(0);
++                        if (effect == 15) {
++                                mplew.write(0);
++                        }
++                }
++                mplew.write(newSpawn ? -2 : -1);
++        }
++        
+         /**
+          * Internal function to handler monster spawning and controlling.
+          *
+@@ -1455,10 +1467,10 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                                 mplew.write(effect != 0 ? effect : -3);
+                                 mplew.writeInt(life.getParentMobOid());
+                         } else {
+-                                mplew.write(newSpawn ? -2 : -1);
++                                encodeParentlessMobSpawnEffect(mplew, newSpawn, effect);
+                         }
+                 } else {
+-                	mplew.write(newSpawn ? -2 : -1);
++                	encodeParentlessMobSpawnEffect(mplew, newSpawn, effect);
+                 }
+                 
+                 mplew.write(life.getTeam());
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index d682607c5..1d2c8b3f8 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -12062,6 +12062,7 @@
+       <imgdir name="item">
+         <imgdir name="0">
+           <int name="id" value="4031852"/>
++          <int name="count" value="-1"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>

@@ -1,0 +1,175 @@
+diff --git a/docs/issues.txt b/docs/issues.txt
+index e356c6a7d..81001fc17 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -47,7 +47,6 @@ Missing features list:
+ ---------------------------
+ ** Packet issues & advanced PQs **
+ - Mystic Doors (won't deploy players properly is some situations, only destination map matches).
+-- Ariant Party Quest
+ - Nett's Pyramid Party Quest
+ ---------------------------
+ 
+diff --git a/docs/leftover.txt b/docs/leftover.txt
+index 27f2e8ae5..38d0fbcee 100644
+--- a/docs/leftover.txt
++++ b/docs/leftover.txt
+@@ -1,6 +1,7 @@
+ // Missing contents in HeavenMS (as of commit 311), compiled here thanks to ---
+ 
+ Uncoded features:
++NX Format
+ Name Change
+ World transfer
+ MTS (v53)
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 319875a73..f8373a83f 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1817,4 +1817,7 @@ Ajustado drops de mobs, agora sendo buscado na DB.
+ Ajustado diversas mecânicas da AriantPQ, tais como update visual da pontuação de jogadores (ao dropar itens, ganhar itens, acessar mapa de evento), pontos de batalha persistindo na DB, etc.
+ 
+ 21 Abril 2019,
+-Adicionado debug de packets descrito pelo Atoot.
+\ No newline at end of file
++Adicionado debug de packets descrito pelo Atoot.Adicionado debug de packets descrito pelo Atoot.
++
++22 Abril 2019,
++Revisado refatoração recente em acesso a valores de stats de jogadores levando a inconsistência nos valores dos mesmos ao colocá-los para rodar em uma nova thread sem proteção concorrente.
+\ No newline at end of file
+diff --git a/src/client/AbstractMapleCharacterObject.java b/src/client/AbstractMapleCharacterObject.java
+index 6da750484..b58498759 100644
+--- a/src/client/AbstractMapleCharacterObject.java
++++ b/src/client/AbstractMapleCharacterObject.java
+@@ -213,36 +213,15 @@ private void setHpMpApUsed(int mpApUsed) {
+     }
+     
+     private void dispatchHpChanged(final int oldHp) {
+-        Runnable r = new Runnable() {   // thanks BHB (BHB88) for detecting a deadlock case within player stats.
+-            @Override
+-            public void run() {
+-                listener.onHpChanged(oldHp);
+-            }
+-        };
+-        
+-        map.registerCharacterStatUpdate(r);
++        listener.onHpChanged(oldHp);
+     }
+     
+     private void dispatchHpmpPoolUpdated() {
+-        Runnable r = new Runnable() {
+-            @Override
+-            public void run() {
+-                listener.onHpmpPoolUpdate();
+-            }
+-        };
+-        
+-        map.registerCharacterStatUpdate(r);
++        listener.onHpmpPoolUpdate();
+     }
+     
+     private void dispatchStatPoolUpdateAnnounced() {
+-        Runnable r = new Runnable() {
+-            @Override
+-            public void run() {
+-                listener.onAnnounceStatPoolUpdate();
+-            }
+-        };
+-        
+-        map.registerCharacterStatUpdate(r);
++        listener.onAnnounceStatPoolUpdate();
+     }
+     
+     protected void setHp(int newHp) {
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 2f7dfab3f..5e0d36d71 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -8590,14 +8590,22 @@ private void hpChangeAction(int oldHp) {
+                 }
+             }
+         }
++        
++        final boolean chrDied = playerDied;
++        Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                updatePartyMemberHP();    // thanks BHB (BHB88) for detecting a deadlock case within player stats.
+ 
+-        updatePartyMemberHP();
+-
+-        if (playerDied) {
+-            playerDead();
+-        } else {
+-            checkBerserk(isHidden());
+-        }
++                if (chrDied) {
++                    playerDead();
++                } else {
++                    checkBerserk(isHidden());
++                }
++            }
++        };
++        
++        map.registerCharacterStatUpdate(r);
+     }
+     
+     private Pair<MapleStat, Integer> calcHpRatioUpdate(int newHp, int oldHp) {
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 13d7ede8b..58a43e75e 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -106,7 +106,18 @@ private boolean isLoginServerHandler() {
+     
+     @Override
+     public void sessionOpened(IoSession session) {
+-        session.setAttribute(MapleClient.CLIENT_REMOTE_ADDRESS, ((InetSocketAddress) session.getRemoteAddress()).getAddress().getHostAddress());
++        String remoteHost;
++        try {
++            remoteHost = ((InetSocketAddress) session.getRemoteAddress()).getAddress().getHostAddress();
++            
++            if (remoteHost == null) {
++                remoteHost = "null";
++            }
++        } catch (NullPointerException npe) {    // thanks Agassy, Alchemist for pointing out possibility of remoteHost = null.
++            remoteHost = "null";
++        }
++        
++        session.setAttribute(MapleClient.CLIENT_REMOTE_ADDRESS, remoteHost);
+         
+         if (!Server.getInstance().isOnline()) {
+             MapleSessionCoordinator.getInstance().closeSession(session, true);
+diff --git a/src/net/server/handlers/login/LoginPasswordHandler.java b/src/net/server/handlers/login/LoginPasswordHandler.java
+index 8692faaf1..818139142 100644
+--- a/src/net/server/handlers/login/LoginPasswordHandler.java
++++ b/src/net/server/handlers/login/LoginPasswordHandler.java
+@@ -63,16 +63,21 @@ private static String getRemoteIp(IoSession session) {
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         String remoteHost = getRemoteIp(c.getSession());
+-        if (remoteHost.startsWith("127.")) {
+-            if (!ServerConstants.LOCALSERVER) {  // thanks Mills for noting HOST can also have a field named "localhost"
+-                c.announce(MaplePacketCreator.getLoginFailed(13));   // cannot login as localhost if it's not a local server
+-                return;
++        if (!remoteHost.contentEquals("null")) {
++            if (remoteHost.startsWith("127.")) {
++                if (!ServerConstants.LOCALSERVER) { // thanks Mills for noting HOST can also have a field named "localhost"
++                    c.announce(MaplePacketCreator.getLoginFailed(13));  // cannot login as localhost if it's not a local server
++                    return;
++                }
++            } else {
++                if (ServerConstants.LOCALSERVER) {
++                    c.announce(MaplePacketCreator.getLoginFailed(13));  // cannot login as non-localhost if it's a local server
++                    return;
++                }
+             }
+         } else {
+-            if (ServerConstants.LOCALSERVER) {
+-                c.announce(MaplePacketCreator.getLoginFailed(13));   // cannot login as non-localhost if it's a local server
+-                return;
+-            }
++            c.announce(MaplePacketCreator.getLoginFailed(14));          // thanks Alchemist for noting remoteHost could be null
++            return;
+         }
+         
+         String login = slea.readMapleAsciiString();

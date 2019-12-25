@@ -1,0 +1,2688 @@
+diff --git a/README.md b/README.md
+index 0177a2595..4c48aa415 100644
+--- a/README.md
++++ b/README.md
+@@ -3,7 +3,7 @@
+ 
+ ## Head developer: Ronan C. P. Lana
+ 
+-Credits are to be given too to Nexon(Duh!), the original MapleSolaxia staff and other colaborators, as just some changes/patches on the game were applied by myself, in which some of them diverged from the original v83 patch contents.
++Besides myself for maintaining this repository, credits are to be given to Nexon(Duh!), the original MapleSolaxia staff and other colaborators, as just some changes/patches on the game were applied by myself, in which some of them diverged from the original v83 patch contents.
+ 
+ Regarding distributability and usage of the code presented here: like it was before, this MapleStory server is open-source. By that, it is meant that anyone is **free to install, use, modify and redistribute the contents**, as long as there is **no kind of commercial trading involved** and the **credits to the original creators are maintained** within the codes.
+ 
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 020d711cc..c926beab9 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -132,6 +132,7 @@ Player potentials:
+ Server potentials:
+ 
+ * Multi-worlds.
++* Dynamic World/Channel deployment.
+ * Inventory auto-gather and auto-sorting feature.
+ * Enhanced auto-pot system: pet uses as many potions as necessary to reach the desired threshold.
+ * Enhanced buff system: smartly checks for the best available buff effects to be active on the player.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index ec9dde1bf..0e94fe5bf 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1163,4 +1163,13 @@ Implementado um sistema adicional de checagem de slots disponíveis no inventár
+ Corrigido tooltip de player shops e hired merchants, agora com ícone mostrando se há como visitar uma loja ou está ocupada.
+ Corrigido player shop permits diferentes do comum não sendo consumidos ao usar.
+ Corrigido player shop sempre aparecendo como o tipo básico (sem estandes), para qualquer permit itemid.
+-Corrigido cash pet food ignorando certos petids ao ler dados do WZ.
+\ No newline at end of file
++Corrigido cash pet food ignorando certos petids ao ler dados do WZ.
++
++21 - 23 Julho 2018,
++Adicionado "Add SETUP slot" na lista de itens do cash shop.
++Corrigido problema de acesso concorrente no método fameGainByQuest.
++Refatorado vários métodos de liberamento de recursos do server, tais como em: Channel, MapleMap, MapleMapFactory e EventManager.
++Implementado código que ofereçe suporte para abrir novos worlds e channels sob demanda.
++Adicionado scheduler dedicado para ações de event managers.
++Corrigido potencial de deadlock em alguns pontos do sistema de schedulers de canais.
++Refatorado vários temporizadores utilizados pelo EventManager e Channel, como o respawn de mobs e o disposeInstance.
+\ No newline at end of file
+diff --git a/scripts/event/4jberserk.js b/scripts/event/4jberserk.js
+index b14a75039..029c588ed 100644
+--- a/scripts/event/4jberserk.js
++++ b/scripts/event/4jberserk.js
+@@ -164,8 +164,7 @@ function allMonstersDead(eim) {
+     eim.setProperty("canWarp","true");
+ }
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+ 
+ function timeOut() {
+     var iter = em.getInstances().iterator();
+diff --git a/scripts/event/4jrush.js b/scripts/event/4jrush.js
+index d01104215..0388ba7b5 100644
+--- a/scripts/event/4jrush.js
++++ b/scripts/event/4jrush.js
+@@ -130,8 +130,7 @@ function monsterKilled(mob, eim) {}
+ 
+ function allMonstersDead(eim) {}
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+ 
+ function timeOut() {
+     var iter = em.getInstances().iterator();
+diff --git a/scripts/event/AirPlane.js b/scripts/event/AirPlane.js
+index 3a3fffbf0..57074fbdf 100644
+--- a/scripts/event/AirPlane.js
++++ b/scripts/event/AirPlane.js
+@@ -51,5 +51,4 @@ function arrived() {
+     scheduleNew();
+ }
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+diff --git a/scripts/event/Boats.js b/scripts/event/Boats.js
+index 25cc2ff35..056492be3 100644
+--- a/scripts/event/Boats.js
++++ b/scripts/event/Boats.js
+@@ -107,5 +107,4 @@ function invasion() {
+     map2.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos2);
+ }
+ 
+-function cancelSchedule() {
+-}
+\ No newline at end of file
++function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/event/Cabin.js b/scripts/event/Cabin.js
+index 017394ecd..68d8cd441 100644
+--- a/scripts/event/Cabin.js
++++ b/scripts/event/Cabin.js
+@@ -108,5 +108,4 @@ function arrived() {
+     scheduleNew();
+ }
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+diff --git a/scripts/event/Elevator.js b/scripts/event/Elevator.js
+index 5ef9bca5b..4407116cb 100644
+--- a/scripts/event/Elevator.js
++++ b/scripts/event/Elevator.js
+@@ -83,6 +83,4 @@ function isDownNow() {
+     goUp();
+ }
+ 
+-function cancelSchedule() {
+-    
+-}
+\ No newline at end of file
++function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/event/Genie.js b/scripts/event/Genie.js
+index 515d96868..d4922c172 100644
+--- a/scripts/event/Genie.js
++++ b/scripts/event/Genie.js
+@@ -85,5 +85,4 @@ function arrived() {
+     scheduleNew();
+ }
+ 
+-function cancelSchedule() {
+-}
+\ No newline at end of file
++function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/event/Subway.js b/scripts/event/Subway.js
+index d8e8a69f0..739fd5aab 100644
+--- a/scripts/event/Subway.js
++++ b/scripts/event/Subway.js
+@@ -57,5 +57,4 @@ function arrived() {
+     NLC_docked.broadcastMessage(MaplePacketCreator.playSound("subway/whistle"));
+ }
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+diff --git a/scripts/event/Trains.js b/scripts/event/Trains.js
+index 8853b6421..c47996379 100644
+--- a/scripts/event/Trains.js
++++ b/scripts/event/Trains.js
+@@ -66,5 +66,4 @@ function arrived() {
+     scheduleNew();
+ }
+ 
+-function cancelSchedule() {
+-}
++function cancelSchedule() {}
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index b1c1d2e22..66497492d 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -147,6 +147,7 @@ function writeFeatureTab_Playerpotentials() {
+ 
+ function writeFeatureTab_Serverpotentials() {
+         addFeature("Multi-worlds.");
++        addFeature("Dynamic World/Channel deployment.");
+         addFeature("Inventory auto-gather and auto-sorting feature.");
+         addFeature("Enhanced auto-pot system: smart pet potion handle.");
+         addFeature("Enhanced buff system: best buffs effects takes place.");
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index 6b2f0fc38..ccab6953c 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -51,6 +51,10 @@ function writeHeavenMSCommandsLv6() {    //Admin
+         addCommand("dcall", "");
+         addCommand("mapplayers", "");
+         addCommand("getacc", "");
++        addCommand("addchannel", "");
++        addCommand("addworld", "");
++        //addCommand("removechannel", "");
++        //addCommand("removeworld", "");
+         addCommand("shutdown", "");
+         addCommand("shutdownnow", "");
+         addCommand("clearquestcache", "");
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 1e5414add..3d28f15d1 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -2063,8 +2063,16 @@ USE `heavenms`;
+ (9300221, 1061054, 1, 1, 0, 700), 
+ (2100103, 1072291, 1, 1, 0, 700), 
+ (9300221, 1072291, 1, 1, 0, 700), 
+-(9400623, 2000002, 1, 4, 0, 40000), 
++(9400623, 2000002, 1, 1, 0, 40000),
++(9400623, 2000003, 1, 1, 0, 40000),
++(9400623, 2000004, 1, 1, 0, 10000),
++(9400623, 4010000, 1, 1, 0, 7000),
+ (9400623, 4010002, 1, 1, 0, 7000), 
++(9400623, 4010006, 1, 1, 0, 7000),
++(9400623, 4020004, 1, 1, 0, 7000),
++(9400623, 4020008, 1, 1, 0, 7000),
++(9400623, 1082259, 1, 1, 0, 5000),
++(9400623, 1072422, 1, 1, 0, 5000),
+ (2230112, 4000020, 1, 1, 0, 200000), 
+ (2230112, 4003004, 1, 1, 0, 7000), 
+ (2230112, 4000021, 1, 1, 0, 200000),
+@@ -20030,6 +20038,7 @@ USE `heavenms`;
+ (9400610, 2000003, 1, 1, 0, 40000),
+ (9400610, 2000004, 1, 1, 0, 10000),
+ (9400610, 4010000, 1, 1, 0, 7000),
++(9400610, 4010002, 1, 1, 0, 7000), 
+ (9400610, 4010006, 1, 1, 0, 7000),
+ (9400610, 4020004, 1, 1, 0, 7000),
+ (9400610, 4020008, 1, 1, 0, 7000),
+@@ -22657,6 +22666,7 @@ USE `heavenms`;
+ (9400611, 0, 204, 1010, 0, 400000),
+ (9400612, 0, 204, 1010, 0, 400000),
+ (9400613, 0, 204, 1010, 0, 400000),
++(9400623, 0, 204, 1010, 0, 400000),
+ (9400633, 0, 258, 1270, 0, 400000),
+ (9400644, 0, 42, 61, 0, 400000),
+ (9410014, 0, 493, 728, 0, 400000),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 7740d01a1..f87d2d82f 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2198,12 +2198,15 @@ public void run() {
+ 
+     public void disableDoorSpawn() {
+         canDoor = false;
+-        TimerManager.getInstance().schedule(new Runnable() {
++        
++        Runnable r = new Runnable() {
+             @Override
+             public void run() {
+                 canDoor = true;
+             }
+-        }, 5000);
++        };
++        
++        client.getChannelServer().registerOverallAction(mapid, r, 5000);
+     }
+ 
+     public void disbandGuild() {
+@@ -8195,13 +8198,17 @@ public void updateQuestInfo(int quest, String info) {
+     }
+ 
+     private void fameGainByQuest() {
+-        int delta = quest_fame / ServerConstants.FAME_GAIN_BY_QUEST;
+-        if(delta > 0) {
+-            gainFame(delta);
+-            client.announce(MaplePacketCreator.getShowFameGain(delta));
++        synchronized (quests) {
++            quest_fame += 1;
++            
++            int delta = quest_fame / ServerConstants.FAME_GAIN_BY_QUEST;
++            if(delta > 0) {
++                gainFame(delta);
++                client.announce(MaplePacketCreator.getShowFameGain(delta));
++            }
++
++            quest_fame %= ServerConstants.FAME_GAIN_BY_QUEST;
+         }
+-        
+-        quest_fame %= ServerConstants.FAME_GAIN_BY_QUEST;
+     }
+     
+     public void updateQuest(MapleQuestStatus quest) {
+@@ -8218,7 +8225,6 @@ public void updateQuest(MapleQuestStatus quest) {
+             MapleQuest mquest = quest.getQuest();
+             short questid = mquest.getId();
+             if(!mquest.isSameDayRepeatable() && !MapleQuest.isExploitableQuest(questid)) {
+-                quest_fame += 1;
+                 if(ServerConstants.FAME_GAIN_BY_QUEST > 0)
+                     fameGainByQuest();
+             }
+@@ -8388,8 +8394,7 @@ public void sendSpawnData(MapleClient client) {
+     }
+ 
+     @Override
+-    public void setObjectId(int id) {
+-    }
++    public void setObjectId(int id) {}
+ 
+     @Override
+     public String toString() {
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 68225c4c7..ce9e8453b 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -2784,7 +2784,7 @@ public static boolean executeHeavenMsCommandLv6(Channel cserv, Server srv, Maple
+                     
+ 			Server server = Server.getInstance();
+ 			byte worldb = Byte.parseByte(sub[1]);
+-			if (worldb <= (server.getWorlds().size() - 1)) {
++			if (worldb <= (server.getWorldsSize() - 1)) {
+ 				try {
+ 					String[] socket = server.getIP(worldb, c.getChannel()).split(":");
+ 					c.getWorldServer().removePlayer(player);
+@@ -2799,7 +2799,7 @@ public static boolean executeHeavenMsCommandLv6(Channel cserv, Server srv, Maple
+ 				}
+ 
+ 			} else {
+-				player.message("Invalid world; highest number available: " + (server.getWorlds().size() - 1));
++				player.message("Invalid world; highest number available: " + (server.getWorldsSize() - 1));
+ 			}
+ 			break;
+                     
+@@ -2855,6 +2855,82 @@ public static boolean executeHeavenMsCommandLv6(Channel cserv, Server srv, Maple
+                         }
+ 			break;
+ 
++                    case "addchannel":
++                        if (sub.length < 2) {
++				player.dropMessage(5, "Syntax: @addchannel <worldid>");
++                                break;
++			}
++                        
++                        int worldid = Integer.parseInt(sub[1]);
++                        
++                        int chid = Server.getInstance().addChannel(worldid);
++                        if(chid >= 0) {
++                            player.dropMessage(5, "NEW Channel " + chid + " successfully deployed on world " + worldid + ".");
++                        } else {
++                            if(chid == -3) {
++                                player.dropMessage(5, "Invalid worldid detected. Channel creation aborted.");
++                            } else if(chid == -2) {
++                                player.dropMessage(5, "Reached channel limit on worldid " + worldid + ". Channel creation aborted.");
++                            } else if(chid == -1) {
++                                player.dropMessage(5, "Error detected when loading the 'world.ini' file. Channel creation aborted.");
++                            } else {
++                                player.dropMessage(5, "NEW Channel failed to be deployed. Check if the needed port is already in use or other limitations are taking place.");
++                            }
++                        }
++                        
++                        break;
++                        
++                    case "addworld":
++                        int wid = Server.getInstance().addWorld();
++                        
++                        if(wid >= 0) {
++                            player.dropMessage(5, "NEW World " + wid + " successfully deployed.");
++                        } else {
++                            if(wid == -2) {
++                                player.dropMessage(5, "Error detected when loading the 'world.ini' file. World creation aborted.");
++                            } else {
++                                player.dropMessage(5, "NEW World failed to be deployed. Check if needed ports are already in use or maximum world count has been reached.");
++                            }
++                        }
++                        
++                        break;
++                    
++                        /*
++                    case "removechannel":
++                        if (sub.length < 2) {
++                            player.dropMessage(5, "Syntax: @removechannel <worldid>");
++                            break;
++			}
++                        
++                        int worldId = Integer.parseInt(sub[1]);
++                        if(Server.getInstance().removeChannel(worldId)) {
++                            player.dropMessage(5, "Successfully removed a channel on World " + worldId + ". Current channel count: " + Server.getInstance().getWorld(worldId).getChannelsSize() + ".");
++                        } else {
++                            player.dropMessage(5, "Failed to remove last Channel on world " + worldId + ". Check if either that world exists or there are people currently playing there.");
++                        }
++                        
++                        break;
++                        
++                    case "removeworld":
++                        int rwid = Server.getInstance().getWorldsSize() - 1;
++                        if(rwid <= 0) {
++                            player.dropMessage(5, "Unable to remove world 0.");
++                            break;
++                        }
++                        
++                        if(Server.getInstance().removeWorld()) {
++                            player.dropMessage(5, "Successfully removed a world. Current world count: " + Server.getInstance().getWorldsSize() + ".");
++                        } else {
++                            if(rwid < 0) {
++                                player.dropMessage(5, "No registered worlds to remove.");
++                            } else {
++                                player.dropMessage(5, "Failed to remove world " + rwid + ". Check if there are people currently playing there.");
++                            }
++                        }
++                        
++                        break;
++                                */
++                        
+                     case "shutdown":
+                     case "shutdownnow":
+ 			int time = 60000;
+diff --git a/src/client/inventory/MapleInventoryProof.java b/src/client/inventory/MapleInventoryProof.java
+index be8f7955a..cc2ab8494 100644
+--- a/src/client/inventory/MapleInventoryProof.java
++++ b/src/client/inventory/MapleInventoryProof.java
+@@ -33,7 +33,7 @@ public MapleInventoryProof(MapleCharacter mc) {
+     
+     public void cloneContents(MapleInventory inv) {
+         inv.lockInventory();
+-	lock.lock();
++        lock.lock();
+         try {
+             inventory.clear();
+             this.setSlotLimit(inv.getSlotLimit());
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index d806d2b61..1a952fe7d 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -17,6 +17,8 @@
+     public static short VERSION = 83;
+ 
+     //Login Configuration
++    public static final int WLDLIST_SIZE = 21;                  //Max possible worlds on the server.
++    public static final int CHANNEL_SIZE = 20;                  //Max possible channels per world (which is 20, based on the channel list on login phase).
+     public static final int CHANNEL_LOAD = 100;                 //Max players per channel (limit actually used to calculate the World server capacity).
+     
+     public static final long RESPAWN_INTERVAL = 10 * 1000;	//10 seconds, 10000.
+@@ -120,7 +122,7 @@
+     public static final int ITEM_EXPIRE_TIME  = 3 * 60 * 1000;  //Time before items start disappearing. Recommended to be set up to 3 minutes.
+     public static final int KITE_EXPIRE_TIME  = 60 * 60 * 1000; //Time before kites (cash item) disappears.
+     public static final int ITEM_MONITOR_TIME = 5 * 60 * 1000;  //Interval between item monitoring tasks on maps, which checks for dangling (null) item objects on the map item history.
+-    public static final int LOCK_MONITOR_TIME = 30 * 1000;      //Waiting time for a lock to be released. If it reaches timeout, a critical server deadlock has made present.
++    public static final int LOCK_MONITOR_TIME = 3 * 60 * 1000;      //Waiting time for a lock to be released. If it reaches timeout, a critical server deadlock has made present.
+     public static final int ITEM_EXPIRE_CHECK = 10 * 1000;      //Interval between item expiring tasks on maps, which checks and makes disappear expired items.
+     public static final int ITEM_LIMIT_ON_MAP = 200;            //Max number of items allowed on a map.
+     public static final int MAP_VISITED_SIZE = 5;               //Max length for last mapids visited by a player. This is used to recover and update drops on these maps accordingly with player actions.
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index e45c35f36..088761dff 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -31,8 +31,8 @@
+ import java.sql.SQLException;
+ import java.util.ArrayList;
+ import java.util.Calendar;
++import java.util.Collections;
+ import java.util.HashSet;
+-import java.util.Iterator;
+ import java.util.HashMap;
+ import java.util.LinkedList;
+ import java.util.List;
+@@ -104,17 +104,24 @@
+     private List<Pair<Integer, String>> worldRecommendedList = new LinkedList<>();
+     private final Map<Integer, MapleGuild> guilds = new HashMap<>(100);
+     private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
+-    private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+-    private final Lock disLock = new MonitoredReentrantLock(MonitoredLockType.SERVER_DISEASES);
+-    private final ReentrantReadWriteLock lgnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_LOGIN, true);
+-    private final ReadLock lgnRLock = lgnLock.readLock();
+-    private final WriteLock lgnWLock = lgnLock.writeLock();
++    
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
+     private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
+     private final List<MapleClient> processDiseaseAnnouncePlayers = new LinkedList<>();
+     private final List<MapleClient> registeredDiseaseAnnouncePlayers = new LinkedList<>();
+     
++    private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
++    private final Lock disLock = new MonitoredReentrantLock(MonitoredLockType.SERVER_DISEASES);
++    
++    private final ReentrantReadWriteLock wldLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_WORLDS, true);
++    private final ReadLock wldRLock = wldLock.readLock();
++    private final WriteLock wldWLock = wldLock.writeLock();
++    
++    private final ReentrantReadWriteLock lgnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_LOGIN, true);
++    private final ReadLock lgnRLock = lgnLock.readLock();
++    private final WriteLock lgnWLock = lgnLock.writeLock();
++    
+     private final AtomicLong currentTime = new AtomicLong(0);
+     private long serverCurrentTime = 0;
+     
+@@ -175,13 +182,17 @@ public boolean canEnterDeveloperRoom() {
+ 
+     private void loadPlayerNpcMapStepFromDb() {
+         try {
++            List<World> wlist = this.getWorlds();
++            
+             Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM playernpcs_field");
+                         
+             ResultSet rs = ps.executeQuery();
+             while(rs.next()) {
+                 int world = rs.getInt("world"), map = rs.getInt("map"), step = rs.getInt("step"), podium = rs.getInt("podium");
+-                worlds.get(world).setPlayerNpcMapData(map, step, podium);
++                
++                World w = wlist.get(world);
++                if(w != null) w.setPlayerNpcMapData(map, step, podium);
+             }
+             
+             rs.close();
+@@ -192,40 +203,264 @@ private void loadPlayerNpcMapStepFromDb() {
+         }
+     }
+     
+-    /*
+-    public void removeChannel(int worldid, int channel) {   //lol don't!
+-        channels.remove(channel);
+-
+-        World world = worlds.get(worldid);
+-        if (world != null) {
+-            world.removeChannel(channel);
++    public World getWorld(int id) {
++        wldRLock.lock();
++        try {
++            return worlds.get(id);
++        } finally {
++            wldRLock.unlock();
+         }
+     }
+-    */
+ 
++    public List<World> getWorlds() {
++        wldRLock.lock();
++        try {
++            return Collections.unmodifiableList(worlds);
++        } finally {
++            wldRLock.unlock();
++        }
++    }
++    
++    public int getWorldsSize() {
++        wldRLock.lock();
++        try {
++            return worlds.size();
++        } finally {
++            wldRLock.unlock();
++        }
++    }
++    
+     public Channel getChannel(int world, int channel) {
+-        return worlds.get(world).getChannel(channel);
++        return this.getWorld(world).getChannel(channel);
+     }
+ 
+     public List<Channel> getChannelsFromWorld(int world) {
+-        return worlds.get(world).getChannels();
++        return this.getWorld(world).getChannels();
+     }
+-
++    
+     public List<Channel> getAllChannels() {
+         List<Channel> channelz = new ArrayList<>();
+-        for (World world : worlds) {
++        for (World world : this.getWorlds()) {
+             for (Channel ch : world.getChannels()) {
+                 channelz.add(ch);
+             }
+         }
+         return channelz;
+     }
+-
++    
++    public Set<Integer> getOpenChannels(int world) {
++        wldRLock.lock();
++        try {
++            return new HashSet<>(channels.get(world).keySet());
++        } finally {
++            wldRLock.unlock();
++        }
++    }
++    
+     public String getIP(int world, int channel) {
+-        return channels.get(world).get(channel);
++        wldRLock.lock();
++        try {
++            return channels.get(world).get(channel);
++        } finally {
++            wldRLock.unlock();
++        }
++    }
++    
++    private void dumpData() {
++        wldWLock.lock();
++        try {
++            System.out.println(worlds);
++            System.out.println(channels);
++            System.out.println(worldRecommendedList);
++            System.out.println();
++            System.out.println("---------------------");
++        } finally {
++            wldWLock.unlock();
++        }
++    }
++    
++    public int addChannel(int worldid) {
++        wldWLock.lock();
++        try {
++            if(worldid >= worlds.size()) return -3;
++            
++            Map<Integer, String> worldChannels = channels.get(worldid);
++            if(worldChannels == null) return -3;
++            
++            int channelid = worldChannels.size();
++            if(channelid >= ServerConstants.CHANNEL_SIZE) return -2;
++            
++            Properties p = loadWorldINI();
++            if(p == null) {
++                return -1;
++            }
++
++            channelid++;
++            World world = this.getWorld(worldid);
++            Channel channel = new Channel(worldid, channelid, getCurrentTime());
++            
++            channel.setServerMessage(p.getProperty("whyamirecommended" + worldid));
++            
++            world.addChannel(channel);
++            worldChannels.put(channelid, channel.getIP());
++            
++            return channelid;
++        } finally {
++            wldWLock.unlock();
++        }
+     }
+     
+-    private long getTimeLeftForNextHour() {
++    public int addWorld() {
++        Properties p = loadWorldINI();
++        if(p == null) return -2;
++        
++        int newWorld = initWorld(p);
++        if(newWorld > -1) {
++            Set<Integer> accounts;
++            
++            lgnRLock.lock();
++            try {
++                accounts = new HashSet<>(accountChars.keySet());
++            } finally {
++                lgnRLock.unlock();
++            }
++            
++            for(Integer accId : accounts) {
++                loadAccountCharactersView(accId, 0, newWorld);
++            }
++        }
++        
++        return newWorld;
++    }
++    
++    private int initWorld(Properties p) {
++        wldWLock.lock();
++        try {
++            int i = worlds.size();
++            
++            if(i >= ServerConstants.WLDLIST_SIZE) {
++                return -1;
++            }
++            
++            System.out.println("Starting world " + i);
++            World world = new World(i,
++                    Integer.parseInt(p.getProperty("flag" + i)),
++                    p.getProperty("eventmessage" + i),
++                    ServerConstants.EXP_RATE,
++                    ServerConstants.DROP_RATE,
++                    ServerConstants.MESO_RATE,
++                    ServerConstants.QUEST_RATE);
++
++            worldRecommendedList.add(new Pair<>(i, p.getProperty("whyamirecommended" + i)));
++            worlds.add(world);
++
++            Map<Integer, String> channelInfo = new HashMap<>();
++            long bootTime = System.currentTimeMillis();
++            for (int j = 1; j <= Integer.parseInt(p.getProperty("channels" + i)); j++) {
++                int channelid = j;
++                Channel channel = new Channel(i, channelid, bootTime);
++
++                world.addChannel(channel);
++                channelInfo.put(channelid, channel.getIP());
++            }
++
++            channels.add(i, channelInfo);
++
++            world.setServerMessage(p.getProperty("servermessage" + i));
++            System.out.println("Finished loading world " + i + "\r\n");
++            
++            return i;
++        } finally {
++            wldWLock.unlock();
++        }
++    }
++    
++    public boolean removeChannel(int worldid) {   //lol don't!
++        wldWLock.lock();
++        try {
++            if(worldid >= worlds.size()) return false;
++            
++            World world = worlds.get(worldid);
++            if (world != null) {
++                int channel = world.removeChannel();
++
++                Map<Integer, String> m = channels.get(worldid);
++                if(m != null) m.remove(channel);
++                
++                return channel > -1;
++            }
++        } finally {
++            wldWLock.unlock();
++        }
++        
++        return false;
++    }
++    
++    public boolean removeWorld() {   //lol don't!
++        World w;
++        int worldid;
++        
++        wldRLock.lock();
++        try {
++            worldid = worlds.size() - 1;
++            if(worldid < 0) {
++                return false;
++            }
++            
++            w = worlds.get(worldid);
++        } finally {
++            wldRLock.unlock();
++        }
++        
++        if(w == null || w.getPlayerStorage().getSize() > 0) {
++            return false;
++        }
++        
++        wldWLock.lock();
++        try {
++            if(worldid == worlds.size() - 1) {
++                w.shutdown();
++                
++                worlds.remove(worldid);
++                channels.remove(worldid);
++                worldRecommendedList.remove(worldid);
++            } else {
++                return false;
++            }
++        } finally {
++            wldWLock.unlock();
++        }
++        
++        return true;
++    }
++    
++    private void resetServerWorlds() {
++        wldWLock.lock();
++        try {
++            worlds.clear();
++            worlds = null;
++            channels.clear();
++            channels = null;
++            worldRecommendedList.clear();
++            worldRecommendedList = null;
++        } finally {
++            wldWLock.unlock();
++        }
++    }
++    
++    public static Properties loadWorldINI() {
++        Properties p = new Properties();
++        try {
++            p.load(new FileInputStream("world.ini"));
++            return p;
++        } catch (Exception e) {
++            e.printStackTrace();
++            System.out.println("[SEVERE] Could not find/open 'world.ini'.");
++            return null;
++        }
++    }
++    
++    private static long getTimeLeftForNextHour() {
+         Calendar nextHour = Calendar.getInstance();
+         nextHour.add(Calendar.HOUR, 1);
+         nextHour.set(Calendar.MINUTE, 0);
+@@ -368,12 +603,8 @@ public void registerAnnouncePlayerDiseases(MapleClient c) {
+     }
+     
+     public void init() {
+-        Properties p = new Properties();
+-        try {
+-            p.load(new FileInputStream("world.ini"));
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-            System.out.println("[SEVERE] Could not find/open 'world.ini'.");
++        Properties p = loadWorldINI();
++        if(p == null) {
+             System.exit(0);
+         }
+ 
+@@ -437,27 +668,7 @@ public void init() {
+             Integer worldCount = Math.min(GameConstants.WORLD_NAMES.length, Integer.parseInt(p.getProperty("worlds")));
+             
+             for (int i = 0; i < worldCount; i++) {
+-                System.out.println("Starting world " + i);
+-                World world = new World(i,
+-                        Integer.parseInt(p.getProperty("flag" + i)),
+-                        p.getProperty("eventmessage" + i),
+-                        ServerConstants.EXP_RATE,
+-                        ServerConstants.DROP_RATE,
+-                        ServerConstants.MESO_RATE,
+-                        ServerConstants.QUEST_RATE);
+-
+-                worldRecommendedList.add(new Pair<>(i, p.getProperty("whyamirecommended" + i)));
+-                worlds.add(world);
+-                channels.add(new HashMap<Integer, String>());
+-                long bootTime = System.currentTimeMillis();
+-                for (int j = 0; j < Integer.parseInt(p.getProperty("channels" + i)); j++) {
+-                    int channelid = j + 1;
+-                    Channel channel = new Channel(i, channelid, bootTime);
+-                    world.addChannel(channel);
+-                    channels.get(i).put(channelid, channel.getIP());
+-                }
+-                world.setServerMessage(p.getProperty("servermessage" + i));
+-                System.out.println("Finished loading world " + i + "\r\n");
++                initWorld(p);
+             }
+             
+             MaplePlayerNPCFactory.loadFactoryMetadata();
+@@ -594,22 +805,7 @@ public boolean increaseAllianceCapacity(int aId, int inc) {
+         }
+         return false;
+     }
+-
+-    public Set<Integer> getChannelServer(int world) {
+-        return new HashSet<>(channels.get(world).keySet());
+-    }
+-
+-    public byte getHighestChannelId() {
+-        byte highest = 0;
+-        for (Iterator<Integer> it = channels.get(0).keySet().iterator(); it.hasNext();) {
+-            Integer channel = it.next();
+-            if (channel != null && channel.intValue() > highest) {
+-                highest = channel.byteValue();
+-            }
+-        }
+-        return highest;
+-    }
+-
++    
+     public int createGuild(int leaderId, String name) {
+         return MapleGuild.createGuild(leaderId, name);
+     }
+@@ -661,15 +857,7 @@ public MapleGuild getGuild(int id, int world, MapleCharacter mc) {
+             return g;
+         }
+     }
+-
+-    public void clearGuilds() {//remake
+-        synchronized (guilds) {
+-            guilds.clear();
+-        }
+-        //for (List<Channel> world : worlds.values()) {
+-        //reloadGuildCharacters();
+-    }
+-
++    
+     public void setGuildMemberOnline(MapleCharacter mc, boolean bOnline, int channel) {
+         MapleGuild g = getGuild(mc.getGuildId(), mc.getWorld(), mc);
+         g.setOnline(mc.getId(), bOnline, channel);
+@@ -854,14 +1042,6 @@ public boolean canFly(Integer accountid) {
+         return activeFly.contains(accountid);
+     }
+     
+-    public World getWorld(int id) {
+-        return worlds.get(id);
+-    }
+-
+-    public List<World> getWorlds() {
+-        return worlds;
+-    }
+-    
+     public int getCharacterWorld(Integer chrid) {
+         lgnRLock.lock();
+         try {
+@@ -893,11 +1073,11 @@ public boolean haveCharacterEntry(Integer accountid, Integer chrid) {
+     
+     public void updateCharacterEntry(MapleCharacter chr) {
+         MapleCharacter chrView = chr.generateCharacterEntry();
+-        World wserv = worlds.get(chrView.getWorld());
+         
+         lgnWLock.lock();
+         try {
+-            wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
++            World wserv = this.getWorld(chrView.getWorld());
++            if(wserv != null) wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
+         } finally {
+             lgnWLock.unlock();
+         }
+@@ -914,8 +1094,9 @@ public void createCharacterEntry(MapleCharacter chr) {
+             worldChars.put(chrid, world);
+             
+             MapleCharacter chrView = chr.generateCharacterEntry();
+-            World wserv = worlds.get(chrView.getWorld());
+-            wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
++            
++            World wserv = this.getWorld(chrView.getWorld());
++            if(wserv != null) wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
+         } finally {
+             lgnWLock.unlock();
+         }
+@@ -929,8 +1110,8 @@ public void deleteCharacterEntry(Integer accountid, Integer chrid) {
+             
+             Integer world = worldChars.remove(chrid);
+             if(world != null) {
+-                World wserv = worlds.get(world);
+-                wserv.unregisterAccountCharacterView(accountid, chrid);
++                World wserv = this.getWorld(world);
++                if(wserv != null) wserv.unregisterAccountCharacterView(accountid, chrid);
+             }
+         } finally {
+             lgnWLock.unlock();
+@@ -942,15 +1123,16 @@ public void transferWorldCharacterEntry(MapleCharacter chr, Integer toWorld) { /
+         try {
+             Integer chrid = chr.getId(), accountid = chr.getAccountID(), world = worldChars.get(chr.getId());
+             if(world != null) {
+-                World wserv = worlds.get(world);
+-                wserv.unregisterAccountCharacterView(accountid, chrid);
++                World wserv = this.getWorld(world);
++                if(wserv != null) wserv.unregisterAccountCharacterView(accountid, chrid);
+             }
+             
+             worldChars.put(chrid, toWorld);
+             
+             MapleCharacter chrView = chr.generateCharacterEntry();
+-            World wserv = worlds.get(toWorld);
+-            wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
++            
++            World wserv = this.getWorld(toWorld);
++            if(wserv != null) wserv.registerAccountCharacterView(chrView.getAccountID(), chrView);
+         } finally {
+             lgnWLock.unlock();
+         }
+@@ -968,7 +1150,7 @@ public void deleteAccountEntry(Integer accountid) { is this even a thing?
+     */
+     
+     public Pair<Pair<Integer, List<MapleCharacter>>, List<Pair<Integer, List<MapleCharacter>>>> loadAccountCharlist(Integer accountId) {
+-        List<World> wlist = worlds;
++        List<World> wlist = this.getWorlds();
+         List<Pair<Integer, List<MapleCharacter>>> accChars = new ArrayList<>(wlist.size() + 1);
+         int chrTotal = 0;
+         List<MapleCharacter> lastwchars = null;
+@@ -995,14 +1177,14 @@ public void deleteAccountEntry(Integer accountid) { is this even a thing?
+         return new Pair<>(new Pair<>(chrTotal, lastwchars), accChars);
+     }
+     
+-    private static List<List<MapleCharacter>> loadAccountCharactersViewFromDb(MapleClient c, int wlen) {
++    private static List<List<MapleCharacter>> loadAccountCharactersViewFromDb(int accId, int wlen) {
+         List<List<MapleCharacter>> wchars = new ArrayList<>(wlen);
+         for(int i = 0; i < wlen; i++) wchars.add(i, new LinkedList<MapleCharacter>());
+         
+         List<MapleCharacter> chars = new LinkedList<>();
+         int curWorld = 0;
+         try {
+-            List<Pair<Item, Integer>> accEquips = ItemFactory.loadEquippedItems(c.getAccID(), true, true);
++            List<Pair<Item, Integer>> accEquips = ItemFactory.loadEquippedItems(accId, true, true);
+             Map<Integer, List<Item>> accPlayerEquips = new HashMap<>();
+             
+             for(Pair<Item, Integer> ae : accEquips) {
+@@ -1017,7 +1199,7 @@ public void deleteAccountEntry(Integer accountid) { is this even a thing?
+             
+             Connection con = DatabaseConnection.getConnection();
+             try (PreparedStatement ps = con.prepareStatement("SELECT * FROM characters WHERE accountid = ? ORDER BY world, id")) {
+-                ps.setInt(1, c.getAccID());
++                ps.setInt(1, accId);
+                 try (ResultSet rs = ps.executeQuery()) {
+                     while (rs.next()) {
+                         int cworld = rs.getByte("world");
+@@ -1047,7 +1229,6 @@ public void deleteAccountEntry(Integer accountid) { is this even a thing?
+     
+     public void loadAccountCharacters(MapleClient c) {
+         Integer accId = c.getAccID();
+-        int gmLevel = 0;
+         boolean firstAccountLogin;
+         
+         lgnRLock.lock();
+@@ -1069,9 +1250,14 @@ public void loadAccountCharacters(MapleClient c) {
+                 lgnRLock.unlock();
+             }
+             
++            int gmLevel = 0;
+             for(Integer aw : accWorlds) {
+-                for(MapleCharacter chr : worlds.get(aw).getAllCharactersView()) {
+-                    if(gmLevel < chr.gmLevel()) gmLevel = chr.gmLevel();
++                World wserv = this.getWorld(aw);
++                
++                if (wserv != null) {
++                    for(MapleCharacter chr : wserv.getAllCharactersView()) {
++                        if(gmLevel < chr.gmLevel()) gmLevel = chr.gmLevel();
++                    }
+                 }
+             }
+             
+@@ -1079,13 +1265,23 @@ public void loadAccountCharacters(MapleClient c) {
+             return;
+         }
+         
+-        List<List<MapleCharacter>> accChars = loadAccountCharactersViewFromDb(c, worlds.size());
++        int gmLevel = loadAccountCharactersView(c.getAccID(), 0, 0);
++        c.setGMLevel(gmLevel);
++    }
++    
++    private int loadAccountCharactersView(Integer accId, int gmLevel, int fromWorldid) {    // returns the maximum gmLevel found
++        List<World> wlist = this.getWorlds();
++        List<List<MapleCharacter>> accChars = loadAccountCharactersViewFromDb(accId, wlist.size());
+         
+         lgnWLock.lock();
+         try {
+-            Set<Integer> chars = new HashSet<>(5);
+-            for(int wid = 0; wid < worlds.size(); wid++) {
+-                World w = worlds.get(wid);
++            Set<Integer> chars = accountChars.get(accId);
++            if(chars == null) {
++                chars = new HashSet<>(5);
++            }
++            
++            for(int wid = fromWorldid; wid < wlist.size(); wid++) {
++                World w = wlist.get(wid);
+                 List<MapleCharacter> wchars = accChars.get(wid);
+                 w.loadAccountCharactersView(accId, wchars);
+                 
+@@ -1103,7 +1299,7 @@ public void loadAccountCharacters(MapleClient c) {
+             lgnWLock.unlock();
+         }
+         
+-        c.setGMLevel(gmLevel);
++        return gmLevel;
+     }
+     
+     private static String getRemoteIp(InetSocketAddress isa) {
+@@ -1198,6 +1394,7 @@ public void run() {
+                     for (World w : getWorlds()) {
+                         w.shutdown();
+                     }
++                    
+                     /*for (World w : getWorlds()) {
+                         while (w.getPlayerStorage().getAllCharacters().size() > 0) {
+                             try {
+@@ -1232,12 +1429,8 @@ public void run() {
+                             }
+                         }
+                     }
+-                    worlds.clear();
+-                    worlds = null;
+-                    channels.clear();
+-                    channels = null;
+-                    worldRecommendedList.clear();
+-                    worldRecommendedList = null;
++                    
++                    resetServerWorlds();
+ 
+                     System.out.println("Worlds + Channels are offline.");
+                     acceptor.unbind();
+diff --git a/src/net/server/audit/locks/MonitoredLockType.java b/src/net/server/audit/locks/MonitoredLockType.java
+index 6312af1f2..5397fadfe 100644
+--- a/src/net/server/audit/locks/MonitoredLockType.java
++++ b/src/net/server/audit/locks/MonitoredLockType.java
+@@ -41,10 +41,12 @@
+     BUFF_STORAGE,
+     PLAYER_STORAGE,
+     SERVER,
+-    SERVER_LOGIN,
+     SERVER_DISEASES,
++    SERVER_LOGIN,
++    SERVER_WORLDS,
+     MERCHANT,
+     CHANNEL,
++    CHANNEL_EVENTS,
+     CHANNEL_FACEEXPRS,
+     CHANNEL_FACESCHDL,
+     CHANNEL_MOBACTION,
+@@ -60,6 +62,7 @@
+     WORLD_OWL,
+     WORLD_PETS,
+     WORLD_CHARS,
++    WORLD_CHANNELS,
+     WORLD_MOUNTS,
+     WORLD_PSHOPS,
+     WORLD_MERCHS,
+@@ -69,6 +72,7 @@
+     EIM_SCRIPT,
+     EM_LOBBY,
+     EM_QUEUE,
++    EM_SCHDL,
+     CASHSHOP,
+     VISITOR_PSHOP,
+     STORAGE,
+diff --git a/src/net/server/audit/locks/MonitoredReadLock.java b/src/net/server/audit/locks/MonitoredReadLock.java
+index 3484412f2..dafe2286c 100644
+--- a/src/net/server/audit/locks/MonitoredReadLock.java
++++ b/src/net/server/audit/locks/MonitoredReadLock.java
+@@ -146,4 +146,16 @@ private static String printStackTrace(StackTraceElement[] list) {
+         
+         return s;
+     }
++    
++    public void dispose() {
++        state.lock();
++        try {
++            if(timeoutSchedule != null) {
++                timeoutSchedule.cancel(false);
++                timeoutSchedule = null;
++            }
++        } finally {
++            state.unlock();
++        }
++    }
+ }
+diff --git a/src/net/server/audit/locks/MonitoredReentrantLock.java b/src/net/server/audit/locks/MonitoredReentrantLock.java
+index bb44cf35b..a0ae846af 100644
+--- a/src/net/server/audit/locks/MonitoredReentrantLock.java
++++ b/src/net/server/audit/locks/MonitoredReentrantLock.java
+@@ -150,4 +150,16 @@ private static String printStackTrace(StackTraceElement[] list) {
+         
+         return s;
+     }
++    
++    public void dispose() {
++        state.lock();
++        try {
++            if(timeoutSchedule != null) {
++                timeoutSchedule.cancel(false);
++                timeoutSchedule = null;
++            }
++        } finally {
++            state.unlock();
++        }
++    }
+ }
+diff --git a/src/net/server/audit/locks/MonitoredWriteLock.java b/src/net/server/audit/locks/MonitoredWriteLock.java
+index ecbd800af..e79db659b 100644
+--- a/src/net/server/audit/locks/MonitoredWriteLock.java
++++ b/src/net/server/audit/locks/MonitoredWriteLock.java
+@@ -145,4 +145,16 @@ private static String printStackTrace(StackTraceElement[] list) {
+         
+         return s;
+     }
++    
++    public void dispose() {
++        state.lock();
++        try {
++            if(timeoutSchedule != null) {
++                timeoutSchedule.cancel(false);
++                timeoutSchedule = null;
++            }
++        } finally {
++            state.unlock();
++        }
++    }
+ }
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index 45668ae0d..a425bbf4f 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -33,7 +33,6 @@
+ import java.util.Map.Entry;
+ import java.util.Set;
+ import java.util.concurrent.ScheduledFuture;
+-import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -92,6 +91,7 @@
+     private MobClearSkillScheduler mobClearSkillSchedulers[] = new MobClearSkillScheduler[4];
+     private MobMistScheduler mobMistSchedulers[] = new MobMistScheduler[4];
+     private FaceExpressionScheduler faceExpressionSchedulers[] = new FaceExpressionScheduler[4];
++    private EventScheduler eventSchedulers[] = new EventScheduler[4];
+     private OverallScheduler channelSchedulers[] = new OverallScheduler[4];
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+@@ -100,6 +100,9 @@
+     private MapleEvent event;
+     private boolean finishedShutdown = false;
+     private int usedDojo = 0;
++    
++    private ScheduledFuture<?> respawnTask;
++    
+     private int[] dojoStage;
+     private long[] dojoFinishTime;
+     private ScheduledFuture<?>[] dojoTask;
+@@ -123,9 +126,9 @@
+     private ReadLock merchRlock = merchantLock.readLock();
+     private WriteLock merchWlock = merchantLock.writeLock();
+     
+-    private Lock faceLock[] = new MonitoredReentrantLock[4];
++    private MonitoredReentrantLock faceLock[] = new MonitoredReentrantLock[4];
+     
+-    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL, true);
++    private MonitoredReentrantLock lock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL, true);
+     
+     public Channel(final int world, final int channel, long startTime) {
+         this.world = world;
+@@ -141,7 +144,7 @@ public Channel(final int world, final int channel, long startTime) {
+             IoBuffer.setUseDirectBuffer(false);
+             IoBuffer.setAllocator(new SimpleBufferAllocator());
+             acceptor = new NioSocketAcceptor();
+-            TimerManager.getInstance().register(new respawnMaps(), ServerConstants.RESPAWN_INTERVAL);
++            respawnTask = TimerManager.getInstance().register(new respawnMaps(), ServerConstants.RESPAWN_INTERVAL);
+             acceptor.setHandler(new MapleServerHandler(world, channel));
+             acceptor.getSessionConfig().setIdleTime(IdleStatus.BOTH_IDLE, 30);
+             acceptor.getFilterChain().addLast("codec", (IoFilter) new ProtocolCodecFilter(new MapleCodecFactory()));
+@@ -169,6 +172,7 @@ public Channel(final int world, final int channel, long startTime) {
+                 mobClearSkillSchedulers[i] = new MobClearSkillScheduler();
+                 mobMistSchedulers[i] = new MobMistScheduler();
+                 faceExpressionSchedulers[i] = new FaceExpressionScheduler(faceLock[i]);
++                eventSchedulers[i] = new EventScheduler();
+                 channelSchedulers[i] = new OverallScheduler();
+             }
+             
+@@ -191,6 +195,20 @@ public final void shutdown() {
+             
+             closeAllMerchants();
+             players.disconnectAll();
++            
++            if(respawnTask != null) {
++                respawnTask.cancel(false);
++                respawnTask = null;
++            }
++            
++            mapFactory.dispose();
++            mapFactory = null;
++            
++            eventSM.cancel();
++            eventSM = null;
++            
++            closeChannelSchedules();
++            
+             acceptor.unbind();
+             
+             finishedShutdown = true;
+@@ -200,8 +218,58 @@ public final void shutdown() {
+             System.err.println("Error while shutting down Channel " + channel + " on World " + world + "\r\n" + e);
+         }
+     }
++    
++    private void closeChannelSchedules() {
++        for(int i = 0; i < 20; i++) {
++            if(dojoTask[i] != null) {
++                dojoTask[i].cancel(false);
++                dojoTask[i] = null;
++            }
++        }
+ 
+-    public void closeAllMerchants() {
++        for(int i = 0; i < 4; i++) {
++            if(mobStatusSchedulers[i] != null) {
++                mobStatusSchedulers[i].dispose();
++                mobStatusSchedulers[i] = null;
++            }
++            
++            if(mobAnimationSchedulers[i] != null) {
++                mobAnimationSchedulers[i].dispose();
++                mobAnimationSchedulers[i] = null;
++            }
++            
++            if(mobClearSkillSchedulers[i] != null) {
++                mobClearSkillSchedulers[i].dispose();
++                mobClearSkillSchedulers[i] = null;
++            }
++            
++            if(mobMistSchedulers[i] != null) {
++                mobMistSchedulers[i].dispose();
++                mobMistSchedulers[i] = null;
++            }
++            
++            if(faceExpressionSchedulers[i] != null) {
++                faceExpressionSchedulers[i].dispose();
++                faceExpressionSchedulers[i] = null;
++            }
++            
++            if(eventSchedulers[i] != null) {
++                eventSchedulers[i].dispose();
++                eventSchedulers[i] = null;
++            }
++            
++            if(channelSchedulers[i] != null) {
++                channelSchedulers[i].dispose();
++                channelSchedulers[i] = null;
++            }
++            
++            faceLock[i].dispose();
++        }
++        
++        lock.dispose();
++    }
++    
++    private void closeAllMerchants() {
+         merchWlock.lock();
+         try {
+             final Iterator<MapleHiredMerchant> hmit = hiredMerchants.values().iterator();
+@@ -442,7 +510,7 @@ private void freeDojoSlot(int slot, MapleParty party) {
+         }
+     }
+     
+-    private int getDojoSlot(int dojoMapId) {
++    private static int getDojoSlot(int dojoMapId) {
+         return (dojoMapId % 100) + ((dojoMapId / 10000 == 92502) ? 5 : 0);
+     }
+     
+@@ -456,7 +524,7 @@ public void resetDojo(int dojoMapId) {
+         resetDojo(dojoMapId, 0);
+     }
+     
+-    public void resetDojo(int dojoMapId, int thisStg) {
++    private void resetDojo(int dojoMapId, int thisStg) {
+         int slot = getDojoSlot(dojoMapId);
+         this.dojoStage[slot] = thisStg;
+         
+@@ -880,6 +948,10 @@ public void registerMobMistCancelAction(int mapid, Runnable runAction, long dela
+         mobMistSchedulers[getChannelSchedulerIndex(mapid)].registerMistCancelAction(runAction, delay);
+     }
+     
++    public void registerEventAction(int mapid, Runnable runAction, long delay) {
++        eventSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
++    }
++    
+     public void registerOverallAction(int mapid, Runnable runAction, long delay) {
+         channelSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
+     }
+@@ -902,13 +974,16 @@ public void run() {
+         
+         faceLock[lockid].lock();
+         try {
+-            if(chr.isLoggedinWorld()) {
+-                faceExpressionSchedulers[lockid].registerFaceExpression(chr.getId(), cancelAction);
+-                map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, emote), false);
++            if(!chr.isLoggedinWorld()) {
++                return;
+             }
++            
++            faceExpressionSchedulers[lockid].registerFaceExpression(chr.getId(), cancelAction);
+         } finally {
+             faceLock[lockid].unlock();
+         }
++        
++        map.broadcastMessage(chr, MaplePacketCreator.facialExpression(chr, emote), false);
+     }
+     
+     public void unregisterFaceExpression(int mapid, MapleCharacter chr) {
+diff --git a/src/net/server/channel/handlers/GiveFameHandler.java b/src/net/server/channel/handlers/GiveFameHandler.java
+index 7abe941f4..5792efbb2 100644
+--- a/src/net/server/channel/handlers/GiveFameHandler.java
++++ b/src/net/server/channel/handlers/GiveFameHandler.java
+@@ -32,6 +32,8 @@
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class GiveFameHandler extends AbstractMaplePacketHandler {
++    
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter target = (MapleCharacter) c.getPlayer().getMap().getMapObject(slea.readInt());
+         int mode = slea.readByte();
+diff --git a/src/net/server/channel/worker/BaseScheduler.java b/src/net/server/channel/worker/BaseScheduler.java
+index c4d51e5fb..e4cec03f5 100644
+--- a/src/net/server/channel/worker/BaseScheduler.java
++++ b/src/net/server/channel/worker/BaseScheduler.java
+@@ -28,10 +28,12 @@
+ import java.util.Map.Entry;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.Lock;
+-import server.TimerManager;
+-import tools.Pair;
++
++import net.server.Server;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
++import server.TimerManager;
++import tools.Pair;
+ 
+ /**
+  *
+@@ -40,11 +42,11 @@
+ public abstract class BaseScheduler {
+     private int idleProcs = 0;
+     private List<SchedulerListener> listeners = new LinkedList<>();
+-    private final List<Lock> externalLocks;
++    private final List<Lock> externalLocks = new LinkedList<>();
+     private Map<Object, Pair<Runnable, Long>> registeredEntries = new HashMap<>();
+     
+     private ScheduledFuture<?> schedulerTask = null;
+-    private Lock schedulerLock;
++    private MonitoredReentrantLock schedulerLock;
+     private Runnable monitorTask = new Runnable() {
+                                         @Override
+                                         public void run() {
+@@ -54,13 +56,15 @@ public void run() {
+     
+     protected BaseScheduler(MonitoredLockType lockType) {
+         schedulerLock = new MonitoredReentrantLock(lockType, true);
+-        externalLocks = new LinkedList<>();
+     }
+     
+     // NOTE: practice EXTREME caution when adding external locks to the scheduler system, if you don't know what you're doing DON'T USE THIS.
+     protected BaseScheduler(MonitoredLockType lockType, List<Lock> extLocks) {
+         schedulerLock = new MonitoredReentrantLock(lockType, true);
+-        externalLocks = extLocks;
++        
++        for(Lock lock : extLocks) {
++            externalLocks.add(lock);
++        }
+     }
+     
+     protected void addListener(SchedulerListener listener) {
+@@ -112,13 +116,13 @@ private void runBaseSchedule() {
+             unlockScheduler();
+         }
+         
+-        long timeNow = System.currentTimeMillis();
++        long timeNow = Server.getInstance().getCurrentTime();
+         toRemove = new LinkedList<>();
+         for(Entry<Object, Pair<Runnable, Long>> rmd : registeredEntriesCopy.entrySet()) {
+             Pair<Runnable, Long> r = rmd.getValue();
+ 
+             if(r.getRight() < timeNow) {
+-                r.getLeft().run();  // runs the cancel action
++                r.getLeft().run();  // runs the scheduled action
+                 toRemove.add(rmd.getKey());
+             }
+         }
+@@ -145,21 +149,29 @@ protected void registerEntry(Object key, Runnable removalAction, long duration)
+                 schedulerTask = TimerManager.getInstance().register(monitorTask, ServerConstants.MOB_STATUS_MONITOR_PROC, ServerConstants.MOB_STATUS_MONITOR_PROC);
+             }
+             
+-            registeredEntries.put(key, new Pair<>(removalAction, System.currentTimeMillis() + duration));
++            registeredEntries.put(key, new Pair<>(removalAction, Server.getInstance().getCurrentTime() + duration));
+         } finally {
+             unlockScheduler();
+         }
+     }
+     
+     protected void interruptEntry(Object key) {
++        Runnable toRun = null;
++        
+         lockScheduler();
+         try {
+             Pair<Runnable, Long> rm = registeredEntries.remove(key);
+-            if(rm != null) rm.getLeft().run();
++            if(rm != null) {
++                toRun = rm.getLeft();
++            }
+         } finally {
+             unlockScheduler();
+         }
+         
++        if(toRun != null) {
++            toRun.run();
++        }
++        
+         dispatchRemovedEntries(Collections.singletonList(key), false);
+     }
+     
+@@ -168,4 +180,22 @@ private void dispatchRemovedEntries(List<Object> toRemove, boolean fromUpdate) {
+             listener.removedScheduledEntries(toRemove, fromUpdate);
+         }
+     }
++    
++    public void dispose() {
++        lockScheduler();
++        try {
++            if(schedulerTask != null) {
++                schedulerTask.cancel(false);
++                schedulerTask = null;
++            }
++            
++            listeners.clear();
++            externalLocks.clear();
++            registeredEntries.clear();
++        } finally {
++            unlockScheduler();
++        }
++        
++        schedulerLock.dispose();
++    }
+ }
+diff --git a/src/net/server/channel/worker/EventScheduler.java b/src/net/server/channel/worker/EventScheduler.java
+new file mode 100644
+index 000000000..c5eba72bd
+--- /dev/null
++++ b/src/net/server/channel/worker/EventScheduler.java
+@@ -0,0 +1,36 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import net.server.audit.locks.MonitoredLockType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class EventScheduler extends BaseScheduler {
++    public EventScheduler() {
++        super(MonitoredLockType.CHANNEL_EVENTS);
++    }
++    
++    public void registerDelayedAction(Runnable runAction, long delay) {
++        registerEntry(runAction, runAction, delay);
++    }
++}
+diff --git a/src/net/server/channel/worker/MobAnimationScheduler.java b/src/net/server/channel/worker/MobAnimationScheduler.java
+index 0aa3408a1..e615fcf9d 100644
+--- a/src/net/server/channel/worker/MobAnimationScheduler.java
++++ b/src/net/server/channel/worker/MobAnimationScheduler.java
+@@ -24,7 +24,6 @@
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Set;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ 
+ /**
+@@ -33,7 +32,7 @@
+  */
+ public class MobAnimationScheduler extends BaseScheduler {
+     Set<Integer> onAnimationMobs = new HashSet<>(1000);
+-    private Lock animationLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_MOBANIMAT, true);
++    private MonitoredReentrantLock animationLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_MOBANIMAT, true);
+     
+     private static Runnable r = new Runnable() {
+         @Override
+@@ -73,4 +72,10 @@ public boolean registerAnimationMode(Integer mobHash, long animationTime) {
+             animationLock.unlock();
+         }
+     }
++    
++    @Override
++    public void dispose() {
++        animationLock.dispose();
++        super.dispose();
++    }
+ }
+diff --git a/src/net/server/channel/worker/MobStatusScheduler.java b/src/net/server/channel/worker/MobStatusScheduler.java
+index 5f8705cdc..041079c87 100644
+--- a/src/net/server/channel/worker/MobStatusScheduler.java
++++ b/src/net/server/channel/worker/MobStatusScheduler.java
+@@ -25,7 +25,6 @@
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ 
+@@ -35,7 +34,7 @@
+  */
+ public class MobStatusScheduler extends BaseScheduler {
+     private Map<MonsterStatusEffect, MobStatusOvertimeEntry> registeredMobStatusOvertime = new HashMap<>();
+-    private Lock overtimeStatusLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_OVTSTATUS, true);
++    private MonitoredReentrantLock overtimeStatusLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_OVTSTATUS, true);
+     
+     private class MobStatusOvertimeEntry {
+         private int procCount;
+@@ -48,11 +47,11 @@ protected MobStatusOvertimeEntry(int delay, Runnable run) {
+             r = run;
+         }
+         
+-        protected void update() {
++        protected void update(List<Runnable> toRun) {
+             procCount++;
+             if(procCount >= procLimit) {
+                 procCount = 0;
+-                r.run();
++                toRun.add(r);
+             }
+         }
+     }
+@@ -63,6 +62,8 @@ public MobStatusScheduler() {
+         super.addListener(new SchedulerListener() {
+             @Override
+             public void removedScheduledEntries(List<Object> toRemove, boolean update) {
++                List<Runnable> toRun = new ArrayList<>();
++                
+                 overtimeStatusLock.lock();
+                 try {
+                     for(Object mseo : toRemove) {
+@@ -74,12 +75,16 @@ public void removedScheduledEntries(List<Object> toRemove, boolean update) {
+                         // it's probably ok to use one thread for both management & overtime actions
+                         List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
+                         for(MobStatusOvertimeEntry mdoe : mdoeList) {
+-                            mdoe.update();
++                            mdoe.update(toRun);
+                         }
+                     }
+                 } finally {
+                     overtimeStatusLock.unlock();
+                 }
++                
++                for(Runnable r : toRun) {
++                    r.run();
++                }
+             }
+         });
+     }
+@@ -102,4 +107,10 @@ public void registerMobStatus(MonsterStatusEffect mse, Runnable cancelStatus, lo
+     public void interruptMobStatus(MonsterStatusEffect mse) {
+         interruptEntry(mse);
+     }
++    
++    @Override
++    public void dispose() {
++        overtimeStatusLock.dispose();
++        super.dispose();
++    }
+ }
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index cdb518f32..90709b8df 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -116,7 +116,7 @@ public void buildNotifications() {
+         if (!bDirty) {
+             return;
+         }
+-        Set<Integer> chs = Server.getInstance().getChannelServer(world);
++        Set<Integer> chs = Server.getInstance().getOpenChannels(world);
+         if (notifications.keySet().size() != chs.size()) {
+             notifications.clear();
+             for (Integer ch : chs) {
+@@ -284,7 +284,7 @@ public void broadcast(final byte[] packet, int exceptionId, BCOp bcop) {
+                 buildNotifications();
+             }
+             try {
+-                for (Integer b : Server.getInstance().getChannelServer(world)) {
++                for (Integer b : Server.getInstance().getOpenChannels(world)) {
+                     if (notifications.get(b).size() > 0) {
+                         if (bcop == BCOp.DISBAND) {
+                             Server.getInstance().getWorld(world).setGuildAndRank(notifications.get(b), 0, 5, exceptionId);
+diff --git a/src/net/server/handlers/login/ViewAllCharRegisterPicHandler.java b/src/net/server/handlers/login/ViewAllCharRegisterPicHandler.java
+index 6a9f063d8..c95993769 100644
+--- a/src/net/server/handlers/login/ViewAllCharRegisterPicHandler.java
++++ b/src/net/server/handlers/login/ViewAllCharRegisterPicHandler.java
+@@ -31,7 +31,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             return;
+         }
+         
+-        int channel = Randomizer.rand(1, server.getWorld(c.getWorld()).getChannels().size());
++        int channel = Randomizer.rand(1, server.getWorld(c.getWorld()).getChannelsSize());
+         c.setChannel(channel);
+         
+         String mac = slea.readMapleAsciiString();
+diff --git a/src/net/server/handlers/login/ViewAllCharSelectedHandler.java b/src/net/server/handlers/login/ViewAllCharSelectedHandler.java
+index bf8cf2c1d..59d8d31ee 100644
+--- a/src/net/server/handlers/login/ViewAllCharSelectedHandler.java
++++ b/src/net/server/handlers/login/ViewAllCharSelectedHandler.java
+@@ -58,7 +58,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         }
+         
+         try {
+-            int channel = Randomizer.rand(1, c.getWorldServer().getChannels().size());
++            int channel = Randomizer.rand(1, c.getWorldServer().getChannelsSize());
+             c.setChannel(channel);
+         } catch (Exception e) {
+             e.printStackTrace();
+diff --git a/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java b/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
+index 0865a4bc7..a5f13bad6 100644
+--- a/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
++++ b/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
+@@ -27,7 +27,7 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         }
+         
+         c.setWorld(server.getCharacterWorld(charId));
+-        int channel = Randomizer.rand(1, c.getWorldServer().getChannels().size());
++        int channel = Randomizer.rand(1, c.getWorldServer().getChannelsSize());
+         c.setChannel(channel);
+         
+         String macs = slea.readMapleAsciiString();
+diff --git a/src/net/server/worker/RankingWorker.java b/src/net/server/worker/RankingWorker.java
+index 74cc4b39d..0ac0e4f89 100644
+--- a/src/net/server/worker/RankingWorker.java
++++ b/src/net/server/worker/RankingWorker.java
+@@ -90,7 +90,7 @@ public void run() {
+                 resetMoveRank(false);
+             }
+             
+-            for(int j = 0; j < Server.getInstance().getWorlds().size(); j++) {
++            for(int j = 0; j < Server.getInstance().getWorldsSize(); j++) {
+                 updateRanking(-1, j);    //overall ranking
+                 for (int i = 0; i <= MapleJob.getMax(); i++) {
+                     updateRanking(i, j);
+diff --git a/src/net/server/world/MapleParty.java b/src/net/server/world/MapleParty.java
+index 93e7741d3..f5dd1467d 100644
+--- a/src/net/server/world/MapleParty.java
++++ b/src/net/server/world/MapleParty.java
+@@ -31,7 +31,6 @@
+ import java.util.Map;
+ import java.util.Comparator;
+ import net.server.audit.locks.MonitoredReentrantLock;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredLockType;
+ 
+ public class MapleParty {
+@@ -44,7 +43,7 @@
+     private Map<Integer, Integer> histMembers = new HashMap<>();
+     private int nextEntry = 0;
+     
+-    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.PARTY, true);
++    private MonitoredReentrantLock lock = new MonitoredReentrantLock(MonitoredLockType.PARTY, true);
+     
+     public MapleParty(int id, MaplePartyCharacter chrfor) {
+         this.leaderId = chrfor.getId();
+@@ -215,6 +214,10 @@ public void assignNewLeader(MapleClient c) {
+         if(newLeadr != null) world.updateParty(this.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
+     }
+     
++    public void disposeLocks() {
++        lock.dispose();
++    }
++    
+     @Override
+     public int hashCode() {
+         final int prime = 31;
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 6fa93ed18..4fba8756e 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -47,11 +47,11 @@
+ import java.util.SortedMap;
+ import java.util.TreeMap;
+ import java.util.concurrent.atomic.AtomicInteger;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import java.util.Set;
+ import java.util.HashSet;
+ import java.util.concurrent.ScheduledFuture;
++import java.util.concurrent.locks.ReentrantReadWriteLock;
+ 
+ import scripting.event.EventInstanceManager;
+ import server.TimerManager;
+@@ -76,6 +76,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReentrantReadWriteLock;
+ 
+ /**
+  *
+@@ -97,8 +98,12 @@
+     private Map<Integer, MapleGuildSummary> gsStore = new HashMap<>();
+     private PlayerStorage players = new PlayerStorage();
+     
++    private final ReentrantReadWriteLock chnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_CHANNELS, true);
++    private final ReentrantReadWriteLock.ReadLock chnRLock = chnLock.readLock();
++    private final ReentrantReadWriteLock.WriteLock chnWLock = chnLock.writeLock();
++    
+     private Map<Integer, SortedMap<Integer, MapleCharacter>> accountChars = new HashMap<>();
+-    private Lock accountCharsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_CHARS, true);
++    private MonitoredReentrantLock accountCharsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_CHARS, true);
+     
+     private Set<Integer> queuedGuilds = new HashSet<>();
+     private Map<Integer, Pair<Pair<Boolean, Boolean>, Pair<Integer, Integer>>> queuedMarriages = new HashMap<>();
+@@ -107,31 +112,31 @@
+     private Map<Integer, Integer> partyChars = new HashMap<>();
+     private Map<Integer, MapleParty> parties = new HashMap<>();
+     private AtomicInteger runningPartyId = new AtomicInteger();
+-    private Lock partyLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PARTY, true);
++    private MonitoredReentrantLock partyLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PARTY, true);
+     
+     private Map<Integer, Integer> owlSearched = new LinkedHashMap<>();
+-    private Lock owlLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_OWL);
++    private MonitoredReentrantLock owlLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_OWL);
+     
+-    private Lock activePetsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PETS, true);
++    private MonitoredReentrantLock activePetsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PETS, true);
+     private Map<Integer, Byte> activePets = new LinkedHashMap<>();
+     private ScheduledFuture<?> petsSchedule;
+     private long petUpdate;
+     
+-    private Lock activeMountsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MOUNTS, true);
++    private MonitoredReentrantLock activeMountsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MOUNTS, true);
+     private Map<Integer, Byte> activeMounts = new LinkedHashMap<>();
+     private ScheduledFuture<?> mountsSchedule;
+     private long mountUpdate;
+     
+-    private Lock activePlayerShopsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PSHOPS, true);
++    private MonitoredReentrantLock activePlayerShopsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PSHOPS, true);
+     private Map<Integer, MaplePlayerShop> activePlayerShops = new LinkedHashMap<>();
+     
+-    private Lock activeMerchantsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MERCHS, true);
++    private MonitoredReentrantLock activeMerchantsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MERCHS, true);
+     private Map<Integer, Pair<MapleHiredMerchant, Byte>> activeMerchants = new LinkedHashMap<>();
+     private long merchantUpdate;
+     
+     private Map<Runnable, Long> registeredTimedMapObjects = new LinkedHashMap<>();
+     private ScheduledFuture<?> timedMapObjectsSchedule;
+-    private Lock timedMapObjectLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MAPOBJS, true);
++    private MonitoredReentrantLock timedMapObjectLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MAPOBJS, true);
+     
+     private ScheduledFuture<?> charactersSchedule;
+     private ScheduledFuture<?> marriagesSchedule;
+@@ -159,20 +164,75 @@ public World(int world, int flag, String eventmsg, int exprate, int droprate, in
+         
+     }
+ 
++    public int getChannelsSize() {
++        chnRLock.lock();
++        try {
++            return channels.size();
++        } finally {
++            chnRLock.unlock();
++        }
++    }
++    
+     public List<Channel> getChannels() {
+-        return channels;
++        chnRLock.lock();
++        try {
++            return new ArrayList<>(channels);
++        } finally {
++            chnRLock.unlock();
++        }
+     }
+ 
+     public Channel getChannel(int channel) {
+-        return channels.get(channel - 1);
++        chnRLock.lock();
++        try {
++            return channels.get(channel - 1);
++        } finally {
++            chnRLock.unlock();
++        }
+     }
+ 
+     public void addChannel(Channel channel) {
+-        channels.add(channel);
++        chnWLock.lock();
++        try {
++            channels.add(channel);
++        } finally {
++            chnWLock.unlock();
++        }
+     }
+ 
+-    public void removeChannel(int channel) {
+-        channels.remove(channel);
++    public int removeChannel() {
++        Channel ch;
++        int chIdx;
++        
++        chnRLock.lock();
++        try {
++            chIdx = channels.size() - 1;
++            if(chIdx < 0) {
++                return -1;
++            }
++            
++            ch = channels.get(chIdx);
++        } finally {
++            chnRLock.unlock();
++        }
++        
++        if(ch == null || ch.getPlayerStorage().getSize() > 0) {
++            return -1;
++        }
++        
++        chnWLock.lock();
++        try {
++            if(chIdx == channels.size() - 1) {
++                channels.remove(chIdx);
++            } else {
++                return -1;
++            }
++        } finally {
++            chnWLock.unlock();
++        }
++        
++        ch.shutdown();
++        return ch.getId();
+     }
+ 
+     public void setFlag(byte b) {
+@@ -342,11 +402,11 @@ public PlayerStorage getPlayerStorage() {
+     }
+ 
+     public void removePlayer(MapleCharacter chr) {
+-        if(!channels.get(chr.getClient().getChannel() - 1).removePlayer(chr)) {
++        if(!getChannel(chr.getClient().getChannel()).removePlayer(chr)) {
+             if(!chr.getClient().getChannelServer().removePlayer(chr)) {
+                 // oy the player is not where it should be, find this mf
+                 
+-                for(Channel ch : channels) {
++                for(Channel ch : getChannels()) {
+                     if(ch.removePlayer(chr)) {
+                         break;
+                     }
+@@ -394,7 +454,7 @@ public boolean isWorldCapacityFull() {
+     }
+     
+     public int getWorldCapacityStatus() {
+-        int worldCap = channels.size() * ServerConstants.CHANNEL_LOAD;
++        int worldCap = getChannelsSize() * ServerConstants.CHANNEL_LOAD;
+         int num = players.getSize();
+         
+         int status;
+@@ -555,7 +615,7 @@ public synchronized boolean addMarriageGuest(int marriageId, int playerId) {
+     }
+     
+     public Pair<Integer, Integer> getWeddingCoupleForGuest(int guestId, Boolean cathedral) {
+-        for(Channel ch : channels) {
++        for(Channel ch : getChannels()) {
+             Pair<Integer, Integer> p = ch.getWeddingCoupleForGuest(guestId, cathedral);
+             if(p != null) {
+                 return p;
+@@ -580,7 +640,7 @@ public synchronized boolean addMarriageGuest(int marriageId, int playerId) {
+             int selectedPos = Integer.MAX_VALUE;
+             
+             for(Integer pw : possibleWeddings) {
+-                for(Channel ch : channels) {
++                for(Channel ch : getChannels()) {
+                     int pos = ch.getWeddingReservationStatus(pw, cathedral);
+                     if(pos != -1) {
+                         if(pos < selectedPos) {
+@@ -1420,7 +1480,7 @@ public void resetPlayerNpcMapData() {
+     }
+     
+     public void setServerMessage(String msg) {
+-        for (Channel ch : channels) {
++        for (Channel ch : getChannels()) {
+             ch.setServerMessage(msg);
+         }
+     }
+@@ -1588,6 +1648,29 @@ public void dropMessage(int type, String message) {
+         }
+     }
+     
++    private void disposeLocks() {
++        List<MapleParty> pList;
++        partyLock.lock();
++        try {
++            pList = new ArrayList<>(parties.values());
++        } finally {
++            partyLock.unlock();
++        }
++        
++        for(MapleParty p : pList) {
++            p.disposeLocks();
++        }
++        
++        accountCharsLock.dispose();
++        partyLock.dispose();
++        owlLock.dispose();
++        activePetsLock.dispose();
++        activeMountsLock.dispose();
++        activePlayerShopsLock.dispose();
++        activeMerchantsLock.dispose();
++        timedMapObjectLock.dispose();
++    }
++    
+     public final void shutdown() {
+         for (Channel ch : getChannels()) {
+             ch.shutdown();
+@@ -1608,6 +1691,17 @@ public final void shutdown() {
+             timedMapObjectsSchedule = null;
+         }
+         
++        if(charactersSchedule != null) {
++            charactersSchedule.cancel(false);
++            charactersSchedule = null;
++        }
++        
++        if(marriagesSchedule != null) {
++            marriagesSchedule.cancel(false);
++            marriagesSchedule = null;
++        }
++        
+         players.disconnectAll();
++        disposeLocks();
+     }
+ }
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index ce58960fd..422ffe516 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -34,7 +34,6 @@
+ import java.util.Set;
+ import java.util.Iterator;
+ import java.util.Properties;
+-import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -93,8 +92,8 @@
+         private final ReadLock rL = lock.readLock();
+         private final WriteLock wL = lock.writeLock();
+         
+-        private final Lock pL = new MonitoredReentrantLock(MonitoredLockType.EIM_PARTY, true);
+-        private final Lock sL = new MonitoredReentrantLock(MonitoredLockType.EIM_SCRIPT, true);
++        private final MonitoredReentrantLock pL = new MonitoredReentrantLock(MonitoredLockType.EIM_PARTY, true);
++        private final MonitoredReentrantLock sL = new MonitoredReentrantLock(MonitoredLockType.EIM_SCRIPT, true);
+         
+         private ScheduledFuture<?> event_schedule = null;
+         private boolean disposed = false;
+@@ -638,13 +637,6 @@ public int getKillCount(MapleCharacter chr) {
+ 		return (kc == null) ? 0 : kc;
+ 	}
+         
+-        public void cancelSchedule() {
+-            if(event_schedule != null) {
+-                    event_schedule.cancel(false);
+-                    event_schedule = null;
+-            }
+-        }
+-
+ 	public synchronized void dispose() {
+                 if(disposed) return;
+                 
+@@ -673,9 +665,14 @@ public synchronized void dispose() {
+                         wL.unlock();
+                 }
+                 
+-                cancelSchedule();
++                if(event_schedule != null) {
++                        event_schedule.cancel(false);
++                        event_schedule = null;
++                }
++                
+                 killCount.clear();
+                 mapIds.clear();
++                props.clear();
+                 
+                 disposeExpedition();
+                 
+@@ -686,14 +683,24 @@ public synchronized void dispose() {
+                 } finally {
+                         sL.unlock();
+                 }
++                
++                disposeLocks();
+ 	}
++        
++        private void disposeLocks() {
++                pL.dispose();
++                sL.dispose();
++        }
+ 
+ 	public MapleMapFactory getMapFactory() {
+ 		return mapFactory;
+ 	}
+ 
+ 	public void schedule(final String methodName, long delay) {
+-		TimerManager.getInstance().schedule(new Runnable() {
++                List<MapleCharacter> chrList = this.getPlayerList();
++                int mapid = !chrList.isEmpty() ? chrList.get(0).getMapId() : 0;
++                
++                Runnable r = new Runnable() {
+ 			@Override
+ 			public void run() {
+ 				try {
+@@ -708,7 +715,9 @@ public void run() {
+ 					ex.printStackTrace();
+ 				}
+ 			}
+-		}, delay);
++		};
++                
++                getEm().getChannelServer().registerEventAction(mapid, r, delay);
+ 	}
+ 
+ 	public String getName() {
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 92eef6147..7e7ac7157 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -26,7 +26,6 @@
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Properties;
+-import java.util.concurrent.ScheduledFuture;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+@@ -42,7 +41,7 @@
+ import net.server.guild.MapleGuild;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+-import server.TimerManager;
++import scripting.event.worker.EventScriptScheduler;
+ import server.expeditions.MapleExpedition;
+ import server.maps.MapleMap;
+ import server.life.MapleMonster;
+@@ -53,7 +52,6 @@
+ import java.util.ArrayList;
+ import java.util.LinkedList;
+ import java.util.Queue;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ 
+@@ -67,6 +65,7 @@
+     private Channel cserv;
+     private World wserv;
+     private Server server;
++    private EventScriptScheduler ess = new EventScriptScheduler();
+     private Map<String, EventInstanceManager> instances = new HashMap<String, EventInstanceManager>();
+     private Map<String, Integer> instanceLocks = new HashMap<String, Integer>();
+     private final Queue<Integer> queuedGuilds = new LinkedList<>();
+@@ -76,8 +75,8 @@
+     private Integer readyId = 0;
+     private Properties props = new Properties();
+     private String name;
+-    private Lock lobbyLock = new MonitoredReentrantLock(MonitoredLockType.EM_LOBBY);
+-    private Lock queueLock = new MonitoredReentrantLock(MonitoredLockType.EM_QUEUE);
++    private MonitoredReentrantLock lobbyLock = new MonitoredReentrantLock(MonitoredLockType.EM_LOBBY);
++    private MonitoredReentrantLock queueLock = new MonitoredReentrantLock(MonitoredLockType.EM_QUEUE);
+ 
+     private static final int maxLobbys = 8;     // an event manager holds up to this amount of concurrent lobbys
+     
+@@ -92,12 +91,47 @@ public EventManager(Channel cserv, Invocable iv, String name) {
+         for(int i = 0; i < maxLobbys; i++) this.openedLobbys.add(false);
+     }
+ 
+-    public void cancel() {
++    public void cancel() {  // make sure to only call this when there are NO PLAYERS ONLINE to mess around with the event manager!
++        ess.dispose();
++        
+         try {
+             iv.invokeFunction("cancelSchedule", (Object) null);
+         } catch (ScriptException | NoSuchMethodException ex) {
+             ex.printStackTrace();
+         }
++        
++        synchronized(instances) {
++            for(EventInstanceManager eim : instances.values()) {
++                eim.dispose();
++            }
++            instances.clear();
++        }
++        
++        List<EventInstanceManager> readyEims;
++        queueLock.lock();
++        try {
++            readyEims = new ArrayList<>(readyInstances);
++            readyInstances.clear();
++        } finally {
++            queueLock.unlock();
++        }
++        
++        for(EventInstanceManager eim : readyEims) {
++            eim.dispose();
++        }
++        
++        props.clear();
++        cserv = null;
++        wserv = null;
++        server = null;
++        iv = null;
++        
++        disposeLocks();
++    }
++    
++    private void disposeLocks() {
++        lobbyLock.dispose();
++        queueLock.dispose();
+     }
+     
+     private static List<Integer> convertToIntegerArray(List<Double> list) {
+@@ -123,12 +157,12 @@ public static long getLobbyDelay() {
+         }
+     }
+ 
+-    public ScheduledFuture<?> schedule(String methodName, long delay) {
++    public EventScheduledFuture schedule(String methodName, long delay) {
+         return schedule(methodName, null, delay);
+     }
+ 
+-    public ScheduledFuture<?> schedule(final String methodName, final EventInstanceManager eim, long delay) {
+-        return TimerManager.getInstance().schedule(new Runnable() {
++    public EventScheduledFuture schedule(final String methodName, final EventInstanceManager eim, long delay) {
++        Runnable r = new Runnable() {
+             @Override
+             public void run() {
+                 try {
+@@ -137,11 +171,16 @@ public void run() {
+                     Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+                 }
+             }
+-        }, delay);
++        };
++        
++        ess.registerEntry(r, delay);
++        
++        // hate to do that, but those schedules can still be cancelled, so well... Let GC do it's job
++        return new EventScheduledFuture(r, ess);
+     }
+ 
+-    public ScheduledFuture<?> scheduleAtTimestamp(final String methodName, long timestamp) {
+-        return TimerManager.getInstance().scheduleAtTimestamp(new Runnable() {
++    public EventScheduledFuture scheduleAtTimestamp(final String methodName, long timestamp) {
++        Runnable r = new Runnable() {
+             @Override
+             public void run() {
+                 try {
+@@ -150,7 +189,10 @@ public void run() {
+                     Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+                 }
+             }
+-        }, timestamp);
++        };
++        
++        ess.registerEntry(r, timestamp - server.getCurrentTime());
++        return new EventScheduledFuture(r, ess);
+     }
+ 
+     public World getWorldServer() {
+@@ -187,7 +229,7 @@ public EventInstanceManager newInstance(String name) {
+     }
+ 
+     public void disposeInstance(final String name) {
+-        TimerManager.getInstance().schedule(new Runnable() {
++        ess.registerEntry(new Runnable() {
+             @Override
+             public void run() {
+                 freeLobbyInstance(name);
+diff --git a/src/scripting/event/EventScheduledFuture.java b/src/scripting/event/EventScheduledFuture.java
+new file mode 100644
+index 000000000..afb35c470
+--- /dev/null
++++ b/src/scripting/event/EventScheduledFuture.java
+@@ -0,0 +1,40 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package scripting.event;
++
++import scripting.event.worker.EventScriptScheduler;
++
++/**
++ *
++ * @author Ronan
++ */
++public class EventScheduledFuture {
++    Runnable r;
++    EventScriptScheduler ess;
++    
++    public EventScheduledFuture(Runnable r, EventScriptScheduler ess) {
++        this.r = r;
++        this.ess = ess;
++    }
++    
++    public void cancel(boolean dummy) {   // will always implement "non-interrupt if running" regardless of boolean value
++        ess.cancelEntry(r);
++    }
++}
+diff --git a/src/scripting/event/worker/EventScriptScheduler.java b/src/scripting/event/worker/EventScriptScheduler.java
+new file mode 100644
+index 000000000..c26cd2409
+--- /dev/null
++++ b/src/scripting/event/worker/EventScriptScheduler.java
+@@ -0,0 +1,169 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package scripting.event.worker;
++
++import constants.ServerConstants;
++import java.util.HashMap;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.concurrent.ScheduledFuture;
++import server.TimerManager;
++import net.server.Server;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReentrantLock;
++
++/**
++ *
++ * @author Ronan
++ */
++public class EventScriptScheduler {
++    private boolean disposed = false;
++    private int idleProcs = 0;
++    private Map<Runnable, Long> registeredEntries = new HashMap<>();
++    
++    private ScheduledFuture<?> schedulerTask = null;
++    private MonitoredReentrantLock schedulerLock;
++    private Runnable monitorTask = new Runnable() {
++                                        @Override
++                                        public void run() {
++                                            runBaseSchedule();
++                                        }
++                                    };
++    
++    public EventScriptScheduler() {
++        schedulerLock = new MonitoredReentrantLock(MonitoredLockType.EM_SCHDL, true);
++    }
++    
++    private void runBaseSchedule() {
++        List<Runnable> toRemove;
++        Map<Runnable, Long> registeredEntriesCopy;
++        
++        schedulerLock.lock();
++        try {
++            if(registeredEntries.isEmpty()) {
++                idleProcs++;
++                
++                if(idleProcs >= ServerConstants.MOB_STATUS_MONITOR_LIFE) {
++                    if(schedulerTask != null) {
++                        schedulerTask.cancel(false);
++                        schedulerTask = null;
++                    }
++                }
++                
++                return;
++            }
++            
++            idleProcs = 0;
++            registeredEntriesCopy = new HashMap<>(registeredEntries);
++        } finally {
++            schedulerLock.unlock();
++        }
++        
++        long timeNow = Server.getInstance().getCurrentTime();
++        toRemove = new LinkedList<>();
++        for(Entry<Runnable, Long> rmd : registeredEntriesCopy.entrySet()) {
++            if(rmd.getValue() < timeNow) {
++                Runnable r = rmd.getKey();
++                
++                r.run();  // runs the scheduled action
++                toRemove.add(r);
++            }
++        }
++        
++        if(!toRemove.isEmpty()) {
++            schedulerLock.lock();
++            try {
++                for(Runnable r : toRemove) {
++                    registeredEntries.remove(r);
++                }
++            } finally {
++                schedulerLock.unlock();
++            }
++        }
++    }
++    
++    public void registerEntry(final Runnable scheduledAction, final long duration) {
++        
++        Thread t = new Thread(new Runnable() {
++                        @Override
++                        public void run() {
++                            schedulerLock.lock();
++                            try {
++                                idleProcs = 0;
++                                if(schedulerTask == null) {
++                                    if(disposed) return;
++
++                                    schedulerTask = TimerManager.getInstance().register(monitorTask, ServerConstants.MOB_STATUS_MONITOR_PROC, ServerConstants.MOB_STATUS_MONITOR_PROC);
++                                }
++
++                                registeredEntries.put(scheduledAction, Server.getInstance().getCurrentTime() + duration);
++                            } finally {
++                                schedulerLock.unlock();
++                            }
++                        }
++                    });
++        
++        t.start();
++    }
++    
++    public void cancelEntry(final Runnable scheduledAction) {
++        
++        Thread t = new Thread(new Runnable() {
++                        @Override
++                        public void run() {
++                            schedulerLock.lock();
++                            try {
++                                registeredEntries.remove(scheduledAction);
++                            } finally {
++                                schedulerLock.unlock();
++                            }
++                        }
++                    });
++        
++        t.start();
++    }
++    
++    public void dispose() {
++        
++        Thread t = new Thread(new Runnable() {
++                        @Override
++                        public void run() {
++                            schedulerLock.lock();
++                            try {
++                                if(schedulerTask != null) {
++                                    schedulerTask.cancel(false);
++                                    schedulerTask = null;
++                                }
++
++                                registeredEntries.clear();
++                                disposed = true;
++                            } finally {
++                                schedulerLock.unlock();
++                            }
++                            
++                            schedulerLock.dispose();
++                        }
++                    });
++        
++        t.start();
++    }
++}
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index cd148a6d0..b2e80337e 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -119,7 +119,7 @@ public byte getSlots() {
+         return slots;
+     }
+ 
+-    public boolean gainSlots(int slots) {
++    public synchronized boolean gainSlots(int slots) {
+         slots += this.slots;
+ 
+         if (slots <= 48) {
+@@ -129,11 +129,7 @@ public boolean gainSlots(int slots) {
+ 
+         return false;
+     }
+-
+-    public void setSlots(byte set) {
+-        this.slots = set;
+-    }
+-
++    
+     public void saveToDB(Connection con) {
+         try {
+             try (PreparedStatement ps = con.prepareStatement("UPDATE storages SET slots = ?, meso = ? WHERE storageid = ?")) {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 462623a6e..9601cc9b4 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -54,7 +54,6 @@
+ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.atomic.AtomicLong;
+-import java.util.concurrent.locks.Lock;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import net.server.Server;
+ import net.server.channel.Channel;
+@@ -95,10 +94,10 @@
+     private int parentMobOid = 0;
+     private final HashMap<Integer, AtomicInteger> takenDamage = new HashMap<>();
+ 
+-    private Lock externalLock = new MonitoredReentrantLock(MonitoredLockType.MOB_EXT);
+-    private Lock monsterLock = new MonitoredReentrantLock(MonitoredLockType.MOB, true);
+-    private Lock statiLock = new MonitoredReentrantLock(MonitoredLockType.MOB_STATI);
+-    private Lock animationLock = new MonitoredReentrantLock(MonitoredLockType.MOB_ANI);
++    private MonitoredReentrantLock externalLock = new MonitoredReentrantLock(MonitoredLockType.MOB_EXT);
++    private MonitoredReentrantLock monsterLock = new MonitoredReentrantLock(MonitoredLockType.MOB, true);
++    private MonitoredReentrantLock statiLock = new MonitoredReentrantLock(MonitoredLockType.MOB_STATI);
++    private MonitoredReentrantLock animationLock = new MonitoredReentrantLock(MonitoredLockType.MOB_ANI);
+ 
+     public MapleMonster(int id, MapleMonsterStats stats) {
+         super(id);
+@@ -1476,4 +1475,11 @@ private void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
+     public final void changeDifficulty(final int difficulty, boolean pqMob) {
+         changeLevelByDifficulty(difficulty, pqMob);
+     }
++    
++    public final void disposeLocks() {
++        externalLock.dispose();
++        monsterLock.dispose();
++        statiLock.dispose();
++        animationLock.dispose();
++    }
+ }
+diff --git a/src/server/life/MaplePlayerNPC.java b/src/server/life/MaplePlayerNPC.java
+index 45c654eda..42cb4102f 100644
+--- a/src/server/life/MaplePlayerNPC.java
++++ b/src/server/life/MaplePlayerNPC.java
+@@ -248,7 +248,7 @@ private static void getRunningOverallRanks(Connection con) throws SQLException {
+     }
+ 
+     private static void getRunningWorldRanks(Connection con) throws SQLException {
+-        int numWorlds = Server.getInstance().getWorlds().size();
++        int numWorlds = Server.getInstance().getWorldsSize();
+         for(int i = 0; i < numWorlds; i++) {
+             runningWorldRank.add(new AtomicInteger(1));
+         }
+@@ -625,7 +625,7 @@ public static void removeAllPlayerNPC() {
+             PreparedStatement ps = con.prepareStatement("SELECT DISTINCT world, map FROM playernpcs");
+             ResultSet rs = ps.executeQuery();
+             
+-            int wsize = Server.getInstance().getWorlds().size();
++            int wsize = Server.getInstance().getWorldsSize();
+             while(rs.next()) {
+                 int world = rs.getInt("world"), map = rs.getInt("map");
+                 if(world >= wsize) continue;
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index ddfd51276..54bc8fd6d 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2103,6 +2103,10 @@ public final void spawnItemDropList(List<Integer> list, int minCopies, int maxCo
+         }
+     }
+ 
++    private void registerMapSchedule(Runnable r, long delay) {
++        this.getChannelServer().registerOverallAction(mapid, r, delay);
++    }
++    
+     private void activateItemReactors(final MapleMapItem drop, final MapleClient c) {
+         final Item item = drop.getItem();
+ 
+@@ -2113,7 +2117,7 @@ private void activateItemReactors(final MapleMapItem drop, final MapleClient c)
+                 if (react.getReactItem(react.getEventState()).getLeft() == item.getItemId() && react.getReactItem(react.getEventState()).getRight() == item.getQuantity()) {
+ 
+                     if (react.getArea().contains(drop.getPosition())) {
+-                        TimerManager.getInstance().schedule(new ActivateItemReactor(drop, react, c), 5000);
++                        registerMapSchedule(new ActivateItemReactor(drop, react, c), 5000);
+                         break;
+                     }
+                 }
+@@ -2151,7 +2155,7 @@ public void searchItemReactors(final MapleReactor react) {
+                     if (reactArea.contains(drop.getPosition())) {
+                         MapleClient owner = drop.getOwnerClient();
+                         if(owner != null) {
+-                            TimerManager.getInstance().schedule(new ActivateItemReactor(drop, react, owner), 5000);
++                            registerMapSchedule(new ActivateItemReactor(drop, react, owner), 5000);
+                         }
+                     }
+                 }
+@@ -2173,13 +2177,16 @@ public void startMapEffect(String msg, int itemId, long time) {
+         }
+         mapEffect = new MapleMapEffect(msg, itemId);
+         broadcastMessage(mapEffect.makeStartData());
+-        TimerManager.getInstance().schedule(new Runnable() {
++        
++        Runnable r = new Runnable() {
+             @Override
+             public void run() {
+                 broadcastMessage(mapEffect.makeDestroyData());
+                 mapEffect = null;
+             }
+-        }, time);
++        };
++        
++        registerMapSchedule(r, time);
+     }
+     
+     public MapleCharacter getAnyCharacterFromParty(int partyid) {
+@@ -3807,4 +3814,37 @@ public void monsterHealed(int trueHeal) {
+             spawnMonsterOnGroundBelow(m, targetPoint);
+         }
+     }
++    
++    public void dispose() {
++        for(MapleMonster mm : this.getMonsters()) {
++            mm.disposeLocks();
++        }
++        
++        clearMapObjects();
++        
++        event = null;
++        footholds = null;
++        portals.clear();
++        mapEffect = null;
++        
++        if(mapMonitor != null) {
++            mapMonitor.cancel(false);
++            mapMonitor = null;
++        }
++        
++        chrWLock.lock();
++        try {
++            if(itemMonitor != null) {
++                itemMonitor.cancel(false);
++                itemMonitor = null;
++            }
++
++            if(expireItemsTask != null) {
++                expireItemsTask.cancel(false);
++                expireItemsTask = null;
++            }
++        } finally {
++            chrWLock.unlock();
++        }
++    }
+ }
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 0ea7a9bbf..072e1e377 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -437,7 +437,10 @@ public void dispose() {
+             mapsRLock.unlock();
+         }
+         
+-        for(MapleMap map: mapValues) map.setEventInstance(null);
++        for(MapleMap map: mapValues) {
++            map.dispose();
++        }
++        
+         this.event = null;
+     }
+ }
+diff --git a/src/server/maps/MapleTVEffect.java b/src/server/maps/MapleTVEffect.java
+index 1e832617e..4868f0a78 100644
+--- a/src/server/maps/MapleTVEffect.java
++++ b/src/server/maps/MapleTVEffect.java
+@@ -34,7 +34,7 @@
+  */
+ public class MapleTVEffect {
+ 	
+-	private final static boolean ACTIVE[] = new boolean[Server.getInstance().getWorlds().size()];
++	private final static boolean ACTIVE[] = new boolean[Server.getInstance().getWorldsSize()];
+ 	
+ 	public static synchronized boolean broadcastMapleTVIfNotActive(MapleCharacter player, MapleCharacter victim, List<String> messages, int tvType){
+                 int w = player.getWorld();
+diff --git a/wz/Etc.wz/Commodity.img.xml b/wz/Etc.wz/Commodity.img.xml
+index dd76a9bf3..e8113c9b7 100644
+--- a/wz/Etc.wz/Commodity.img.xml
++++ b/wz/Etc.wz/Commodity.img.xml
+@@ -81697,23 +81697,23 @@
+   </imgdir>
+   <imgdir name="7970">
+     <int name="SN" value="50200099"/>
+-    <int name="ItemId" value="5130000"/>
+-    <int name="Count" value="11"/>
+-    <int name="Price" value="6000"/>
++    <int name="ItemId" value="9113000"/>
++    <int name="Count" value="1"/>
++    <int name="Price" value="6800"/>
+     <int name="Period" value="90"/>
+-    <int name="Priority" value="13"/>
++    <int name="Priority" value="6"/>
+     <int name="Gender" value="2"/>
+-    <int name="OnSale" value="0"/>
++    <int name="OnSale" value="1"/>
+   </imgdir>
+   <imgdir name="7971">
+     <int name="SN" value="50200100"/>
+-    <int name="ItemId" value="5490001"/>
+-    <int name="Count" value="1"/>
+-    <int name="Price" value="1200"/>
++    <int name="ItemId" value="5520000"/>
++    <int name="Count" value="4"/>
++    <int name="Price" value="10500"/>
+     <int name="Period" value="90"/>
+-    <int name="Priority" value="14"/>
++    <int name="Priority" value="10"/>
+     <int name="Gender" value="2"/>
+-    <int name="OnSale" value="0"/>
++    <int name="OnSale" value="1"/>
+   </imgdir>
+   <imgdir name="7972">
+     <int name="SN" value="50200101"/>

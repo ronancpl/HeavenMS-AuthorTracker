@@ -1,0 +1,1933 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 7994b0393..cd199561a 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -787,5 +787,8 @@ Adicionado novos scrolls à venda no Spindle.
+ Corrigido bug com pet Snail sendo inexpirável (deveria ter tempo de vida de 5 horas).
+ Adicionado efeito de som ao atravessar portais para a maioria dos scripts de portais.
+ 
+-14 Fevereiro 2018,
+-Adicionado diversos drops de skill/mastery books para mobs level 90+.
+\ No newline at end of file
++14 - 16 Fevereiro 2018,
++Adicionado diversos drops de skill/mastery books para mobs level 90+.
++Corrigido problema com PQs onde jogadores que saíam do grupo não eram transportados para fora do mapa do evento devidamente.
++Corrigido problema com PQs onde jogadores eram expulsos de eventos já completados ao tentar sair/debandar da party.
++Corrigido possível problema de exploit com Vega's scroll.
+\ No newline at end of file
+diff --git a/scripts/event/0_EXAMPLE.js b/scripts/event/0_EXAMPLE.js
+index 9923621ba..6e6d98ba0 100644
+--- a/scripts/event/0_EXAMPLE.js
++++ b/scripts/event/0_EXAMPLE.js
+@@ -62,6 +62,10 @@ function playerExit(eim, player) {
+     // Do something with the player right before disbanding the event instance.
+ }
+ 
++function playerLeft(eim, player) {
++    // Do something with the player right before leaving the party.
++}
++
+ function changedMap(eim, player, mapid) {
+     // What to do when player've changed map, based on the mapid.
+ }
+diff --git a/scripts/event/AmoriaPQ.js b/scripts/event/AmoriaPQ.js
+index c961df97c..0d3c85218 100644
+--- a/scripts/event/AmoriaPQ.js
++++ b/scripts/event/AmoriaPQ.js
+@@ -168,6 +168,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -208,15 +214,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/BossRushPQ.js b/scripts/event/BossRushPQ.js
+index 07caed1e7..f2ebee4d5 100644
+--- a/scripts/event/BossRushPQ.js
++++ b/scripts/event/BossRushPQ.js
+@@ -129,6 +129,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -167,14 +173,17 @@ function playerDisconnected(eim, player) {
+ }
+ 
+ function leftParty(eim, player) {
+-        if (eim.isEventTeamLackingNow(false, minPlayers, player))
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+                 end(eim);
++        }
+         else
+-                playerExit(eim, player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_1.js b/scripts/event/CafePQ_1.js
+index 283ef1d5c..3010832c3 100644
+--- a/scripts/event/CafePQ_1.js
++++ b/scripts/event/CafePQ_1.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_2.js b/scripts/event/CafePQ_2.js
+index ca8be2219..9c7a328ba 100644
+--- a/scripts/event/CafePQ_2.js
++++ b/scripts/event/CafePQ_2.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_3.js b/scripts/event/CafePQ_3.js
+index 00e088cfd..bf49d7678 100644
+--- a/scripts/event/CafePQ_3.js
++++ b/scripts/event/CafePQ_3.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_4.js b/scripts/event/CafePQ_4.js
+index c3bb0fe52..7d3139a84 100644
+--- a/scripts/event/CafePQ_4.js
++++ b/scripts/event/CafePQ_4.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_5.js b/scripts/event/CafePQ_5.js
+index 38ac2922d..ced009195 100644
+--- a/scripts/event/CafePQ_5.js
++++ b/scripts/event/CafePQ_5.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/CafePQ_6.js b/scripts/event/CafePQ_6.js
+index 84089fc09..f997b049a 100644
+--- a/scripts/event/CafePQ_6.js
++++ b/scripts/event/CafePQ_6.js
+@@ -134,6 +134,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -174,15 +180,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/ElementalBattle.js b/scripts/event/ElementalBattle.js
+new file mode 100644
+index 000000000..c2a94165b
+--- /dev/null
++++ b/scripts/event/ElementalBattle.js
+@@ -0,0 +1,222 @@
++/**
++ * @author: Ronan
++ * @event: Vs Elemental Thanatos
++*/
++
++var isPq = true;
++var minPlayers = 2, maxPlayers = 2;
++var minLevel = 100, maxLevel = 255;
++var entryMap = 922020100;
++var exitMap = 220050300;
++var recruitMap = 220050300;
++var clearMap = 220050300;
++
++var minMapId = 922020100;
++var maxMapId = 922020100;
++
++var eventTime = 20;     // 20 minutes
++
++var lobbyRange = [0, 0];
++
++function init() {
++        setEventRequirements();
++}
++
++function setLobbyRange() {
++        return lobbyRange;
++}
++
++function setEventRequirements() {
++        var reqStr = "";
++        
++        reqStr += "\r\n    Number of players: ";
++        if(maxPlayers - minPlayers >= 1) reqStr += minPlayers + " ~ " + maxPlayers;
++        else reqStr += minPlayers;
++        
++        reqStr += "\r\n    Level range: ";
++        if(maxLevel - minLevel >= 1) reqStr += minLevel + " ~ " + maxLevel;
++        else reqStr += minLevel;
++        
++        reqStr += "\r\n    For #rmagicians only#k.";
++        
++        reqStr += "\r\n    Time limit: ";
++        reqStr += eventTime + " minutes";
++        
++        em.setProperty("party", reqStr);
++}
++
++function setEventExclusives(eim) {
++        var itemSet = [];
++        eim.setExclusiveItems(itemSet);
++}
++
++function setEventRewards(eim) {
++        var itemSet, itemQty, evLevel, expStages;
++
++        evLevel = 1;    //Rewards at clear PQ
++        itemSet = [];
++        itemQty = [];
++        eim.setEventRewards(evLevel, itemSet, itemQty);
++        
++        expStages = [];    //bonus exp given on CLEAR stage signal
++        eim.setEventClearStageExp(expStages);
++}
++
++function getEligibleParty(party) {      //selects, from the given party, the team that is allowed to attempt this event
++        var eligible = [];
++        var hasLeader = false;
++        
++        if(party.size() > 0) {
++                var partyList = party.toArray();
++
++                for(var i = 0; i < party.size(); i++) {
++                        var ch = partyList[i];
++
++                        if(ch.getMapId() == recruitMap && ch.getLevel() >= minLevel && ch.getLevel() <= maxLevel && ch.getJob().getJobNiche() == 2) {
++                                if(ch.isLeader()) hasLeader = true;     // magician niche only
++                                eligible.push(ch);
++                        }
++                }
++        }
++        
++        if(!(hasLeader && eligible.length >= minPlayers && eligible.length <= maxPlayers)) eligible = [];
++        return eligible;
++}
++
++function setup(level, lobbyid) {
++        var eim = em.newInstance("Elemental" + lobbyid);
++        eim.setProperty("level", level);
++        eim.setProperty("boss", "0");
++        
++        eim.getInstanceMap(922020100).resetPQ(level);
++        
++        respawnStages(eim);
++        eim.startEventTimer(eventTime * 60000);
++        setEventRewards(eim);
++        setEventExclusives(eim);
++        return eim;
++}
++
++function afterSetup(eim) {}
++
++function respawnStages(eim) {}
++
++function playerEntry(eim, player) {
++        var map = eim.getMapInstance(entryMap);
++        player.changeMap(map, map.getPortal(0));
++}
++
++function scheduledTimeout(eim) {
++        end(eim);
++}
++
++function playerUnregistered(eim, player) {}
++
++function playerExit(eim, player) {
++        eim.unregisterPlayer(player);
++        player.changeMap(exitMap, 0);
++}
++
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
++function changedMap(eim, player, mapid) {
++        if (mapid < minMapId || mapid > maxMapId) {
++                if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                        eim.unregisterPlayer(player);
++                        end(eim);
++                }
++                else
++                        eim.unregisterPlayer(player);
++        }
++}
++
++function changedLeader(eim, leader) {
++        var mapid = leader.getMapId();
++        if (!eim.isEventCleared() && (mapid < minMapId || mapid > maxMapId)) {
++                end(eim);
++        }
++}
++
++function playerDead(eim, player) {}
++
++function playerRevive(eim, player) { // player presses ok on the death pop up.
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function playerDisconnected(eim, player) {
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function leftParty(eim, player) {
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
++                end(eim);
++        }
++        else
++                playerLeft(eim, player);
++}
++
++function disbandParty(eim) {
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
++}
++
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
++function end(eim) {
++        var party = eim.getPlayers();
++        
++        for (var i = 0; i < party.size(); i++) {
++                playerExit(eim, party.get(i));
++        }
++        eim.dispose();
++}
++
++function giveRandomEventReward(eim, player) {
++        eim.giveEventReward(player);
++}
++
++function clearPQ(eim) {
++        eim.stopEventTimer();
++        eim.setEventCleared();
++}
++
++function isElemental(mob) {
++        var mobid = mob.getId();
++        return mobid == 9300086 || mobid == 9300100;
++}
++
++function monsterKilled(mob, eim) {
++        if(isElemental(mob)) {
++                var killed = eim.getIntProperty("boss");
++                if(killed == 1) {
++                        eim.showClearEffect();
++                        eim.clearPQ();
++                } else {
++                        eim.setIntProperty("boss", killed + 1);
++                }
++        }
++}
++
++function allMonstersDead(eim) {}
++
++function cancelSchedule() {}
++
++function dispose(eim) {}
++
+diff --git a/scripts/event/EllinPQ.js b/scripts/event/EllinPQ.js
+index e058f4fb2..bad05057c 100644
+--- a/scripts/event/EllinPQ.js
++++ b/scripts/event/EllinPQ.js
+@@ -39,6 +39,9 @@ function setEventRequirements() {
+         
+         reqStr += "\r\n    For #radventurers only#k.";
+         
++        reqStr += "\r\n    Time limit: ";
++        reqStr += eventTime + " minutes";
++        
+         em.setProperty("party", reqStr);
+ }
+ 
+@@ -136,6 +139,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function playerDead(eim, player) {}
+ 
+ function playerRevive(eim, player) { // player presses ok on the death pop up.
+@@ -156,14 +165,17 @@ function playerDisconnected(eim, player) {
+ }
+ 
+ function leftParty(eim, player) {
+-        if (eim.isEventTeamLackingNow(false, minPlayers, player))
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+                 end(eim);
++        }
+         else
+-                playerExit(eim, player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/HenesysPQ.js b/scripts/event/HenesysPQ.js
+index 382b1beff..39348cbef 100644
+--- a/scripts/event/HenesysPQ.js
++++ b/scripts/event/HenesysPQ.js
+@@ -129,6 +129,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -169,15 +175,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/HorntailPQ.js b/scripts/event/HorntailPQ.js
+index 3300ceb62..b61a8fb2a 100644
+--- a/scripts/event/HorntailPQ.js
++++ b/scripts/event/HorntailPQ.js
+@@ -130,6 +130,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -170,15 +176,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/KerningPQ.js b/scripts/event/KerningPQ.js
+index c015bd20e..ef399ac32 100644
+--- a/scripts/event/KerningPQ.js
++++ b/scripts/event/KerningPQ.js
+@@ -116,6 +116,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -156,15 +162,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/LatanicaBattle.js b/scripts/event/LatanicaBattle.js
+index b2346be44..e24a4a37f 100644
+--- a/scripts/event/LatanicaBattle.js
++++ b/scripts/event/LatanicaBattle.js
+@@ -115,6 +115,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -155,15 +161,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/LudiMazePQ.js b/scripts/event/LudiMazePQ.js
+index f7dce8109..7dccd58df 100644
+--- a/scripts/event/LudiMazePQ.js
++++ b/scripts/event/LudiMazePQ.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/LudiPQ.js b/scripts/event/LudiPQ.js
+index eae7ce0e3..46c92c1a2 100644
+--- a/scripts/event/LudiPQ.js
++++ b/scripts/event/LudiPQ.js
+@@ -153,6 +153,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -193,15 +199,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/MagatiaPQ_A.js b/scripts/event/MagatiaPQ_A.js
+index 4b9b2f4b9..ac5268264 100644
+--- a/scripts/event/MagatiaPQ_A.js
++++ b/scripts/event/MagatiaPQ_A.js
+@@ -229,6 +229,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -316,15 +322,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/MagatiaPQ_Z.js b/scripts/event/MagatiaPQ_Z.js
+index debc59855..a0ac6b13e 100644
+--- a/scripts/event/MagatiaPQ_Z.js
++++ b/scripts/event/MagatiaPQ_Z.js
+@@ -229,6 +229,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -316,15 +322,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/OrbisPQ.js b/scripts/event/OrbisPQ.js
+index 391318651..d2206138e 100644
+--- a/scripts/event/OrbisPQ.js
++++ b/scripts/event/OrbisPQ.js
+@@ -183,6 +183,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -223,15 +229,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/PapulatusBattle.js b/scripts/event/PapulatusBattle.js
+new file mode 100644
+index 000000000..bbd1cdfe9
+--- /dev/null
++++ b/scripts/event/PapulatusBattle.js
+@@ -0,0 +1,215 @@
++/**
++ * @author: Ronan
++ * @event: Vs Papulatus
++*/
++
++var isPq = true;
++var minPlayers = 1, maxPlayers = 6;
++var minLevel = 1, maxLevel = 255;
++var entryMap = 220080001;
++var exitMap = 220080000;
++var recruitMap = 220080000;
++var clearMap = 220080000;
++
++var minMapId = 220080001;
++var maxMapId = 220080001;
++
++var eventTime = 45;     // 45 minutes
++
++var lobbyRange = [0, 0];
++
++function init() {
++        setEventRequirements();
++}
++
++function setLobbyRange() {
++        return lobbyRange;
++}
++
++function setEventRequirements() {
++        var reqStr = "";
++        
++        reqStr += "\r\n    Number of players: ";
++        if(maxPlayers - minPlayers >= 1) reqStr += minPlayers + " ~ " + maxPlayers;
++        else reqStr += minPlayers;
++        
++        reqStr += "\r\n    Level range: ";
++        if(maxLevel - minLevel >= 1) reqStr += minLevel + " ~ " + maxLevel;
++        else reqStr += minLevel;
++        
++        reqStr += "\r\n    Time limit: ";
++        reqStr += eventTime + " minutes";
++        
++        em.setProperty("party", reqStr);
++}
++
++function setEventExclusives(eim) {
++        var itemSet = [];
++        eim.setExclusiveItems(itemSet);
++}
++
++function setEventRewards(eim) {
++        var itemSet, itemQty, evLevel, expStages;
++
++        evLevel = 1;    //Rewards at clear PQ
++        itemSet = [];
++        itemQty = [];
++        eim.setEventRewards(evLevel, itemSet, itemQty);
++        
++        expStages = [];    //bonus exp given on CLEAR stage signal
++        eim.setEventClearStageExp(expStages);
++}
++
++function getEligibleParty(party) {      //selects, from the given party, the team that is allowed to attempt this event
++        var eligible = [];
++        var hasLeader = false;
++        
++        if(party.size() > 0) {
++                var partyList = party.toArray();
++
++                for(var i = 0; i < party.size(); i++) {
++                        var ch = partyList[i];
++
++                        if(ch.getMapId() == recruitMap && ch.getLevel() >= minLevel && ch.getLevel() <= maxLevel) {
++                                if(ch.isLeader()) hasLeader = true;
++                                eligible.push(ch);
++                        }
++                }
++        }
++        
++        if(!(hasLeader && eligible.length >= minPlayers && eligible.length <= maxPlayers)) eligible = [];
++        return eligible;
++}
++
++function setup(level, lobbyid) {
++        var eim = em.newInstance("Papulatus" + lobbyid);
++        eim.setProperty("level", level);
++        eim.setProperty("boss", "0");
++        
++        eim.getInstanceMap(220080001).resetPQ(level);
++        
++        respawnStages(eim);
++        eim.startEventTimer(eventTime * 60000);
++        setEventRewards(eim);
++        setEventExclusives(eim);
++        return eim;
++}
++
++function afterSetup(eim) {}
++
++function respawnStages(eim) {}
++
++function playerEntry(eim, player) {
++        var map = eim.getMapInstance(entryMap);
++        player.changeMap(map, map.getPortal(0));
++}
++
++function scheduledTimeout(eim) {
++        end(eim);
++}
++
++function playerUnregistered(eim, player) {}
++
++function playerExit(eim, player) {
++        eim.unregisterPlayer(player);
++        player.changeMap(exitMap, 0);
++}
++
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
++function changedMap(eim, player, mapid) {
++        if (mapid < minMapId || mapid > maxMapId) {
++                if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                        eim.unregisterPlayer(player);
++                        end(eim);
++                }
++                else
++                        eim.unregisterPlayer(player);
++        }
++}
++
++function changedLeader(eim, leader) {
++        var mapid = leader.getMapId();
++        if (!eim.isEventCleared() && (mapid < minMapId || mapid > maxMapId)) {
++                end(eim);
++        }
++}
++
++function playerDead(eim, player) {}
++
++function playerRevive(eim, player) { // player presses ok on the death pop up.
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function playerDisconnected(eim, player) {
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function leftParty(eim, player) {
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
++                end(eim);
++        }
++        else
++                playerLeft(eim, player);
++}
++
++function disbandParty(eim) {
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
++}
++
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
++function end(eim) {
++        var party = eim.getPlayers();
++        
++        for (var i = 0; i < party.size(); i++) {
++                playerExit(eim, party.get(i));
++        }
++        eim.dispose();
++}
++
++function giveRandomEventReward(eim, player) {
++        eim.giveEventReward(player);
++}
++
++function clearPQ(eim) {
++        eim.stopEventTimer();
++        eim.setEventCleared();
++}
++
++function isPapulatus(mob) {
++        var mobid = mob.getId();
++        return mobid == 8500002;
++}
++
++function monsterKilled(mob, eim) {
++        if(isPapulatus(mob)) {
++                eim.showClearEffect();
++                eim.clearPQ();
++        }
++}
++
++function allMonstersDead(eim) {}
++
++function cancelSchedule() {}
++
++function dispose(eim) {}
++
+diff --git a/scripts/event/PiratePQ.js b/scripts/event/PiratePQ.js
+index 95d58803f..d839472ae 100644
+--- a/scripts/event/PiratePQ.js
++++ b/scripts/event/PiratePQ.js
+@@ -196,6 +196,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMapInside(eim, mapid) {
+         var stage = eim.getIntProperty("curStage");
+     
+@@ -260,21 +266,25 @@ function playerRevive(eim, player) { // player presses ok on the death pop up.
+ 
+ 
+ function playerDisconnected(eim, player) {
+-        if (eim.isEventTeamLackingNow(true, minPlayers, player))
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+                 end(eim);
++        }
+         else
+                 playerExit(eim, player);
+ }
+ 
+ function leftParty(eim, player) {
+-        if (eim.isEventTeamLackingNow(false, minPlayers, player))
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+                 end(eim);
++        }
+         else
+-                playerExit(eim, player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/TD_Battle1.js b/scripts/event/TD_Battle1.js
+index 78fb510a1..82a97f38b 100644
+--- a/scripts/event/TD_Battle1.js
++++ b/scripts/event/TD_Battle1.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/TD_Battle2.js b/scripts/event/TD_Battle2.js
+index 0f26fc368..a0a04ca45 100644
+--- a/scripts/event/TD_Battle2.js
++++ b/scripts/event/TD_Battle2.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/TD_Battle3.js b/scripts/event/TD_Battle3.js
+index 7545c3dbd..3403b376e 100644
+--- a/scripts/event/TD_Battle3.js
++++ b/scripts/event/TD_Battle3.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/TD_Battle4.js b/scripts/event/TD_Battle4.js
+index eca93dec8..b59777618 100644
+--- a/scripts/event/TD_Battle4.js
++++ b/scripts/event/TD_Battle4.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/TD_Battle5.js b/scripts/event/TD_Battle5.js
+index 83758720e..49bfe43b7 100644
+--- a/scripts/event/TD_Battle5.js
++++ b/scripts/event/TD_Battle5.js
+@@ -117,6 +117,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -157,15 +163,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/event/ZakumPQ.js b/scripts/event/ZakumPQ.js
+index 689e30714..57859637f 100644
+--- a/scripts/event/ZakumPQ.js
++++ b/scripts/event/ZakumPQ.js
+@@ -146,6 +146,12 @@ function playerExit(eim, player) {
+         player.changeMap(exitMap, 0);
+ }
+ 
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
+ function changedMap(eim, player, mapid) {
+         if (mapid < minMapId || mapid > maxMapId) {
+                 if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+@@ -186,15 +192,16 @@ function playerDisconnected(eim, player) {
+ 
+ function leftParty(eim, player) {
+         if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
+-                eim.unregisterPlayer(player);
+                 end(eim);
+         }
+         else
+-                eim.unregisterPlayer(player);
++                playerLeft(eim, player);
+ }
+ 
+ function disbandParty(eim) {
+-        end(eim);
++        if (!eim.isEventCleared()) {
++                end(eim);
++        }
+ }
+ 
+ function monsterValue(eim, mobId) {
+diff --git a/scripts/npc/2041023.js b/scripts/npc/2041023.js
+index a44cba84e..9edc5e5b1 100644
+--- a/scripts/npc/2041023.js
++++ b/scripts/npc/2041023.js
+@@ -19,9 +19,79 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-//By Moogra
++//First version by Moogra
++
++/**
++ * @author: Ronan
++ * @npc: Flo
++ * @map: Ludibrium - Path of Time (220050300)
++ * @func: Elemental Thanatos room
++*/
++
++var status = 0;
++var em = null;
+ 
+ function start() {
+-    cm.sendOk("You seems to have no reason to meet element-based Thanatos.");
+-    cm.dispose();
+-}
+\ No newline at end of file
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && status == 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++                
++                if (status == 0) {
++                        if(!(cm.isQuestCompleted(6316) && (cm.isQuestStarted(6225) || cm.isQuestStarted(6315)))) {
++                                cm.sendOk("You seems to have no reason to meet element-based Thanatos.");
++                                cm.dispose();
++                                return;
++                        }
++                    
++                        em = cm.getEventManager("ElementalBattle");
++                        if(em == null) {
++                                cm.sendOk("The Elemental Battle has encountered an error.");
++                                cm.dispose();
++                                return;
++                        }
++                    
++                        cm.sendSimple("#e#b<Party Quest: Elemental Thanatos>\r\n#k#n" + em.getProperty("party") + "\r\n\r\nYou are looking for Elemental Thanatos, right? If you team up with another mage, with the opposite elemental affinity as yours, you guys will be able to overcome them. As a leader, talk to me when you feel ready to go.#b\r\n#L0#I want to participate in the party quest.\r\n#L1#I want to find party members.\r\n#L2#I would like to hear more details.");
++                } else if (status == 1) {
++                        if (selection == 0) {
++                                if (cm.getParty() == null) {
++                                        cm.sendOk("You can participate in the party quest only if you are in a party.");
++                                        cm.dispose();
++                                } else if(!cm.isLeader()) {
++                                        cm.sendOk("Your party leader must talk to me to start this party quest.");
++                                        cm.dispose();
++                                } else {
++                                        var eli = em.getEligibleParty(cm.getParty());
++                                        if(eli.size() > 0) {
++                                                if(!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
++                                                        cm.sendOk("Another party has already entered the #rParty Quest#k in this channel. Please try another channel, or wait for the current party to finish.");
++                                                }
++                                        }
++                                        else {
++                                                cm.sendOk("You cannot start this party quest yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
++                                        }
++                                        
++                                        cm.dispose();
++                                }
++                        } else if (selection == 1) {
++                                cm.sendOk("Try using a Super Megaphone or asking your buddies or guild to join!");
++                                cm.dispose();
++                        } else {
++                                cm.sendOk("#e#b<Party Quest: Elemental Thanatos>#k#n\r\n Team up with another mage with #rdifferent elemental affinity#k before entering the stage. This team aspect is crucial to overcome the elementals inside.");
++                                cm.dispose();
++                        }
++                }
++        }
++}
+diff --git a/scripts/npc/2041024.js b/scripts/npc/2041024.js
+new file mode 100644
+index 000000000..c4f582b3f
+--- /dev/null
++++ b/scripts/npc/2041024.js
+@@ -0,0 +1,46 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("For those capable of great feats and bearers of an unwavering resolve, the #bfinal destination#k lies ahead past the gate. The Machine Room accepts only #rone party at a time#k, so make sure your party is ready when crossing the gate.");
++                        cm.dispose();
++                }
++        }
++}
+diff --git a/scripts/portal/Populatus00.js b/scripts/portal/Populatus00.js
+index 1ebdad11a..8e5e4cb76 100644
+--- a/scripts/portal/Populatus00.js
++++ b/scripts/portal/Populatus00.js
+@@ -19,19 +19,32 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
++
++/* @author RonanLana */
++
+ function enter(pi) {
+-    var papuMap = pi.getClient().getChannelServer().getMapFactory().getMap(220080001);
+-    if (papuMap.getCharacters().size() == 0) {
+-        pi.getPlayer().dropMessage("The room is empty. A perfect opportunity to challenge the boss.");
+-        papuMap.resetReactors();
+-    } else { // someone is inside
+-        for (var i = 0; i < 3; i++) {
+-            if (papuMap.getMonsterById(8500000 + i) != null) {
+-                pi.getPlayer().dropMessage("Someone is fighting Papulatus.");
++    var em = pi.getEventManager("PapulatusBattle");
++
++    if (pi.getParty() == null) {
++        pi.playerMessage(5, "You are currently not in a party, create one to attempt the boss.");
++        return false;
++    } else if(!pi.isLeader()) {
++        pi.playerMessage(5, "Your party leader must enter the portal to start the battle.");
++        return false;
++    } else {
++        var eli = em.getEligibleParty(pi.getParty());
++        if(eli.size() > 0) {
++            if(!em.startInstance(pi.getParty(), pi.getPlayer().getMap(), 1)) {
++                pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place yet.");
+                 return false;
+             }
+         }
+-    }
+-    pi.playPortalSound(); pi.warp(220080001, "st00");
+-    return true;
++        else {  //this should never appear
++            pi.playerMessage(5, "You cannot start this battle yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
++            return false;
++        }
++
++        pi.playPortalSound();
++        return true;
++    }    
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/TD_Boss_enter.js b/scripts/portal/TD_Boss_enter.js
+index 8483571ad..be4c109c7 100644
+--- a/scripts/portal/TD_Boss_enter.js
++++ b/scripts/portal/TD_Boss_enter.js
+@@ -18,7 +18,7 @@ function enter(pi) {
+                 var eli = em.getEligibleParty(pi.getParty());
+                 if(eli.size() > 0) {
+                         if(!em.startInstance(pi.getParty(), pi.getPlayer().getMap(), 1)) {
+-                                pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place.");
++                                pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place yet.");
+                                 return false;
+                         }
+                 }
+@@ -27,6 +27,7 @@ function enter(pi) {
+                         return false;
+                 }
+ 
++                pi.playPortalSound();
+                 return true;
+         }
+ }
+diff --git a/scripts/portal/TD_MC_enterboss2.js b/scripts/portal/TD_MC_enterboss2.js
+index 70994ceeb..a9f98df2f 100644
+--- a/scripts/portal/TD_MC_enterboss2.js
++++ b/scripts/portal/TD_MC_enterboss2.js
+@@ -25,7 +25,9 @@ function enter(pi) {
+             pi.giveCharacterExp(4400 * 1.5, pi.getPlayer());
+             var pm = pi.getEventManager("MK_PrimeMinister");
+             pm.setProperty("player", pi.getPlayer().getName());
++            
+             pm.startInstance(pi.getPlayer());
++            pi.playPortalSound();
+             return true;
+         }
+     }
+@@ -37,7 +39,9 @@ function enter(pi) {
+         else{
+             var pm = pi.getEventManager("MK_PrimeMinister");
+             pm.setProperty("player", pi.getPlayer().getName());
++            
+             pm.startInstance(pi.getPlayer());
++            pi.playPortalSound();
+             return true;
+         }
+     }
+diff --git a/scripts/portal/TD_neo_inTree.js b/scripts/portal/TD_neo_inTree.js
+index 6e68fd829..a46cfbcd6 100644
+--- a/scripts/portal/TD_neo_inTree.js
++++ b/scripts/portal/TD_neo_inTree.js
+@@ -19,6 +19,7 @@ function enter(pi) {
+                 pi.message("Someone is already challenging Nex. Wait for them to finish before you enter.");
+                 return false;
+             } else {
++                pi.playPortalSound();
+                 return true;
+             }
+         }
+diff --git a/scripts/portal/captinsg00.js b/scripts/portal/captinsg00.js
+index 670d8e036..a4ee3d6e4 100644
+--- a/scripts/portal/captinsg00.js
++++ b/scripts/portal/captinsg00.js
+@@ -17,7 +17,7 @@ function enter(pi) {
+                         var eli = em.getEligibleParty(pi.getParty());
+                         if(eli.size() > 0) {
+                                 if(!em.startInstance(pi.getParty(), pi.getPlayer().getMap(), 1)) {
+-                                        pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place.");
++                                        pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place yet.");
+                                         return false;
+                                 }
+                         }
+@@ -26,6 +26,7 @@ function enter(pi) {
+                                 return false;
+                         }
+ 
++                        pi.playPortalSound();
+                         return true;
+                 }
+         }
+diff --git a/scripts/portal/enterMagiclibrar.js b/scripts/portal/enterMagiclibrar.js
+index d2872afa1..c8df1a281 100644
+--- a/scripts/portal/enterMagiclibrar.js
++++ b/scripts/portal/enterMagiclibrar.js
+@@ -20,10 +20,10 @@
+ */
+ function enter(pi) {
+     if(pi.isQuestStarted(20718)){
+-        pi.playPortalSound();
+         var cml = pi.getEventManager("Cygnus_Magic_Library");
+         cml.setProperty("player", pi.getPlayer().getName());
+         cml.startInstance(pi.getPlayer());
++        pi.playPortalSound();
+     }
+     else{
+         pi.playPortalSound();
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index e9b535bb2..6e3e6735d 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -10643,8 +10643,8 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (10421, 7130100, 4031466, 1, 1, 6107, 80000),
+ (10422, 6230100, 4031466, 1, 1, 6107, 30000),
+ (10423, 9300100, 4031470, 1, 1, 6225, 250000),
+-(10424, 9300086, 4031470, 1, 1, 6225, 250000),
+-(10425, 9300100, 4031469, 1, 1, 6315, 250000),
++(10424, 9300086, 4031470, 1, 1, 6225, 1000),
++(10425, 9300100, 4031469, 1, 1, 6315, 1000),
+ (10426, 9300086, 4031469, 1, 1, 6315, 250000),
+ (10427, 8160000, 4031474, 1, 1, 6295, 50000),
+ (10428, 8160000, 4031473, 1, 1, 6226, 20000),
+diff --git a/src/net/server/channel/handlers/MakerSkillHandler.java b/src/net/server/channel/handlers/MakerSkillHandler.java
+index b608ebd58..5b7235bed 100644
+--- a/src/net/server/channel/handlers/MakerSkillHandler.java
++++ b/src/net/server/channel/handlers/MakerSkillHandler.java
+@@ -406,7 +406,7 @@ private static boolean addBoostedMakerItem(MapleClient c, int itemid, int stimul
+             if(!(c.getPlayer().isGM() && ServerConstants.USE_PERFECT_GM_SCROLL)) {
+                 eqp.setUpgradeSlots((byte)(eqp.getUpgradeSlots() + 1));
+             }
+-            item = MapleItemInformationProvider.getInstance().scrollEquipWithId(eqp, 2049100, true, 0, c.getPlayer().isGM());
++            item = MapleItemInformationProvider.getInstance().scrollEquipWithId(eqp, 2049100, true, 2049100, c.getPlayer().isGM());
+         }
+         
+         if(!reagentids.isEmpty()) {
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index e342a841f..7b6c9ea11 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -564,14 +564,15 @@ public void run() {
+                 return;
+             }
+             
+-            //should have a check here against PE hacks
+-            
+             Equip toScroll = (Equip) eitem;
+             if (toScroll.getUpgradeSlots() < 1) {
+                 c.getSession().write(MaplePacketCreator.getInventoryFull());
+                 return;
+             }
+             
++            //should have a check here against PE hacks
++            if(itemId / 1000000 != 5) itemId = 0;
++            
+             c.getPlayer().toggleBlockCashShop();
+             
+             final int curlevel = toScroll.getLevel();
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 1162638ca..f8d92ef4e 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -101,6 +101,7 @@
+         private ScheduledFuture<?> event_schedule = null;
+         private boolean disposed = false;
+         private boolean eventCleared = false;
++        private boolean eventStarted = false;
+         
+         // multi-leveled PQ rewards!
+         private Map<Integer, List<Integer>> collectionSet = new HashMap<>(ServerConstants.MAX_EVENT_LEVELS);
+@@ -507,18 +508,20 @@ public void monsterKilled(MapleMonster mob, boolean hasKiller) {
+                 try {
+                         mobs.remove(mob);
+                         
+-                        try {
+-                                em.getIv().invokeFunction("monsterKilled", mob, this, hasKiller);
+-                        } catch (ScriptException | NoSuchMethodException ex) {
+-                                ex.printStackTrace();
+-                        }
+-                        
+-                        if (mobs.isEmpty()) {
++                        if(eventStarted) {
+                                 try {
+-                                        em.getIv().invokeFunction("allMonstersDead", this, hasKiller);
++                                        em.getIv().invokeFunction("monsterKilled", mob, this, hasKiller);
+                                 } catch (ScriptException | NoSuchMethodException ex) {
+                                         ex.printStackTrace();
+                                 }
++
++                                if (mobs.isEmpty()) {
++                                        try {
++                                                em.getIv().invokeFunction("allMonstersDead", this, hasKiller);
++                                        } catch (ScriptException | NoSuchMethodException ex) {
++                                                ex.printStackTrace();
++                                        }
++                                }
+                         }
+                 } finally {
+                         sL.unlock();
+@@ -1072,6 +1075,20 @@ private void disposeExpedition() {
+                 }
+         }
+         
++        public final void startEvent() {
++                try {
++                        sL.lock();
++                        try {
++                                eventStarted = true;
++                                em.getIv().invokeFunction("afterSetup", this);
++                        } finally {
++                                sL.unlock();
++                        }
++                } catch (ScriptException | NoSuchMethodException ex) {
++                        ex.printStackTrace();
++                }
++        }
++        
+         public final void setEventCleared() {
+                 eventCleared = true;
+                 
+@@ -1097,20 +1114,20 @@ private boolean isEventTeamLeaderOn() {
+                 return false;
+         }
+         
+-        public final boolean checkEventTeamLacking(boolean testLeader, int minPlayers) {
++        public final boolean checkEventTeamLacking(boolean leavingEventMap, int minPlayers) {
+                 if(eventCleared && getPlayerCount() > 1) return false;
+                 
+-                if(!eventCleared && testLeader && !isEventTeamLeaderOn()) return true;
++                if(!eventCleared && leavingEventMap && !isEventTeamLeaderOn()) return true;
+                 if(getPlayerCount() < minPlayers) return true;
+                 
+                 return false;
+         }
+         
+-        public final boolean isEventTeamLackingNow(boolean testLeader, int minPlayers, MapleCharacter quitter) {
++        public final boolean isEventTeamLackingNow(boolean leavingEventMap, int minPlayers, MapleCharacter quitter) {
+                 if(eventCleared) {
+-                        if(getPlayerCount() <= 1) return true;
++                        if(leavingEventMap && getPlayerCount() <= 1) return true;
+                 } else {
+-                        if(testLeader && getLeaderId() == quitter.getId()) return true;
++                        if(leavingEventMap && getLeaderId() == quitter.getId()) return true;
+                         if(getPlayerCount() <= minPlayers) return true;
+                 }
+                 
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 3971ca3d2..8e99546b5 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -298,7 +298,7 @@ public boolean startInstance(int lobbyId, MapleExpedition exped, MapleCharacter
+             exped.start();
+             eim.registerExpedition(exped);
+             
+-            iv.invokeFunction("afterSetup", eim);
++            eim.startEvent();
+         } catch (ScriptException | NoSuchMethodException ex) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+@@ -334,7 +334,8 @@ public boolean startInstance(int lobbyId, MapleCharacter chr, MapleCharacter lea
+             eim.setLeader(leader);
+             
+             if(chr != null) eim.registerPlayer(chr);
+-            iv.invokeFunction("afterSetup", eim);
++            
++            eim.startEvent();
+         } catch (ScriptException | NoSuchMethodException ex) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+@@ -371,7 +372,8 @@ public boolean startInstance(int lobbyId, MapleParty party, MapleMap map, MapleC
+             
+             eim.registerParty(party, map);
+             party.setEligibleMembers(null);
+-            iv.invokeFunction("afterSetup", eim);
++            
++            eim.startEvent();
+         } catch (ScriptException | NoSuchMethodException ex) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+@@ -408,7 +410,8 @@ public boolean startInstance(int lobbyId, MapleParty party, MapleMap map, int di
+             
+             eim.registerParty(party, map);
+             party.setEligibleMembers(null);
+-            iv.invokeFunction("afterSetup", eim);
++            
++            eim.startEvent();
+         } catch (ScriptException | NoSuchMethodException ex) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+@@ -448,7 +451,8 @@ public boolean startInstance(int lobbyId, EventInstanceManager eim, String ldr,
+             
+             iv.invokeFunction("setup", eim);
+             eim.setProperty("leader", ldr);
+-            iv.invokeFunction("afterSetup", eim);
++            
++            eim.startEvent();
+         } catch (ScriptException | NoSuchMethodException ex) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index f3f0b5d94..cdeb59172 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -871,9 +871,9 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+             if (((nEquip.getUpgradeSlots() > 0 || ItemConstants.isCleanSlate(scrollId))) || assertGM) {
+                 double prop = (double)stats.get("success");
+                 if (vegaItemId == 5610000) {
+-                    prop = 30.0;
++                    if(prop == 10.0) prop = 30.0;
+                 } else if (vegaItemId == 5610001) {
+-                    prop = 90.0;
++                    if(prop == 60.0) prop = 90.0;
+                 } else if (vegaItemId == 2049100) {
+                     prop = 100.0;
+                 }
+@@ -884,11 +884,11 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+                         case 2040727:
+                             flag |= ItemConstants.SPIKES;
+                             nEquip.setFlag((byte) flag);
+-                            return equip;
++                            break;
+                         case 2041058:
+                             flag |= ItemConstants.COLD;
+                             nEquip.setFlag((byte) flag);
+-                            return equip;
++                            break;
+                         case 2049000:
+                         case 2049001:
+                         case 2049002:

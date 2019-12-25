@@ -1,0 +1,204 @@
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 777e9f5f6..c18274e22 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -100,6 +100,7 @@
+     public static final boolean USE_MULTIPLE_SAME_EQUIP_DROP = true;//Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
+     public static final boolean USE_BANISHABLE_TOWN_SCROLL = true;  //Enables town scrolls to act as if it's a "player banish", rendering the antibanish scroll effect available.
+     public static final boolean USE_ENABLE_FULL_RESPAWN = true;     //At respawn task, always respawn missing mobs when they're available. Spawn count doesn't depend on how many players are currently there.
++    public static final boolean USE_ENABLE_CHAT_LOG = true;         //Write in-game chat to log
+     
+     //Events/PQs Configuration
+     public static final boolean USE_OLD_GMS_STYLED_PQ_NPCS = true;  //Enables PQ NPCs with similar behaviour to old GMS style, that skips info about the PQs and immediately tries to register the party in.
+diff --git a/src/net/server/channel/handlers/AdminChatHandler.java b/src/net/server/channel/handlers/AdminChatHandler.java
+index d27c04127..a27edfa2d 100644
+--- a/src/net/server/channel/handlers/AdminChatHandler.java
++++ b/src/net/server/channel/handlers/AdminChatHandler.java
+@@ -1,7 +1,9 @@
+ package net.server.channel.handlers;
+ 
+ import client.MapleClient;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
++import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -18,16 +20,26 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         }
+         byte mode = slea.readByte();
+         //not saving slides...
+-        byte[] packet = MaplePacketCreator.serverNotice(slea.readByte(), slea.readMapleAsciiString());//maybe I should make a check for the slea.readByte()... but I just hope gm's don't fuck things up :)
++        String message = slea.readMapleAsciiString();
++        byte[] packet = MaplePacketCreator.serverNotice(slea.readByte(), message);//maybe I should make a check for the slea.readByte()... but I just hope gm's don't fuck things up :)
+         switch (mode) {
+             case 0:// /alertall, /noticeall, /slideall
+                 c.getWorldServer().broadcastPacket(packet);
++                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                    LogHelper.logChat(c, "Alert All", message);
++                }
+                 break;
+             case 1:// /alertch, /noticech, /slidech
+                 c.getChannelServer().broadcastPacket(packet);
++                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                    LogHelper.logChat(c, "Alert Ch", message);
++                }
+                 break;
+             case 2:// /alertm /alertmap, /noticem /noticemap, /slidem /slidemap
+                 c.getPlayer().getMap().broadcastMessage(packet);
++                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                    LogHelper.logChat(c, "Alert Map", message);
++                }
+                 break;
+ 
+         }
+diff --git a/src/net/server/channel/handlers/GeneralChatHandler.java b/src/net/server/channel/handlers/GeneralChatHandler.java
+index 97465fc08..beacc5959 100644
+--- a/src/net/server/channel/handlers/GeneralChatHandler.java
++++ b/src/net/server/channel/handlers/GeneralChatHandler.java
+@@ -25,8 +25,10 @@
+ import client.MapleClient;
+ import client.autoban.AutobanFactory;
+ import client.command.CommandsExecutor;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
+ import tools.FilePrinter;
++import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -56,9 +58,15 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         }
+ 
+                         if (!chr.isHidden()) {
+-                                chr.getMap().broadcastMessage(MaplePacketCreator.getChatText(chr.getId(), s, chr.getWhiteChat(), show));	
++                                chr.getMap().broadcastMessage(MaplePacketCreator.getChatText(chr.getId(), s, chr.getWhiteChat(), show));
++                                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                                        LogHelper.logChat(c, "General", s);
++                                }
+                         } else {
+                                 chr.getMap().broadcastGMMessage(MaplePacketCreator.getChatText(chr.getId(), s, chr.getWhiteChat(), show));
++                                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                                        LogHelper.logChat(c, "GM General", s);
++                                }
+                         }
+ 
+                         chr.getAutobanManager().spam(7);
+diff --git a/src/net/server/channel/handlers/MultiChatHandler.java b/src/net/server/channel/handlers/MultiChatHandler.java
+index 6a1a6e96c..af883d8ad 100644
+--- a/src/net/server/channel/handlers/MultiChatHandler.java
++++ b/src/net/server/channel/handlers/MultiChatHandler.java
+@@ -24,10 +24,12 @@
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import client.autoban.AutobanFactory;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
+ import net.server.Server;
+ import net.server.world.World;
+ import tools.FilePrinter;
++import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -55,14 +57,26 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         World world = c.getWorldServer();
+         if (type == 0) {
+             world.buddyChat(recipients, player.getId(), player.getName(), chattext);
++            if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                LogHelper.logChat(c, "Buddy", chattext);
++            }
+         } else if (type == 1 && player.getParty() != null) {
+             world.partyChat(player.getParty(), chattext, player.getName());
++            if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                LogHelper.logChat(c, "Party", chattext);
++            }
+         } else if (type == 2 && player.getGuildId() > 0) {
+             Server.getInstance().guildChat(player.getGuildId(), player.getName(), player.getId(), chattext);
++            if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                LogHelper.logChat(c, "Guild", chattext);
++            }
+         } else if (type == 3 && player.getGuild() != null) {
+             int allianceId = player.getGuild().getAllianceId();
+             if (allianceId > 0) {
+                 Server.getInstance().allianceMessage(allianceId, MaplePacketCreator.multiChat(player.getName(), chattext, 3), player.getId(), -1);
++                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                    LogHelper.logChat(c, "Ally", chattext);
++                }
+             }
+         }
+         player.getAutobanManager().spam(7);
+diff --git a/src/net/server/channel/handlers/PetChatHandler.java b/src/net/server/channel/handlers/PetChatHandler.java
+index 44ec31673..e7cd00324 100644
+--- a/src/net/server/channel/handlers/PetChatHandler.java
++++ b/src/net/server/channel/handlers/PetChatHandler.java
+@@ -23,8 +23,10 @@
+ 
+ import client.MapleClient;
+ import client.autoban.AutobanFactory;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
+ import tools.FilePrinter;
++import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -48,5 +50,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         	return;
+         }
+         c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.petChat(c.getPlayer().getId(), pet, act, text), true);
++        if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++            LogHelper.logChat(c, "Pet", text);
++        }
+     } 
+ }
+diff --git a/src/net/server/channel/handlers/SpouseChatHandler.java b/src/net/server/channel/handlers/SpouseChatHandler.java
+index 10b822fec..09ec66a38 100644
+--- a/src/net/server/channel/handlers/SpouseChatHandler.java
++++ b/src/net/server/channel/handlers/SpouseChatHandler.java
+@@ -23,7 +23,9 @@
+ 
+ import client.MapleCharacter;
+ import client.MapleClient;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
++import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -39,6 +41,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (spouse != null) {
+                 spouse.announce(MaplePacketCreator.OnCoupleMessage(c.getPlayer().getName(), msg, true));
+                 c.announce(MaplePacketCreator.OnCoupleMessage(c.getPlayer().getName(), msg, true));
++                if (ServerConstants.USE_ENABLE_CHAT_LOG) {
++                    LogHelper.logChat(c, "Spouse", msg);
++                }
+             } else {
+                 c.getPlayer().dropMessage(5, "Your spouse is currently offline.");
+             }
+diff --git a/src/tools/LogHelper.java b/src/tools/LogHelper.java
+index 39903c369..f1ec04361 100644
+--- a/src/tools/LogHelper.java
++++ b/src/tools/LogHelper.java
+@@ -1,8 +1,10 @@
+ package tools;
+ 
+ import java.text.SimpleDateFormat;
++import java.util.Calendar;
+ import java.util.Date;
+ 
++import client.MapleClient;
+ import net.server.Server;
+ import net.server.channel.Channel;
+ import net.server.world.MapleParty;
+@@ -71,4 +73,10 @@ public static void logGacha(MapleCharacter player, int itemid, String map) {
+ 		String log = player.getName() + " got a " + itemName + "(" + itemid + ") from the " + map + " gachapon. - " + timeStamp + "\r\n";
+ 		FilePrinter.print("gachapon.txt", log);
+ 	}
++
++	public static void logChat(MapleClient player, String chatType, String text){
++		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
++		FilePrinter.print("chat.txt", "[" + sdf.format(Calendar.getInstance().getTime()) + "] (" + chatType + ") " +player.getPlayer().getName() + ": " + text + "\r\n");
++	}
++
+ }

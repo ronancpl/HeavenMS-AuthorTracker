@@ -1,0 +1,92 @@
+diff --git a/src/client/autoban/AutobanFactory.java b/src/client/autoban/AutobanFactory.java
+index 1d385a587..32bf79a67 100644
+--- a/src/client/autoban/AutobanFactory.java
++++ b/src/client/autoban/AutobanFactory.java
+@@ -80,19 +80,19 @@ public long getExpire() {
+ 	}
+ 
+ 	public void addPoint(AutobanManager ban, String reason) {
+-            if(ServerConstants.USE_AUTOBAN == true) {
+ 		ban.addPoint(this, reason);
+-            }
+ 	}
+ 	
+ 	public void alert(MapleCharacter chr, String reason) {
+             if(ServerConstants.USE_AUTOBAN == true) {
+-		FilePrinter.printError("autobanwarning.txt", (chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason + "\r\n");
+ 		if (chr != null && MapleLogger.ignored.contains(chr.getName())){
+ 			return;
+ 		}
+ 		Server.getInstance().broadcastGMMessage((chr != null ? chr.getWorld() : 0), MaplePacketCreator.sendYellowTip((chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason));
+             }
++        if (ServerConstants.USE_AUTOBAN_LOG) {
++			FilePrinter.printError("autobanwarning.txt", (chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason + "\r\n");
++		}
+ 	}
+ 	
+ 	public void autoban(MapleCharacter chr, String value) {
+diff --git a/src/client/autoban/AutobanManager.java b/src/client/autoban/AutobanManager.java
+index 118041175..6f86cdca2 100644
+--- a/src/client/autoban/AutobanManager.java
++++ b/src/client/autoban/AutobanManager.java
+@@ -36,27 +36,30 @@ public void addPoint(AutobanFactory fac, String reason) {
+     	if (chr.isGM() || chr.isBanned()){
+     		return;
+     	}
+-        if (lastTime.containsKey(fac)) {
+-            if (lastTime.get(fac) < (Server.getInstance().getCurrentTime() - fac.getExpire())) {
+-                points.put(fac, points.get(fac) / 2); //So the points are not completely gone.
++    	if (ServerConstants.USE_AUTOBAN) {
++            if (lastTime.containsKey(fac)) {
++                if (lastTime.get(fac) < (Server.getInstance().getCurrentTime() - fac.getExpire())) {
++                    points.put(fac, points.get(fac) / 2); //So the points are not completely gone.
++                }
+             }
+-        }
+-        if (fac.getExpire() != -1)
+-            lastTime.put(fac, Server.getInstance().getCurrentTime());
+-        
+-        if (points.containsKey(fac)) {
+-            points.put(fac, points.get(fac) + 1);
+-        } else
+-            points.put(fac, 1);
++            if (fac.getExpire() != -1)
++                lastTime.put(fac, Server.getInstance().getCurrentTime());
++
++            if (points.containsKey(fac)) {
++                points.put(fac, points.get(fac) + 1);
++            } else
++                points.put(fac, 1);
+ 
+-        if (points.get(fac) >= fac.getMaximum()) {
+-        	chr.autoban(reason);
+-            //chr.autoban("Autobanned for " + fac.name() + " ;" + reason, 1);
+-            //chr.sendPolice("You have been blocked by #bMooplePolice for the HACK reason#k.");
++            if (points.get(fac) >= fac.getMaximum()) {
++                chr.autoban(reason);
++                //chr.autoban("Autobanned for " + fac.name() + " ;" + reason, 1);
++                //chr.sendPolice("You have been blocked by #bMooplePolice for the HACK reason#k.");
++            }
++        }
++        if (ServerConstants.USE_AUTOBAN_LOG) {
++            // Lets log every single point too.
++            FilePrinter.printError("autobanwarning.txt", MapleCharacter.makeMapleReadable(chr.getName()) + " caused " + fac.name() + " " + reason + "\r\n");
+         }
+-        
+-        // Lets log every single point too.
+-        FilePrinter.printError("autobanwarning.txt", MapleCharacter.makeMapleReadable(chr.getName()) + " caused " + fac.name() + " " + reason + "\r\n");
+     }
+ 
+     public void addMiss() {
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index c18274e22..ed404d50f 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -78,6 +78,7 @@
+     public static final boolean USE_PARTY_FOR_STARTERS = true;      //Players level 10 or below can create/invite other players on the given level range.
+     public static final boolean USE_AUTOASSIGN_STARTERS_AP = false; //Beginners level 10 or below have their AP autoassigned (they can't choose to levelup a stat). Set true if the localhost doesn't support AP assigning for beginners level 10 or below.
+     public static final boolean USE_AUTOBAN = false;                //Commands the server to detect infractors automatically.
++    public static final boolean USE_AUTOBAN_LOG = true;             //Log autoban related messages. Still logs even with USE_AUTOBAN disabled.
+     public static final boolean USE_AUTOSAVE = true;                //Enables server autosaving feature (saves characters to DB each 1 hour).
+     public static final boolean USE_SERVER_AUTOASSIGNER = true;     //HeavenMS-builtin autoassigner, uses algorithm based on distributing AP accordingly with required secondary stat on equipments.
+     public static final boolean USE_REFRESH_RANK_MOVE = true;

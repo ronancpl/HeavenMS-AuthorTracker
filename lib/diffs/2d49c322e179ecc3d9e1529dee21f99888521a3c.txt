@@ -1,0 +1,981 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 5ebe979a2..6fd37fc6e 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -774,4 +774,11 @@ Corrigido itemid inválidos nos drops da DB.
+ Adicionado quest rate (multiplicador de ganhos ao completar quests).
+ Pequeno ajuste na área de alcançe dos drops no mapa. Espera-se que os drops agora não caiam fora do mapa em grande quantidade.
+ Nova ferramenta: MapleInvalidItemIdFetcher. Busca no DB por todos os itemids inválidos e os lista em um arquivo.
+-Atualizado lista de drops no monster book.
+\ No newline at end of file
++Atualizado lista de drops no monster book.
++
++06 - 09 Fevereiro 2018,
++Resolvido possibilidade de bug com inconsistência de dados ao tentar salvar na DB um jogador offline.
++Aplicado diversas pequenas correções em alguns drops de quests e métodos de eventos.
++Quests expiráveis agora são devidamente canceladas ao entrar no MTS ou cash shop.
++Corrigido problemas com itens que garantem proteção contra queda de HP em certos mapas (el nath, aqua road) garantindo proteção em mapas onde não deveriam garantir.
++Adicionado novos scrolls à venda no Spindle.
+\ No newline at end of file
+diff --git a/scripts/event/0_EXAMPLE.js b/scripts/event/0_EXAMPLE.js
+index 71fc33601..9923621ba 100644
+--- a/scripts/event/0_EXAMPLE.js
++++ b/scripts/event/0_EXAMPLE.js
+@@ -86,7 +86,14 @@ function timeOut(eim) {
+     eim.dispose();
+ }
+ 
+-function monsterKilled(mob, eim) {}
++function monsterKilled(mob, eim) {
++    // Happens when an opposing mob dies
++}
++
++function monsterValue(eim, mobid) {
++    // Invoked when a monster that's registered has been killed
++    // return x amount for this player - "Saved Points"
++}
+ 
+ function friendlyKilled(mob, eim) {
+     // Happens when a friendly mob dies
+@@ -112,11 +119,6 @@ function playerDisconnected(eim, player) {
+     // return x that is < 0 - Deregister player normally + Dispose instance if there x player or below, if it's leader = boot all
+ }
+ 
+-function monsterValue(eim, mobid) {
+-    // Invoked when a monster that's registered has been killed
+-    // return x amount for this player - "Saved Points"
+-}
+-
+ function end(eim) {
+     // Happens when the party fails to complete the event instance.
+ }
+diff --git a/scripts/event/3rdJob_bowman.js b/scripts/event/3rdJob_bowman.js
+index 743c40aa5..ee9e5f521 100644
+--- a/scripts/event/3rdJob_bowman.js
++++ b/scripts/event/3rdJob_bowman.js
+@@ -84,6 +84,10 @@ function changedMap(eim, chr, mapid) {
+ 
+ function monsterKilled(mob, eim) {}
+ 
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
+ function allMonstersDead(eim) {}
+ 
+ function cancelSchedule() {}
+diff --git a/scripts/event/3rdJob_magician.js b/scripts/event/3rdJob_magician.js
+index b1f0f317b..ed55597e5 100644
+--- a/scripts/event/3rdJob_magician.js
++++ b/scripts/event/3rdJob_magician.js
+@@ -84,6 +84,10 @@ function changedMap(eim, chr, mapid) {
+ 
+ function monsterKilled(mob, eim) {}
+ 
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
+ function allMonstersDead(eim) {}
+ 
+ function cancelSchedule() {}
+diff --git a/scripts/event/3rdJob_pirate.js b/scripts/event/3rdJob_pirate.js
+index 66b4d4ae9..dd3d04739 100644
+--- a/scripts/event/3rdJob_pirate.js
++++ b/scripts/event/3rdJob_pirate.js
+@@ -84,6 +84,10 @@ function changedMap(eim, chr, mapid) {
+ 
+ function monsterKilled(mob, eim) {}
+ 
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
+ function allMonstersDead(eim) {}
+ 
+ function cancelSchedule() {}
+diff --git a/scripts/event/3rdJob_thief.js b/scripts/event/3rdJob_thief.js
+index 3b95735c0..4cd861b74 100644
+--- a/scripts/event/3rdJob_thief.js
++++ b/scripts/event/3rdJob_thief.js
+@@ -84,6 +84,10 @@ function changedMap(eim, chr, mapid) {
+ 
+ function monsterKilled(mob, eim) {}
+ 
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
+ function allMonstersDead(eim) {}
+ 
+ function cancelSchedule() {}
+diff --git a/scripts/event/3rdJob_warrior.js b/scripts/event/3rdJob_warrior.js
+index b2ecdd66f..20a3638ec 100644
+--- a/scripts/event/3rdJob_warrior.js
++++ b/scripts/event/3rdJob_warrior.js
+@@ -84,6 +84,10 @@ function changedMap(eim, chr, mapid) {
+ 
+ function monsterKilled(mob, eim) {}
+ 
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
+ function allMonstersDead(eim) {}
+ 
+ function cancelSchedule() {}
+diff --git a/scripts/npc/2010000.js b/scripts/npc/2010000.js
+index 43111024f..d5abf5115 100644
+--- a/scripts/npc/2010000.js
++++ b/scripts/npc/2010000.js
+@@ -174,7 +174,7 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == 0) {
++    if (mode <= 0) {
+ 	cm.sendOk("Hmmm...it shouldn't be a bad deal for you. Come see me at the right time and you may get a much better item to be offered. Anyway, let me know when you have a change of heart.");
+ 	cm.dispose();
+ 	return;
+diff --git a/scripts/npc/2041026.js b/scripts/npc/2041026.js
+new file mode 100644
+index 000000000..83bfab352
+--- /dev/null
++++ b/scripts/npc/2041026.js
+@@ -0,0 +1,59 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Ghosthunter Bob
++ */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        if(cm.haveItem(4220046, 1)) {
++                            if(cm.isQuestStarted(3250)) {
++                                cm.completeQuest(3250);
++                                cm.gainFame(11);
++                            }
++                            
++                            cm.gainItem(4220046, -1);
++                            cm.sendOk("You want to hand the #r#t4220046##k to me, right? Alright, I'll take it for you.");
++                        } else {
++                            cm.sendOk("Hello there! I'm #b#p2041026##k, in charge of watching and reporting any paranormal activities in this area.");
++                        }
++                        
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/2090004.js b/scripts/npc/2090004.js
+index 8aaad68df..2785443d1 100644
+--- a/scripts/npc/2090004.js
++++ b/scripts/npc/2090004.js
+@@ -76,7 +76,7 @@ function action(mode, type, selection) {
+                         selStr = "What kind of medicine are you interested in making?#b";
+ 			
+                         for (var i = 0; i < itemSet.length; i++){
+-                                selStr += "\r\n#L" + i + "# #i" + itemSet[i] + "# #t" + itemSet[i] + "##l";
++                                selStr += "\r\n#L" + i + "# #v" + itemSet[i] + "# #t" + itemSet[i] + "##l";
+                         }
+                         selStr += "#k";
+ 		} 
+@@ -98,11 +98,10 @@ function action(mode, type, selection) {
+                         status++;
+                     
+ 			selStr = "So you wish to donate some medicine ingredients? This is great news! Donations will be accepted in the unit of #b100#k. The donator will receive a marble that enables one to make a scroll. Which of these would you like to donate? #b";
+-			itemSet = new Array("Acorn","Thimble","Needle Pouch","Necki Flower","Necki Swimming Cap","Broken Piece of Pot","Ginseng-Boiled Water","Straw Doll","Wooden Doll","Bellflower Root","100-Year-Old Bellflower",
+-					"Old Paper","Yellow Belt","Broken Deer Horn","Red Belt","Peach Seed","Mr. Alli's Leather","Cat Doll","Mark of the Pirate","Captain Hat#k");
++			itemSet = new Array(4000276,4000277,4000278,4000279,4000280,4000291,4000292,4000286,4000287,4000293,4000294,4000298,4000284,4000288,4000285,4000282,4000295,4000289,4000296,4000297);
+                                         
+                         for (var i = 0; i < itemSet.length; i++){
+-                                selStr += "\r\n#L" + i + "# " + itemSet[i] + "#l";
++                                selStr += "\r\n#L" + i + "# #v" + itemSet[i] + "# #t" + itemSet[i] + "##l";
+                         }
+ 		}
+ 		
+@@ -165,7 +164,7 @@ function action(mode, type, selection) {
+ 		else if(selectedType == 2){
+                         selectedItem = selection;
+                     
+-			itemSet = new Array(4000276,4000277,4000278,4000279,4000280,4000291,4000292,4000286,4000287,4000293,4000294,4000298,4000284,4000288,4000285,4000282,4000295,4000289,4000296,4031435);
++			itemSet = new Array(4000276,4000277,4000278,4000279,4000280,4000291,4000292,4000286,4000287,4000293,4000294,4000298,4000284,4000288,4000285,4000282,4000295,4000289,4000296,4000297);
+                         rewdSet = new Array(7,7,new Array(7,8),10,11,8,new Array(7,8),new Array(7,9),new Array(7,8),9,10,new Array(10,11),11,new Array(11,12),13,13,14,15,new Array(15,16),17);
+                         
+ 			item = itemSet[selectedItem];
+diff --git a/scripts/npc/9000017.js b/scripts/npc/9000017.js
+index 73db3c858..f7cec6fb2 100644
+--- a/scripts/npc/9000017.js
++++ b/scripts/npc/9000017.js
+@@ -46,7 +46,7 @@ function action(mode, type, selection) {
+ 
+         var itemSet = new Array(2049100, 7777777);
+         var matSet = new Array(new Array(4031203,4001356,4000136,4000082,4001126,4080100,4000021,4003005));
+-        var matQtySet = new Array(new Array(100,60,40,80,80,8,200,120));
++        var matQtySet = new Array(new Array(100,60,40,80,10,8,200,120));
+         var costSet = new Array(1200000, 7777777);
+         item = itemSet[selectedItem];
+         mats = matSet[selectedItem];
+diff --git a/scripts/portal/enterthirdDH.js b/scripts/portal/enterthirdDH.js
+index 587e5813d..7c545d2a7 100644
+--- a/scripts/portal/enterthirdDH.js
++++ b/scripts/portal/enterthirdDH.js
+@@ -1,18 +1,21 @@
+ function enter(pi) {
+-	if (pi.hasItem(4032120) || pi.hasItem(4032121) || pi.hasItem(4032122) || pi.hasItem(4032123) || pi.hasItem(4032124)) {
+-		 pi.playerMessage(5, "You already have the proof of qualification.");
+-		 return false;
+-	}
++    if (pi.hasItem(4032120) || pi.hasItem(4032121) || pi.hasItem(4032122) || pi.hasItem(4032123) || pi.hasItem(4032124)) {
++        pi.playerMessage(5, "You already have the proof of qualification.");
++        return false;
++    }
+     if (pi.isQuestStarted(20601) || pi.isQuestStarted(20602) || pi.isQuestStarted(20603) || pi.isQuestStarted(20604) || pi.isQuestStarted(20605)) {    	
+-		if (pi.getPlayerCount(913010200) == 0) {
+-		    var map = pi.getMap(913010200);
+-		    map.killAllMonsters();  
+-		    pi.warp(913010200, 0);
+-		    pi.spawnMonster(9300289, 0, 0);
+-		} else {
+-		    pi.playerMessage(5, "Someone is already attempting to defeat the boss. Better come back later.");
+-		}
++        if (pi.getPlayerCount(913010200) == 0) {
++            var map = pi.getMap(913010200);
++            map.killAllMonsters();  
++            pi.warp(913010200, 0);
++            pi.spawnMonster(9300289, 0, 0);
++            return true;
++        } else {
++            pi.playerMessage(5, "Someone is already attempting to defeat the boss. Better come back later.");
++            return false;
++        }
+     } else {
+     	pi.playerMessage(5, "The only way to enter the hall #3 is if you're training for the Level 100 skills.");
++        return false;
+     }
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/raid_rest.js b/scripts/portal/raid_rest.js
+index 3ed68a421..0f09d012f 100644
+--- a/scripts/portal/raid_rest.js
++++ b/scripts/portal/raid_rest.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 return false;
+         }
+         
+-        if(!pi.getPlayer().getEventInstance().giveEventReward(pi.getPlayer(), evLevel)) {
++        if(pi.getPlayer().getEventInstance().giveEventReward(pi.getPlayer(), evLevel)) {
+                 pi.warp(970030000);
+                 return true;
+         }
+diff --git a/scripts/quest/20527.js b/scripts/quest/20527.js
+new file mode 100644
+index 000000000..14bcf7e65
+--- /dev/null
++++ b/scripts/quest/20527.js
+@@ -0,0 +1,50 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            var mount = qm.getPlayer().getMount();
++            
++            if(mount != null && mount.getLevel() >= 3) {
++                qm.sendNext("Alright, I'll get you started in how to train Mimio, the next step for Mimianas. When you're ready, talk to me again.");
++                qm.forceCompleteQuest();
++            } else {
++                qm.sendNext("It looks like your Mimiana haven't reached #rlevel 3#k yet. Please train it a bit more before trying to advance it.");
++            }
++            
++            qm.dispose();
++        }
++    }
++}
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index da8a66912..b434ca2d3 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -4294,7 +4294,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (4075, 5120506, 1412007, 1, 1, 0, 700),
+ (4076, 5120506, 1050059, 1, 1, 0, 700),
+ (4077, 5120506, 1442010, 1, 1, 0, 700),
+-(4078, 5120506, 4000299, 1, 1, 0, 600000),
++(4078, 5120506, 4000299, 1, 1, 0, 100000),
+ (4079, 5120506, 1492007, 1, 1, 0, 500),
+ (4080, 5120506, 2330002, 1, 1, 0, 500),
+ (4081, 5120506, 2040317, 1, 1, 0, 300),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 5303bcdd2..f1d3f4c3d 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -11661,8 +11661,8 @@ USE `heavenms`;
+ (7130500, 1072163, 1, 1, 0, 700), 
+ (7130500, 1332018, 1, 1, 0, 700), 
+ (7130500, 1052122, 1, 1, 0, 700), 
+-(7130104, 4031435, 1, 1, 0, 7000), 
+-(9300242, 4031435, 1, 1, 0, 7000), 
++(7130104, 4031435, 1, 1, 7777, 7000), 
++(9300242, 4031435, 1, 1, 7777, 7000), 
+ (7130104, 4130000, 1, 1, 0, 3000), 
+ (9300242, 4130000, 1, 1, 0, 3000), 
+ (7130104, 4130017, 1, 1, 0, 3000), 
+@@ -19244,10 +19244,10 @@ USE `heavenms`;
+ (9400578, 1372009, 1, 1, 0, 1200),
+ (9300011, 4031130, 1, 1, 0, 10000),
+ (7160000, 2385015, 1, 1, 0, 10000),
+-(3230306, 2022355, 1, 1, 3248, 4000),
+-(4230113, 2022354, 1, 1, 3248, 4000),
+-(5220003, 4031991, 1, 1, 3248, 15000),
+-(4230122, 2022354, 1, 1, 0, 4000),
++(3230306, 2022355, 1, 1, 3248, 100000),
++(4230113, 2022354, 1, 1, 3248, 100000),
++(5220003, 4031991, 1, 1, 3248, 999999),
++(4230122, 2022354, 1, 1, 3248, 100000),
+ (3210100, 2382003, 1, 1, 0, 8000),
+ (3100101, 2382008, 1, 1, 0, 8000),
+ (3110301, 2382010, 1, 1, 0, 8000),
+@@ -20009,7 +20009,19 @@ USE `heavenms`;
+ (9400613, 4020002, 1, 1, 0, 7000),
+ (9400613, 1082258, 1, 1, 0, 5000),
+ (9400613, 1072421, 1, 1, 0, 5000),
+-(4110302, 2383007, 1, 1, 0, 8000);
++(4110302, 2383007, 1, 1, 0, 8000),
++(130100, 4032374, 1, 1, 2405, 40000),
++(1110101, 4032374, 1, 1, 2405, 40000),
++(210100, 4032376, 1, 1, 2406, 40000),
++(1110101, 4032376, 1, 1, 2406, 40000),
++(210100, 4032377, 1, 1, 2407, 40000),
++(1210101, 4032377, 1, 1, 2407, 40000),
++(130100, 4032378, 1, 1, 2408, 40000),
++(1120100, 4032378, 1, 1, 2408, 40000),
++(1110100, 4032379, 1, 1, 2409, 40000),
++(1210100, 4032379, 1, 1, 2409, 40000),
++(2130100, 4001344, 1, 1, 0, 7000),
++(7220002, 4031789, 1, 1, 3844, 999999);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+@@ -20144,7 +20156,6 @@ USE `heavenms`;
+   UPDATE drop_data SET questid=20707 WHERE itemid=4032130;
+   UPDATE drop_data SET questid=28170 WHERE itemid=4001345;
+   UPDATE drop_data SET questid=7301 WHERE itemid=4001077;
+-  UPDATE drop_data SET questid=3248 WHERE itemid=2022354;
+   UPDATE drop_data SET chance=40000, questid=3250 WHERE itemid=4031992;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4001107;
+   UPDATE drop_data SET questid=28344 WHERE itemid=4032475;
+@@ -20154,7 +20165,6 @@ USE `heavenms`;
+   UPDATE drop_data SET questid=28175 WHERE itemid=4001342;
+   UPDATE drop_data SET questid=7777 WHERE itemid=4031906;	#id 7777 for ALL "quest items" with no v83 quest.
+   UPDATE drop_data SET chance=0 WHERE itemid=2050099;
+-  UPDATE drop_data SET chance=40000 WHERE itemid=4031991;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
+   UPDATE drop_data SET questid=6190 WHERE itemid=4001111;
+   UPDATE drop_data SET questid=28282 WHERE itemid=4001373;
+diff --git a/sql/db_shopupdate.sql b/sql/db_shopupdate.sql
+index d4897e89d..20e3d0769 100644
+--- a/sql/db_shopupdate.sql
++++ b/sql/db_shopupdate.sql
+@@ -8,80 +8,84 @@ INSERT INTO `shops` (`shopid`,`npcid`) VALUES
+ (9110002,9110002),
+ (9201082,9201082);
+ 
+-INSERT IGNORE INTO `shopitems` (`shopitemid`, `shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+-(995032, 9201082, 2040025, 500000, 0, 1),
+-(995033, 9201082, 2040029, 500000, 0, 2),
+-(995034, 9201082, 2040301, 400000, 0, 3),
+-(995035, 9201082, 2040317, 400000, 0, 4),
+-(995036, 9201082, 2040321, 400000, 0, 5),
+-(995037, 9201082, 2040413, 400000, 0, 6),
+-(995038, 9201082, 2040418, 400000, 0, 7),
+-(995039, 9201082, 2040501, 250000, 0, 8),
+-(995040, 9201082, 2040513, 250000, 0, 9),
+-(995041, 9201082, 2040516, 250000, 0, 10),
+-(995042, 9201082, 2040532, 250000, 0, 11),
+-(995043, 9201082, 2040613, 400000, 0, 12),
+-(995044, 9201082, 2040701, 450000, 0, 13),
+-(995045, 9201082, 2040704, 450000, 0, 14),
+-(995046, 9201082, 2040804, 550000, 0, 15),
+-(995047, 9201082, 2040914, 300000, 0, 16),
+-(995048, 9201082, 2040919, 300000, 0, 17),
+-(995049, 9201082, 2041013, 300000, 0, 18),
+-(995050, 9201082, 2041016, 300000, 0, 19),
+-(995051, 9201082, 2041019, 300000, 0, 20),
+-(995052, 9201082, 2041022, 300000, 0, 21),
+-(995053, 9201082, 2044901, 520000, 0, 22),
+-(995054, 9201082, 2044701, 520000, 0, 23),
+-(995055, 9201082, 2043001, 520000, 0, 24),
+-(995056, 9201082, 2043801, 520000, 0, 25),
+-(995057, 9201082, 2044601, 520000, 0, 26),
+-(995058, 9201082, 2040727, 50000, 0, 27),
+-(995059, 9201082, 2041058, 50000, 0, 28),
+-(995060, 9201082, 2040807, 1000000, 0, 29),
+-(995061, 9201082, 2040026, 15000, 0, 30),
+-(995062, 9201082, 2040031, 15000, 0, 31),
+-(995063, 9201082, 2040302, 25000, 0, 32),
+-(995064, 9201082, 2040318, 25000, 0, 33),
+-(995065, 9201082, 2040323, 25000, 0, 34),
+-(995066, 9201082, 2040412, 20000, 0, 35),
+-(995067, 9201082, 2040419, 20000, 0, 36),
+-(995068, 9201082, 2040502, 25000, 0, 37),
+-(995069, 9201082, 2040514, 25000, 0, 38),
+-(995070, 9201082, 2040517, 25000, 0, 39),
+-(995071, 9201082, 2040534, 25000, 0, 40),
+-(995072, 9201082, 2040612, 20000, 0, 41),
+-(995073, 9201082, 2040702, 20000, 0, 42),
+-(995074, 9201082, 2040705, 25000, 0, 43),
+-(995075, 9201082, 2040805, 100000, 0, 44),
+-(995076, 9201082, 2040915, 55000, 0, 45),
+-(995077, 9201082, 2040920, 55000, 0, 46),
+-(995078, 9201082, 2041014, 30000, 0, 47),
+-(995079, 9201082, 2041017, 30000, 0, 48),
+-(995080, 9201082, 2041020, 30000, 0, 49),
+-(995081, 9201082, 2041023, 30000, 0, 50),
+-(995082, 9201082, 2044902, 50000, 0, 51),
+-(995083, 9201082, 2044702, 50000, 0, 52),
+-(995084, 9201082, 2043002, 50000, 0, 53),
+-(995085, 9201082, 2043802, 50000, 0, 54),
+-(995086, 9201082, 2044602, 50000, 0, 55),
+-(996000, 9201082, 2049200, 170000, 0, 56),
+-(996001, 9201082, 2049201, 220000, 0, 57),
+-(996002, 9201082, 2049202, 170000, 0, 58),
+-(996003, 9201082, 2049203, 220000, 0, 59),
+-(996004, 9201082, 2049204, 170000, 0, 60),
+-(996005, 9201082, 2049205, 220000, 0, 61),
+-(996006, 9201082, 2049206, 170000, 0, 62),
+-(996007, 9201082, 2049207, 220000, 0, 63),
+-(996008, 9201082, 2049208, 140000, 0, 64),
+-(996009, 9201082, 2049209, 170000, 0, 65),
+-(996010, 9201082, 2049210, 140000, 0, 66),
+-(996011, 9201082, 2049211, 170000, 0, 67),
+-(996196, 9201082, 2070016, 120000000, 0, 68),
+-(996197, 9201082, 2070018, 190000000, 0, 69),
+-(994782, 9201082, 2030007, 1800000, 0, 70),
+-(994783, 9201082, 4001017, 60000000, 0, 71);
++INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
++(9201082, 2040025, 500000, 0, 1),
++(9201082, 2040029, 500000, 0, 2),
++(9201082, 2040017, 500000, 0, 3),
++(9201082, 2040301, 400000, 0, 4),
++(9201082, 2040317, 400000, 0, 5),
++(9201082, 2040321, 400000, 0, 6),
++(9201082, 2040413, 400000, 0, 7),
++(9201082, 2040418, 400000, 0, 8),
++(9201082, 2040501, 250000, 0, 9),
++(9201082, 2040513, 250000, 0, 10),
++(9201082, 2040516, 250000, 0, 11),
++(9201082, 2040532, 250000, 0, 12),
++(9201082, 2040613, 400000, 0, 13),
++(9201082, 2040701, 450000, 0, 14),
++(9201082, 2040704, 450000, 0, 15),
++(9201082, 2040804, 550000, 0, 16),
++(9201082, 2040817, 550000, 0, 17),
++(9201082, 2040914, 300000, 0, 18),
++(9201082, 2040919, 300000, 0, 19),
++(9201082, 2041013, 300000, 0, 20),
++(9201082, 2041016, 300000, 0, 21),
++(9201082, 2041019, 300000, 0, 22),
++(9201082, 2041022, 300000, 0, 23),
++(9201082, 2044901, 520000, 0, 24),
++(9201082, 2044701, 520000, 0, 25),
++(9201082, 2043001, 520000, 0, 26),
++(9201082, 2043801, 520000, 0, 27),
++(9201082, 2044601, 520000, 0, 28),
++(9201082, 2040727, 50000, 0, 29),
++(9201082, 2041058, 50000, 0, 30),
++(9201082, 2040807, 1000000, 0, 31),
++(9201082, 2040026, 15000, 0, 32),
++(9201082, 2040031, 15000, 0, 33),
++(9201082, 2040016, 15000, 0, 34),
++(9201082, 2040302, 25000, 0, 35),
++(9201082, 2040318, 25000, 0, 36),
++(9201082, 2040323, 25000, 0, 37),
++(9201082, 2040412, 20000, 0, 38),
++(9201082, 2040419, 20000, 0, 39),
++(9201082, 2040502, 25000, 0, 40),
++(9201082, 2040514, 25000, 0, 41),
++(9201082, 2040517, 25000, 0, 42),
++(9201082, 2040534, 25000, 0, 43),
++(9201082, 2040612, 20000, 0, 44),
++(9201082, 2040702, 20000, 0, 45),
++(9201082, 2040705, 25000, 0, 46),
++(9201082, 2040805, 100000, 0, 47),
++(9201082, 2040816, 100000, 0, 48),
++(9201082, 2040915, 55000, 0, 49),
++(9201082, 2040920, 55000, 0, 50),
++(9201082, 2041014, 30000, 0, 51),
++(9201082, 2041017, 30000, 0, 52),
++(9201082, 2041020, 30000, 0, 53),
++(9201082, 2041023, 30000, 0, 54),
++(9201082, 2044902, 50000, 0, 55),
++(9201082, 2044702, 50000, 0, 56),
++(9201082, 2043002, 50000, 0, 57),
++(9201082, 2043802, 50000, 0, 58),
++(9201082, 2044602, 50000, 0, 59),
++(9201082, 2049200, 170000, 0, 60),
++(9201082, 2049201, 220000, 0, 61),
++(9201082, 2049202, 170000, 0, 62),
++(9201082, 2049203, 220000, 0, 63),
++(9201082, 2049204, 170000, 0, 64),
++(9201082, 2049205, 220000, 0, 65),
++(9201082, 2049206, 170000, 0, 66),
++(9201082, 2049207, 220000, 0, 67),
++(9201082, 2049208, 140000, 0, 68),
++(9201082, 2049209, 170000, 0, 69),
++(9201082, 2049210, 140000, 0, 70),
++(9201082, 2049211, 170000, 0, 71),
++(9201082, 2070016, 120000000, 0, 72),
++(9201082, 2070018, 190000000, 0, 73),
++(9201082, 2030007, 1800000, 0, 74),
++(9201082, 4001017, 60000000, 0, 75);
+ 
+-UPDATE shopitems SET price = 11*price WHERE (`position` >= 27 and `position` <= 67 and `shopid` = 9201082);
++UPDATE shopitems SET price = 11*price WHERE (`position` >= 29 and `position` <= 71 and `shopid` = 9201082);
+ 
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+ (1031100, 3010015, 20000, 0, 100),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index fd8dee097..0c340b075 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1246,16 +1246,22 @@ public void changeMap(final MapleMap target, final Point pos) {
+     private boolean buffMapProtection() {
+         effLock.lock();
+         chrLock.lock();
++        
++        int thisMapid = mapid;
++        int returnMapid = client.getChannelServer().getMapFactory().getMap(thisMapid).getReturnMapId();
++        
+         try {
+-            MapleMap thisMap = client.getChannelServer().getMapFactory().getMap(mapid);
+-            
+             for(Entry<MapleBuffStat, MapleBuffStatValueHolder> mbs : effects.entrySet()) {
+                 if(mbs.getKey() == MapleBuffStat.MAP_PROTECTION) {
+                     byte value = (byte)mbs.getValue().value;
+                     
+-                    if(value == 1 && (thisMap.getReturnMapId() == 211000000 || thisMap.getReturnMapId() == 193000000)) return true;       //protection from cold
+-                    else if(value == 2 && (thisMap.getReturnMapId() == 211000000 || thisMap.getReturnMapId() == 230000000)) return true;  //breathing underwater
+-                    else return false;
++                    if(value == 1 && ((returnMapid == 211000000 && thisMapid != 200082300) || returnMapid == 193000000)) {
++                        return true;        //protection from cold
++                    } else if(value == 2 && (returnMapid == 230000000 || thisMapid == 200082300)) {
++                        return true;        //breathing underwater
++                    } else {
++                        return false;
++                    }
+                 }
+             }    
+         } finally {
+@@ -1264,7 +1270,9 @@ private boolean buffMapProtection() {
+         }
+         
+         for(Item it: this.getInventory(MapleInventoryType.EQUIPPED).list()) {
+-            if((it.getFlag() & ItemConstants.COLD) == ItemConstants.COLD && map.getReturnMapId() == 211000000) return true;       //protection from cold
++            if((it.getFlag() & ItemConstants.COLD) == ItemConstants.COLD && ((returnMapid == 211000000 && thisMapid != 200082300) || returnMapid == 193000000)) {
++                return true;        //protection from cold
++            }
+         }
+         
+         return false;
+@@ -6285,6 +6293,8 @@ public void run() {
+     }
+     
+     public synchronized void saveToDB(boolean notAutosave) {
++        if(!loggedIn) return;
++        
+         Calendar c = Calendar.getInstance();
+         
+         if(notAutosave) FilePrinter.print(FilePrinter.SAVING_CHARACTER, "Attempting to save " + name + " at " + c.getTime().toString());
+@@ -7474,6 +7484,19 @@ public void cancelQuestExpirationTask() {
+         }
+     }
+     
++    public void forfeitExpirableQuests() {
++        petLock.lock();
++        try {
++            for(MapleQuest quest : questExpirations.keySet()) {
++                quest.forfeit(this);
++            }
++            
++            questExpirations.clear();
++        } finally {
++            petLock.unlock();
++        }
++    }
++    
+     public void questExpirationTask() {
+         petLock.lock();
+         try {
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index 986cd3000..268034ccb 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -65,8 +65,10 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             mc.cancelDiseaseExpireTask();
+             mc.cancelSkillCooldownTask();
+             mc.cancelExpirationTask();
++            
++            mc.forfeitExpirableQuests();
+             mc.cancelQuestExpirationTask();
+-
++            
+             c.announce(MaplePacketCreator.openCashShop(c, false));
+             c.announce(MaplePacketCreator.showCashInventory(c));
+             c.announce(MaplePacketCreator.showGifts(mc.getCashShop().loadGifts()));
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index f4072f1da..c40bf00ca 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -74,6 +74,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         chr.cancelDiseaseExpireTask();
+         chr.cancelSkillCooldownTask();
+         chr.cancelExpirationTask();
++        
++        chr.forfeitExpirableQuests();
+         chr.cancelQuestExpirationTask();
+         
+         chr.saveToDB();
+diff --git a/src/net/server/channel/handlers/StorageHandler.java b/src/net/server/channel/handlers/StorageHandler.java
+index 593d1872e..647a52e3e 100644
+--- a/src/net/server/channel/handlers/StorageHandler.java
++++ b/src/net/server/channel/handlers/StorageHandler.java
+@@ -49,7 +49,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		final MapleStorage storage = chr.getStorage();
+ 
+ 		if (chr.getLevel() < 15){
+-			chr.message("You may only use the storage once you have reached level 15.");
++			chr.dropMessage(1, "You may only use the storage once you have reached level 15.");
+                         c.announce(MaplePacketCreator.enableActions());
+ 			return;
+ 		}
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 1169337ea..f3f0b5d94 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -1227,7 +1227,7 @@ public boolean isQuestItem(int itemId) {
+             return isQuestItemCache.get(itemId);
+         }
+         MapleData data = getItemData(itemId);
+-        boolean questItem = MapleDataTool.getIntConvert("info/quest", data, 0) == 1;
++        boolean questItem = (data != null && MapleDataTool.getIntConvert("info/quest", data, 0) == 1);
+         isQuestItemCache.put(itemId, questItem);
+         return questItem;
+     }
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index ce9a19c04..7b3bdf655 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -223,13 +223,11 @@ public byte getSlot(MapleInventoryType type, byte slot) {
+     }
+ 
+     public void sendStorage(MapleClient c, int npcId) {
+-        /*
+         if (c.getPlayer().getLevel() < 15){
+-            c.getPlayer().message("You may only use the storage once you have reached level 15.");
++            c.getPlayer().dropMessage(1, "You may only use the storage once you have reached level 15.");
+             c.announce(MaplePacketCreator.enableActions());
+             return;
+         }
+-        */
+         
+         lock.lock();
+         try {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 491105354..dc57854be 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2610,7 +2610,7 @@ public MapleFootholdTree getFootholds() {
+     }
+     
+     public void setMapPointBoundings(int px, int py, int h, int w) {
+-        mapArea.setBounds(px + 60, py, w - 120, h);
++        mapArea.setBounds(px + 80, py, w - 160, h);
+     }
+     
+     public void setMapLineBoundings(int vrTop, int vrBottom, int vrLeft, int vrRight) {
+diff --git a/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml b/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
+index d9d0ef932..769ee2b18 100644
+--- a/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
++++ b/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
+@@ -143,6 +143,7 @@
+       <int name="44" value="4020002" />
+       <int name="45" value="4020003" />
+       <int name="46" value="4031146" />
++      <int name="47" value="4032379" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  15\nForm : Plant\nSpecial Trait : Resistant to Poison Attribute Attacks.\n\nA Green Mushroom monster with a dull looking cap. Is a transformed version of the small poisonous mushrooms and is therefore immune to poison. These mushrooms are often spotted around construction sites or nearby dungeon entrances. These mushrooms are most likely poisonous so beware not to eat them no matter how hungry you are!" />
+   </imgdir>
+@@ -194,6 +195,8 @@
+       <int name="26" value="4020000" />
+       <int name="27" value="4030009" />
+       <int name="28" value="4031773" />
++      <int name="29" value="4032374" />
++      <int name="30" value="4032376" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  10\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA slightly darker version of Stump, the tree stump monster. These monsters are often spotted around mountain highlands. While they are very similar to the Stump in their dried-up appearance, but these Dark Stumps have some moisture left in their bodies, still growing leaves somewhere inside their body. The Dark Stump has a lot stronger attacks and defenses as compared to Stump, so be careful not to confuse the two, especially if you're a beginner!" />
+   </imgdir>
+@@ -230,6 +233,7 @@
+       <int name="21" value="4020002" />
+       <int name="22" value="4030010" />
+       <int name="23" value="4030012" />
++      <int name="24" value="4032378" />
+     </imgdir>
+     <string name="episode" value="Lv. :  12\nForm : Mammal\nSpecial Trait : Vulnerable to Electricity Attribute Attacks.\n\nHardly an octopus, this mutated octopus-like monster is a strange-looking creature that barely escaped the research lab of some outer space planet after being relentlessly tested on. There's apparently some people who like to cook friend meatballs with these octopus' legs. Often found around swamps and construction sites, Octopuses have been reportedly spotted more frequently around high altitude areas which seems to support the whole alien theory of their origins.   " />
+   </imgdir>
+@@ -400,6 +404,7 @@
+       <int name="23" value="4031846" />
+       <int name="24" value="4032130" />
+       <int name="25" value="4032340" />
++      <int name="26" value="4032379" />
+     </imgdir>
+     <string name="episode" value="Lv. :  7\nForm : Mammal\n\nA very speedy monster that attacks with its massive body. You'll need to do everything you can to get away from this guy, or else it'll come attacking you with massive strength. It is possible to catch one of these Pigs, though, and the Pig's head is apparently quite a delicacy in Maple World." />
+   </imgdir>
+@@ -443,6 +448,7 @@
+       <int name="24" value="4010002" />
+       <int name="25" value="4020001" />
+       <int name="26" value="4030012" />
++      <int name="27" value="4032377" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  10\nForm : Mammal\n\nThere's always a sense of order, even in the world of Pigs. The most powerful of them wear a bright red ribbon which symbolizes their overpowering strength over others, and are treated as royalty. You don't believe it? Just go and try to hunt one of these Ribbon Pigs. You'll see that Ribbon Pigs are much more powerful than ordinary Pigs." />
+   </imgdir>
+@@ -585,6 +591,8 @@
+       <int name="20" value="4020003" />
+       <int name="21" value="4030009" />
+       <int name="22" value="4031773" />
++      <int name="23" value="4032374" />
++      <int name="24" value="4032378" />
+     </imgdir>
+     <string name="episode" value="Lv. :  4\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA monster that resembles a tree stump that is most often found in grassy areas and the highlands. Its short legs that used to be the tree's roots move very slowly and the tree stump can only make weak attacks, but it is also surprisingly strong which makes beginners have to spend a long time to defeat this monster.\nThe eye on this Stump often scares people, but the single eye will apparently shed a tear from time to time. This rare occasion serves as the origination of the people of Perion referring to valuables as the Tear of Stump. " />
+   </imgdir>
+@@ -989,6 +997,8 @@
+       <int name="26" value="4020005" />
+       <int name="27" value="4030000" />
+       <int name="28" value="4031273" />
++      <int name="29" value="4032376" />
++      <int name="30" value="4032377" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  6\nForm : Spirit\nSpecial Trait : Vulnerable to Electricity Attribute Attacks.\n\nA monster made of a gelatinous substance that uses its own viscosity to jump around everywhere. The cuteness of its look makes the Slime a beloved monster amongst adventurers, which is why you'll often come across all sorts of Slime paraphernalia such as hats and earrings that are being sold. When you hunt the Slime, you'll end up with small pockets of liquid which have a very pleasant apple scent. The scented liquid can be used in cooking as well! Sometimes, it will give the pompom on its head to the adventurers. " />
+   </imgdir>
+@@ -1171,12 +1181,13 @@
+       <int name="21" value="2381008" />
+       <int name="22" value="4000018" />
+       <int name="23" value="4000215" />
+-      <int name="24" value="4001367" />
+-      <int name="25" value="4006001" />
+-      <int name="26" value="4010001" />
+-      <int name="27" value="4020007" />
+-      <int name="28" value="4031153" />
+-      <int name="29" value="4031773" />
++      <int name="24" value="4001344" />
++      <int name="25" value="4001367" />
++      <int name="26" value="4006001" />
++      <int name="27" value="4010001" />
++      <int name="28" value="4020007" />
++      <int name="29" value="4031153" />
++      <int name="30" value="4031773" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  22\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA monster with an incredible legend behind it. This Dark Axe Stump is apparently the deeply agitated form of the Axe Stump who'd had an unresolved past life as a tree stump with an axe left in it by some lumberjack. The Dark Axe Stump, just like all the other members of the Stump family of monsters, is extremely strong and is capable of extreme attacks, so all beginners should be very very careful." />
+   </imgdir>
+@@ -10619,6 +10630,7 @@
+       <int name="49" value="4004004" />
+       <int name="50" value="4010005" />
+       <int name="51" value="4020008" />
++      <int name="52" value="4031789" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  77\nForm : Mammal\n\nA wicked monster that lives in the Goblin Forest. It was a cat before it secretly mastered the magic that Mu Lung's trainees were studying in order to become virtuous masters. It considers Mu Lung's swordsmith, who instructs mental training, as its arch-nemesis. It dazzles the humans with its eloquence while riding a giant cloud, but remember that this Priest Cat is but a goblin inside." />
+   </imgdir>
+diff --git a/wz/Character.wz/Ring/01112405.img.xml b/wz/Character.wz/Ring/01112405.img.xml
+index 408285eeb..7bf8926a4 100644
+--- a/wz/Character.wz/Ring/01112405.img.xml
++++ b/wz/Character.wz/Ring/01112405.img.xml
+@@ -27,7 +27,6 @@
+     <int name="notSale" value="1"/>
+     <int name="price" value="1"/>
+     <int name="accountSharable" value="1"/>
+-    <int name="only" value="1"/>
+     <int name="cash" value="0"/>
+   </imgdir>
+ </imgdir>
+diff --git a/wz/Character.wz/Ring/01112413.img.xml b/wz/Character.wz/Ring/01112413.img.xml
+index 4b8c501c6..046336336 100644
+--- a/wz/Character.wz/Ring/01112413.img.xml
++++ b/wz/Character.wz/Ring/01112413.img.xml
+@@ -27,7 +27,6 @@
+     <int name="notSale" value="1"/>
+     <int name="price" value="1"/>
+     <int name="accountSharable" value="1"/>
+-    <int name="only" value="1"/>
+     <int name="cash" value="0"/>
+   </imgdir>
+ </imgdir>
+diff --git a/wz/Character.wz/Ring/01112414.img.xml b/wz/Character.wz/Ring/01112414.img.xml
+index a364562d5..dc776b115 100644
+--- a/wz/Character.wz/Ring/01112414.img.xml
++++ b/wz/Character.wz/Ring/01112414.img.xml
+@@ -27,7 +27,6 @@
+     <int name="notSale" value="1"/>
+     <int name="price" value="1"/>
+     <int name="accountSharable" value="1"/>
+-    <int name="only" value="1"/>
+     <int name="cash" value="0"/>
+   </imgdir>
+ </imgdir>
+diff --git a/wz/String.wz/MonsterBook.img.xml b/wz/String.wz/MonsterBook.img.xml
+index d9d0ef932..769ee2b18 100644
+--- a/wz/String.wz/MonsterBook.img.xml
++++ b/wz/String.wz/MonsterBook.img.xml
+@@ -143,6 +143,7 @@
+       <int name="44" value="4020002" />
+       <int name="45" value="4020003" />
+       <int name="46" value="4031146" />
++      <int name="47" value="4032379" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  15\nForm : Plant\nSpecial Trait : Resistant to Poison Attribute Attacks.\n\nA Green Mushroom monster with a dull looking cap. Is a transformed version of the small poisonous mushrooms and is therefore immune to poison. These mushrooms are often spotted around construction sites or nearby dungeon entrances. These mushrooms are most likely poisonous so beware not to eat them no matter how hungry you are!" />
+   </imgdir>
+@@ -194,6 +195,8 @@
+       <int name="26" value="4020000" />
+       <int name="27" value="4030009" />
+       <int name="28" value="4031773" />
++      <int name="29" value="4032374" />
++      <int name="30" value="4032376" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  10\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA slightly darker version of Stump, the tree stump monster. These monsters are often spotted around mountain highlands. While they are very similar to the Stump in their dried-up appearance, but these Dark Stumps have some moisture left in their bodies, still growing leaves somewhere inside their body. The Dark Stump has a lot stronger attacks and defenses as compared to Stump, so be careful not to confuse the two, especially if you're a beginner!" />
+   </imgdir>
+@@ -230,6 +233,7 @@
+       <int name="21" value="4020002" />
+       <int name="22" value="4030010" />
+       <int name="23" value="4030012" />
++      <int name="24" value="4032378" />
+     </imgdir>
+     <string name="episode" value="Lv. :  12\nForm : Mammal\nSpecial Trait : Vulnerable to Electricity Attribute Attacks.\n\nHardly an octopus, this mutated octopus-like monster is a strange-looking creature that barely escaped the research lab of some outer space planet after being relentlessly tested on. There's apparently some people who like to cook friend meatballs with these octopus' legs. Often found around swamps and construction sites, Octopuses have been reportedly spotted more frequently around high altitude areas which seems to support the whole alien theory of their origins.   " />
+   </imgdir>
+@@ -400,6 +404,7 @@
+       <int name="23" value="4031846" />
+       <int name="24" value="4032130" />
+       <int name="25" value="4032340" />
++      <int name="26" value="4032379" />
+     </imgdir>
+     <string name="episode" value="Lv. :  7\nForm : Mammal\n\nA very speedy monster that attacks with its massive body. You'll need to do everything you can to get away from this guy, or else it'll come attacking you with massive strength. It is possible to catch one of these Pigs, though, and the Pig's head is apparently quite a delicacy in Maple World." />
+   </imgdir>
+@@ -443,6 +448,7 @@
+       <int name="24" value="4010002" />
+       <int name="25" value="4020001" />
+       <int name="26" value="4030012" />
++      <int name="27" value="4032377" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  10\nForm : Mammal\n\nThere's always a sense of order, even in the world of Pigs. The most powerful of them wear a bright red ribbon which symbolizes their overpowering strength over others, and are treated as royalty. You don't believe it? Just go and try to hunt one of these Ribbon Pigs. You'll see that Ribbon Pigs are much more powerful than ordinary Pigs." />
+   </imgdir>
+@@ -585,6 +591,8 @@
+       <int name="20" value="4020003" />
+       <int name="21" value="4030009" />
+       <int name="22" value="4031773" />
++      <int name="23" value="4032374" />
++      <int name="24" value="4032378" />
+     </imgdir>
+     <string name="episode" value="Lv. :  4\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA monster that resembles a tree stump that is most often found in grassy areas and the highlands. Its short legs that used to be the tree's roots move very slowly and the tree stump can only make weak attacks, but it is also surprisingly strong which makes beginners have to spend a long time to defeat this monster.\nThe eye on this Stump often scares people, but the single eye will apparently shed a tear from time to time. This rare occasion serves as the origination of the people of Perion referring to valuables as the Tear of Stump. " />
+   </imgdir>
+@@ -989,6 +997,8 @@
+       <int name="26" value="4020005" />
+       <int name="27" value="4030000" />
+       <int name="28" value="4031273" />
++      <int name="29" value="4032376" />
++      <int name="30" value="4032377" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  6\nForm : Spirit\nSpecial Trait : Vulnerable to Electricity Attribute Attacks.\n\nA monster made of a gelatinous substance that uses its own viscosity to jump around everywhere. The cuteness of its look makes the Slime a beloved monster amongst adventurers, which is why you'll often come across all sorts of Slime paraphernalia such as hats and earrings that are being sold. When you hunt the Slime, you'll end up with small pockets of liquid which have a very pleasant apple scent. The scented liquid can be used in cooking as well! Sometimes, it will give the pompom on its head to the adventurers. " />
+   </imgdir>
+@@ -1171,12 +1181,13 @@
+       <int name="21" value="2381008" />
+       <int name="22" value="4000018" />
+       <int name="23" value="4000215" />
+-      <int name="24" value="4001367" />
+-      <int name="25" value="4006001" />
+-      <int name="26" value="4010001" />
+-      <int name="27" value="4020007" />
+-      <int name="28" value="4031153" />
+-      <int name="29" value="4031773" />
++      <int name="24" value="4001344" />
++      <int name="25" value="4001367" />
++      <int name="26" value="4006001" />
++      <int name="27" value="4010001" />
++      <int name="28" value="4020007" />
++      <int name="29" value="4031153" />
++      <int name="30" value="4031773" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  22\nForm : Plant\nSpecial Trait : Vulnerable to Fire Attribute Attacks.\n\nA monster with an incredible legend behind it. This Dark Axe Stump is apparently the deeply agitated form of the Axe Stump who'd had an unresolved past life as a tree stump with an axe left in it by some lumberjack. The Dark Axe Stump, just like all the other members of the Stump family of monsters, is extremely strong and is capable of extreme attacks, so all beginners should be very very careful." />
+   </imgdir>
+@@ -10619,6 +10630,7 @@
+       <int name="49" value="4004004" />
+       <int name="50" value="4010005" />
+       <int name="51" value="4020008" />
++      <int name="52" value="4031789" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  77\nForm : Mammal\n\nA wicked monster that lives in the Goblin Forest. It was a cat before it secretly mastered the magic that Mu Lung's trainees were studying in order to become virtuous masters. It considers Mu Lung's swordsmith, who instructs mental training, as its arch-nemesis. It dazzles the humans with its eloquence while riding a giant cloud, but remember that this Priest Cat is but a goblin inside." />
+   </imgdir>

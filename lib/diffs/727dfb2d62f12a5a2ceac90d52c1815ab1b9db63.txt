@@ -1,0 +1,1659 @@
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 7df541e9a..1397b4852 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -102,6 +102,8 @@ Server potentials:
+ * Enhanced buff system: smartly checks for the best available buff effects to be active on the player.
+ * Enhanced AP auto-assigner: exactly matches AP with the needed for the player's current level, surplus assigned to the primary attribute.
+ * Channel capacity bar functional and world servers with max capacity checks.
++* Disease status are now visible for other players, even when changing maps.
++* Poison damage value are now visible for other players.
+ * Mastery book announcer displays droppers of needed books of a player, by reading underlying DB.
+ * Custom jail system (needs provided custom wz).
+ * Delete Character (requires ENABLE_PIC activated).
+@@ -139,6 +141,7 @@ External tools:
+ Project:
+ 
+ * Organized project code.
++* Highly updated drop data.
+ * Highly configurable server (see all server flags at ServerConstants).
+ * Fixed/added some missing packets for MoveEnvironment, summons and others.
+ * Reviewed many Java object aspects that needed concurrency protection.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 740064462..01e7e3fda 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -907,4 +907,16 @@ Corrigido item de MapleTV sendo retirado 2x ao usar.
+ 29 Abril 2018,
+ Implementado sistema de senhas para minirooms de match cards/omok.
+ Adicionado/documentado mensagens de erro apropriados ao criar/visitar minirooms.
+-Implementado expel em minirooms de jogos.
+\ No newline at end of file
++Implementado expel em minirooms de jogos.
++
++01 - 02 Maio 2018,
++Rebalanceado rewards da CafePQ.
++Rebalanceado equip e horntail drops com chances muito elevadas.
++Novo comando: maxhpmp.
++Corrigido exploit menor com jogadores podendo comprar permissão de player shops e merchants antes do level 16.
++Corrigido efeitos relacionados a Targa sendo mostrados fora de contexto com o disease CONFUSE.
++Adicionado efeito visual relacionado ao map chair skill sendo usado por um jogador para outros jogadores no mapa.
++Status de diseases agora são visíveis para outros jogadores, mesmo trocando de mapas.
++Dano de poison agora é visível para outros jogadores.
++Corrigido preço contabilizado incorretamente para itens recarregáveis.
++Corrigido recarregáveis com quantidade zero não sendo vendidos pelo NPC shop.
+\ No newline at end of file
+diff --git a/docs/todo.txt b/docs/todo.txt
+index 1a7c3eece..ae8bb3214 100644
+--- a/docs/todo.txt
++++ b/docs/todo.txt
+@@ -54,7 +54,8 @@ Check autoban system
+ 
+ 
+ ---------------------------
+-** GM/ADMIN **
++** System **
++- Update Java version
+ ---------------------------
+ 
+ ====================================
+\ No newline at end of file
+diff --git a/scripts/npc/1052014.js b/scripts/npc/1052014.js
+index 95eec074d..6f23649b1 100644
+--- a/scripts/npc/1052014.js
++++ b/scripts/npc/1052014.js
+@@ -30,22 +30,22 @@
+ var status;
+ 
+ var itemSet_lv6 = [1442046, 1432018, 1102146, 1102145, 2022094, 2022544, 2022123, 2022310, 2040727, 2041058, 2040817, 4000030, 4003005, 4003000, 4011007, 4021009, 4011008, 3010098];
+-var itemQty_lv6 = [1, 1, 1, 1, 50, 20, 30, 30, 1, 1, 1, 50, 50, 50, 1, 1, 4, 1];
++var itemQty_lv6 = [1, 1, 1, 1, 35, 15, 20, 20, 1, 1, 1, 30, 30, 30, 1, 1, 3, 1];
+ 
+ var itemSet_lv5 = [1382015, 1382016, 1442044, 1382035, 2022310, 2022068, 2022069, 2022190, 2022047, 2040727, 2040924, 2040501, 4000030, 4003005, 4003000, 4011003, 4011006, 4021004, 3010099];
+-var itemQty_lv5 = [1, 1, 1, 1, 30, 70, 70, 50, 50, 1, 1, 1, 30, 30, 40, 3, 2, 3, 1];
++var itemQty_lv5 = [1, 1, 1, 1, 20, 40, 40, 30, 30, 1, 1, 1, 20, 20, 25, 3, 2, 3, 1];
+ 
+ var itemSet_lv4 = [1332029, 1472027, 1462032, 1492019, 2022045, 2022048, 2022094, 2022123, 2022058, 2041304, 2041019, 2040826, 2040758, 4000030, 4003005, 4003000, 4010007, 4011003, 4021003, 3010016, 3010017];
+-var itemQty_lv4 = [1, 1, 1, 1, 70, 60, 40, 30, 100, 1, 1, 1, 1, 15, 15, 30, 8, 1, 1, 1, 1];
++var itemQty_lv4 = [1, 1, 1, 1, 45, 40, 25, 20, 60, 1, 1, 1, 1, 10, 10, 20, 5, 1, 1, 1, 1];
+ 
+ var itemSet_lv3 = [1302058, 1372008, 1422030, 1422031, 1022082, 2022279, 2022120, 2001001, 2001002, 2022071, 2022189, 2040914, 2041001, 2041041, 2041308, 4031203, 4000030, 4003005, 4003000, 4010004, 4010006, 4020000, 4020006, 3010002, 3010003];
+-var itemQty_lv3 = [1, 1, 1, 1, 1, 100, 70, 70, 70, 40, 40, 1, 1, 1, 1, 15, 10, 15, 12, 5, 5, 5, 5, 1, 1];
++var itemQty_lv3 = [1, 1, 1, 1, 1, 65, 40, 40, 40, 25, 25, 1, 1, 1, 1, 10, 7, 10, 8, 5, 5, 5, 5, 1, 1];
+ 
+ var itemSet_lv2 = [1022073, 1012098, 1012101, 1012102, 1012103, 2022055, 2022056, 2022103, 2020029, 2020032, 2020031, 2022191, 2022016, 2043300, 2043110, 2043800, 2041001, 2040903, 4031203, 4000021, 4003005, 4003000, 4003001, 4010000, 4010001, 4010003, 4010004, 4020004, 3010004, 3010005];
+-var itemQty_lv2 = [1, 1, 1, 1, 1, 70, 70, 70, 70, 100, 100, 100, 100, 1, 1, 1, 1, 1, 7, 10, 12, 10, 3, 8, 8, 5, 5, 7, 1, 1];
++var itemQty_lv2 = [1, 1, 1, 1, 1, 40, 40, 40, 40, 60, 60, 60, 60, 1, 1, 1, 1, 1, 4, 6, 7, 5, 2, 4, 4, 3, 3, 4, 1, 1];
+ 
+ var itemSet_lv1 = [1302021, 1302024, 1302033, 1082150, 1002419, 2022053, 2022054, 2020032, 2022057, 2022096, 2022097, 2022192, 2020030, 2010005, 2022041, 2030000, 2040100, 2040004, 2040207, 2048004, 4031203, 4000021, 4003005, 4003000, 4003001, 4010000, 4010001, 4010002, 4010005, 4020004];
+-var itemQty_lv1 = [1, 1, 1, 1, 1, 30, 30, 30, 30, 30, 40, 40, 40, 80, 80, 20, 1, 1, 1, 1, 3, 5, 2, 2, 1, 3, 3, 3, 3, 3];
++var itemQty_lv1 = [1, 1, 1, 1, 1, 20, 20, 20, 20, 20, 25, 25, 25, 50, 50, 12, 1, 1, 1, 1, 3, 4, 2, 2, 1, 2, 2, 2, 2, 2];
+ 
+ var levels = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Tier 6"];
+ 
+diff --git a/scripts/npc/1052015.js b/scripts/npc/1052015.js
+index 65cf4d8c2..f1a0329b6 100644
+--- a/scripts/npc/1052015.js
++++ b/scripts/npc/1052015.js
+@@ -30,22 +30,22 @@
+ var status;
+ 
+ var itemSet_lv6 = [1442046, 1432018, 1102146, 1102145, 2022094, 2022544, 2022123, 2022310, 2040727, 2041058, 2040817, 4000030, 4003005, 4003000, 4011007, 4021009, 4011008, 3010098];
+-var itemQty_lv6 = [1, 1, 1, 1, 50, 20, 30, 30, 1, 1, 1, 50, 50, 50, 1, 1, 4, 1];
++var itemQty_lv6 = [1, 1, 1, 1, 35, 15, 20, 20, 1, 1, 1, 30, 30, 30, 1, 1, 3, 1];
+ 
+ var itemSet_lv5 = [1382015, 1382016, 1442044, 1382035, 2022310, 2022068, 2022069, 2022190, 2022047, 2040727, 2040924, 2040501, 4000030, 4003005, 4003000, 4011003, 4011006, 4021004, 3010099];
+-var itemQty_lv5 = [1, 1, 1, 1, 30, 70, 70, 50, 50, 1, 1, 1, 30, 30, 40, 3, 2, 3, 1];
++var itemQty_lv5 = [1, 1, 1, 1, 20, 40, 40, 30, 30, 1, 1, 1, 20, 20, 25, 3, 2, 3, 1];
+ 
+ var itemSet_lv4 = [1332029, 1472027, 1462032, 1492019, 2022045, 2022048, 2022094, 2022123, 2022058, 2041304, 2041019, 2040826, 2040758, 4000030, 4003005, 4003000, 4010007, 4011003, 4021003, 3010016, 3010017];
+-var itemQty_lv4 = [1, 1, 1, 1, 70, 60, 40, 30, 100, 1, 1, 1, 1, 15, 15, 30, 8, 1, 1, 1, 1];
++var itemQty_lv4 = [1, 1, 1, 1, 45, 40, 25, 20, 60, 1, 1, 1, 1, 10, 10, 20, 5, 1, 1, 1, 1];
+ 
+ var itemSet_lv3 = [1302058, 1372008, 1422030, 1422031, 1022082, 2022279, 2022120, 2001001, 2001002, 2022071, 2022189, 2040914, 2041001, 2041041, 2041308, 4031203, 4000030, 4003005, 4003000, 4010004, 4010006, 4020000, 4020006, 3010002, 3010003];
+-var itemQty_lv3 = [1, 1, 1, 1, 1, 100, 70, 70, 70, 40, 40, 1, 1, 1, 1, 15, 10, 15, 12, 5, 5, 5, 5, 1, 1];
++var itemQty_lv3 = [1, 1, 1, 1, 1, 65, 40, 40, 40, 25, 25, 1, 1, 1, 1, 10, 7, 10, 8, 5, 5, 5, 5, 1, 1];
+ 
+ var itemSet_lv2 = [1022073, 1012098, 1012101, 1012102, 1012103, 2022055, 2022056, 2022103, 2020029, 2020032, 2020031, 2022191, 2022016, 2043300, 2043110, 2043800, 2041001, 2040903, 4031203, 4000021, 4003005, 4003000, 4003001, 4010000, 4010001, 4010003, 4010004, 4020004, 3010004, 3010005];
+-var itemQty_lv2 = [1, 1, 1, 1, 1, 70, 70, 70, 70, 100, 100, 100, 100, 1, 1, 1, 1, 1, 7, 10, 12, 10, 3, 8, 8, 5, 5, 7, 1, 1];
++var itemQty_lv2 = [1, 1, 1, 1, 1, 40, 40, 40, 40, 60, 60, 60, 60, 1, 1, 1, 1, 1, 4, 6, 7, 5, 2, 4, 4, 3, 3, 4, 1, 1];
+ 
+ var itemSet_lv1 = [1302021, 1302024, 1302033, 1082150, 1002419, 2022053, 2022054, 2020032, 2022057, 2022096, 2022097, 2022192, 2020030, 2010005, 2022041, 2030000, 2040100, 2040004, 2040207, 2048004, 4031203, 4000021, 4003005, 4003000, 4003001, 4010000, 4010001, 4010002, 4010005, 4020004];
+-var itemQty_lv1 = [1, 1, 1, 1, 1, 30, 30, 30, 30, 30, 40, 40, 40, 80, 80, 20, 1, 1, 1, 1, 3, 5, 2, 2, 1, 3, 3, 3, 3, 3];
++var itemQty_lv1 = [1, 1, 1, 1, 1, 20, 20, 20, 20, 20, 25, 25, 25, 50, 50, 12, 1, 1, 1, 1, 3, 4, 2, 2, 1, 2, 2, 2, 2, 2];
+ 
+ var levels = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Tier 6"];
+ 
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index be6f6bcae..42b1a98a1 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -114,6 +114,7 @@ function writeSolaxiaCommandsLv3() {    //GM
+         addCommand("reloadportals", "");
+         addCommand("reloadmap", "");
+         addCommand("hpmp", "");
++        addCommand("maxhpmp", "");
+         addCommand("music", "");
+         addCommand("monitor", "");
+         addCommand("monitors", "");
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 04a209adf..296352813 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -11545,7 +11545,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11327, 2100107, 1382009, 1, 1, 0, 700),
+ (11328, 3210100, 1382009, 1, 1, 0, 700),
+ (11329, 4230502, 1382009, 1, 1, 0, 700),
+-(11804, 9420530, 1482007, 1, 1, 0, 333333),
++(11804, 9420530, 1482007, 1, 1, 0, 2000),
+ (11803, 9420530, 1002166, 1, 1, 0, 2000),
+ (11802, 9420530, 1002212, 1, 1, 0, 2000),
+ (11801, 9420530, 1032012, 1, 1, 0, 1800),
+@@ -11780,7 +11780,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11777, 9420534, 1002254, 1, 1, 0, 2000),
+ (11776, 9420534, 1382015, 1, 1, 0, 1800),
+ (11775, 9420534, 1452010, 1, 1, 0, 1500),
+-(11805, 9420530, 1492007, 1, 1, 0, 333333),
++(11805, 9420530, 1492007, 1, 1, 0, 2000),
+ (11806, 9420015, 4000420, 1, 1, 0, 300000),
+ (11807, 9420015, 4000421, 1, 1, 0, 300000),
+ (11808, 9420500, 4000369, 1, 1, 0, 300000),
+@@ -11900,7 +11900,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11922, 9420504, 4030012, 1, 1, 0, 300),
+ (11923, 9420504, 1072291, 1, 1, 0, 2000),
+ (11924, 9420504, 1082186, 1, 1, 0, 2000),
+-(11925, 9420504, 1482003, 1, 1, 0, 333333),
++(11925, 9420504, 1482003, 1, 1, 0, 1800),
+ (11926, 9420504, 2331000, 1, 1, 0, 500),
+ (11927, 9420505, 4000378, 1, 1, 0, 300000),
+ (11928, 9420505, 400002, 1, 1, 0, 10000),
+@@ -12306,7 +12306,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (12328, 9420527, 1002625, 1, 1, 0, 2000),
+ (12329, 9420527, 1052110, 1, 1, 0, 1800),
+ (12330, 9420527, 1082192, 1, 1, 0, 2000),
+-(12331, 9420527, 1492000, 1, 1, 0, 333333),
++(12331, 9420527, 1492000, 1, 1, 0, 1800),
+ (12332, 9420527, 2330000, 1, 1, 0, 500),
+ (12333, 9420528, 4000466, 1, 1, 0, 300000),
+ (12334, 9420528, 2020006, 1, 1, 0, 333333),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 1f99e0786..fe1e71e26 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19202,6 +19202,82 @@ USE `heavenms`;
+ (4300016,0,120,140,0,400000),
+ (4300017,0,540,800,0,400000);
+ 
++  # delete/normalize item drops from Horntail
++  DELETE FROM temp_data WHERE dropperid=8810018;
++  INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
++(8810018,0,40000,50000,0,400000),
++(8810018,1122000,1,1,0,151200),
++(8810018,1302056,1,1,0,151200),
++(8810018,1302059,1,1,0,151200),
++(8810018,1312030,1,1,0,151200),
++(8810018,1312031,1,1,0,151200),
++(8810018,1322045,1,1,0,151200),
++(8810018,1322052,1,1,0,151200),
++(8810018,1332049,1,1,0,108000),
++(8810018,1332050,1,1,0,108000),
++(8810018,1332051,1,1,0,108000),
++(8810018,1332052,1,1,0,108000),
++(8810018,1372010,1,1,0,151200),
++(8810018,1372032,1,1,0,151200),
++(8810018,1382035,1,1,0,151200),
++(8810018,1382036,1,1,0,151200),
++(8810018,1402035,1,1,0,151200),
++(8810018,1402036,1,1,0,151200),
++(8810018,1412021,1,1,0,151200),
++(8810018,1412026,1,1,0,151200),
++(8810018,1422027,1,1,0,151200),
++(8810018,1422028,1,1,0,151200),
++(8810018,1432030,1,1,0,108000),
++(8810018,1432038,1,1,0,108000),
++(8810018,1442044,1,1,0,151200),
++(8810018,1442045,1,1,0,151200),
++(8810018,1452019,1,1,0,108000),
++(8810018,1452020,1,1,0,108000),
++(8810018,1452021,1,1,0,108000),
++(8810018,1452044,1,1,0,108000),
++(8810018,1462015,1,1,0,108000),
++(8810018,1462016,1,1,0,108000),
++(8810018,1462017,1,1,0,108000),
++(8810018,1462039,1,1,0,108000),
++(8810018,1472051,1,1,0,108000),
++(8810018,1472052,1,1,0,108000),
++(8810018,1472053,1,1,0,108000),
++(8810018,1482012,1,1,0,108000),
++(8810018,1482013,1,1,0,108000),
++(8810018,1492012,1,1,0,108000),
++(8810018,1492013,1,1,0,108000),
++(8810018,2000004,1,1,0,800000),
++(8810018,2000005,1,1,0,800000),
++(8810018,2000006,1,1,0,800000),
++(8810018,2020013,1,1,0,800000),
++(8810018,2020015,1,1,0,800000),
++(8810018,2040317,1,1,0,64800),
++(8810018,2040418,1,1,0,64800),
++(8810018,2040421,1,1,0,64800),
++(8810018,2040512,1,1,0,64800),
++(8810018,2040515,1,1,0,64800),
++(8810018,2040625,1,1,0,64800),
++(8810018,2049000,1,1,0,32400),
++(8810018,2049100,1,1,0,64800),
++(8810018,2290017,1,1,0,108000),
++(8810018,2290021,1,1,0,108000),
++(8810018,2290023,1,1,0,108000),
++(8810018,2290041,1,1,0,108000),
++(8810018,2290047,1,1,0,108000),
++(8810018,2290049,1,1,0,108000),
++(8810018,2290065,1,1,0,108000),
++(8810018,2290075,1,1,0,108000),
++(8810018,2290085,1,1,0,108000),
++(8810018,2290095,1,1,0,108000),
++(8810018,2290096,1,1,0,80000),
++(8810018,2290111,1,1,0,108000),
++(8810018,2290116,1,1,0,108000),
++(8810018,2290125,1,1,0,100000),
++(8810018,2290133,1,1,0,45000),
++(8810018,2290137,1,1,0,45000),
++(8810018,2290139,1,1,0,45000),
++(8810018,4001094,1,1,0,999999);
++
+   #insert things that should be present by now, but aren't yet.
+ 
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+@@ -19619,10 +19695,10 @@ USE `heavenms`;
+ (9400640, 1082074, 1, 1, 0, 2000),
+ (9400640, 1002285, 1, 1, 0, 1500),
+ (9400640, 1002210, 1, 1, 0, 2000),
+-(9420544, 1003023, 1, 1, 0, 50000),
+-(9420544, 1003024, 1, 1, 0, 50000),
+-(9420549, 1003025, 1, 1, 0, 50000),
+-(9420549, 1003026, 1, 1, 0, 50000),
++(9420544, 1003023, 3, 5, 0, 50000),
++(9420544, 1003024, 3, 5, 0, 50000),
++(9420549, 1003025, 3, 5, 0, 50000),
++(9420549, 1003026, 3, 5, 0, 50000),
+ (9300066, 4001087, 1, 1, 0, 999999),
+ (9300067, 4001088, 1, 1, 0, 999999),
+ (9300069, 4001089, 1, 1, 0, 999999),
+@@ -20475,11 +20551,11 @@ USE `heavenms`;
+   # zhelms, pink bean customs
+   DELETE FROM temp_data WHERE itemid=1002357;
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+-(8800002, 1002357, 1, 1, 0, 300000),
+-(8800002, 1002390, 1, 1, 0, 80000),
+-(8800002, 1002430, 1, 1, 0, 40000),
+-(8820001, 1002971, 1, 1, 0, 80000),
+-(8820001, 1052202, 1, 1, 0, 80000);
++(8800002, 1002357, 1, 2, 0, 300000),
++(8800002, 1002390, 3, 5, 0, 80000),
++(8800002, 1002430, 3, 5, 0, 40000),
++(8820001, 1002971, 3, 5, 0, 80000),
++(8820001, 1052202, 3, 5, 0, 80000);
+ 
+   # delete item drops from bosses in inactive form
+   DELETE FROM temp_data WHERE dropperid=4220001;
+diff --git a/src/client/BuddyList.java b/src/client/BuddyList.java
+index 1a5d77b62..b3ecf2a2c 100644
+--- a/src/client/BuddyList.java
++++ b/src/client/BuddyList.java
+@@ -134,7 +134,7 @@ public void broadcast(byte[] packet, PlayerStorage pstorage) {
+         for(int bid : getBuddyIds()) {
+             MapleCharacter chr = pstorage.getCharacterById(bid);
+             
+-            if(chr != null && chr.isLoggedin() && !chr.isAwayFromWorld()) {
++            if(chr != null && chr.isLoggedinWorld()) {
+                 chr.announce(packet);
+             }
+         }
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index b99400406..9ee3d4664 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -257,7 +257,7 @@
+     private Map<Integer, MapleKeyBinding> keymap = new LinkedHashMap<>();
+     private Map<Integer, MapleSummon> summons = new LinkedHashMap<>();
+     private Map<Integer, MapleCoolDownValueHolder> coolDowns = new LinkedHashMap<>();
+-    private EnumMap<MapleDisease, MapleDiseaseValueHolder> diseases = new EnumMap<>(MapleDisease.class);
++    private EnumMap<MapleDisease, Pair<MapleDiseaseValueHolder, MobSkill>> diseases = new EnumMap<>(MapleDisease.class);
+     private Map<Integer, MapleDoor> doors = new LinkedHashMap<>();
+     private Map<MapleQuest, Long> questExpirations = new LinkedHashMap<>();
+     private ScheduledFuture<?> dragonBloodSchedule;
+@@ -428,6 +428,10 @@ public static MapleCharacter getDefault(MapleClient c) {
+         return ret;
+     }
+     
++    public boolean isLoggedinWorld() {
++        return this.isLoggedin() && !this.isAwayFromWorld();
++    }
++    
+     public boolean isAwayFromWorld() {
+         return awayFromWorld.get();
+     }
+@@ -2042,16 +2046,17 @@ public final int getDiseasesSize() {
+         }
+     }
+ 
+-    public Map<MapleDisease, Long> getAllDiseases() {
++    public Map<MapleDisease, Pair<Long, MobSkill>> getAllDiseases() {
+         chrLock.lock();
+         try {
+             long curtime = System.currentTimeMillis();
+-            Map<MapleDisease, Long> ret = new LinkedHashMap<>();
++            Map<MapleDisease, Pair<Long, MobSkill>> ret = new LinkedHashMap<>();
+             
+             for(Entry<MapleDisease, Long> de : diseaseExpires.entrySet()) {
+-                MapleDiseaseValueHolder mdvh = diseases.get(de.getKey());
++                Pair<MapleDiseaseValueHolder, MobSkill> dee = diseases.get(de.getKey());
++                MapleDiseaseValueHolder mdvh = dee.getLeft();
+                 
+-                ret.put(de.getKey(), mdvh.length - (curtime - mdvh.startTime));
++                ret.put(de.getKey(), new Pair<>(mdvh.length - (curtime - mdvh.startTime), dee.getRight()));
+             }
+             
+             return ret;
+@@ -2060,16 +2065,36 @@ public final int getDiseasesSize() {
+         }
+     }
+     
+-    public void silentApplyDiseases(Map<MapleDisease, Long> diseaseMap) {
++    public void silentApplyDiseases(Map<MapleDisease, Pair<Long, MobSkill>> diseaseMap) {
+         chrLock.lock();
+         try {
+             long curTime = System.currentTimeMillis();
+             
+-            for(Entry<MapleDisease, Long> di : diseaseMap.entrySet()) {
+-                long expTime = curTime + di.getValue();
++            for(Entry<MapleDisease, Pair<Long, MobSkill>> di : diseaseMap.entrySet()) {
++                long expTime = curTime + di.getValue().getLeft();
+                 
+                 diseaseExpires.put(di.getKey(), expTime);
+-                diseases.put(di.getKey(), new MapleDiseaseValueHolder(curTime, expTime));
++                diseases.put(di.getKey(), new Pair<>(new MapleDiseaseValueHolder(curTime, expTime), di.getValue().getRight()));
++            }
++        } finally {
++            chrLock.unlock();
++        }
++    }
++    
++    public void announceDiseases(MapleClient c) {
++        chrLock.lock();
++        try {
++            // Poison damage visibility and diseases status visibility, extended through map transitions thanks to Ronan
++            
++            if(!this.isLoggedinWorld()) return;
++            
++            for(Entry<MapleDisease, Pair<MapleDiseaseValueHolder, MobSkill>> di : diseases.entrySet()) {
++                MapleDisease disease = di.getKey();
++                MobSkill skill = di.getValue().getRight();
++                final List<Pair<MapleDisease, Integer>> debuff = Collections.singletonList(new Pair<>(disease, Integer.valueOf(skill.getX())));
++                
++                if(disease != MapleDisease.SLOW) c.announce(MaplePacketCreator.giveForeignDebuff(id, debuff, skill));
++                else c.announce(MaplePacketCreator.giveForeignSlowDebuff(id, debuff, skill));
+             }
+         } finally {
+             chrLock.unlock();
+@@ -2088,14 +2113,16 @@ public void giveDebuff(final MapleDisease disease, MobSkill skill) {
+             try {
+                 long curTime = System.currentTimeMillis();
+                 diseaseExpires.put(disease, curTime + skill.getDuration());
+-                diseases.put(disease, new MapleDiseaseValueHolder(curTime, skill.getDuration()));
++                diseases.put(disease, new Pair<>(new MapleDiseaseValueHolder(curTime, skill.getDuration()), skill));
+             } finally {
+                 chrLock.unlock();
+             }
+             
+             final List<Pair<MapleDisease, Integer>> debuff = Collections.singletonList(new Pair<>(disease, Integer.valueOf(skill.getX())));
+             client.announce(MaplePacketCreator.giveDebuff(debuff, skill));
+-            map.broadcastMessage(this, MaplePacketCreator.giveForeignDebuff(id, debuff, skill), false);
++            
++            if(disease != MapleDisease.SLOW) map.broadcastMessage(this, MaplePacketCreator.giveForeignDebuff(id, debuff, skill), false);
++            else map.broadcastMessage(this, MaplePacketCreator.giveForeignSlowDebuff(id, debuff, skill), false);
+         }
+     }
+ 
+@@ -2103,7 +2130,9 @@ public void dispelDebuff(MapleDisease debuff) {
+         if (hasDisease(debuff)) {
+             long mask = debuff.getValue();
+             announce(MaplePacketCreator.cancelDebuff(mask));
+-            map.broadcastMessage(this, MaplePacketCreator.cancelForeignDebuff(id, mask), false);
++            
++            if(debuff != MapleDisease.SLOW) map.broadcastMessage(this, MaplePacketCreator.cancelForeignDebuff(id, mask), false);
++            else map.broadcastMessage(this, MaplePacketCreator.cancelForeignSlowDebuff(id), false);
+ 
+             chrLock.lock();
+             try {
+@@ -3022,10 +3051,10 @@ public void cancelEffect(int itemId) {
+         cancelEffect(ii.getItemEffect(itemId), false, -1);
+     }
+ 
+-    public void cancelEffect(MapleStatEffect effect, boolean overwrite, long startTime) {
++    public boolean cancelEffect(MapleStatEffect effect, boolean overwrite, long startTime) {
+         effLock.lock();
+         try {
+-            cancelEffect(effect, overwrite, startTime, true);
++            return cancelEffect(effect, overwrite, startTime, true);
+         } finally {
+             effLock.unlock();
+         }
+@@ -3068,10 +3097,12 @@ private void updateEffects(Set<MapleBuffStat> removedStats) {
+         }
+     }
+     
+-    private void cancelEffect(MapleStatEffect effect, boolean overwrite, long startTime, boolean firstCancel) {
++    private boolean cancelEffect(MapleStatEffect effect, boolean overwrite, long startTime, boolean firstCancel) {
+         Set<MapleBuffStat> removedStats = new LinkedHashSet<>();
+         dropBuffStats(cancelEffectInternal(effect, overwrite, startTime, removedStats));
+         updateEffects(removedStats);
++        
++        return !removedStats.isEmpty();
+     }
+     
+     private List<Pair<MapleBuffStat, MapleBuffStatValueHolder>> cancelEffectInternal(MapleStatEffect effect, boolean overwrite, long startTime, Set<MapleBuffStat> removedStats) {
+@@ -3480,26 +3511,31 @@ private static int getJobMapChair(MapleJob job) {
+         }
+     }
+     
+-    public void unregisterChairBuff() {
+-        if(!ServerConstants.USE_CHAIR_EXTRAHEAL) return;
++    public boolean unregisterChairBuff() {
++        if(!ServerConstants.USE_CHAIR_EXTRAHEAL) return false;
+         
+         int skillId = getJobMapChair(job);
+         int skillLv = getSkillLevel(skillId);
+         if(skillLv > 0) {
+             MapleStatEffect mapChairSkill = SkillFactory.getSkill(skillId).getEffect(skillLv);
+-            cancelEffect(mapChairSkill, false, -1);
++            return cancelEffect(mapChairSkill, false, -1);
+         }
++        
++        return false;
+     }
+     
+-    public void registerChairBuff() {
+-        if(!ServerConstants.USE_CHAIR_EXTRAHEAL) return;
++    public boolean registerChairBuff() {
++        if(!ServerConstants.USE_CHAIR_EXTRAHEAL) return false;
+         
+         int skillId = getJobMapChair(job);
+         int skillLv = getSkillLevel(skillId);
+         if(skillLv > 0) {
+             MapleStatEffect mapChairSkill = SkillFactory.getSkill(skillId).getEffect(skillLv);
+             mapChairSkill.applyTo(this);
++            return true;
+         }
++        
++        return false;
+     }
+     
+     public int getChair() {
+@@ -4216,7 +4252,8 @@ public int getPartyId() {
+         try {
+             if(party != null) {
+                 for(MaplePartyCharacter partyMembers: party.getMembers()) {
+-                    if(partyMembers.getPlayer().getMap().hashCode() == thisMapHash) list.add(partyMembers.getPlayer());
++                    MapleCharacter chr = partyMembers.getPlayer();
++                    if(chr.getMap().hashCode() == thisMapHash && chr.isLoggedinWorld()) list.add(chr);
+                 }
+             }
+         } finally {
+@@ -7240,16 +7277,9 @@ private int standaloneSell(MapleClient c, MapleItemInformationProvider ii, Maple
+         
+         if (quantity <= iQuant && iQuant > 0) {
+             MapleInventoryManipulator.removeFromSlot(c, type, (byte) slot, quantity, false);
+-            double price;
+             int itemid = item.getItemId();
+-            if (ItemConstants.isRechargable(itemid)) {
+-            	price = ii.getWholePrice(itemid) / (double) ii.getSlotMax(c, itemid);
+-            } else {
+-                price = ii.getPrice(itemid);
+-            }
+-            
+-            int recvMesos = (int) Math.max(Math.ceil(price * quantity), 0);
+-            if (price != -1 && recvMesos > 0) {
++            int recvMesos = ii.getPrice(itemid, quantity);
++            if (recvMesos > 0) {
+                 gainMeso(recvMesos, false);
+                 return(recvMesos);
+             }
+@@ -7722,6 +7752,10 @@ public void sendDestroyData(MapleClient client) {
+     public void sendSpawnData(MapleClient client) {
+         if (!this.isHidden() || client.getPlayer().gmLevel() > 1) {
+             client.announce(MaplePacketCreator.spawnPlayerMapObject(this));
++            
++            if(hasBuffFromSourceid(getJobMapChair(job))) {
++                client.announce(MaplePacketCreator.giveForeignChairSkillEffect(id));
++            }
+         }
+ 
+         if (this.isHidden()) {
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index dfa40da1d..ba5c7464b 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1256,7 +1256,7 @@ public synchronized void announceBossHpBar(MapleMonster mm, final int mobHash, f
+ 	}
+         
+ 	public synchronized void announce(final byte[] packet) {//MINA CORE IS A FUCKING BITCH AND I HATE IT <3
+-		session.write(packet);
++                session.write(packet);
+ 	}
+ 
+         public void announceHint(String msg, int length) {
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 45014bec1..6af1b4918 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -1764,7 +1764,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                         } else if(sub.length == 2) {
+                                 statUpdate = Integer.valueOf(sub[1]);
+                         } else {
+-				player.yellowMessage("Syntax: !sethpmp [<playername>] <value>");
++				player.yellowMessage("Syntax: !hpmp [<playername>] <value>");
+                         }
+                     
+                         if(victim != null) {
+@@ -1779,6 +1779,41 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                         }
+                     break;
+                    
++                case "maxhpmp":
++                        victim = player;
++                        statUpdate = 1;
++                        
++                        if (sub.length >= 3) {
++                                victim = c.getWorldServer().getPlayerStorage().getCharacterByName(sub[1]);
++                                statUpdate = Integer.valueOf(sub[2]);
++                        } else if(sub.length == 2) {
++                                statUpdate = Integer.valueOf(sub[1]);
++                        } else {
++				player.yellowMessage("Syntax: !maxhpmp [<playername>] <value>");
++                        }
++                    
++                        if(victim != null) {
++                                if(victim.getHp() > statUpdate) {
++                                        victim.setHp(statUpdate);
++                                        victim.updateSingleStat(MapleStat.HP, statUpdate);
++                                }
++                                
++                                if(victim.getMp() > statUpdate) {
++                                        victim.setMp(statUpdate);
++                                        victim.updateSingleStat(MapleStat.MP, statUpdate);
++                                }
++                            
++                                victim.setMaxHp(statUpdate);
++                                victim.setMaxMp(statUpdate);
++                                victim.updateSingleStat(MapleStat.MAXHP, statUpdate);
++                                victim.updateSingleStat(MapleStat.MAXMP, statUpdate);
++                                
++                                victim.checkBerserk(victim.isHidden());
++                        } else {
++                                player.message("Player '" + sub[1] + "' could not be found on this world.");
++                        }
++                    break;
++                   
+ 		case "music":
+ 			if (sub.length < 2) {
+ 				player.yellowMessage("Syntax: !music <song>");
+diff --git a/src/client/newyear/NewYearCardRecord.java b/src/client/newyear/NewYearCardRecord.java
+index 2ff15d046..75d06c7cb 100644
+--- a/src/client/newyear/NewYearCardRecord.java
++++ b/src/client/newyear/NewYearCardRecord.java
+@@ -272,7 +272,7 @@ public void run() {
+                 }
+                 
+                 MapleCharacter target = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(receiverId);
+-                if(target != null && target.isLoggedin() && !target.isAwayFromWorld()) {
++                if(target != null && target.isLoggedinWorld()) {
+                     target.announce(MaplePacketCreator.onNewYearCardRes(target, NewYearCardRecord.this, 0xC, 0));
+                 }
+             }
+@@ -328,7 +328,7 @@ public static void removeAllNewYearCard(boolean send, MapleCharacter chr) {
+                     chr.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(chr, nyc, 0xE, 0));
+ 
+                     MapleCharacter other = chr.getClient().getWorldServer().getPlayerStorage().getCharacterById(nyc.getReceiverId());
+-                    if(other != null && other.isLoggedin() && !other.isAwayFromWorld()) {
++                    if(other != null && other.isLoggedinWorld()) {
+                         other.removeNewYearRecord(nyc);
+                         other.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(other, nyc, 0xE, 0));
+ 
+@@ -346,7 +346,7 @@ public static void removeAllNewYearCard(boolean send, MapleCharacter chr) {
+                     chr.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(chr, nyc, 0xE, 0));
+ 
+                     MapleCharacter other = chr.getClient().getWorldServer().getPlayerStorage().getCharacterById(nyc.getSenderId());
+-                    if(other != null && other.isLoggedin() && !other.isAwayFromWorld()) {
++                    if(other != null && other.isLoggedinWorld()) {
+                         other.removeNewYearRecord(nyc);
+                         other.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(other, nyc, 0xE, 0));
+ 
+diff --git a/src/constants/ItemConstants.java b/src/constants/ItemConstants.java
+index 8d4f1fbb0..738d4c0e2 100644
+--- a/src/constants/ItemConstants.java
++++ b/src/constants/ItemConstants.java
+@@ -171,6 +171,11 @@ public static boolean isMakerReagent(int itemId) {
+     public static boolean isOverall(int itemId) {
+         return itemId / 10000 == 105;
+     }
++    
++    public static boolean isCashStore(int itemId) {
++        int itemType = itemId / 10000;
++        return itemType == 503 || itemType == 514;
++    }
+ 
+     public static boolean isWeapon(int itemId) {
+         return itemId >= 1302000 && itemId < 1492024;
+diff --git a/src/net/server/PlayerBuffStorage.java b/src/net/server/PlayerBuffStorage.java
+index 40dbdc85a..b37a2ff09 100644
+--- a/src/net/server/PlayerBuffStorage.java
++++ b/src/net/server/PlayerBuffStorage.java
+@@ -26,6 +26,8 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
++import server.life.MobSkill;
++import tools.Pair;
+ import tools.locks.MonitoredLockType;
+ import tools.locks.MonitoredReentrantLock;
+ 
+@@ -38,7 +40,7 @@
+     private int id = (int) (Math.random() * 100);
+     private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.BUFF_STORAGE, true);    
+     private Map<Integer, List<PlayerBuffValueHolder>> buffs = new HashMap<>();
+-    private Map<Integer, Map<MapleDisease, Long>> diseases = new HashMap<>();
++    private Map<Integer, Map<MapleDisease, Pair<Long, MobSkill>>> diseases = new HashMap<>();
+ 
+     public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+         lock.lock();
+@@ -58,7 +60,7 @@ public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+         }
+     }
+     
+-    public void addDiseasesToStorage(int chrid, Map<MapleDisease, Long> toStore) {
++    public void addDiseasesToStorage(int chrid, Map<MapleDisease, Pair<Long, MobSkill>> toStore) {
+         lock.lock();
+         try {
+             diseases.put(chrid, toStore);
+@@ -67,7 +69,7 @@ public void addDiseasesToStorage(int chrid, Map<MapleDisease, Long> toStore) {
+         }
+     }
+ 
+-    public Map<MapleDisease, Long> getDiseasesFromStorage(int chrid) {
++    public Map<MapleDisease, Pair<Long, MobSkill>> getDiseasesFromStorage(int chrid) {
+         lock.lock();
+         try {
+             return diseases.remove(chrid);
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index ff79569a4..e26a265a9 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -21,6 +21,7 @@
+  */
+ package net.server;
+ 
++import net.server.worker.CharacterDiseaseWorker;
+ import net.server.worker.CouponWorker;
+ import net.server.worker.RankingWorker;
+ import java.io.FileInputStream;
+@@ -94,9 +95,12 @@
+     private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
+     private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+     private final Lock lgnLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
++    private final Lock disLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
+     private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
++    private final List<MapleClient> processDiseaseAnnouncePlayers = new LinkedList<>();
++    private final List<MapleClient> registeredDiseaseAnnouncePlayers = new LinkedList<>();
+     
+     private boolean online = false;
+     public static long uptime = System.currentTimeMillis();
+@@ -261,7 +265,39 @@ public void updateActiveCoupons() throws SQLException {
+             }
+         }
+     }
+-
++    
++    public void runAnnouncePlayerDiseasesSchedule() {
++        disLock.lock();
++        try {
++            while(!processDiseaseAnnouncePlayers.isEmpty()) {
++                MapleClient c = processDiseaseAnnouncePlayers.remove(0);
++                MapleCharacter player = c.getPlayer();
++                if(player != null && player.isLoggedinWorld()) {
++                    for(MapleCharacter chr : player.getMap().getCharacters()) {
++                        chr.announceDiseases(c);
++                    }
++                }
++            }
++            
++            // this is to force the system to wait for at least one complete tick before releasing disease info for the registered clients
++            while(!registeredDiseaseAnnouncePlayers.isEmpty()) {
++                MapleClient c = registeredDiseaseAnnouncePlayers.remove(0);
++                processDiseaseAnnouncePlayers.add(c);
++            }
++        } finally {
++            disLock.unlock();
++        }
++    }
++    
++    public void registerAnnouncePlayerDiseases(MapleClient c) {
++        disLock.lock();
++        try {
++            registeredDiseaseAnnouncePlayers.add(c);
++        } finally {
++            disLock.unlock();
++        }
++    }
++    
+     public void init() {
+         Properties p = new Properties();
+         try {
+@@ -306,6 +342,7 @@ public void init() {
+         disconnectIdlesOnLoginTask();
+         
+         long timeLeft = getTimeLeftForNextHour();
++        tMan.register(new CharacterDiseaseWorker(), 777, 777);
+         tMan.register(new CouponWorker(), ServerConstants.COUPON_INTERVAL, timeLeft);
+         tMan.register(new RankingWorker(), ServerConstants.RANKING_INTERVAL, timeLeft);
+         
+diff --git a/src/net/server/channel/handlers/CancelChairHandler.java b/src/net/server/channel/handlers/CancelChairHandler.java
+index ef64f754c..f048f62ba 100644
+--- a/src/net/server/channel/handlers/CancelChairHandler.java
++++ b/src/net/server/channel/handlers/CancelChairHandler.java
+@@ -36,13 +36,17 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         
+         if (id == -1) { // Cancel Chair
+             mc.setChair(0);
+-            mc.unregisterChairBuff();
++            if(mc.unregisterChairBuff()) {
++                c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.cancelForeignChairSkillEffect(mc.getId()), false);
++            }
+             
+             c.announce(MaplePacketCreator.cancelChair(-1));
+             c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.showChair(c.getPlayer().getId(), 0), false);
+         } else { // Use In-Map Chair
+             mc.setChair(id);
+-            mc.registerChairBuff();
++            if(mc.registerChairBuff()) {
++                c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.giveForeignChairSkillEffect(mc.getId()), false);
++            }
+             
+             c.announce(MaplePacketCreator.cancelChair(id));
+         }
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index 2c35567bc..983fa9ea8 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -28,6 +28,7 @@
+ import client.inventory.Item;
+ import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
++import constants.ItemConstants;
+ import java.sql.SQLException;
+ import java.util.Calendar;
+ import java.util.List;
+@@ -64,6 +65,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 c.announce(MaplePacketCreator.enableActions());
+                 return;
+             }
++            
++            if(ItemConstants.isCashStore(cItem.getItemId()) && chr.getLevel() < 16) {
++                c.announce(MaplePacketCreator.enableActions());
++                return;
++            }
++            
+             if (action == 0x03) { // Item
+                 Item item = cItem.toItem();
+                 cs.addToInventory(item);               
+@@ -176,20 +183,20 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+             }
+         } else if (action == 0x08) { // Increase Character Slots
+-                slea.skip(1); 
+-                int cash = slea.readInt();
+-                CashItem cItem = CashItemFactory.getItem(slea.readInt());
++            slea.skip(1); 
++            int cash = slea.readInt();
++            CashItem cItem = CashItemFactory.getItem(slea.readInt());
+ 
+-                if (!canBuy(cItem, cs.getCash(cash))) {
+-                    c.announce(MaplePacketCreator.enableActions());
+-                    return;
+-                }
++            if (!canBuy(cItem, cs.getCash(cash))) {
++                c.announce(MaplePacketCreator.enableActions());
++                return;
++            }
+ 
+-                if (c.gainCharacterSlot()) {
+-                    c.announce(MaplePacketCreator.showBoughtCharacterSlot(c.getCharacterSlots()));
+-                    cs.gainCash(cash, -cItem.getPrice());
+-                    c.announce(MaplePacketCreator.showCash(chr));
+-                }
++            if (c.gainCharacterSlot()) {
++                c.announce(MaplePacketCreator.showBoughtCharacterSlot(c.getCharacterSlots()));
++                cs.gainCash(cash, -cItem.getPrice());
++                c.announce(MaplePacketCreator.showCash(chr));
++            }
+         } else if (action == 0x0D) { // Take from Cash Inventory
+             Item item = cs.findByCashId(slea.readInt());
+             if (item == null) {
+@@ -281,8 +288,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             }
+             c.announce(MaplePacketCreator.showCash(c.getPlayer()));
+         } else if (action == 0x23) { //Friendship :3
+-			slea.readInt(); //Birthday
+-          // if (checkBirthday(c, birthday)) {
++            slea.readInt(); //Birthday
++            // if (checkBirthday(c, birthday)) {
+                 int payment = slea.readByte();
+                 slea.skip(3); //0s
+                 int snID = slea.readInt();
+diff --git a/src/net/server/channel/handlers/NewYearCardHandler.java b/src/net/server/channel/handlers/NewYearCardHandler.java
+index 7e51aee93..347d68475 100644
+--- a/src/net/server/channel/handlers/NewYearCardHandler.java
++++ b/src/net/server/channel/handlers/NewYearCardHandler.java
+@@ -106,7 +106,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         player.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(player, newyear, 0xD, 0));
+ 
+                         MapleCharacter sender = c.getWorldServer().getPlayerStorage().getCharacterById(newyear.getSenderId());
+-                        if(sender != null && sender.isLoggedin() && !sender.isAwayFromWorld()) {
++                        if(sender != null && sender.isLoggedinWorld()) {
+                             sender.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(sender, newyear, 0xD, 0));
+                             sender.dropMessage(6, "[NEW YEAR] Your addressee successfully received the New Year card.");
+                         }
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 771678bd5..b3410e150 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -57,6 +57,7 @@
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Map;
++import server.life.MobSkill;
+ 
+ public final class PlayerLoggedinHandler extends AbstractMaplePacketHandler {
+ 
+@@ -129,7 +130,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             player.silentGiveBuffs(timedBuffs);
+         }
+         
+-        Map<MapleDisease, Long> diseases = server.getPlayerBuffStorage().getDiseasesFromStorage(cid);
++        Map<MapleDisease, Pair<Long, MobSkill>> diseases = server.getPlayerBuffStorage().getDiseasesFromStorage(cid);
+         if (diseases != null) {
+             player.silentApplyDiseases(diseases);
+         }
+diff --git a/src/net/server/worker/CharacterDiseaseWorker.java b/src/net/server/worker/CharacterDiseaseWorker.java
+new file mode 100644
+index 000000000..8d94656a3
+--- /dev/null
++++ b/src/net/server/worker/CharacterDiseaseWorker.java
+@@ -0,0 +1,33 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.worker;
++
++import net.server.Server;
++
++/**
++ * @author Ronan
++ * @info   Thread responsible for announcing other players diseases when one enters into a map
++ */
++public class CharacterDiseaseWorker implements Runnable {
++    @Override
++    public void run() {
++        Server.getInstance().runAnnouncePlayerDiseasesSchedule();
++    }
++}
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 277c7e993..45ec3c6e5 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -842,7 +842,7 @@ public void runPetSchedule() {
+         
+         for(Map.Entry<Integer, Byte> dp: deployedPets.entrySet()) {
+             MapleCharacter chr = this.getPlayerStorage().getCharacterById(dp.getKey() / 4);
+-            if(chr == null || !chr.isLoggedin() || chr.isAwayFromWorld()) continue;
++            if(chr == null || !chr.isLoggedinWorld()) continue;
+             
+             Byte dpVal = (byte)(dp.getValue() + 1);
+             if(dpVal == ServerConstants.PET_EXHAUST_COUNT) {
+@@ -900,7 +900,7 @@ public void runMountSchedule() {
+         
+         for(Map.Entry<Integer, Byte> dp: deployedMounts.entrySet()) {
+             MapleCharacter chr = this.getPlayerStorage().getCharacterById(dp.getKey());
+-            if(chr == null || !chr.isLoggedin() || chr.isAwayFromWorld()) continue;
++            if(chr == null || !chr.isLoggedinWorld()) continue;
+             
+             Byte dpVal = (byte)(dp.getValue() + 1);
+             if(dpVal == ServerConstants.MOUNT_EXHAUST_COUNT) {
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 43d576f9f..1d28459d4 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -921,7 +921,7 @@ public void dispatchUpdateQuestMobCount(int mobid, int mapid) {
+                 for (MapleCharacter evChr : eventMembers) {
+                     MapleCharacter chr = mapChars.get(evChr.getId());
+ 
+-                    if(chr != null && chr.isLoggedin() && !chr.isAwayFromWorld()) {
++                    if(chr != null && chr.isLoggedinWorld()) {
+                         chr.updateQuestMobCount(mobid);
+                     }
+                 }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index ada03973f..12486dc80 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -91,8 +91,8 @@
+     protected Map<Integer, MapleStatEffect> itemEffects = new HashMap<>();
+     protected Map<Integer, Map<String, Integer>> equipStatsCache = new HashMap<>();
+     protected Map<Integer, Equip> equipCache = new HashMap<>();
+-    protected Map<Integer, Double> priceCache = new HashMap<>();
+     protected Map<Integer, Integer> wholePriceCache = new HashMap<>();
++    protected Map<Integer, Double> unitPriceCache = new HashMap<>();
+     protected Map<Integer, Integer> projectileWatkCache = new HashMap<>();
+     protected Map<Integer, String> nameCache = new HashMap<>();
+     protected Map<Integer, String> descCache = new HashMap<>();
+@@ -421,54 +421,96 @@ public int getMeso(int itemId) {
+         return pEntry;
+     }
+ 
+-    public int getWholePrice(int itemId) {
+-        if (wholePriceCache.containsKey(itemId)) {
+-            return wholePriceCache.get(itemId);
+-        }
++    private Pair<Integer, Double> getItemPriceData(int itemId) {
+         MapleData item = getItemData(itemId);
+         if (item == null) {
+-            return -1;
++            wholePriceCache.put(itemId, -1);
++            unitPriceCache.put(itemId, 0.0);
++            return new Pair<>(-1, 0.0);
+         }
+-        int pEntry;
++        
++        int pEntry = -1;
+         MapleData pData = item.getChildByPath("info/price");
+-        if (pData == null) {
+-            return -1;
++        if (pData != null) {
++            pEntry = MapleDataTool.getInt(pData);
+         }
+-        pEntry = MapleDataTool.getInt(pData);
++        
++        double fEntry = 0.0f;
++        pData = item.getChildByPath("info/unitPrice");
++        if (pData != null) {
++            try {
++                fEntry = MapleDataTool.getDouble(pData);
++            } catch (Exception e) {
++                fEntry = (double) MapleDataTool.getInt(pData);
++            }
++        }
++        
+         wholePriceCache.put(itemId, pEntry);
+-        return pEntry;
++        unitPriceCache.put(itemId, fEntry);
++        return new Pair<>(pEntry, fEntry);
+     }
+-
+-    public double getPrice(int itemId) {
+-        if (priceCache.containsKey(itemId)) {
+-            return priceCache.get(itemId);
++    
++    public int getWholePrice(int itemId) {
++        if (wholePriceCache.containsKey(itemId)) {
++            return wholePriceCache.get(itemId);
+         }
+-        MapleData item = getItemData(itemId);
+-        if (item == null) {
++        
++        return getItemPriceData(itemId).getLeft();
++    }
++    
++    public double getUnitPrice(int itemId) {
++        if (unitPriceCache.containsKey(itemId)) {
++            return unitPriceCache.get(itemId);
++        }
++        
++        return getItemPriceData(itemId).getRight();
++    }
++
++    public int getPrice(int itemId, int quantity) {
++        int retPrice = getWholePrice(itemId);
++        if(retPrice == -1) {
+             return -1;
+         }
+-        double pEntry;
+-        MapleData pData = item.getChildByPath("info/unitPrice");
+-        if (pData != null) {
+-            try {
+-                pEntry = MapleDataTool.getDouble(pData);
+-            } catch (Exception e) {
+-                pEntry = (double) MapleDataTool.getInt(pData);
+-            }
++        
++        if(!ItemConstants.isRechargable(itemId)) {
++            retPrice *= quantity;
+         } else {
+-            pData = item.getChildByPath("info/price");
+-            if (pData == null) {
+-                return -1;
++            retPrice += Math.ceil(quantity * getUnitPrice(itemId));
++        }
++        
++        return retPrice;
++    }
++    
++    public static boolean canSell(Item item, short quantity) {
++        if (item == null) { //Basic check
++            return false;
++        }
++        
++        short iQuant = item.getQuantity();
++        if (iQuant == 0xFFFF) {
++            iQuant = 1;
++        } else if(iQuant < 0) {
++            return false;
++        }
++        
++        if (!ItemConstants.isRechargable(item.getItemId())) {
++            if (iQuant == 0 || quantity > iQuant) {
++                return false;
+             }
+-            try {
+-                pEntry = (double) MapleDataTool.getInt(pData);
+-            } catch(Exception e) {
+-                priceCache.put(itemId, 0.0);
+-                return 0;
++        }
++        
++        return true;
++    }
++    
++    public static short getSellingQuantity(Item item, short quantity) {
++        if (ItemConstants.isRechargable(item.getItemId())) {
++            quantity = item.getQuantity();
++            if (quantity == 0xFFFF) {
++                quantity = 1;
+             }
+         }
+-        priceCache.put(itemId, pEntry);
+-        return pEntry;
++        
++        return quantity;
+     }
+     
+     protected String getEquipmentSlot(int itemId) {
+diff --git a/src/server/MapleShop.java b/src/server/MapleShop.java
+index 7975da959..a6b9e3201 100644
+--- a/src/server/MapleShop.java
++++ b/src/server/MapleShop.java
+@@ -88,7 +88,7 @@ public void buy(MapleClient c, short slot, int itemId, short quantity) {
+             return;
+         }
+         MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+-        if (item != null && item.getPrice() > 0) {
++        if (item.getPrice() > 0) {
+             if (c.getPlayer().getMeso() >= (long) item.getPrice() * quantity) {
+                 if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
+                     if (!ItemConstants.isRechargable(itemId)) { //Pets can't be bought from shops
+@@ -107,77 +107,64 @@ public void buy(MapleClient c, short slot, int itemId, short quantity) {
+             } else
+                 c.announce(MaplePacketCreator.shopTransaction((byte) 2));
+ 
+-        } else if (item != null && item.getPitch() > 0) {
+-                if (c.getPlayer().getInventory(MapleInventoryType.ETC).countById(4310000) >= (long) item.getPitch() * quantity) {
+-                    if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
+-                        if (!ItemConstants.isRechargable(itemId)) {
+-                            MapleInventoryManipulator.addById(c, itemId, quantity);
+-                            MapleInventoryManipulator.removeById(c, MapleInventoryType.ETC, 4310000, item.getPitch() * quantity, false, false);
+-                        } else {
+-                            short slotMax = ii.getSlotMax(c, item.getItemId());
+-                            quantity = slotMax;
+-                            MapleInventoryManipulator.addById(c, itemId, quantity);
+-                            MapleInventoryManipulator.removeById(c, MapleInventoryType.ETC, 4310000, item.getPitch() * quantity, false, false);
+-                        }
+-                        c.announce(MaplePacketCreator.shopTransaction((byte) 0));
+-                    } else
+-                        c.announce(MaplePacketCreator.shopTransaction((byte) 3));
+-                }
+-
+-            } else if (c.getPlayer().getInventory(MapleInventoryType.CASH).countById(token) != 0) {
+-                int amount = c.getPlayer().getInventory(MapleInventoryType.CASH).countById(token);
+-                int value = amount * tokenvalue;
+-                int cost = item.getPrice() * quantity;
+-                if (c.getPlayer().getMeso() + value >= cost) {
+-                    int cardreduce = value - cost;
+-                    int diff = cardreduce + c.getPlayer().getMeso();
+-                    if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
+-                        if (ItemConstants.isPet(itemId)) {
+-                            int petid = MaplePet.createPet(itemId);
+-                            MapleInventoryManipulator.addById(c, itemId, quantity, null, petid, -1);
+-                        } else {
+-                            MapleInventoryManipulator.addById(c, itemId, quantity);
+-                        }
+-                        c.getPlayer().gainMeso(diff, false);
++        } else if (item.getPitch() > 0) {
++            if (c.getPlayer().getInventory(MapleInventoryType.ETC).countById(4310000) >= (long) item.getPitch() * quantity) {
++                if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
++                    if (!ItemConstants.isRechargable(itemId)) {
++                        MapleInventoryManipulator.addById(c, itemId, quantity);
++                        MapleInventoryManipulator.removeById(c, MapleInventoryType.ETC, 4310000, item.getPitch() * quantity, false, false);
+                     } else {
+-                        c.announce(MaplePacketCreator.shopTransaction((byte) 3));
++                        short slotMax = ii.getSlotMax(c, item.getItemId());
++                        quantity = slotMax;
++                        MapleInventoryManipulator.addById(c, itemId, quantity);
++                        MapleInventoryManipulator.removeById(c, MapleInventoryType.ETC, 4310000, item.getPitch() * quantity, false, false);
+                     }
+                     c.announce(MaplePacketCreator.shopTransaction((byte) 0));
+                 } else
+-                    c.announce(MaplePacketCreator.shopTransaction((byte) 2));
++                    c.announce(MaplePacketCreator.shopTransaction((byte) 3));
+             }
++
++        } else if (c.getPlayer().getInventory(MapleInventoryType.CASH).countById(token) != 0) {
++            int amount = c.getPlayer().getInventory(MapleInventoryType.CASH).countById(token);
++            int value = amount * tokenvalue;
++            int cost = item.getPrice() * quantity;
++            if (c.getPlayer().getMeso() + value >= cost) {
++                int cardreduce = value - cost;
++                int diff = cardreduce + c.getPlayer().getMeso();
++                if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
++                    if (ItemConstants.isPet(itemId)) {
++                        int petid = MaplePet.createPet(itemId);
++                        MapleInventoryManipulator.addById(c, itemId, quantity, null, petid, -1);
++                    } else {
++                        MapleInventoryManipulator.addById(c, itemId, quantity);
++                    }
++                    c.getPlayer().gainMeso(diff, false);
++                } else {
++                    c.announce(MaplePacketCreator.shopTransaction((byte) 3));
++                }
++                c.announce(MaplePacketCreator.shopTransaction((byte) 0));
++            } else {
++                c.announce(MaplePacketCreator.shopTransaction((byte) 2));
++            }
++        }
+     }
+ 
+ 
+     public void sell(MapleClient c, MapleInventoryType type, short slot, short quantity) {
+         if (quantity == 0xFFFF || quantity == 0) {
+             quantity = 1;
+-        }
+-        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+-        Item item = c.getPlayer().getInventory(type).getItem((short) slot);
+-        if (item == null){ //Basic check
+-        	return;
+-        }
+-        if (ItemConstants.isRechargable(item.getItemId())) {
+-            quantity = item.getQuantity();
+-        }
+-        if (quantity < 0) {
++        } else if (quantity < 0) {
+             return;
+         }
+-        short iQuant = item.getQuantity();
+-        if (iQuant == 0xFFFF) {
+-            iQuant = 1;
+-        }
+-        if (quantity <= iQuant && iQuant > 0) {
++        
++        Item item = c.getPlayer().getInventory(type).getItem((short) slot);
++        if(MapleItemInformationProvider.canSell(item, quantity)) {
++            quantity = MapleItemInformationProvider.getSellingQuantity(item, quantity);
+             MapleInventoryManipulator.removeFromSlot(c, type, (byte) slot, quantity, false);
+-            double price;
+-            if (ItemConstants.isRechargable(item.getItemId())) {
+-            	price = ii.getWholePrice(item.getItemId()) / (double) ii.getSlotMax(c, item.getItemId());
+-            } else {
+-                price = ii.getPrice(item.getItemId());
+-            }
+-            int recvMesos = (int) Math.max(Math.ceil(price * quantity), 0);
+-            if (price != -1 && recvMesos > 0) {
++            
++            MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++            int recvMesos = ii.getPrice(item.getItemId(), quantity);
++            if (recvMesos > 0) {
+                 c.getPlayer().gainMeso(recvMesos, false);
+             }
+             c.announce(MaplePacketCreator.shopTransaction((byte) 0x8));
+@@ -195,7 +182,7 @@ public void recharge(MapleClient c, short slot) {
+             return;
+         }
+         if (item.getQuantity() < slotMax) {
+-            int price = (int) Math.round(ii.getPrice(item.getItemId()) * (slotMax - item.getQuantity()));
++            int price = (int) Math.ceil(ii.getUnitPrice(item.getItemId()) * (slotMax - item.getQuantity()));
+             if (c.getPlayer().getMeso() >= price) {
+                 item.setQuantity(slotMax);
+                 c.getPlayer().forceUpdateItem(item);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index ae7a1c72c..0c34b588b 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -552,7 +552,7 @@ private void dispatchUpdateQuestMobCount() {
+                 for (Integer chrid : attackerChrids) {
+                     MapleCharacter chr = mapChars.get(chrid);
+ 
+-                    if(chr != null && chr.isLoggedin() && !chr.isAwayFromWorld()) {
++                    if(chr != null && chr.isLoggedinWorld()) {
+                         chr.updateQuestMobCount(mobid);
+                     }
+                 }
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index 2a5e93534..da4373078 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -238,7 +238,7 @@ private void announceItemSold(Item item, int mesos) {
+         String qtyStr = (item.getQuantity() > 1) ? " (qty. " + item.getQuantity() + ")" : "";
+         
+         MapleCharacter player = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
+-        if(player != null && player.isLoggedin() && !player.isAwayFromWorld()) {
++        if(player != null && player.isLoggedinWorld()) {
+             player.dropMessage(6, "[HIRED MERCHANT] Item '" + MapleItemInformationProvider.getInstance().getName(item.getItemId()) + "'" + qtyStr + " has been sold for " + mesos + " mesos.");
+         }
+     }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index d8a39292f..2f578adf3 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2322,6 +2322,11 @@ public void run() {
+         }
+         
+         chr.receivePartyMemberHP();
++        announcePlayerDiseases(chr.getClient());
++    }
++    
++    private static void announcePlayerDiseases(final MapleClient c) {
++        Server.getInstance().registerAnnouncePlayerDiseases(c);
+     }
+ 
+     public MaplePortal getRandomPlayerSpawnpoint() {
+diff --git a/src/server/maps/MapleMiniDungeonInfo.java b/src/server/maps/MapleMiniDungeonInfo.java
+index 23caff266..16b3bdebd 100644
+--- a/src/server/maps/MapleMiniDungeonInfo.java
++++ b/src/server/maps/MapleMiniDungeonInfo.java
+@@ -1,5 +1,3 @@
+-package server.maps;
+-
+ /*
+ 	This file is part of the OdinMS Maple Story Server
+     Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+@@ -21,7 +19,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+-
++package server.maps;
+ 
+ /**
+  *
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index dde1c65dc..af9ede937 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -2256,10 +2256,11 @@ private static void addAttackBody(LittleEndianWriter lew, MapleCharacter chr, in
+                 }
+         }
+ 
++        // someone thought it was a good idea to handle floating point representation through packets ROFL
+         private static int doubleToShortBits(double d) {
+                 return (int) (Double.doubleToLongBits(d) >> 48);
+         }
+-
++        
+         public static byte[] getNPCShop(MapleClient c, int sid, List<MapleShopItem> items) {
+                 MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+@@ -2278,7 +2279,7 @@ private static int doubleToShortBits(double d) {
+                         } else {
+                                 mplew.writeShort(0);
+                                 mplew.writeInt(0);
+-                                mplew.writeShort(doubleToShortBits(ii.getPrice(item.getItemId())));
++                                mplew.writeShort(doubleToShortBits(ii.getUnitPrice(item.getItemId())));
+                                 mplew.writeShort(ii.getSlotMax(c, item.getItemId()));
+                         }
+                 }
+@@ -2440,26 +2441,31 @@ private static int doubleToShortBits(double d) {
+                 mplew.writeInt(cid);
+                 mplew.write(skill);
+                 mplew.writeInt(damage);
+-                mplew.writeInt(monsteridfrom);
+-                mplew.write(direction);
+-                if (pgmr) {
+-                        mplew.write(pgmr_1);
+-                        mplew.write(is_pg ? 1 : 0);
+-                        mplew.writeInt(oid);
+-                        mplew.write(6);
+-                        mplew.writeShort(pos_x);
+-                        mplew.writeShort(pos_y);
+-                        mplew.write(0);
++                if(skill != -4) {
++                        mplew.writeInt(monsteridfrom);
++                        mplew.write(direction);
++                        if (pgmr) {
++                                mplew.write(pgmr_1);
++                                mplew.write(is_pg ? 1 : 0);
++                                mplew.writeInt(oid);
++                                mplew.write(6);
++                                mplew.writeShort(pos_x);
++                                mplew.writeShort(pos_y);
++                                mplew.write(0);
++                        } else {
++                                mplew.writeShort(0);
++                        }
++                        mplew.writeInt(damage);
++                        if (fake > 0) {
++                                mplew.writeInt(fake);
++                        }
+                 } else {
+-                        mplew.writeShort(0);
+-                }
+-                mplew.writeInt(damage);
+-                if (fake > 0) {
+-                        mplew.writeInt(fake);
++                        mplew.writeInt(damage);
+                 }
++                
+                 return mplew.getPacket();
+         }
+-
++        
+         public static byte[] charNameResponse(String charname, boolean nameUsed) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CHAR_NAME_RESPONSE.getValue());
+@@ -2760,7 +2766,7 @@ private static void writeLongMaskD(final MaplePacketLittleEndianWriter mplew, Li
+                 mplew.writeLong(firstmask);
+                 mplew.writeLong(secondmask);
+         }
+-
++        
+         public static byte[] giveDebuff(List<Pair<MapleDisease, Integer>> statups, MobSkill skill) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.GIVE_BUFF.getValue());
+@@ -2776,8 +2782,10 @@ private static void writeLongMaskD(final MaplePacketLittleEndianWriter mplew, Li
+                 mplew.write(1);
+                 return mplew.getPacket();
+         }
+-
++        
+         public static byte[] giveForeignDebuff(int cid, List<Pair<MapleDisease, Integer>> statups, MobSkill skill) {
++                // Poison damage visibility and missing diseases status visibility, extended through map transitions thanks to Ronan
++                
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.GIVE_FOREIGN_BUFF.getValue());
+                 mplew.writeInt(cid);
+@@ -2867,6 +2875,69 @@ private static void writeLongMaskFromList(final MaplePacketLittleEndianWriter mp
+                 return mplew.getPacket();
+         }
+ 
++        private static void writeLongMaskSlowD(final MaplePacketLittleEndianWriter mplew) {
++                mplew.writeInt(0);
++                mplew.writeInt(2048);
++                mplew.writeLong(0);
++        }
++        
++        public static byte[] giveForeignSlowDebuff(int cid, List<Pair<MapleDisease, Integer>> statups, MobSkill skill) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.GIVE_FOREIGN_BUFF.getValue());
++                mplew.writeInt(cid);
++                writeLongMaskSlowD(mplew);
++                for (Pair<MapleDisease, Integer> statup : statups) {
++                        if(statup.getLeft() == MapleDisease.POISON) mplew.writeShort(statup.getRight().shortValue());
++                        mplew.writeShort(skill.getSkillId());
++                        mplew.writeShort(skill.getSkillLevel());
++                }
++                mplew.writeShort(0); // same as give_buff
++                mplew.writeShort(900);//Delay
++                return mplew.getPacket();
++        }
++        
++        public static byte[] cancelForeignSlowDebuff(int cid) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.CANCEL_FOREIGN_BUFF.getValue());
++                mplew.writeInt(cid);
++                writeLongMaskSlowD(mplew);
++                return mplew.getPacket();
++        }
++        
++        private static void writeLongMaskChair(final MaplePacketLittleEndianWriter mplew) {
++                mplew.writeInt(0);
++                mplew.writeInt(262144);
++                mplew.writeLong(0);
++        }
++        
++        public static byte[] giveForeignChairSkillEffect(int cid) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.GIVE_FOREIGN_BUFF.getValue());
++                mplew.writeInt(cid);
++                writeLongMaskChair(mplew);
++                
++                mplew.writeShort(0);
++                mplew.writeShort(0);
++                mplew.writeShort(100);
++                mplew.writeShort(1);
++                
++                mplew.writeShort(0);
++                mplew.writeShort(900);
++                
++                for(int i = 0; i < 7; i++) mplew.write(0);
++                
++                return mplew.getPacket();
++        }
++        
++        public static byte[] cancelForeignChairSkillEffect(int cid) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter(19);
++                mplew.writeShort(SendOpcode.CANCEL_FOREIGN_BUFF.getValue());
++                mplew.writeInt(cid);
++                writeLongMaskChair(mplew);
++                
++                return mplew.getPacket();
++        }
++        
+         public static byte[] getPlayerShopChat(MapleCharacter c, String chat, boolean owner) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.PLAYER_INTERACTION.getValue());
+@@ -6114,7 +6185,7 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 mplew.write(amount);
+                 return mplew.getPacket();
+         }
+-
++        
+         public static byte[] showWheelsLeft(int left) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());
+diff --git a/src/tools/data/output/GenericLittleEndianWriter.java b/src/tools/data/output/GenericLittleEndianWriter.java
+index e804fd800..560bf50cf 100644
+--- a/src/tools/data/output/GenericLittleEndianWriter.java
++++ b/src/tools/data/output/GenericLittleEndianWriter.java
+@@ -98,7 +98,7 @@ public void writeShort(int i) {
+         bos.writeByte((byte) (i & 0xFF));
+         bos.writeByte((byte) ((i >>> 8) & 0xFF));
+     }
+-
++    
+     /**
+      * Writes an integer to the stream.
+      *
+diff --git a/wz/Mob.wz/9420544.img.xml b/wz/Mob.wz/9420544.img.xml
+index bd1f21b67..891e84ca6 100644
+--- a/wz/Mob.wz/9420544.img.xml
++++ b/wz/Mob.wz/9420544.img.xml
+@@ -44,6 +44,12 @@
+         <int name="level" value="148"/>
+         <int name="effectAfter" value="0"/>
+       </imgdir>
++      <imgdir name="3">
++        <int name="skill" value="132"/>
++        <int name="action" value="2"/>
++        <int name="level" value="6"/>
++        <int name="effectAfter" value="0"/>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="stand">
+@@ -1819,7 +1825,7 @@
+       <int name="attackAfter" value="480"/>
+       <int name="PADamage" value="600"/>
+       <int name="disease" value="132"/>
+-      <int name="level" value="2"/>
++      <int name="level" value="6"/>
+     </imgdir>
+     <canvas name="0" width="111" height="144">
+       <vector name="origin" x="45" y="144"/>
+diff --git a/wz/Skill.wz/MobSkill.img.xml b/wz/Skill.wz/MobSkill.img.xml
+index d8416f11f..23abbc715 100644
+--- a/wz/Skill.wz/MobSkill.img.xml
++++ b/wz/Skill.wz/MobSkill.img.xml
+@@ -11149,56 +11149,27 @@
+         <int name="time" value="12"/>
+         <int name="prop" value="100"/>
+         <imgdir name="affected">
+-          <int name="pos" value="0"/>
+-          <canvas name="0" width="81" height="64">
+-            <vector name="origin" x="42" y="146"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="1" width="100" height="109">
+-            <vector name="origin" x="49" y="96"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="2" width="114" height="100">
+-            <vector name="origin" x="57" y="88"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="3" width="129" height="104">
+-            <vector name="origin" x="65" y="88"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="4" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="5" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
++          <int name="pos" value="1"/>
++          <int name="repeat" value="1"/>
++          <canvas name="0" width="29" height="31">
++            <vector name="origin" x="15" y="36"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="11190"/>
+           </canvas>
+-          <canvas name="6" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
++          <canvas name="1" width="29" height="37">
++            <vector name="origin" x="15" y="41"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+           </canvas>
+-          <canvas name="7" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
++          <canvas name="2" width="29" height="46">
++            <vector name="origin" x="15" y="45"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+           </canvas>
+-          <canvas name="8" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
++          <canvas name="3" width="29" height="38">
++            <vector name="origin" x="15" y="41"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+           </canvas>
+-          <canvas name="9" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
++          <canvas name="4" width="29" height="33">
++            <vector name="origin" x="15" y="38"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+           </canvas>
+         </imgdir>
+       </imgdir>
+@@ -11208,57 +11179,13 @@
+         <int name="time" value="12"/>
+         <int name="prop" value="100"/>
+         <imgdir name="affected">
+-          <int name="pos" value="0"/>
+-          <canvas name="0" width="81" height="64">
+-            <vector name="origin" x="42" y="146"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="1" width="100" height="109">
+-            <vector name="origin" x="49" y="96"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="2" width="114" height="100">
+-            <vector name="origin" x="57" y="88"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="3" width="129" height="104">
+-            <vector name="origin" x="65" y="88"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="4" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="5" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="11190"/>
+-          </canvas>
+-          <canvas name="6" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="7" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="8" width="81" height="54">
++          <canvas name="0" width="81" height="54">
+             <vector name="origin" x="42" y="85"/>
+             <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
+-          </canvas>
+-          <canvas name="9" width="81" height="54">
+-            <vector name="origin" x="42" y="85"/>
+-            <int name="z" value="0"/>
+-            <int name="delay" value="90"/>
++            <int name="delay" value="77777"/>
+           </canvas>
++          <int name="repeat" value="0"/>
++          <int name="pos" value="0"/>
+         </imgdir>
+       </imgdir>
+       <imgdir name="7">

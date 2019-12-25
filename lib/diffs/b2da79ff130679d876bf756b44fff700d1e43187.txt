@@ -1,0 +1,362 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index fc09183eb..a1368a5fc 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -2,6 +2,8 @@ NEW NPC SCRIPTS:
+ 	Coco -> 9000017
+ 	Agent E -> 9000036
+ 
++NEW NPC SHOP:
++	Spindle -> 9201082
+ 
+ LOGS:
+ 
+@@ -116,4 +118,7 @@ Inclus
+ 
+ 01 - 02 Abril 2017,
+ Correção de bug que impedia carregamento do mapa Singapore: Spooky World.
+-Adição dos cards de mob restantes no drop_data do BD.
+\ No newline at end of file
++Adição dos cards de mob restantes no drop_data do BD.
++
++03 Abril 2017,
++Inclusão de scripts para interceptar condições de corrida em eventos de viagem.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index f3a54d365..2f34f1369 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,8 +3,9 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/provider/MapleDataTool.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMapFactory.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/LogHelper.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/FilePrinter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/MapleLogger.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/Genie.js b/scripts/event/Genie.js
+index 38bf6dca3..b3d7cd3d7 100644
+--- a/scripts/event/Genie.js
++++ b/scripts/event/Genie.js
+@@ -22,7 +22,7 @@
+ importPackage(Packages.tools);
+ 
+ //Time Setting is in millisecond
+-var closeTime = 60 * 1000; //The time to close the gate
++var closeTime = 50 * 1000; //The time to close the gate
+ var beginTime = 60 * 1000; //The time to begin the ride
+ var rideTime = 60 * 1000; //The time that require move to destination
+ var Orbis_btf;
+diff --git a/scripts/map/onUserEnter/101000300.js b/scripts/map/onUserEnter/101000300.js
+new file mode 100644
+index 000000000..5965acd17
+--- /dev/null
++++ b/scripts/map/onUserEnter/101000300.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Boats";
++var toMap = 200090010;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/103000000.js b/scripts/map/onUserEnter/103000000.js
+new file mode 100644
+index 000000000..04bc08a5c
+--- /dev/null
++++ b/scripts/map/onUserEnter/103000000.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "AirPlane";
++var toMap = 540010101;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/103000100.js b/scripts/map/onUserEnter/103000100.js
+new file mode 100644
+index 000000000..450d1c041
+--- /dev/null
++++ b/scripts/map/onUserEnter/103000100.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Subway";
++var toMap = 600010005;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000111.js b/scripts/map/onUserEnter/200000111.js
+new file mode 100644
+index 000000000..b9a0586eb
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000111.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Boats";
++var toMap = 200090000;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000121.js b/scripts/map/onUserEnter/200000121.js
+new file mode 100644
+index 000000000..575bc2399
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000121.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Trains";
++var toMap = 200090100;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/200000131.js b/scripts/map/onUserEnter/200000131.js
+new file mode 100644
+index 000000000..90fa941bb
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000131.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Cabin";
++var toMap = 200090200;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000151.js b/scripts/map/onUserEnter/200000151.js
+new file mode 100644
+index 000000000..7c015fc92
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000151.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Genie";
++var toMap = 200090400;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/220000110.js b/scripts/map/onUserEnter/220000110.js
+new file mode 100644
+index 000000000..7cda564f1
+--- /dev/null
++++ b/scripts/map/onUserEnter/220000110.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Trains";
++var toMap = 200090110;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/240000110.js b/scripts/map/onUserEnter/240000110.js
+new file mode 100644
+index 000000000..42f4da5c8
+--- /dev/null
++++ b/scripts/map/onUserEnter/240000110.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Cabin";
++var toMap = 200090210;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/260000100.js b/scripts/map/onUserEnter/260000100.js
+new file mode 100644
+index 000000000..07d208a0b
+--- /dev/null
++++ b/scripts/map/onUserEnter/260000100.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Genie";
++var toMap = 200090410;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/540010000.js b/scripts/map/onUserEnter/540010000.js
+new file mode 100644
+index 000000000..7e6ab137b
+--- /dev/null
++++ b/scripts/map/onUserEnter/540010000.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "AirPlane";
++var toMap = 540010002;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/600010001.js b/scripts/map/onUserEnter/600010001.js
+new file mode 100644
+index 000000000..f8d497968
+--- /dev/null
++++ b/scripts/map/onUserEnter/600010001.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Subway";
++var toMap = 600010003;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warp(toMap);
++        }
++}
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index aebd0e9e9..0cbacb454 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1071,6 +1071,20 @@ public void changeKeybinding(int key, MapleKeyBinding keybinding) {
+             keymap.remove(Integer.valueOf(key));
+         }
+     }
++    
++    protected MapleMap getWarpMap(int map) {
++	MapleMap target;
++	if (getEventInstance() == null) {
++            target = client.getChannelServer().getMapFactory().getMap(map);
++	} else {
++            target = getEventInstance().getMapInstance(map);
++	}
++	return target;
++    }
++    
++    public void warp(int map) {
++        changeMap(getWarpMap(map), getWarpMap(map).getPortal(0));
++    }
+ 
+     public void changeMap(int map) {
+         changeMap(map, 0);
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 5e513ede2..b90159a09 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -60,6 +60,7 @@
+ import org.apache.mina.core.session.IoSession;
+ 
+ import client.inventory.MapleInventoryType;
++import scripting.event.EventManager;
+ import scripting.npc.NPCConversationManager;
+ import scripting.npc.NPCScriptManager;
+ import scripting.quest.QuestActionManager;
+@@ -131,6 +132,10 @@ public synchronized MapleAESOFB getSendCrypto() {
+ 	public synchronized IoSession getSession() {
+ 		return session;
+ 	}
++        
++        public EventManager getEventManager(String event) {
++                return getChannelServer().getEventSM().getEventManager(event);
++        }
+ 
+ 	public MapleCharacter getPlayer() {
+ 		return player;
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index c1489175d..e1d484fd4 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -139,11 +139,11 @@ public MapleMap getMap(int map) {
+ 	}
+ 
+ 	public EventManager getEventManager(String event) {
+-		return getClient().getChannelServer().getEventSM().getEventManager(event);
++		return getClient().getEventManager(event);
+ 	}
+ 
+         public MapleInventory getInventory(MapleInventoryType type) {
+-            return getPlayer().getInventory(type);
++                return getPlayer().getInventory(type);
+         }
+         
+ 	public boolean hasItem(int itemid){
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index c236f0716..cdb9c14b3 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -42,7 +42,7 @@
+     		NPC_UNCODED = "uncodedNPCs.txt",
+     		QUEST_UNCODED = "uncodedQuests.txt",
+             SAVING_CHARACTER = "saveChar.txt";//more to come (maps)
+-    private static final SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
++    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //for file system purposes, it's nice to use yyyy-MM-dd
+     private static final String FILE_PATH = "logs/" + sdf.format(Calendar.getInstance().getTime()) + "/";// + sdf.format(Calendar.getInstance().getTime()) + "/"
+     private static final String ERROR = "error/";
+ 

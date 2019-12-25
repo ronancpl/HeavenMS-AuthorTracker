@@ -1,0 +1,106 @@
+diff --git a/scripts/event/OrbisPQ.js b/scripts/event/OrbisPQ.js
+index d2206138e..a15bd17d6 100644
+--- a/scripts/event/OrbisPQ.js
++++ b/scripts/event/OrbisPQ.js
+@@ -85,6 +85,7 @@ function setup(level, lobbyid) {
+         var eim = em.newInstance("Orbis" + lobbyid);
+         eim.setProperty("level", level);
+         
++        eim.setProperty("statusStg0", -1);
+         eim.setProperty("statusStg1", -1);
+         eim.setProperty("statusStg2", -1);
+         eim.setProperty("statusStg3", -1);
+diff --git a/scripts/event/TreasurePQ.js b/scripts/event/TreasurePQ.js
+index 242286a26..de81a984b 100644
+--- a/scripts/event/TreasurePQ.js
++++ b/scripts/event/TreasurePQ.js
+@@ -214,6 +214,8 @@ function isMV(mob) {
+ function monsterKilled(mob, eim) {
+         if(isMV(mob)) {
+                 eim.showClearEffect();
++                eim.giveEventPlayersStageReward(2);
++                
+                 eim.clearPQ();
+         }
+ }
+diff --git a/scripts/npc/2013001.js b/scripts/npc/2013001.js
+index 82176d693..edfccef66 100644
+--- a/scripts/npc/2013001.js
++++ b/scripts/npc/2013001.js
+@@ -60,14 +60,14 @@ function action(mode, type, selection) {
+ 
+         switch(cm.getPlayer().getMapId()) {
+             case 920010000:
++                print(eim.getIntProperty("statusStg0"));
+                 if(eim.getIntProperty("statusStg0") != 1) {
+                     eim.warpEventTeamToMapSpawnPoint(920010000, 2);
+                     eim.giveEventPlayersExp(3500);
+                     clearStage(0, eim);
+ 
+                     cm.sendNext("Please save Minerva, She've been trapped in the seal by Papa Pixie, the terror of our tower! He misplaced all of our Minerva Statue's parts and we have to get it all back! Oh pardon me, I am the tower's Chamberlain, Eak. I am Minerva's royal servant.");
+-                }
+-                else {
++                } else {
+                     cm.warp(920010000, 2);
+                 }
+                 cm.dispose();
+diff --git a/scripts/npc/2040043.js b/scripts/npc/2040043.js
+index 3af52cd08..51a346b2b 100644
+--- a/scripts/npc/2040043.js
++++ b/scripts/npc/2040043.js
+@@ -123,7 +123,13 @@ function action(mode, type, selection) {
+                                         }
+ 
+                                         if (playersOnCombo == 5 || cm.getPlayer().gmLevel() > 1) {
+-                                            var combo = eim.getProperty("stage" + stage + "combo").split(',');
++                                            var comboStr = eim.getProperty("stage" + stage + "combo");
++                                            if(comboStr == null) {
++                                                comboStr = generateCombo();
++                                                eim.setProperty("stage" + stage + "combo", comboStr);
++                                            }
++                                            
++                                            var combo = comboStr.split(',');
+                                             var correctCombo = true;
+                                             for (i = 0; i < objset.length && correctCombo; i++)
+                                                 if (parseInt(combo[i]) != objset[i]) {
+diff --git a/scripts/npc/9220020.js b/scripts/npc/9220020.js
+index 8d0be4d58..143662a10 100644
+--- a/scripts/npc/9220020.js
++++ b/scripts/npc/9220020.js
+@@ -46,23 +46,23 @@ function action(mode, type, selection) {
+                         }
+                         
+                         var eim = cm.getEventInstance();
+-                        if(cm.haveItem(4032118, 15)) {
+-                                cm.gainItem(4032118, -15);
+-                                
+-                                eim.setIntProperty("statusStg1", 1);
+-                                eim.showClearEffect();
+-                                
+-                                cm.sendNext("You got the letters, great! Now, you can proceed to the room MV is through this tunnel. Be prepared!");
+-                                cm.dispose();
++                        if(eim.getIntProperty("statusStg1") == 1) {
++                                cm.sendNext("Go through this tunnel for the boss battle.");
+                         } else {
+-                                if(eim.getIntProperty("statusStg1") == 1) {
+-                                        cm.sendNext("Go through this tunnel for the boss battle.");
++                                if(cm.haveItem(4032118, 15)) {
++                                        cm.gainItem(4032118, -15);
++
++                                        eim.setIntProperty("statusStg1", 1);
++                                        eim.showClearEffect();
++                                        eim.giveEventPlayersStageReward(1);
++
++                                        cm.sendNext("You got the letters, great! Now, you can proceed to the room MV is through this tunnel. Be prepared!");
+                                 } else {
+                                         cm.sendNext("Please hand me #r15 secret letters#k.");
+                                 }
+-                                
+-                                cm.dispose();
+                         }
++                        
++                        cm.dispose();
+                 }
+         }
+ }
+\ No newline at end of file

@@ -1,0 +1,3490 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 8e9a567bb..4cd46d258 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -2196,4 +2196,41 @@ Corrigido quest com NPC "Shaman Rock" aplicando progresso que não corresponde c
+ Adicionado método que permite executar scripts de mapa no sistema de scripts de portal.
+ Corrigido problema recente ao referenciar script com progresso "Touch the Sky" (script de portal utilizando métodos de scripts de mapa).
+ Adicionado fallback para scripts de NPC MapleTV.
+-Revisado aplicação e abordagem deste código-base nos arquivos XML legado.
+\ No newline at end of file
++Revisado aplicação e abordagem deste código-base nos arquivos XML legado.
++
++15 - 16 Outubro 2019,
++Corrigido caso inconsistente onde objeto de jogador seria mantido no storage de jogadores caso o jogador tentasse se deregistrar de um canal (sem desconectar) e não mais retornando na mesma sessão.
++Adicionado código para funcionalidade de "Safety Charm", que permite jogadores curar 30% MaxHP/MaxMP ao retornar em campo.
++Implementado extensão das facilidades de serviços, agora atuando desjuntamente de canais.
++Implementado serviço de mundo para salvar jogadores, assim evitando geração de novas threads para cada jogador que está sendo persistido na DB.
++
++18 Outubro 2019,
++Revisado abordagem de inicialização de scripts de eventos em canais. Usuários não são mais bloqueados ao tentar logar devido ao canal não ter todos os eventos carregados.
++
++19 Outubro 2019,
++Corrigido certos itens de quest não aparecendo de mobs em casos onde o mesmo não é requisito para iniciar/completar.
++Corrigido NPC Pi crashando jogadores ao tentar criar flechas.
++Corrigido script de reevolução de pets não atuando em pet Robos, além de agora evitar repetir pets na conversão.
++
++21 - 22 Outubro 2019,
++Corrigido boss HPbar não desaparecendo em certos cenários. O mesmo deveria ocorrer assim que mob é retirado do mapa.
++Revisado informações de mob, que não são propagáveis, sendo repassados à definição do novo mob.
++Revisado carregamento de storages ao inicializar informações de conta podendo retornar nulo indevidamente em caso de exceção lançada.
++Corrigido dois casos de deadlock ocorrendo ao tentar cancelar efeito de stat de jogador.
++Adicionado auditoria de locks para os componentes que travam para leitura e escrita.
++Adicionado clip de introdução de Cygnus.
++Revisado updateBuffEffect, agora checando por determinados buffs de pirata e usando pacotes específicos para os mesmos.
++Revisado geração desnecessária de objetos de mapa ao carregar nomes para comando "goto".
++Corrigido buffs de mob em fakes desaparecendo assim que o mesmo muda de estado para real.
++
++24 Outubro 2019,
++Revisado uso de scriptids na geração de PlayerNPCs. Agora somente ids existentes na base especificada vai adiante.
++
++27 Outubro 2019,
++Revisado lógica booleana na detecção de foothold abaixo, não realizando múltiplas checagens sobre um mesmo atributo.
++
++28 Outubro 2019,
++Revisado lógica recente de uso de petid único levando a lançamento de exceção (transações de DB implica retirada de item de pet do CS storage na DB antes de colocar o mesmo no inventário).
++Corrigido portal relacionado a quest em Ariant inesperadamente levando jogadores à passagem secreta de Sleepywood, em caso de conclusão de questline da mesma.
++Corrigido loop em scripts de quest de associação a Alcadno/Zenumist em Magatia.
++Adicionado utilização de dispose em quest scripts para o comando homônimo.
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/cygnusJobTutorial.js b/scripts/map/onUserEnter/cygnusJobTutorial.js
+new file mode 100644
+index 000000000..f7eb69877
+--- /dev/null
++++ b/scripts/map/onUserEnter/cygnusJobTutorial.js
+@@ -0,0 +1,25 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++function start(ms) {
++	ms.displayCygnusIntro();	   	       
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/startEreb.js b/scripts/map/onUserEnter/startEreb.js
+new file mode 100644
+index 000000000..7351fdf8d
+--- /dev/null
++++ b/scripts/map/onUserEnter/startEreb.js
+@@ -0,0 +1,5 @@
++function start(ms) {
++        if (ms.getJobId() == 1000 && ms.getLevel() >= 10) {
++                ms.unlockUI();
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/1012103.js b/scripts/npc/1012103.js
+index 2984176cd..9b2783983 100644
+--- a/scripts/npc/1012103.js
++++ b/scripts/npc/1012103.js
+@@ -72,7 +72,7 @@ function action(mode, type, selection) {
+         } else if (status == 2){
+             cm.dispose();
+             if (beauty == 1){
+-                if (cm.haveItem(5420002)){
++                if (cm.haveItem(5420002)){  // thanks MedicOP for noticing uncoded functionality for Hair Membership coupons
+                     cm.setHair(hairnew[selection]);
+                     cm.sendOk("Enjoy your new and improved hairstyle!");
+                 } else if (cm.haveItem(5150001)){
+diff --git a/scripts/npc/1096005.js b/scripts/npc/1096005.js
+index 84f971c7e..117a444e6 100644
+--- a/scripts/npc/1096005.js
++++ b/scripts/npc/1096005.js
+@@ -18,7 +18,6 @@ function action(mode, type, selection) {
+ 		cm.sendNext("All right! Let's go!");
+ 	} else if (status == 1) {
+ 		cm.removeNPC(579711);
+-		cm.removeNPC2(579711);
+ 		cm.updateInfo("fire", "0");
+ 		cm.playSound("cannonshooter/fire");
+ 		cm.sendDirectionInfo("Effect/Direction4.img/effect/cannonshooter/flying/0", 7000, 0, 0, -1, -1);
+diff --git a/scripts/npc/2040016.js b/scripts/npc/2040016.js
+index 1c803d4cd..3a2a99abf 100644
+--- a/scripts/npc/2040016.js
++++ b/scripts/npc/2040016.js
+@@ -172,19 +172,7 @@ function action(mode, type, selection) {
+             matQty = matQtySet[selectedItem];
+             cost = costSet[selectedItem];
+         }
+-		
+-        if (selectedType == 5){ //arrow refine
+-            var itemSet = new Array(2060000,2061000,2060001,2061001,2060002,2061002);
+-            var matSet = new Array(new Array (4003001,4003004),new Array (4003001,4003004),new Array (4011000,4003001,4003004),new Array (4011000,4003001,4003004),
+-                new Array (4011001,4003001,4003005),new Array (4011001,4003001,4003005));
+-            var matQtySet = new Array (new Array (1,1),new Array (1,1),new Array (1,3,10),new Array (1,3,10),new Array (1,5,15),new Array (1,5,15));
+-            var costSet = new Array (0,0,0,0,0,0);
+-            item = itemSet[selectedItem];
+-            mats = matSet[selectedItem];
+-            matQty = matQtySet[selectedItem];
+-            cost = costSet[selectedItem];
+-        }
+-                
++	        
+         var prompt = "So, you want me to make some #t" + item + "#s? In that case, how many do you want me to make?";
+ 		
+         cm.sendGetNumber(prompt,1,1,100)
+@@ -197,6 +185,19 @@ function action(mode, type, selection) {
+         }
+         else
+             qty = (selection > 0) ? selection : (selection < 0 ? -selection : 1);
++
++        // thanks kvmba for noticing arrow selection crashing players
++        if (selectedType == 5){ //arrow refine
++            var itemSet = new Array(2060000,2061000,2060001,2061001,2060002,2061002);
++            var matSet = new Array(new Array (4003001,4003004),new Array (4003001,4003004),new Array (4011000,4003001,4003004),new Array (4011000,4003001,4003004),
++                new Array (4011001,4003001,4003005),new Array (4011001,4003001,4003005));
++            var matQtySet = new Array (new Array (1,1),new Array (1,1),new Array (1,3,10),new Array (1,3,10),new Array (1,5,15),new Array (1,5,15));
++            var costSet = new Array (0,0,0,0,0,0);
++            item = itemSet[selectedItem];
++            mats = matSet[selectedItem];
++            matQty = matQtySet[selectedItem];
++            cost = costSet[selectedItem];
++        }
+ 		
+         var prompt = "You want me to make ";
+         if (qty == 1)
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index 6990389bc..9ac781cf1 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -77,7 +77,7 @@ function writeFeatureTab_Quests() {
+         addFeature("3rd job quiz with all 40-question pool available.");
+         addFeature("Item raising functional.");
+         addFeature("Cleared issue with player movement during NPC talk.");
+-        addFeature("Reviewed usage of quest progress data as requirement.");
++        addFeature("Reviewed usage of quest progress data as requisite.");
+ }
+ 
+ function writeFeatureTab_PlayerSocialNetwork() {
+@@ -287,6 +287,7 @@ function writeFeatureTab_Project() {
+         addFeature("Remodeled item scripts, properly using NPC dialogs.");
+         addFeature("ThreadTracker: runtime tool for deadlock detection.");
+         addFeature("Channel, World and Server-wide timer management.");
++        addFeature("Developed services as preemptive task scheduler.");
+         addFeature("Thoroughly reviewed encapsulation for player stats.");
+         addFeature("Heavily reviewed future task management, spawning much less threads and relieving task overload on the TimerManager.");
+ }
+@@ -327,7 +328,7 @@ function action(mode, type, selection) {
+                         status--;
+                     
+                 if (status == 0) {
+-                        var sendStr = "HeavenMS was developed on the timespan of 3 years, based on where Solaxia left. I'm glad to say the development itself had continuously been agraciated by dozens of contributors and cheerers (truly thanks for the trusting vow, guys & gals!).\r\n\r\nTalking about results: many nice features emerged, development aimed to get back the old GMS experience. Now many of these so-long missing features are gracefully presented to you in the shape of this server. Long live MapleStory!!\r\n\r\nThese are the features from #bHeavenMS#k:\r\n\r\n";
++                        var sendStr = "HeavenMS was developed on the timespan of 4 years, based on where Solaxia left. I'm glad to say the development itself had continuously been agraciated by dozens of contributors and cheerers (truly thanks for the trusting vow, guys & gals!).\r\n\r\nTalking about results: many nice features emerged, development aimed to get back the old GMS experience. Now many of these so-long missing features are gracefully presented to you in the shape of this server. Long live MapleStory!!\r\n\r\nThese are the features from #bHeavenMS#k:\r\n\r\n";
+                         for(var i = 0; i < tabs.length; i++) {
+                             sendStr += "#L" + i + "##b" + tabs[i] + "#k#l\r\n";
+                         }
+diff --git a/scripts/portal/highposition.js b/scripts/portal/highposition.js
+index e19516f8a..2496c7eed 100644
+--- a/scripts/portal/highposition.js
++++ b/scripts/portal/highposition.js
+@@ -22,6 +22,7 @@
+ 
+ // Author: Ronan
+ function enter(ms) {
++    // thanks kvmba for noticing some issues running this script
+     ms.runMapScript();
+     return false;
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/thief_in1.js b/scripts/portal/thief_in1.js
+index a51f5c69a..796f9541b 100644
+--- a/scripts/portal/thief_in1.js
++++ b/scripts/portal/thief_in1.js
+@@ -1,9 +1,6 @@
+ function enter(pi) {
+-        if(pi.isQuestCompleted(20730) || pi.isQuestCompleted(21734)) {  // puppeteer defeated, newfound secret path
+-            pi.playPortalSound(); pi.warp(105040201,2);
+-            return true;
+-        }
+-    
+-	pi.openNpc(1063011, "ThiefPassword");
++        // unexpected warp condition noticed thanks to IxianMace
++
++        pi.openNpc(1063011, "ThiefPassword");
+ 	return false;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/20020.js b/scripts/quest/20020.js
+index 03e87a5f2..91b02cc2f 100644
+--- a/scripts/quest/20020.js
++++ b/scripts/quest/20020.js
+@@ -31,7 +31,7 @@ function start(mode, type, selection) {
+         } else if (status == 4) {
+             qm.forceStartQuest();
+             qm.forceCompleteQuest();
+-            //qm.warp(913040100, 0);
++            qm.warp(913040100, 0);
+             qm.dispose();
+         }
+     }
+diff --git a/scripts/quest/3301.js b/scripts/quest/3301.js
+index 9bd68a33b..3e0352f32 100644
+--- a/scripts/quest/3301.js
++++ b/scripts/quest/3301.js
+@@ -28,32 +28,39 @@
+ var status = -1;
+ var oreArray;
+ 
+-function start(mode, type, selection) {
+-}
+-
+ function end(mode, type, selection) {
+-    if (mode == -1 || (mode == 0 && type > 0)) {
+-	qm.dispose();
++    if (mode == -1) {
++        qm.dispose();
+     } else {
+-	oreArray = getOreArray();
+-	if (status == -1) {
++        if (mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        if (mode == 1)
++            status++;
++        else
++            status--;
++
++        if (status == 0) {
++            oreArray = getOreArray();
+ 	    if (oreArray.length > 0) {
+-		status++;
+ 		qm.sendSimple("Oh, looks like someone's ready to make a deal. You want to join Zenumist so badly, huh? I really don't understand you, but that's just fine. What will you give me in return?\r\n" + getOreString(oreArray));
+ 	    } else {
+-		qm.sendOk("What is this, you don't have the ores with you. No ore, no deal.");
++		qm.sendOk("What is this, you don't have the #rjewel ores#k with you. No ore, no deal.");
+ 		qm.dispose();
++                return;
+ 	    }
+-	} else if (status == 0) {
++	} else if (status == 1) {
+             if (!qm.haveItem(oreArray[selection], 2)) {
+-                qm.sendNext("What's this, you haven't got the ores. No ores no deal!");
++                qm.sendNext("What's this, you haven't got the #rjewel ores#k. No ores no deal!");
++                qm.dispose();
+                 return;
+             }
+ 
+ 	    qm.gainItem(oreArray[selection], -2); // Take 2 ores
+ 	    qm.sendNext("Then wait for awhile. I'll go and get the stuff to help you pass the test of Chief Zenumist.");
+ 	    qm.forceCompleteQuest();
+-	} else if (status == 1) {
++	} else if (status == 2) {
+ 	    qm.dispose();
+ 	}
+     }
+diff --git a/scripts/quest/3303.js b/scripts/quest/3303.js
+index 402f42317..d6884ab61 100644
+--- a/scripts/quest/3303.js
++++ b/scripts/quest/3303.js
+@@ -28,32 +28,39 @@
+ var status = -1;
+ var oreArray;
+ 
+-function start(mode, type, selection) {
+-}
+-
+ function end(mode, type, selection) {
+-    if (mode == -1 || (mode == 0 && type > 0)) {
+-	qm.dispose();
++    if (mode == -1) {
++        qm.dispose();
+     } else {
+-	oreArray = getOreArray();
+-	if (status == -1) {
++        if (mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        if (mode == 1)
++            status++;
++        else
++            status--;
++
++        if (status == 0) {
++            oreArray = getOreArray();
+ 	    if (oreArray.length > 0) {
+-		status++;
+-		qm.sendSimple("Oh, looks like someone's ready to make a deal. You want to join Alcadno so badly, huh? I really don't understand you, but that's just fine. What will you give me in return?\r\n" + getOreString(oreArray));
++		qm.sendSimple("Oh, looks like someone's ready to make a deal. You want to join Zenumist so badly, huh? I really don't understand you, but that's just fine. What will you give me in return?\r\n" + getOreString(oreArray));
+ 	    } else {
+-		qm.sendOk("What is this, you don't have the ores with you. No ore, no deal.");
++		qm.sendOk("What is this, you don't have the #rjewel ores#k with you. No ore, no deal.");    // script would loop undefinitely at completion, thanks IxianMace for noticing
+ 		qm.dispose();
++                return;
+ 	    }
+-	} else if (status == 0) {
++	} else if (status == 1) {
+             if (!qm.haveItem(oreArray[selection], 2)) {     // thanks resinate for noticing a function missing here
+-                qm.sendNext("What's this, you haven't got the ores. No ores no deal!");
++                qm.sendNext("What's this, you haven't got the #rjewel ores#k. No ores no deal!");
++                qm.dispose();
+                 return;
+             }
+-            
++
+ 	    qm.gainItem(oreArray[selection], -2); // Take 2 ores
+-	    qm.sendNext("Then wait for awhile. I'll go and get the stuff to help you pass the test of Chief Alcadno.");
++	    qm.sendNext("Then wait for awhile. I'll go and get the stuff to help you pass the test of Chief Zenumist.");
+ 	    qm.forceCompleteQuest();
+-	} else if (status == 1) {
++	} else if (status == 2) {
+ 	    qm.dispose();
+ 	}
+     }
+diff --git a/scripts/quest/8189.js b/scripts/quest/8189.js
+index 64b6b82f5..bc0d038f3 100644
+--- a/scripts/quest/8189.js
++++ b/scripts/quest/8189.js
+@@ -47,39 +47,46 @@ function end(mode, type, selection) {
+ 		} else if (status == 1) {
+ 			qm.sendNextPrev("Then here we go...! #rHYAHH!#k");
+ 		} else if (status == 2) {
+-			var pet = 0;
+-			if (qm.getPlayer().getPet(0).getItemId() >= 5000029 && qm.getPlayer().getPet(0).getItemId() <= 5000033) {
+-				var pet = 0;
+-			} else if (qm.getPlayer().getPet(1).getItemId() >= 5000029 && qm.getPlayer().getPet(1).getItemId() <= 5000033) {
+-				var pet = 1;
+-			} else if (qm.getPlayer().getPet(2).getItemId() >= 5000029 && qm.getPlayer().getPet(2).getItemId() <= 5000033) {
+-				var pet = 2;
+-			} else {
+-				qm.sendOk("Something wrong, try again.");
+-				qm.dispose();
+-                                return;
+-			}
+-			var id = qm.getPlayer().getPet(pet).getItemId();
+-			if (id < 5000029 || id > 5000033) {
+-				qm.sendOk("Something wrong, try again.");
+-				qm.dispose();
+-                                return;
+-			}
+-			var rand = 1 + Math.floor(Math.random() * 10);
+-			var after = 0;
+-			if (rand >= 1 && rand <= 3) {
+-				after = 5000030;
+-			} else if (rand >= 4 && rand <= 6) {
+-				after = 5000031;
+-			} else if (rand >= 7 && rand <= 9) {
+-				after = 5000032;
+-			} else if (rand == 10) {
+-				after = 5000033;
+-			} else {
+-				qm.sendOk("Something wrong. Try again.");
+-				qm.dispose();
++			var petidx = -1;
++                        var petItemid;
++                        for (var i = 0; i < 3; i++) {
++                                var pet = qm.getPlayer().getPet(pet);
++                                if (pet != null) {
++                                        var id = pet.getItemId();
++                                        if (id >= 5000029 && id <= 5000033) {
++                                                petItemid = 5000030;
++                                                petidx = i;
++                                                break;
++                                        } else if (id >= 5000048 && id <= 5000053) {    // thanks Conrad for noticing Robo pets not being able to re-evolve
++                                                petItemid = 5000049;
++                                                petidx = i;
++                                                break;
++                                        }
++                                }
++                        }
++
++                        if (petidx == -1) {
++                                qm.sendOk("Something wrong, try again.");
++                                qm.dispose();
+                                 return;
+-			}
++                        }
++                        
++                        var pool = (petItemid == 5000030) ? 10 : 11;
++                        do {
++                                var rand = 1 + Math.floor(Math.random() * pool);
++                                var after = 0;
++                                if (rand >= 1 && rand <= 3) {
++                                        after = petItemid;
++                                } else if (rand >= 4 && rand <= 6) {
++                                        after = petItemid + 1;
++                                } else if (rand >= 7 && rand <= 9) {
++                                        after = petItemid + 2;
++                                } else if (rand == 10) {
++                                        after = petItemid + 3;
++                                } else {
++                                        after = petItemid + 4;
++                                }
++                        } while (after == pet.getItemId());
+ 			
+                         /*if (name.equals(MapleItemInformationProvider.getInstance().getName(id))) {
+ 				name = MapleItemInformationProvider.getInstance().getName(after);
+@@ -87,7 +94,7 @@ function end(mode, type, selection) {
+ 
+                         qm.gainMeso(-10000);
+ 			qm.gainItem(5380000, -1);
+-			qm.evolvePet(pet, after);
++			qm.evolvePet(petidx, after);
+                         
+ 			qm.sendOk("Woo! It worked again! #rYou may find your new pet under your 'CASH' inventory.\r #kIt used to be a #b#i" + id + "##t" + id + "##k, and now it's \r a#b #i" + after + "##t" + after + "##k! \r\n Come back with 10,000 mesos and another Rock of Evolution if you don't like it!\r\n\r\n#fUI/UIWindow.img/QuestIcon/4/0#\r\n#v"+after+"# #t"+after+"#");
+ 		} else if (status == 3) {
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 38f272367..c0cb3037d 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -12968,7 +12968,7 @@ CREATE TABLE IF NOT EXISTS `inventoryitems` (
+   `position` int(11) NOT NULL DEFAULT '0',
+   `quantity` int(11) NOT NULL DEFAULT '0',
+   `owner` tinytext NOT NULL,
+-  `petid` int(11) unsigned UNIQUE DEFAULT NULL,
++  `petid` int(11) NOT NULL DEFAULT '-1',
+   `flag` int(11) NOT NULL,
+   `expiration` bigint(20) NOT NULL DEFAULT '-1',
+   `giftFrom` varchar(26) NOT NULL,
+@@ -16473,7 +16473,7 @@ CREATE TABLE IF NOT EXISTS `pets` (
+   PRIMARY KEY (`petid`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+-ALTER TABLE `inventoryitems` ADD CONSTRAINT `fk_itempetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE SET NULL ;
++ALTER TABLE `inventoryitems` ADD CONSTRAINT `fk_itempetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE SET NULL ;  # thanks Optimist for noticing queries over petid taking too long, shavit for pointing out an improvement using foreign key
+ 
+ CREATE TABLE IF NOT EXISTS `petignores` (
+   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+diff --git a/src/client/AbstractMapleCharacterObject.java b/src/client/AbstractMapleCharacterObject.java
+index 960547747..5b92ce2ec 100644
+--- a/src/client/AbstractMapleCharacterObject.java
++++ b/src/client/AbstractMapleCharacterObject.java
+@@ -21,17 +21,17 @@
+ 
+ import config.YamlConfig;
+ import constants.game.GameConstants;
+-import constants.net.ServerConstants;
+ import java.util.Arrays;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import server.maps.AbstractAnimatedMapleMapObject;
+ import server.maps.MapleMap;
+ 
+@@ -51,13 +51,13 @@
+     protected Map<MapleStat, Integer> statUpdates = new HashMap<>();
+     
+     protected Lock effLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CHARACTER_EFF, true);
+-    protected ReadLock statRlock;
+-    protected WriteLock statWlock;
++    protected MonitoredReadLock statRlock;
++    protected MonitoredWriteLock statWlock;
+     
+     protected AbstractMapleCharacterObject() {
+-        ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.CHARACTER_STA, true);
+-        statRlock = locks.readLock();
+-        statWlock = locks.writeLock();
++        MonitoredReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.CHARACTER_STA, true);
++        statRlock = MonitoredReadLockFactory.createLock(locks);
++        statWlock = MonitoredWriteLockFactory.createLock(locks);
+         
+         for (int i = 0; i < remainingSp.length; i++) {
+             remainingSp[i] = 0;
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 1488258ec..7fe7e60fd 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -171,9 +171,11 @@
+ import constants.skills.Sniper;
+ import constants.skills.Warrior;
+ import constants.skills.ThunderBreaker;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.BaseService;
+-import net.server.channel.services.task.FaceExpressionService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.FaceExpressionService;
++import net.server.services.task.world.CharacterSaveService;
++import net.server.services.type.WorldServices;
++import org.apache.mina.core.session.IoSession;
+ import org.apache.mina.util.ConcurrentHashSet;
+ 
+ public class MapleCharacter extends AbstractMapleCharacterObject {
+@@ -214,6 +216,7 @@
+     private int localchairrate;
+     private boolean hidden, equipchanged = true, berserk, hasMerchant, hasSandboxItem = false, whiteChat = false, canRecvPartySearchInvite = true;
+     private boolean equippedMesoMagnet = false, equippedItemPouch = false, equippedPetItemIgnore = false;
++    private boolean usedSafetyCharm = false;
+     private float autopotHpAlert, autopotMpAlert;
+     private int linkedLevel = 0;
+     private String linkedName = null;
+@@ -565,7 +568,9 @@ public boolean hasDisabledPartySearchInvite(int fromLeaderid) {
+     }
+     
+     public void setSessionTransitionState() {
+-        client.getSession().setAttribute(MapleClient.CLIENT_TRANSITION);
++        IoSession session = client.getSession();
++        session.setAttribute(MapleClient.CLIENT_TRANSITION);
++        Server.getInstance().setCharacteridInTransition(session, this.getId());
+     }
+     
+     public boolean getCS() {
+@@ -2846,7 +2851,7 @@ public void changeFaceExpression(int emote) {
+         if(timeNow - lastExpression > 2000) {
+             lastExpression = timeNow;
+             
+-            FaceExpressionService service = (FaceExpressionService) client.getChannelServer().getServiceAccess(ServiceType.FACE_EXPRESSION);
++            FaceExpressionService service = (FaceExpressionService) client.getChannelServer().getServiceAccess(ChannelServices.FACE_EXPRESSION);
+             service.registerFaceExpression(map, this, emote);
+         }
+     }
+@@ -3863,11 +3868,13 @@ public void cancelEffect(int itemId) {
+     public boolean cancelEffect(MapleStatEffect effect, boolean overwrite, long startTime) {
+         boolean ret;
+         
++        prtLock.lock();
+         effLock.lock();
+         try {
+             ret = cancelEffect(effect, overwrite, startTime, true);
+         } finally {
+             effLock.unlock();
++            prtLock.unlock();
+         }
+         
+         if (effect.isMagicDoor() && ret) {
+@@ -4580,6 +4587,7 @@ public void run() {
+             startChairTask();
+         }
+         
++        prtLock.lock();
+         effLock.lock();
+         chrLock.lock();
+         try {
+@@ -4596,7 +4604,6 @@ public void run() {
+                 toDeploy = new LinkedHashMap<>();
+                 Map<Integer, Pair<MapleStatEffect, Long>> retrievedEffects = new LinkedHashMap<>();
+                 Set<MapleBuffStat> retrievedStats = new LinkedHashSet<>();
+-                
+                 for (Entry<MapleBuffStat, MapleBuffStatValueHolder> statup : appliedStatups.entrySet()) {
+                     MapleBuffStatValueHolder mbsvh = effects.get(statup.getKey());
+                     MapleBuffStatValueHolder statMbsvh = statup.getValue();
+@@ -4655,6 +4662,7 @@ public void run() {
+         } finally {
+             chrLock.unlock();
+             effLock.unlock();
++            prtLock.unlock();
+         }
+         
+         updateLocalStats();
+@@ -5854,13 +5862,19 @@ public boolean needQuestItem(int questid, int itemid) {
+         int amountNeeded, questStatus = this.getQuestStatus(questid);
+         if (questStatus == 0) {
+             amountNeeded = MapleQuest.getInstance(questid).getStartItemAmountNeeded(itemid);
++            if (amountNeeded == Integer.MIN_VALUE) {
++                return false;
++            }
+         } else if (questStatus != 1) {
+             return false;
+         } else {
+             amountNeeded = MapleQuest.getInstance(questid).getCompleteItemAmountNeeded(itemid);
++            if (amountNeeded == Integer.MAX_VALUE) {
++                return true;
++            }
+         }
+         
+-        return amountNeeded > 0 && getInventory(ItemConstants.getInventoryType(itemid)).countById(itemid) < amountNeeded;
++        return getInventory(ItemConstants.getInventoryType(itemid)).countById(itemid) < amountNeeded;
+     }
+ 
+     public int getRank() {
+@@ -6208,6 +6222,8 @@ public void showBuybackInfo() {
+         if (timeNow < getNextBuybackTime() && avail) {
+             s += "Buyback available in #r" + getTimeRemaining(getNextBuybackTime() - timeNow) + "#k";
+             s += "\r\n";
++        } else {
++            s += "Buyback #bavailable#k";
+         }
+         
+         this.showHint(s);
+@@ -7619,6 +7635,7 @@ private void playerDead() {
+         if (possesed > 0 && !GameConstants.isDojo(getMapId())) {
+             message("You have used a safety charm, so your EXP points have not been decreased.");
+             MapleInventoryManipulator.removeById(client, ItemConstants.getInventoryType(charmID[i]), charmID[i], 1, true, false);
++            usedSafetyCharm = true;
+         } else if (getJob() != MapleJob.BEGINNER) { //Hmm...
+             if (!FieldLimit.NO_EXP_DECREASE.check(getMap().getFieldLimit())) {  // thanks Conrad for noticing missing FieldLimit check
+                 int XPdummy = ExpTable.getExpNeededForLevel(getLevel());
+@@ -7715,7 +7732,13 @@ public void respawn(EventInstanceManager eim, int returnMap) {
+         changeMap(returnMap);
+         
+         cancelAllBuffs(false);  // thanks Oblivium91 for finding out players still could revive in area and take damage before returning to town
+-        updateHp(50);
++        
++        if (usedSafetyCharm) {  // thanks kvmba for noticing safety charm not providing 30% HP/MP
++            addMPHP((int) Math.ceil(this.getClientMaxHp() * 0.3), (int) Math.ceil(this.getClientMaxMp() * 0.3));
++        } else {
++            updateHp(50);
++        }
++        
+         setStance(0);
+     }
+ 
+@@ -8378,7 +8401,8 @@ public void run() {
+                 }
+             };
+             
+-            ThreadManager.getInstance().newTask(r);  //spawns a new thread to deal with this
++            CharacterSaveService service = (CharacterSaveService) getWorldServer().getServiceAccess(WorldServices.SAVE_CHARACTER);
++            service.registerSaveCharacter(this.getId(), r);
+         } else {
+             saveCharToDB(true);
+         }
+@@ -9958,6 +9982,7 @@ public void updateQuestStatus(MapleQuestStatus qs) {
+             if (qs.getInfoNumber() > 0) {
+                 announceUpdateQuest(DelayedQuestUpdate.UPDATE, qs, true);
+             }
++            // reminder: do not reset quest progress of infoNumbers, some quests cannot backtrack
+         }
+     }
+     
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 887f225e9..792e3da9a 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -64,7 +64,6 @@
+ 
+ import client.inventory.MapleInventoryType;
+ import constants.game.GameConstants;
+-import constants.net.ServerConstants;
+ import scripting.AbstractPlayerInteraction;
+ import scripting.event.EventInstanceManager;
+ import scripting.event.EventManager;
+@@ -120,7 +119,8 @@
+ 	private final Lock lock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT, true);
+         private final Lock encoderLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_ENCODER, true);
+         private final Lock announcerLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_ANNOUNCER, true);
+-        private static final Lock loginLocks[] = new Lock[200];  // thanks Masterrulax & try2hack for pointing out a bottleneck issue here
++        private static final int lockCount = 200;
++        private static final Lock loginLocks[] = new Lock[lockCount];  // thanks Masterrulax & try2hack for pointing out a bottleneck issue here
+         private Calendar tempBanCalendar;
+ 	private int votePoints;
+ 	private int voteTime = -1;
+@@ -131,7 +131,7 @@
+         private int lang = 0;
+         
+         static {
+-            for (int i = 0; i < 200; i++) {
++            for (int i = 0; i < lockCount; i++) {
+                 loginLocks[i] = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_LOGIN, true);
+             }
+         }
+@@ -454,14 +454,14 @@ public void banMacs() {
+ 	}
+ 
+ 	public int finishLogin() {
+-                Lock loginLock = loginLocks[this.getAccID() % 200];
++                Lock loginLock = loginLocks[this.getAccID() % lockCount];
+                 loginLock.lock();
+                 try {
+                     if (getLoginState() > LOGIN_NOTLOGGEDIN) { // 0 = LOGIN_NOTLOGGEDIN, 1= LOGIN_SERVER_TRANSITION, 2 = LOGIN_LOGGEDIN
+                         loggedIn = false;
+                         return 7;
+                     }
+-                    updateLoginState(LOGIN_LOGGEDIN);
++                    updateLoginState(MapleClient.LOGIN_LOGGEDIN);
+                 } finally {
+                     loginLock.unlock();
+                 }
+@@ -851,7 +851,7 @@ public int getLoginState() {  // 0 = LOGIN_NOTLOGGEDIN, 1= LOGIN_SERVER_TRANSITI
+ 				if (rs.getTimestamp("lastlogin").getTime() + 30000 < Server.getInstance().getCurrentTime()) {
+                                         int accountId = accId;
+ 					state = LOGIN_NOTLOGGEDIN;
+-					updateLoginState(LOGIN_NOTLOGGEDIN);   // ACCID = 0, issue found thanks to Tochi & K u ssss o & Thora & Omo Oppa
++					updateLoginState(MapleClient.LOGIN_NOTLOGGEDIN);   // ACCID = 0, issue found thanks to Tochi & K u ssss o & Thora & Omo Oppa
+                                         this.setAccID(accountId);
+ 				}
+ 			}
+@@ -1231,6 +1231,22 @@ public boolean acceptToS() {
+ 		}
+ 		return disconnectForBeingAFaggot;
+ 	}
++        
++        public void checkChar(int accid) {  /// issue with multiple chars from same account login found by shavit, resinate
++            if (true) {
++                return;
++            }
++            
++            for (World w : Server.getInstance().getWorlds()) {
++                for (MapleCharacter chr : w.getPlayerStorage().getAllCharacters()) {
++                    if (accid == chr.getAccountID()) {
++                        FilePrinter.print(FilePrinter.EXPLOITS, "Player:  " + chr.getName() + " has been removed from " + GameConstants.WORLD_NAMES[w.getId()] + ". Possible Dupe attempt.");
++                        chr.getClient().forceDisconnect();
++                        w.getPlayerStorage().removePlayer(chr.getId());
++                    }
++                }
++            }
++        }
+ 
+ 	public int getVotePoints(){
+ 		int points = 0;
+diff --git a/src/client/MonsterBook.java b/src/client/MonsterBook.java
+index 1d2c6e41e..6190b45f2 100644
+--- a/src/client/MonsterBook.java
++++ b/src/client/MonsterBook.java
+@@ -82,7 +82,9 @@ public void addCard(final MapleClient c, final int cardid) {
+         }
+         
+         if(qty < 5) {
+-            calculateLevel();   // current leveling system only accounts unique cards...
++            if (qty == 0) {     // leveling system only accounts unique cards
++                calculateLevel();
++            }
+             
+             c.announce(MaplePacketCreator.addCard(false, cardid, qty + 1));
+             c.announce(MaplePacketCreator.showGainCard());
+@@ -94,7 +96,15 @@ public void addCard(final MapleClient c, final int cardid) {
+     private void calculateLevel() {
+         lock.lock();
+         try {
+-            bookLevel = (int) Math.max(1, Math.sqrt((normalCard + specialCard) / 5));
++            int collectionExp = (normalCard + specialCard);
++            
++            int level = 0, expToNextlevel = 1;
++            do {
++                level++;
++                expToNextlevel += level * 10;
++            } while (collectionExp >= expToNextlevel);
++            
++            bookLevel = level;  // thanks IxianMace for noticing book level differing between book UI and character info UI
+         } finally {
+             lock.unlock();
+         }
+diff --git a/src/client/command/commands/gm0/DisposeCommand.java b/src/client/command/commands/gm0/DisposeCommand.java
+index a11d97d87..eed816cde 100644
+--- a/src/client/command/commands/gm0/DisposeCommand.java
++++ b/src/client/command/commands/gm0/DisposeCommand.java
+@@ -26,6 +26,7 @@
+ import client.command.Command;
+ import client.MapleClient;
+ import scripting.npc.NPCScriptManager;
++import scripting.quest.QuestScriptManager;
+ import tools.MaplePacketCreator;
+ 
+ public class DisposeCommand extends Command {
+@@ -36,6 +37,7 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         NPCScriptManager.getInstance().dispose(c);
++        QuestScriptManager.getInstance().dispose(c);
+         c.announce(MaplePacketCreator.enableActions());
+         c.removeClickedNPC();
+         c.getPlayer().message("You've been disposed.");
+diff --git a/src/client/command/commands/gm0/MapOwnerClaimCommand.java b/src/client/command/commands/gm0/MapOwnerClaimCommand.java
+index 0af26ca35..52c7824da 100644
+--- a/src/client/command/commands/gm0/MapOwnerClaimCommand.java
++++ b/src/client/command/commands/gm0/MapOwnerClaimCommand.java
+@@ -42,20 +42,25 @@ public void execute(MapleClient c, String[] params) {
+                 
+                 if (YamlConfig.config.server.USE_MAP_OWNERSHIP_SYSTEM) {
+                     if (chr.getEventInstance() == null) {
+-                        MapleMap ownedMap = chr.getOwnedMap();  // thanks Conrad for suggesting not unlease a map as soon as player exits it
+-                        if (ownedMap != null) {
+-                            ownedMap.unclaimOwnership(chr);
+-                            
+-                            if (chr.getMap() == ownedMap) {
+-                                chr.dropMessage(5, "This lawn is now free real estate.");
+-                                return;
++                        MapleMap map = chr.getMap();
++                        if (map.countBosses() == 0) {   // thanks Conrad for suggesting bosses prevent map leasing
++                            MapleMap ownedMap = chr.getOwnedMap();  // thanks Conrad for suggesting not unlease a map as soon as player exits it
++                            if (ownedMap != null) {
++                                ownedMap.unclaimOwnership(chr);
++
++                                if (map == ownedMap) {
++                                    chr.dropMessage(5, "This lawn is now free real estate.");
++                                    return;
++                                }
++                            }
++
++                            if (map.claimOwnership(chr)) {
++                                chr.dropMessage(5, "You have leased this lawn for a while, until you leave here or after 1 minute of inactivity.");
++                            } else {
++                                chr.dropMessage(5, "This lawn has already been leased by a player.");
+                             }
+-                        }
+-                        
+-                        if (chr.getMap().claimOwnership(chr)) {
+-                            chr.dropMessage(5, "You have leased this lawn for a while, until you leave here or after 1 minute of inactivity.");
+                         } else {
+-                            chr.dropMessage(5, "This lawn has already been leased by a player.");
++                            chr.dropMessage(5, "This lawn is currently under a boss siege.");
+                         }
+                     } else {
+                         chr.dropMessage(5, "This lawn cannot be leased.");
+diff --git a/src/client/command/commands/gm1/GotoCommand.java b/src/client/command/commands/gm1/GotoCommand.java
+index 3dbf0fc99..1657e467d 100644
+--- a/src/client/command/commands/gm1/GotoCommand.java
++++ b/src/client/command/commands/gm1/GotoCommand.java
+@@ -29,11 +29,10 @@
+ import constants.game.GameConstants;
+ import java.util.ArrayList;
+ import java.util.Collections;
+-import net.server.Server;
+ import server.maps.MaplePortal;
+ import server.maps.FieldLimit;
+ import server.maps.MapleMap;
+-import server.maps.MapleMapManager;
++import server.maps.MapleMapFactory;
+ import server.maps.MapleMiniDungeonInfo;
+ 
+ import java.util.Comparator;
+@@ -47,19 +46,28 @@
+     {
+         setDescription("");
+         
+-        MapleMapManager mapManager = Server.getInstance().getWorlds().get(0).getChannels().get(0).getMapFactory();
+-        
+         List<Entry<String, Integer>> towns = new ArrayList<>(GameConstants.GOTO_TOWNS.entrySet());
+         sortGotoEntries(towns);
+-        for (Map.Entry<String, Integer> e : towns) {
+-            GOTO_TOWNS_INFO += ("'" + e.getKey() + "' - #b" + (mapManager.getMap(e.getValue()).getMapName()) + "#k\r\n");
+-        }
+         
+-        List<Entry<String, Integer>> areas = new ArrayList<>(GameConstants.GOTO_AREAS.entrySet());
+-        sortGotoEntries(areas);
+-        for (Map.Entry<String, Integer> e : areas) {
+-            GOTO_AREAS_INFO += ("'" + e.getKey() + "' - #b" + (mapManager.getMap(e.getValue()).getMapName()) + "#k\r\n");
++        try {
++            // thanks shavit for noticing goto areas getting loaded from wz needlessly, only for the name retrieval
++            
++            for (Map.Entry<String, Integer> e : towns) {
++                GOTO_TOWNS_INFO += ("'" + e.getKey() + "' - #b" + (MapleMapFactory.loadPlaceName(e.getValue())) + "#k\r\n");
++            }
++
++            List<Entry<String, Integer>> areas = new ArrayList<>(GameConstants.GOTO_AREAS.entrySet());
++            sortGotoEntries(areas);
++            for (Map.Entry<String, Integer> e : areas) {
++                GOTO_AREAS_INFO += ("'" + e.getKey() + "' - #b" + (MapleMapFactory.loadPlaceName(e.getValue())) + "#k\r\n");
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++            
++            GOTO_TOWNS_INFO = "(none)";
++            GOTO_AREAS_INFO = "(none)";
+         }
++        
+     }
+     
+     public static String GOTO_TOWNS_INFO = "";
+diff --git a/src/client/inventory/Item.java b/src/client/inventory/Item.java
+index fdd871229..5da563f29 100644
+--- a/src/client/inventory/Item.java
++++ b/src/client/inventory/Item.java
+@@ -127,10 +127,6 @@ public int getPetId() {
+         return petid;
+     }
+     
+-    public Integer getPetIdForDb() {
+-        return petid > -1 ? petid : null;
+-    }
+-    
+     @Override
+     public int compareTo(Item other) {
+         if (this.id < other.getItemId()) {
+diff --git a/src/client/inventory/ItemFactory.java b/src/client/inventory/ItemFactory.java
+index fa7f4fac9..7ece9b334 100644
+--- a/src/client/inventory/ItemFactory.java
++++ b/src/client/inventory/ItemFactory.java
+@@ -234,7 +234,7 @@ private void saveItemsCommon(List<Pair<Item, MapleInventoryType>> items, int id,
+                     ps.setInt(6, item.getPosition());
+                     ps.setInt(7, item.getQuantity());
+                     ps.setString(8, item.getOwner());
+-                    ps.setObject(9, item.getPetIdForDb(), java.sql.Types.INTEGER);
++                    ps.setInt(9, item.getPetId());      // thanks Daddy Egg for alerting a case of unique petid constraint breach getting raised
+                     ps.setInt(10, item.getFlag());
+                     ps.setLong(11, item.getExpiration());
+                     ps.setString(12, item.getGiftFrom());
+@@ -414,7 +414,7 @@ private void saveItemsMerchant(List<Pair<Item, MapleInventoryType>> items, List<
+                     ps.setInt(6, item.getPosition());
+                     ps.setInt(7, item.getQuantity());
+                     ps.setString(8, item.getOwner());
+-                    ps.setObject(9, item.getPetIdForDb(), java.sql.Types.INTEGER);
++                    ps.setInt(9, item.getPetId());
+                     ps.setInt(10, item.getFlag());
+                     ps.setLong(11, item.getExpiration());
+                     ps.setString(12, item.getGiftFrom());
+diff --git a/src/constants/game/GameConstants.java b/src/constants/game/GameConstants.java
+index a2af84790..358b2d1ef 100644
+--- a/src/constants/game/GameConstants.java
++++ b/src/constants/game/GameConstants.java
+@@ -573,7 +573,7 @@ public static boolean isGMSkills(final int skill) {
+     }
+     
+     public static boolean isFreeMarketRoom(int mapid) {
+-        return mapid > 910000000 && mapid < 910000023;
++        return mapid / 1000000 == 910 && mapid > 910000000; // FM rooms subset, thanks to shavit
+     }
+     
+     public static boolean isMerchantLocked(MapleMap map) {
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index 2db15fc0e..9576cad51 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -28,18 +28,19 @@
+ import java.util.List;
+ import java.util.LinkedHashMap;
+ import java.util.Map;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ 
+ public class PlayerStorage {
+-    private final ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.PLAYER_STORAGE, true);
++    private final MonitoredReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.PLAYER_STORAGE, true);
+     private final Map<Integer, MapleCharacter> storage = new LinkedHashMap<>();
+     private final Map<String, MapleCharacter> nameStorage = new LinkedHashMap<>();
+-    private ReadLock rlock = locks.readLock();
+-    private WriteLock wlock = locks.writeLock();
++    private MonitoredReadLock rlock = MonitoredReadLockFactory.createLock(locks);
++    private MonitoredWriteLock wlock = MonitoredWriteLockFactory.createLock(locks);
+ 
+     public void addPlayer(MapleCharacter chr) {
+         wlock.lock();
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 1f1fbb739..f5f351d72 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -41,15 +41,16 @@
+ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicLong;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ 
+ import config.YamlConfig;
+ import net.server.audit.ThreadTracker;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ 
+ import net.MapleServerHandler;
+ import net.mina.MapleCodecFactory;
+@@ -87,7 +88,6 @@
+ import client.command.CommandsExecutor;
+ import client.inventory.Item;
+ import client.inventory.ItemFactory;
+-import client.inventory.MaplePet;
+ import client.inventory.manipulator.MapleCashidGenerator;
+ import client.newyear.NewYearCardRecord;
+ import constants.inventory.ItemConstants;
+@@ -146,13 +146,13 @@ public static Server getInstance() {
+     private final Lock srvLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.SERVER);
+     private final Lock disLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.SERVER_DISEASES);
+     
+-    private final ReentrantReadWriteLock wldLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_WORLDS, true);
+-    private final ReadLock wldRLock = wldLock.readLock();
+-    private final WriteLock wldWLock = wldLock.writeLock();
++    private final MonitoredReentrantReadWriteLock wldLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_WORLDS, true);
++    private final MonitoredReadLock wldRLock = MonitoredReadLockFactory.createLock(wldLock);
++    private final MonitoredWriteLock wldWLock = MonitoredWriteLockFactory.createLock(wldLock);
+     
+-    private final ReentrantReadWriteLock lgnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_LOGIN, true);
+-    private final ReadLock lgnRLock = lgnLock.readLock();
+-    private final WriteLock lgnWLock = lgnLock.writeLock();
++    private final MonitoredReentrantReadWriteLock lgnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.SERVER_LOGIN, true);
++    private final MonitoredReadLock lgnRLock = MonitoredReadLockFactory.createLock(lgnLock);
++    private final MonitoredWriteLock lgnWLock = MonitoredWriteLockFactory.createLock(lgnLock);
+     
+     private final AtomicLong currentTime = new AtomicLong(0);
+     private long serverCurrentTime = 0;
+@@ -1896,13 +1896,13 @@ private synchronized void shutdownInternal(boolean restart) {
+                 }
+             }
+         }
+-
++        
++        resetServerWorlds();
++        
+         ThreadManager.getInstance().stop();
+         TimerManager.getInstance().purge();
+         TimerManager.getInstance().stop();
+         
+-        resetServerWorlds();
+-        
+         System.out.println("Worlds + Channels are offline.");
+         acceptor.unbind();
+         acceptor = null;
+diff --git a/src/net/server/audit/locks/MonitoredLockType.java b/src/net/server/audit/locks/MonitoredLockType.java
+index 64eed9e9f..a67d5be82 100644
+--- a/src/net/server/audit/locks/MonitoredLockType.java
++++ b/src/net/server/audit/locks/MonitoredLockType.java
+@@ -78,6 +78,7 @@
+     WORLD_PSHOPS,
+     WORLD_MERCHS,
+     WORLD_MAPOBJS,
++    WORLD_SAVECHARS,
+     WORLD_SUGGEST,
+     EIM,
+     EIM_PARTY,
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index 889774edb..07a4eea3c 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -34,9 +34,11 @@
+ import java.util.Set;
+ import java.util.WeakHashMap;
+ import java.util.concurrent.ScheduledFuture;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
++
++import net.server.audit.locks.MonitoredReadLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ 
+ import config.YamlConfig;
+ import net.server.audit.LockCollector;
+@@ -64,6 +66,10 @@
+ import org.apache.mina.transport.socket.SocketSessionConfig;
+ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+ 
++import client.MapleCharacter;
++import net.server.services.ServicesManager;
++import net.server.services.BaseService;
++import net.server.services.type.ChannelServices;
+ import scripting.event.EventScriptManager;
+ import server.TimerManager;
+ import server.events.gm.MapleEvent;
+@@ -73,13 +79,9 @@
+ import server.maps.MapleMap;
+ import server.maps.MapleMapManager;
+ import server.maps.MapleMiniDungeon;
++import server.maps.MapleMiniDungeonInfo;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+-import client.MapleCharacter;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.ServicesManager;
+-import net.server.channel.services.task.BaseService;
+-import server.maps.MapleMiniDungeonInfo;
+ 
+ public final class Channel {
+ 
+@@ -90,7 +92,7 @@
+     private String ip, serverMessage;
+     private MapleMapManager mapManager;
+     private EventScriptManager eventSM;
+-    private ServicesManager services = new ServicesManager();
++    private ServicesManager services;
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+     private Set<Integer> playersAway = new HashSet<>();
+@@ -121,9 +123,9 @@
+     private Set<Integer> ongoingCathedralGuests = null;
+     private long ongoingStartTime;
+     
+-    private ReentrantReadWriteLock merchantLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MERCHANT, true);
+-    private ReadLock merchRlock = merchantLock.readLock();
+-    private WriteLock merchWlock = merchantLock.writeLock();
++    private MonitoredReentrantReadWriteLock merchantLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MERCHANT, true);
++    private MonitoredReadLock merchRlock = MonitoredReadLockFactory.createLock(merchantLock);
++    private MonitoredWriteLock merchWlock = MonitoredWriteLockFactory.createLock(merchantLock);
+     
+     private MonitoredReentrantLock faceLock[] = new MonitoredReentrantLock[YamlConfig.config.server.CHANNEL_LOCKS];
+     
+@@ -155,8 +157,8 @@ public Channel(final int world, final int channel, long startTime) {
+                 eventSM = new EventScriptManager(this, getEvents());
+                 eventSM.init();
+             } else {
+-                String[] ev = {};
+-                eventSM = new EventScriptManager(null, ev);
++                String[] ev = {"0_EXAMPLE"};
++                eventSM = new EventScriptManager(this, ev);
+             }
+             
+             dojoStage = new int[20];
+@@ -168,7 +170,7 @@ public Channel(final int world, final int channel, long startTime) {
+                 dojoTask[i] = null;
+             }
+             
+-            services = new ServicesManager();
++            services = new ServicesManager(ChannelServices.OVERALL);
+             
+             System.out.println("    Channel " + getId() + ": Listening on port " + port);
+         } catch (Exception e) {
+@@ -181,10 +183,9 @@ public synchronized void reloadEventScriptManager(){
+             return;
+         }
+         
+-    	eventSM.cancel();
++        eventSM.cancel();
+     	eventSM = null;
+     	eventSM = new EventScriptManager(this, getEvents());
+-    	eventSM.init();
+     }
+ 
+     public final synchronized void shutdown() {
+@@ -199,7 +200,7 @@ public final synchronized void shutdown() {
+             disconnectAwayPlayers();
+             players.disconnectAll();
+             
+-            eventSM.cancel();
++            eventSM.dispose();
+             eventSM = null;
+             
+             mapManager.dispose();
+@@ -277,7 +278,7 @@ public MapleMapManager getMapFactory() {
+         return mapManager;
+     }
+     
+-    public BaseService getServiceAccess(ServiceType sv) {
++    public BaseService getServiceAccess(ChannelServices sv) {
+         return services.getAccess(sv).getService();
+     }
+     
+diff --git a/src/net/server/channel/handlers/NPCAnimationHandler.java b/src/net/server/channel/handlers/NPCAnimationHandler.java
+index 372fa4293..5be806002 100644
+--- a/src/net/server/channel/handlers/NPCAnimationHandler.java
++++ b/src/net/server/channel/handlers/NPCAnimationHandler.java
+@@ -39,7 +39,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (length == 6) { // NPC Talk
+             mplew.writeShort(SendOpcode.NPC_ACTION.getValue());
+             mplew.writeInt(slea.readInt());
+-            mplew.writeShort(slea.readShort());
++            mplew.write(slea.readByte());   // 2 bytes, thanks resinate
++            mplew.write(slea.readByte());
+             c.announce(mplew.getPacket());
+         } else if (length > 6) { // NPC Move
+             byte[] bytes = slea.read(length - 9);
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 34b43627c..49df1547b 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -63,7 +63,6 @@
+ import client.inventory.MaplePet;
+ import constants.game.GameConstants;
+ import constants.game.ScriptableNPCConstants;
+-import constants.net.ServerConstants;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashSet;
+@@ -116,30 +115,27 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+ 
+                 Channel cserv = wserv.getChannel(c.getChannel());
+-                if(cserv == null || !cserv.isActive()) {
++                if(cserv == null) {
+                     c.setChannel(1);
+                     cserv = wserv.getChannel(c.getChannel());
+ 
+                     if(cserv == null) {
+                         c.disconnect(true, false);
+                         return;
+-                    } else if (!cserv.isActive()) {
+-                        c.announce(MaplePacketCreator.getAfterLoginError(7));
+-                        return;
+                     }
+                 }
+ 
+                 MapleCharacter player = wserv.getPlayerStorage().getCharacterById(cid);
+                 boolean newcomer = false;
+-
++                
+                 IoSession session = c.getSession();
++                if (!server.validateCharacteridInTransition(session, cid)) {
++                    c.disconnect(true, false);
++                    return;
++                }
++                
+                 String remoteHwid;
+                 if (player == null) {
+-                    if (!server.validateCharacteridInTransition(session, cid)) {
+-                        c.disconnect(true, false);
+-                        return;
+-                    }
+-
+                     remoteHwid = MapleSessionCoordinator.getInstance().getGameSessionHwid(session);
+                     if (remoteHwid == null) {
+                         c.disconnect(true, false);
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 9b2dfd610..ee1c30db7 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -213,7 +213,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         map.broadcastMessage(chr, MaplePacketCreator.damageMonster(oid, bouncedamage), false, true);
+                         attacker.aggroMonsterDamage(chr, bouncedamage);
+                     }
+-                    MapleStatEffect bPressure = chr.getBuffEffect(MapleBuffStat.BODY_PRESSURE);
++                    MapleStatEffect bPressure = chr.getBuffEffect(MapleBuffStat.BODY_PRESSURE); // thanks Atoot for noticing an issue on Body Pressure neutralise
+                     if (bPressure != null) {
+                         Skill skill = SkillFactory.getSkill(Aran.BODY_PRESSURE);
+                         if (!attacker.alreadyBuffedStats().contains(MonsterStatus.NEUTRALISE)) {
+diff --git a/src/net/server/coordinator/login/LoginStorage.java b/src/net/server/coordinator/login/LoginStorage.java
+index f3d0ccd2f..be779f266 100644
+--- a/src/net/server/coordinator/login/LoginStorage.java
++++ b/src/net/server/coordinator/login/LoginStorage.java
+@@ -37,21 +37,20 @@
+     private ConcurrentHashMap<Integer, List<Long>> loginHistory = new ConcurrentHashMap<>();
+     
+     public boolean registerLogin(int accountId) {
+-        List<Long> accHist = loginHistory.putIfAbsent(accountId, new LinkedList<Long>());
+-        if (accHist != null) {
+-            synchronized (accHist) {
+-                if (accHist.size() > YamlConfig.config.server.MAX_ACCOUNT_LOGIN_ATTEMPT) {
+-                    long blockExpiration = Server.getInstance().getCurrentTime() + YamlConfig.config.server.LOGIN_ATTEMPT_DURATION;
+-                    Collections.fill(accHist, blockExpiration);
+-                    
+-                    return false;
+-                }
+-            }
+-        } else {
+-            accHist = loginHistory.get(accountId);
++        List<Long> accHist = loginHistory.get(accountId);
++        if (accHist == null) {
++            accHist = new LinkedList<Long>();
++            loginHistory.put(accountId, accHist);
+         }
+         
+         synchronized (accHist) {
++            if (accHist.size() > YamlConfig.config.server.MAX_ACCOUNT_LOGIN_ATTEMPT) {
++                long blockExpiration = Server.getInstance().getCurrentTime() + YamlConfig.config.server.LOGIN_ATTEMPT_DURATION;
++                Collections.fill(accHist, blockExpiration);
++
++                return false;
++            }
++            
+             accHist.add(Server.getInstance().getCurrentTime() + YamlConfig.config.server.LOGIN_ATTEMPT_DURATION);
+             return true;
+         }
+diff --git a/src/net/server/coordinator/partysearch/MaplePartySearchCoordinator.java b/src/net/server/coordinator/partysearch/MaplePartySearchCoordinator.java
+index eec311649..33434101c 100644
+--- a/src/net/server/coordinator/partysearch/MaplePartySearchCoordinator.java
++++ b/src/net/server/coordinator/partysearch/MaplePartySearchCoordinator.java
+@@ -25,8 +25,6 @@
+ import java.io.File;
+ import net.server.world.MapleParty;
+ import net.server.coordinator.world.MapleInviteCoordinator.InviteType;
+-import net.server.coordinator.partysearch.PartySearchEchelon;
+-import net.server.coordinator.partysearch.PartySearchStorage;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ 
+@@ -38,11 +36,12 @@
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import net.server.coordinator.world.MapleInviteCoordinator;
+ import provider.MapleData;
+ import provider.MapleDataProviderFactory;
+@@ -58,9 +57,9 @@
+     private Map<MapleJob, PartySearchEchelon> upcomers = new HashMap<>();
+     
+     private List<MapleCharacter> leaderQueue = new LinkedList<>();
+-    private final ReentrantReadWriteLock leaderQueueLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_QUEUE, true);
+-    private final ReadLock leaderQueueRLock = leaderQueueLock.readLock();
+-    private final WriteLock leaderQueueWLock = leaderQueueLock.writeLock();
++    private final MonitoredReentrantReadWriteLock leaderQueueLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_QUEUE, true);
++    private final MonitoredReadLock leaderQueueRLock = MonitoredReadLockFactory.createLock(leaderQueueLock);
++    private final MonitoredWriteLock leaderQueueWLock = MonitoredWriteLockFactory.createLock(leaderQueueLock);
+     
+     private Map<Integer, MapleCharacter> searchLeaders = new HashMap<>();
+     private Map<Integer, LeaderSearchMetadata> searchSettings = new HashMap<>();
+diff --git a/src/net/server/coordinator/partysearch/PartySearchEchelon.java b/src/net/server/coordinator/partysearch/PartySearchEchelon.java
+index ff0b08fd7..9b597028c 100644
+--- a/src/net/server/coordinator/partysearch/PartySearchEchelon.java
++++ b/src/net/server/coordinator/partysearch/PartySearchEchelon.java
+@@ -25,12 +25,12 @@
+ import java.util.List;
+ import java.util.Map;
+ 
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ 
+ import java.lang.ref.WeakReference;
+ 
+@@ -40,9 +40,9 @@
+  */
+ public class PartySearchEchelon {
+     
+-    private final ReentrantReadWriteLock psLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_ECHELON, true);
+-    private final ReadLock psRLock = psLock.readLock();
+-    private final WriteLock psWLock = psLock.writeLock();
++    private final MonitoredReentrantReadWriteLock psLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_ECHELON, true);
++    private final MonitoredReadLock psRLock = MonitoredReadLockFactory.createLock(psLock);
++    private final MonitoredWriteLock psWLock = MonitoredWriteLockFactory.createLock(psLock);
+     
+     private Map<Integer, WeakReference<MapleCharacter>> echelon = new HashMap<>(20);
+     
+diff --git a/src/net/server/coordinator/partysearch/PartySearchStorage.java b/src/net/server/coordinator/partysearch/PartySearchStorage.java
+index 75b77d470..2198a1a44 100644
+--- a/src/net/server/coordinator/partysearch/PartySearchStorage.java
++++ b/src/net/server/coordinator/partysearch/PartySearchStorage.java
+@@ -28,12 +28,14 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+ 
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
++
+ import tools.IntervalBuilder;
+ 
+ /**
+@@ -45,9 +47,9 @@
+     private List<PartySearchCharacter> storage = new ArrayList<>(20);
+     private IntervalBuilder emptyIntervals = new IntervalBuilder();
+     
+-    private final ReentrantReadWriteLock psLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_STORAGE, true);
+-    private final ReadLock psRLock = psLock.readLock();
+-    private final WriteLock psWLock = psLock.writeLock();
++    private final MonitoredReentrantReadWriteLock psLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_PARTY_SEARCH_STORAGE, true);
++    private final MonitoredReadLock psRLock = MonitoredReadLockFactory.createLock(psLock);
++    private final MonitoredWriteLock psWLock = MonitoredWriteLockFactory.createLock(psLock);
+     
+     public List<PartySearchCharacter> getStorageList() {
+         psRLock.lock();
+diff --git a/src/net/server/handlers/login/CharlistRequestHandler.java b/src/net/server/handlers/login/CharlistRequestHandler.java
+index 547156edf..66c290d3b 100644
+--- a/src/net/server/handlers/login/CharlistRequestHandler.java
++++ b/src/net/server/handlers/login/CharlistRequestHandler.java
+@@ -44,7 +44,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         
+         int channel = slea.readByte() + 1;
+         Channel ch = wserv.getChannel(channel);
+-        if(ch == null || !ch.isActive()) {
++        if(ch == null) {
+             c.announce(MaplePacketCreator.getServerStatus(2));
+             return;
+         }
+diff --git a/src/net/server/handlers/login/LoginPasswordHandler.java b/src/net/server/handlers/login/LoginPasswordHandler.java
+index aff6fdce2..45beacc73 100644
+--- a/src/net/server/handlers/login/LoginPasswordHandler.java
++++ b/src/net/server/handlers/login/LoginPasswordHandler.java
+@@ -150,6 +150,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             return;
+         }
+         if (c.finishLogin() == 0) {
++            c.checkChar(c.getAccID());
+             login(c);
+         } else {
+             c.announce(MaplePacketCreator.getLoginFailed(7));
+diff --git a/src/net/server/channel/services/BaseScheduler.java b/src/net/server/services/BaseScheduler.java
+similarity index 99%
+rename from src/net/server/channel/services/BaseScheduler.java
+rename to src/net/server/services/BaseScheduler.java
+index bf9ed40a0..61013b612 100644
+--- a/src/net/server/channel/services/BaseScheduler.java
++++ b/src/net/server/services/BaseScheduler.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services;
++package net.server.services;
+ 
+ import config.YamlConfig;
+ import java.util.Collections;
+diff --git a/src/net/server/channel/services/task/BaseService.java b/src/net/server/services/BaseService.java
+similarity index 96%
+rename from src/net/server/channel/services/task/BaseService.java
+rename to src/net/server/services/BaseService.java
+index a17ccf207..4a6a95da6 100644
+--- a/src/net/server/channel/services/task/BaseService.java
++++ b/src/net/server/services/BaseService.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services;
+ 
+ import config.YamlConfig;
+ 
+diff --git a/src/net/server/channel/services/SchedulerListener.java b/src/net/server/services/SchedulerListener.java
+similarity index 96%
+rename from src/net/server/channel/services/SchedulerListener.java
+rename to src/net/server/services/SchedulerListener.java
+index 2b4865dd6..692513df4 100644
+--- a/src/net/server/channel/services/SchedulerListener.java
++++ b/src/net/server/services/SchedulerListener.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services;
++package net.server.services;
+ 
+ import java.util.List;
+ 
+diff --git a/src/net/server/channel/services/Service.java b/src/net/server/services/Service.java
+similarity index 94%
+rename from src/net/server/channel/services/Service.java
+rename to src/net/server/services/Service.java
+index 580d6fee8..b9798d475 100644
+--- a/src/net/server/channel/services/Service.java
++++ b/src/net/server/services/Service.java
+@@ -17,9 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services;
+-
+-import net.server.channel.services.task.BaseService;
++package net.server.services;
+ 
+ /**
+  *
+diff --git a/src/net/server/services/ServiceType.java b/src/net/server/services/ServiceType.java
+new file mode 100644
+index 000000000..7d43fcdeb
+--- /dev/null
++++ b/src/net/server/services/ServiceType.java
+@@ -0,0 +1,30 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.services;
++
++/**
++ *
++ * @author Ronan
++ */
++public interface ServiceType <T extends Enum<?>> {
++    public abstract Service createService();
++    public int ordinal();
++    public T[] enumValues();
++}
+diff --git a/src/net/server/channel/services/ServicesManager.java b/src/net/server/services/ServicesManager.java
+similarity index 80%
+rename from src/net/server/channel/services/ServicesManager.java
+rename to src/net/server/services/ServicesManager.java
+index a183f2ca6..a083a9b61 100644
+--- a/src/net/server/channel/services/ServicesManager.java
++++ b/src/net/server/services/ServicesManager.java
+@@ -17,7 +17,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services;
++package net.server.services;
+ 
+ /**
+  *
+@@ -27,12 +27,12 @@
+     
+     private Service[] services;
+     
+-    public ServicesManager() {
+-        ServiceType[] serviceTypes = ServiceType.values();
++    public ServicesManager(ServiceType serviceBundle) {
++        Enum[] serviceTypes = serviceBundle.enumValues();
+         
+         services = new Service[serviceTypes.length];
+-        for (ServiceType type : serviceTypes) {
+-            services[type.ordinal()] = type.createService();
++        for (Enum type : serviceTypes) {
++            services[type.ordinal()] = ((ServiceType) type).createService();
+         }
+     }
+     
+@@ -41,7 +41,7 @@ public Service getAccess(ServiceType s) {
+     }
+     
+     public void shutdown() {
+-        for (int i = 0; i < ServiceType.values().length; i++) {
++        for (int i = 0; i < services.length; i++) {
+             services[i].dispose();
+         }
+         services = null;
+diff --git a/src/net/server/channel/services/task/EventService.java b/src/net/server/services/task/channel/EventService.java
+similarity index 93%
+rename from src/net/server/channel/services/task/EventService.java
+rename to src/net/server/services/task/channel/EventService.java
+index f9b6a6c07..bb781c917 100644
+--- a/src/net/server/channel/services/task/EventService.java
++++ b/src/net/server/services/task/channel/EventService.java
+@@ -17,11 +17,12 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import config.YamlConfig;
+ import net.server.audit.locks.MonitoredLockType;
+-import net.server.channel.services.BaseScheduler;
++import net.server.services.BaseScheduler;
+ 
+ /**
+  *
+@@ -37,6 +38,7 @@ public EventService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(eventSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/FaceExpressionService.java b/src/net/server/services/task/channel/FaceExpressionService.java
+similarity index 96%
+rename from src/net/server/channel/services/task/FaceExpressionService.java
+rename to src/net/server/services/task/channel/FaceExpressionService.java
+index 968b3d6c0..52b5d343f 100644
+--- a/src/net/server/channel/services/task/FaceExpressionService.java
++++ b/src/net/server/services/task/channel/FaceExpressionService.java
+@@ -17,8 +17,9 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import client.MapleCharacter;
+ import config.YamlConfig;
+ import java.util.Collections;
+@@ -26,7 +27,7 @@
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-import net.server.channel.services.BaseScheduler;
++import net.server.services.BaseScheduler;
+ import server.maps.MapleMap;
+ import tools.MaplePacketCreator;
+ 
+@@ -61,6 +62,7 @@ public void run() {
+         });
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(faceExpressionSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/MobAnimationService.java b/src/net/server/services/task/channel/MobAnimationService.java
+similarity index 95%
+rename from src/net/server/channel/services/task/MobAnimationService.java
+rename to src/net/server/services/task/channel/MobAnimationService.java
+index e3043a016..46d7234c9 100644
+--- a/src/net/server/channel/services/task/MobAnimationService.java
++++ b/src/net/server/services/task/channel/MobAnimationService.java
+@@ -17,8 +17,9 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import config.YamlConfig;
+ import net.server.audit.locks.MonitoredLockType;
+ 
+@@ -28,8 +29,8 @@
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-import net.server.channel.services.BaseScheduler;
+-import net.server.channel.services.SchedulerListener;
++import net.server.services.BaseScheduler;
++import net.server.services.SchedulerListener;
+ 
+ /**
+  *
+@@ -45,6 +46,7 @@ public MobAnimationService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(mobAnimationSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/MobClearSkillService.java b/src/net/server/services/task/channel/MobClearSkillService.java
+similarity index 94%
+rename from src/net/server/channel/services/task/MobClearSkillService.java
+rename to src/net/server/services/task/channel/MobClearSkillService.java
+index 7092c48a4..c5bb1c3e7 100644
+--- a/src/net/server/channel/services/task/MobClearSkillService.java
++++ b/src/net/server/services/task/channel/MobClearSkillService.java
+@@ -17,11 +17,12 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import config.YamlConfig;
+ import net.server.audit.locks.MonitoredLockType;
+-import net.server.channel.services.BaseScheduler;
++import net.server.services.BaseScheduler;
+ 
+ /**
+  *
+@@ -37,6 +38,7 @@ public MobClearSkillService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(mobClearSkillSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/MobMistService.java b/src/net/server/services/task/channel/MobMistService.java
+similarity index 93%
+rename from src/net/server/channel/services/task/MobMistService.java
+rename to src/net/server/services/task/channel/MobMistService.java
+index 6428dd099..d666880a8 100644
+--- a/src/net/server/channel/services/task/MobMistService.java
++++ b/src/net/server/services/task/channel/MobMistService.java
+@@ -17,11 +17,12 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import config.YamlConfig;
+ import net.server.audit.locks.MonitoredLockType;
+-import net.server.channel.services.BaseScheduler;
++import net.server.services.BaseScheduler;
+ 
+ /**
+  *
+@@ -37,6 +38,7 @@ public MobMistService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(mobMistSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/MobStatusService.java b/src/net/server/services/task/channel/MobStatusService.java
+similarity index 97%
+rename from src/net/server/channel/services/task/MobStatusService.java
+rename to src/net/server/services/task/channel/MobStatusService.java
+index e6b39b3a7..62faa5673 100644
+--- a/src/net/server/channel/services/task/MobStatusService.java
++++ b/src/net/server/services/task/channel/MobStatusService.java
+@@ -17,8 +17,9 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import client.status.MonsterStatusEffect;
+ import config.YamlConfig;
+ import java.util.HashMap;
+@@ -29,8 +30,8 @@
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-import net.server.channel.services.BaseScheduler;
+-import net.server.channel.services.SchedulerListener;
++import net.server.services.BaseScheduler;
++import net.server.services.SchedulerListener;
+ 
+ /**
+  *
+@@ -46,6 +47,7 @@ public MobStatusService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(mobStatusSchedulers[i] != null) {
+diff --git a/src/net/server/channel/services/task/OverallService.java b/src/net/server/services/task/channel/OverallService.java
+similarity index 94%
+rename from src/net/server/channel/services/task/OverallService.java
+rename to src/net/server/services/task/channel/OverallService.java
+index 3dad65daa..74303d3b2 100644
+--- a/src/net/server/channel/services/task/OverallService.java
++++ b/src/net/server/services/task/channel/OverallService.java
+@@ -17,11 +17,12 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services.task;
++package net.server.services.task.channel;
+ 
++import net.server.services.BaseService;
+ import config.YamlConfig;
+ import net.server.audit.locks.MonitoredLockType;
+-import net.server.channel.services.BaseScheduler;
++import net.server.services.BaseScheduler;
+ 
+ /**
+  *
+@@ -37,6 +38,7 @@ public OverallService() {
+         }
+     }
+     
++    @Override
+     public void dispose() {
+         for(int i = 0; i < YamlConfig.config.server.CHANNEL_LOCKS; i++) {
+             if(channelSchedulers[i] != null) {
+diff --git a/src/net/server/services/task/world/CharacterSaveService.java b/src/net/server/services/task/world/CharacterSaveService.java
+new file mode 100644
+index 000000000..a1e32fc36
+--- /dev/null
++++ b/src/net/server/services/task/world/CharacterSaveService.java
+@@ -0,0 +1,62 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.services.task.world;
++
++import net.server.audit.locks.MonitoredLockType;
++import net.server.services.BaseScheduler;
++import net.server.services.BaseService;
++
++/**
++ *
++ * @author Ronan
++ */
++public class CharacterSaveService extends BaseService {
++    
++    CharacterSaveScheduler chrSaveScheduler = new CharacterSaveScheduler();
++    
++    @Override
++    public void dispose() {
++        if(chrSaveScheduler != null) {
++            chrSaveScheduler.dispose();
++            chrSaveScheduler = null;
++        }
++    }
++    
++    public void registerSaveCharacter(int characterId, Runnable runAction) {
++        chrSaveScheduler.registerSaveCharacter(characterId, runAction);
++    }
++    
++    private class CharacterSaveScheduler extends BaseScheduler {
++        
++        public CharacterSaveScheduler() {
++            super(MonitoredLockType.WORLD_SAVECHARS);
++        }
++
++        public void registerSaveCharacter(Integer characterId, Runnable runAction) {
++            registerEntry(characterId, runAction, 0);
++        }
++
++        public void unregisterSaveCharacter(Integer characterId) {
++            interruptEntry(characterId);
++        }
++    
++    }
++    
++}
+diff --git a/src/net/server/services/type/ChannelServices.java b/src/net/server/services/type/ChannelServices.java
+new file mode 100644
+index 000000000..d878edf66
+--- /dev/null
++++ b/src/net/server/services/type/ChannelServices.java
+@@ -0,0 +1,63 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2019 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.services.type;
++
++import net.server.services.ServiceType;
++import net.server.services.task.channel.EventService;
++import net.server.services.task.channel.FaceExpressionService;
++import net.server.services.task.channel.MobAnimationService;
++import net.server.services.task.channel.MobClearSkillService;
++import net.server.services.task.channel.MobMistService;
++import net.server.services.task.channel.MobStatusService;
++import net.server.services.task.channel.OverallService;
++import net.server.services.BaseService;
++import net.server.services.Service;
++
++/**
++ *
++ * @author Ronan
++ */
++public enum ChannelServices implements ServiceType {
++    
++    MOB_STATUS(MobStatusService.class),
++    MOB_ANIMATION(MobAnimationService.class),
++    MOB_CLEAR_SKILL(MobClearSkillService.class),
++    MOB_MIST(MobMistService.class),
++    FACE_EXPRESSION(FaceExpressionService.class),
++    EVENT(EventService.class),
++    OVERALL(OverallService.class);
++    
++    private Class<? extends BaseService> s;
++    
++    private ChannelServices(Class<? extends BaseService> service) {
++        s = service;
++    }
++    
++    @Override
++    public Service createService() {
++        return new Service(s);
++    }
++    
++    @Override
++    public ChannelServices[] enumValues() {
++        return ChannelServices.values();
++    }
++    
++}
+diff --git a/src/net/server/channel/services/ServiceType.java b/src/net/server/services/type/WorldServices.java
+similarity index 69%
+rename from src/net/server/channel/services/ServiceType.java
+rename to src/net/server/services/type/WorldServices.java
+index 47e5097ee..033ea3fe3 100644
+--- a/src/net/server/channel/services/ServiceType.java
++++ b/src/net/server/services/type/WorldServices.java
+@@ -17,32 +17,35 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package net.server.channel.services;
++package net.server.services.type;
+ 
+-import net.server.channel.services.task.*;
++import net.server.services.ServiceType;
++import net.server.services.BaseService;
++import net.server.services.Service;
++import net.server.services.task.world.CharacterSaveService;
+ 
+ /**
+  *
+  * @author Ronan
+  */
+-public enum ServiceType {
++public enum WorldServices implements ServiceType {
+     
+-    MOB_STATUS(MobStatusService.class),
+-    MOB_ANIMATION(MobAnimationService.class),
+-    MOB_CLEAR_SKILL(MobClearSkillService.class),
+-    MOB_MIST(MobMistService.class),
+-    FACE_EXPRESSION(FaceExpressionService.class),
+-    EVENT(EventService.class),
+-    OVERALL(OverallService.class);
++    SAVE_CHARACTER(CharacterSaveService.class);
+     
+     private Class<? extends BaseService> s;
+     
+-    private ServiceType(Class<? extends BaseService> service) {
++    private WorldServices(Class<? extends BaseService> service) {
+         s = service;
+     }
+     
++    @Override
+     public Service createService() {
+         return new Service(s);
+     }
+     
++    @Override
++    public WorldServices[] enumValues() {
++        return WorldServices.values();
++    }
++    
+ }
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 6847f5ca7..b22c6837d 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -29,7 +29,6 @@
+ import client.MapleFamily;
+ import config.YamlConfig;
+ import constants.game.GameConstants;
+-import constants.net.ServerConstants;
+ 
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+@@ -50,9 +49,6 @@
+ import java.util.TreeMap;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.atomic.AtomicInteger;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ 
+ import java.util.Set;
+ import java.util.HashSet;
+@@ -74,9 +70,13 @@
+ import net.server.Server;
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import net.server.channel.Channel;
+ import net.server.channel.CharacterIdChannelPair;
+ import net.server.coordinator.world.MapleInviteCoordinator;
+@@ -87,6 +87,9 @@
+ import net.server.guild.MapleGuild;
+ import net.server.guild.MapleGuildCharacter;
+ import net.server.guild.MapleGuildSummary;
++import net.server.services.BaseService;
++import net.server.services.ServicesManager;
++import net.server.services.type.WorldServices;
+ import net.server.task.CharacterAutosaverTask;
+ import net.server.task.FamilyDailyResetTask;
+ import net.server.task.FishingTask;
+@@ -123,12 +126,13 @@
+     private Map<Integer, Pair<Integer, Integer>> relationshipCouples = new HashMap<>();
+     private Map<Integer, MapleGuildSummary> gsStore = new HashMap<>();
+     private PlayerStorage players = new PlayerStorage();
++    private ServicesManager services = new ServicesManager(WorldServices.SAVE_CHARACTER);
+     private MapleMatchCheckerCoordinator matchChecker = new MapleMatchCheckerCoordinator();
+     private MaplePartySearchCoordinator partySearch = new MaplePartySearchCoordinator();
+     
+-    private final ReentrantReadWriteLock chnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_CHANNELS, true);
+-    private ReadLock chnRLock = chnLock.readLock();
+-    private WriteLock chnWLock = chnLock.writeLock();
++    private final MonitoredReentrantReadWriteLock chnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_CHANNELS, true);
++    private MonitoredReadLock chnRLock = MonitoredReadLockFactory.createLock(chnLock);
++    private MonitoredWriteLock chnWLock = MonitoredWriteLockFactory.createLock(chnLock);
+     
+     private Map<Integer, SortedMap<Integer, MapleCharacter>> accountChars = new HashMap<>();
+     private Map<Integer, MapleStorage> accountStorages = new HashMap<>();
+@@ -145,9 +149,9 @@
+     
+     private Map<Integer, Integer> owlSearched = new LinkedHashMap<>();
+     private List<Map<Integer, Integer>> cashItemBought = new ArrayList<>(9);
+-    private final ReentrantReadWriteLock suggestLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_SUGGEST, true);
+-    private ReadLock suggestRLock = suggestLock.readLock();
+-    private WriteLock suggestWLock = suggestLock.writeLock();
++    private final MonitoredReentrantReadWriteLock suggestLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_SUGGEST, true);
++    private MonitoredReadLock suggestRLock = MonitoredReadLockFactory.createLock(suggestLock);
++    private MonitoredWriteLock suggestWLock = MonitoredWriteLockFactory.createLock(suggestLock);
+     
+     private Map<Integer, Integer> disabledServerMessages = new HashMap<>();    // reuse owl lock
+     private MonitoredReentrantLock srvMessagesLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.WORLD_SRVMESSAGES);
+@@ -2064,6 +2068,14 @@ public void runPartySearchUpdateSchedule() {
+         partySearch.runPartySearch();
+     }
+     
++    public BaseService getServiceAccess(WorldServices sv) {
++        return services.getAccess(sv).getService();
++    }
++    
++    private void closeWorldServices() {
++        services.shutdown();
++    }
++    
+     private void clearWorldData() {
+         List<MapleParty> pList;
+         partyLock.lock();
+@@ -2077,6 +2089,7 @@ private void clearWorldData() {
+             p.disposeLocks();
+         }
+         
++        closeWorldServices();
+         disposeLocks();
+     }
+     
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index b7528f8fc..01d3b869d 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -56,6 +56,7 @@
+ import client.MapleCharacter;
+ import client.MapleCharacter.DelayedQuestUpdate;
+ import client.MapleClient;
++import client.MapleJob;
+ import client.MapleQuestStatus;
+ import client.SkillFactory;
+ import client.inventory.Equip;
+@@ -94,6 +95,18 @@ public MapleCharacter getChar() {
+ 		return c.getPlayer();
+ 	}
+         
++        public int getJobId() {
++		return getPlayer().getJob().getId();
++	}
++        
++	public MapleJob getJob(){
++		return getPlayer().getJob();
++	}
++        
++	public int getLevel() {
++		return getPlayer().getLevel();
++	}
++        
+         public MapleMap getMap() {
+                 return c.getPlayer().getMap();
+         }
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 6a6e574ce..87c67d40d 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -36,8 +36,12 @@
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import server.maps.MaplePortal;
+@@ -55,9 +59,6 @@
+ import constants.net.ServerConstants;
+ import java.awt.Point;
+ import java.util.concurrent.ScheduledFuture;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import net.server.coordinator.world.MapleEventRecallCoordinator;
+@@ -91,9 +92,9 @@
+ 	private MapleExpedition expedition = null;
+         private List<Integer> mapIds = new LinkedList<>();
+         
+-        private final ReentrantReadWriteLock lock = new MonitoredReentrantReadWriteLock(MonitoredLockType.EIM, true);
+-        private ReadLock rL = lock.readLock();
+-        private WriteLock wL = lock.writeLock();
++        private final MonitoredReentrantReadWriteLock lock = new MonitoredReentrantReadWriteLock(MonitoredLockType.EIM, true);
++        private MonitoredReadLock rL = MonitoredReadLockFactory.createLock(lock);
++        private MonitoredWriteLock wL = MonitoredWriteLockFactory.createLock(lock);
+         
+         private MonitoredReentrantLock pL = MonitoredReentrantLockFactory.createLock(MonitoredLockType.EIM_PARTY, true);
+         private MonitoredReentrantLock sL = MonitoredReentrantLockFactory.createLock(MonitoredLockType.EIM_SCRIPT, true);
+diff --git a/src/scripting/event/EventScriptManager.java b/src/scripting/event/EventScriptManager.java
+index 448b0bdfe..1e6afe628 100644
+--- a/src/scripting/event/EventScriptManager.java
++++ b/src/scripting/event/EventScriptManager.java
+@@ -21,9 +21,11 @@
+  */
+ package scripting.event;
+ 
+-import java.util.LinkedHashMap;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Map.Entry;
++import java.util.Set;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+@@ -48,9 +50,10 @@ public EventEntry(NashornScriptEngine iv, EventManager em) {
+         public EventManager em;
+     }
+     
+-    private Map<String, EventEntry> events = new LinkedHashMap<>();
++    private static EventEntry fallback;
++    private Map<String, EventEntry> events = new ConcurrentHashMap<>();
+     private boolean active = false;
+-
++    
+     public EventScriptManager(Channel cserv, String[] scripts) {
+         super();
+         for (String script : scripts) {
+@@ -59,12 +62,15 @@ public EventScriptManager(Channel cserv, String[] scripts) {
+                 events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+             }
+         }
++        
++        init();
++        fallback = events.remove("0_EXAMPLE");
+     }
+ 
+     public EventManager getEventManager(String event) {
+         EventEntry entry = events.get(event);
+         if (entry == null) {
+-            return null;
++            return fallback.em;
+         }
+         return entry.em;
+     }
+@@ -72,8 +78,8 @@ public EventManager getEventManager(String event) {
+     public boolean isActive() {
+         return active;
+     }
+-
+-    public void init() {
++    
++    public final void init() {
+         for (EventEntry entry : events.values()) {
+             try {
+                 entry.iv.put("em", entry.em);
+@@ -84,16 +90,17 @@ public void init() {
+             }
+         }
+         
+-        active = true;
++        active = events.size() > 1; // bootup loads only 1 script
+     }
+ 
+     private void reloadScripts() {
+-        if (events.isEmpty()) {
++        Set<Entry<String, EventEntry>> eventEntries = new HashSet<>(events.entrySet());
++        if (eventEntries.isEmpty()) {
+             return;
+         }
+ 
+-        Channel cserv = events.values().iterator().next().em.getChannelServer();
+-        for (Entry<String, EventEntry> entry : events.entrySet()) {
++        Channel cserv = eventEntries.iterator().next().getValue().em.getChannelServer();
++        for (Entry<String, EventEntry> entry : eventEntries) {
+             String script = entry.getKey();
+             NashornScriptEngine iv = getScriptEngine("event/" + script + ".js");
+             events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+@@ -112,4 +119,18 @@ public void cancel() {
+             entry.em.cancel();
+         }
+     }
++    
++    public void dispose() {
++        if (events.isEmpty()) {
++            return;
++        }
++        
++        Set<EventEntry> eventEntries = new HashSet<>(events.values());
++        events.clear();
++        
++        active = false;
++        for (EventEntry entry : eventEntries) {
++            entry.em.cancel();
++        }
++    }
+ }
+diff --git a/src/scripting/map/MapScriptMethods.java b/src/scripting/map/MapScriptMethods.java
+index 575cc41ed..cc94de2ed 100644
+--- a/src/scripting/map/MapScriptMethods.java
++++ b/src/scripting/map/MapScriptMethods.java
+@@ -35,7 +35,35 @@
+ 	public MapScriptMethods(MapleClient c) {
+         super(c);
+     }
+-
++    
++    public void displayCygnusIntro() {
++        switch (c.getPlayer().getMapId()) {
++            case 913040100:
++                lockUI();
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene0"));
++                break;
++            case 913040101:
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene1"));
++                break;
++            case 913040102:
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene2"));
++                break;
++            case 913040103:
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene3"));
++                break;
++            case 913040104:
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene4"));
++                break;
++            case 913040105:
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene5"));
++                break;
++            case 913040106:
++                lockUI();
++                c.announce(MaplePacketCreator.showIntro("Effect/Direction.img/cygnusJobTutorial/Scene6"));
++                break;
++        }
++    }
++    
+     public void displayAranIntro() {
+         switch (c.getPlayer().getMapId()) {
+             case 914090010:
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index 57c1929aa..49dae8d22 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -253,14 +253,6 @@ public String getText() {
+ 		return this.getText;
+ 	}
+ 
+-	public int getJobId() {
+-		return getPlayer().getJob().getId();
+-	}
+-
+-	public MapleJob getJob(){
+-		return getPlayer().getJob();
+-	}
+-
+ 	@Override
+         public boolean forceStartQuest(int id) {
+                 return forceStartQuest(id, npc);
+@@ -303,10 +295,6 @@ public void gainExp(int gain) {
+ 		getPlayer().gainExp(gain, true, true);
+ 	}
+ 
+-	public int getLevel() {
+-		return getPlayer().getLevel();
+-	}
+-
+         @Override
+ 	public void showEffect(String effect) {
+ 		getPlayer().getMap().broadcastMessage(MaplePacketCreator.environmentChange(effect, 3));
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 6270afd3d..667a2295d 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -27,6 +27,7 @@
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.List;
++import java.util.HashMap;
+ import java.util.Map;
+ 
+ import config.YamlConfig;
+@@ -60,7 +61,6 @@
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+ import constants.inventory.ItemConstants;
+-import constants.net.ServerConstants;
+ import constants.skills.Aran;
+ import constants.skills.Assassin;
+ import constants.skills.Bandit;
+@@ -933,7 +933,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+             applyto.toggleHide(false);
+             return true;
+         }
+-
++        
+         if (primary && isHeal()) {
+             affectedPlayers = applyBuff(applyfrom, useMaxRange);
+         }
+@@ -1162,7 +1162,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+ 
+     private int applyBuff(MapleCharacter applyfrom, boolean useMaxRange) {
+         int affectedc = 1;
+-
++        
+         if (isPartyBuff() && (applyfrom.getParty() != null || isGmBuff())) {
+             Rectangle bounds = (!useMaxRange) ? calculateBoundingBox(applyfrom.getPosition(), applyfrom.isFacingLeft()) : new Rectangle(Integer.MIN_VALUE / 2, Integer.MIN_VALUE / 2, Integer.MAX_VALUE, Integer.MAX_VALUE);
+             List<MapleMapObject> affecteds = applyfrom.getMap().getMapObjectsInRect(bounds, Arrays.asList(MapleMapObjectType.PLAYER));
+@@ -1181,7 +1181,7 @@ private int applyBuff(MapleCharacter applyfrom, boolean useMaxRange) {
+                     }
+                 }
+             }
+-
++            
+             affectedc += affectedp.size();   // used for heal
+             for (MapleCharacter affected : affectedp) {
+                 applyTo(applyfrom, affected, false, null, useMaxRange, affectedc);
+@@ -1281,7 +1281,11 @@ public void updateBuffEffect(MapleCharacter target, List<Pair<MapleBuffStat, Int
+ 
+         long leftDuration = (starttime + localDuration) - Server.getInstance().getCurrentTime();
+         if (leftDuration > 0) {
+-            target.announce(MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), (int) leftDuration, activeStats));
++            if (isDash() || isInfusion()) {
++                target.announce(MaplePacketCreator.givePirateBuff(activeStats, (skill ? sourceid : -sourceid), (int) leftDuration));
++            } else {
++                target.announce(MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), (int) leftDuration, activeStats));
++            }
+         }
+     }
+     
+@@ -1289,7 +1293,7 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+         if (!isMonsterRiding() && !isCouponBuff() && !isMysticDoor() && !isHyperBody() && !isCombo()) {     // last mystic door already dispelled if it has been used before.
+             applyto.cancelEffect(this, true, -1);
+         }
+-
++        
+         List<Pair<MapleBuffStat, Integer>> localstatups = statups;
+         int localDuration = getBuffLocalDuration();
+         int localsourceid = sourceid;
+@@ -1393,12 +1397,11 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+                 
+                 applyto.announce(buff);
+             }
+-
++            
+             long starttime = Server.getInstance().getCurrentTime();
+             //CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);
+             //ScheduledFuture<?> schedule = TimerManager.getInstance().schedule(cancelAction, localDuration);
+             applyto.registerEffect(this, starttime, starttime + localDuration, false);
+-
+             if (mbuff != null) {
+                 applyto.getMap().broadcastMessage(applyto, mbuff, false);
+             }
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index b8efcadb5..af551e435 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -22,6 +22,7 @@
+ import client.inventory.Item;
+ import client.inventory.ItemFactory;
+ import client.inventory.MapleInventoryType;
++import constants.game.GameConstants;
+ import java.io.File;
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+@@ -44,6 +45,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import net.server.audit.locks.MonitoredLockType;
++import tools.FilePrinter;
+ 
+ /**
+  *
+@@ -67,51 +69,45 @@ private MapleStorage(int id, byte slots, int meso) {
+         this.meso = meso;
+     }
+ 
+-    private static MapleStorage create(int id, int world) {
+-        try {
+-            Connection con = DatabaseConnection.getConnection();
+-            try (PreparedStatement ps = con.prepareStatement("INSERT INTO storages (accountid, world, slots, meso) VALUES (?, ?, 4, 0)")) {
+-                ps.setInt(1, id);
+-                ps.setInt(2, world);
+-                ps.executeUpdate();
+-            }
+-            
+-            con.close();
+-        } catch (Exception e) {
+-            e.printStackTrace();
++    private static MapleStorage create(int id, int world) throws SQLException {
++        Connection con = DatabaseConnection.getConnection();
++        try (PreparedStatement ps = con.prepareStatement("INSERT INTO storages (accountid, world, slots, meso) VALUES (?, ?, 4, 0)")) {
++            ps.setInt(1, id);
++            ps.setInt(2, world);
++            ps.executeUpdate();
+         }
++        con.close();
++        
+         return loadOrCreateFromDB(id, world);
+     }
+ 
+     public static MapleStorage loadOrCreateFromDB(int id, int world) {
+-        MapleStorage ret = null;
+-        int storeId;
+         try {
++            MapleStorage ret;
+             Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT storageid, slots, meso FROM storages WHERE accountid = ? AND world = ?");
+             ps.setInt(1, id);
+             ps.setInt(2, world);
++            
+             ResultSet rs = ps.executeQuery();
+-            if (!rs.next()) {
+-                rs.close();
+-                ps.close();
+-                con.close();
+-                return create(id, world);
+-            } else {
+-                storeId = rs.getInt("storageid");
+-                ret = new MapleStorage(storeId, (byte) rs.getInt("slots"), rs.getInt("meso"));
+-                rs.close();
+-                ps.close();
++            if (rs.next()) {
++                ret = new MapleStorage(rs.getInt("storageid"), (byte) rs.getInt("slots"), rs.getInt("meso"));
+                 for (Pair<Item, MapleInventoryType> item : ItemFactory.STORAGE.loadItems(ret.id, false)) {
+                     ret.items.add(item.getLeft());
+                 }
++            } else {
++                ret = create(id, world);
+             }
+             
++            rs.close();
++            ps.close();
+             con.close();
+-        } catch (SQLException ex) {
+-            ex.printStackTrace();
++            
++            return ret;
++        } catch (SQLException ex) { // exceptions leading to deploy null storages found thanks to Jefe
++            FilePrinter.printError(FilePrinter.STORAGE, ex, "SQL error occurred when trying to load storage for accountid " + id + ", world " + GameConstants.WORLD_NAMES[world]);
++            throw new RuntimeException(ex);
+         }
+-        return ret;
+     }
+ 
+     public byte getSlots() {
+diff --git a/src/server/life/MapleLifeFactory.java b/src/server/life/MapleLifeFactory.java
+index 3a03929f1..4d74054ee 100644
+--- a/src/server/life/MapleLifeFactory.java
++++ b/src/server/life/MapleLifeFactory.java
+@@ -102,21 +102,19 @@ private static void setMonsterAttackInfo(int mid, List<MobAttackInfoHolder> atta
+         MapleData monsterInfoData = monsterData.getChildByPath("info");
+         
+         List<MobAttackInfoHolder> attackInfos = new LinkedList<>();
+-        MapleMonsterStats stats;
++        MapleMonsterStats stats = new MapleMonsterStats();
+         
+         int linkMid = MapleDataTool.getIntConvert("link", monsterInfoData, 0);
+-        if (linkMid == 0) {
+-            stats = new MapleMonsterStats();
+-        } else {
++        if (linkMid != 0) {
+             Pair<MapleMonsterStats, List<MobAttackInfoHolder>> linkStats = getMonsterStats(linkMid);
+             if (linkStats == null) {
+                 return null;
+             }
+             
+-            stats = linkStats.getLeft();
++            // thanks resinate for noticing non-propagable infos such as revives getting retrieved
+             attackInfos.addAll(linkStats.getRight());
+         }
+-
++        
+         stats.setHp(MapleDataTool.getIntConvert("maxHP", monsterInfoData));
+         stats.setFriendly(MapleDataTool.getIntConvert("damagedByMob", monsterInfoData, stats.isFriendly() ? 1 : 0) == 1);
+         stats.setPADamage(MapleDataTool.getIntConvert("PADamage", monsterInfoData));
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index cc4aafa00..4f1cf25ad 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -72,11 +72,11 @@
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.MobAnimationService;
+-import net.server.channel.services.task.MobClearSkillService;
+-import net.server.channel.services.task.MobStatusService;
+-import net.server.channel.services.task.OverallService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.MobAnimationService;
++import net.server.services.task.channel.MobClearSkillService;
++import net.server.services.task.channel.MobStatusService;
++import net.server.services.task.channel.OverallService;
+ import net.server.coordinator.world.MapleMonsterAggroCoordinator;
+ import server.MapleStatEffect;
+ import server.loot.MapleLootManager;
+@@ -338,7 +338,7 @@ private boolean applyAnimationIfRoaming(int attackPos, MobSkill skill) {   // ro
+             }
+ 
+             if(animationTime > 0) {
+-                MobAnimationService service = (MobAnimationService) map.getChannelServer().getServiceAccess(ServiceType.MOB_ANIMATION);
++                MobAnimationService service = (MobAnimationService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_ANIMATION);
+                 return service.registerMobOnAnimationEffect(map.getId(), this.hashCode(), animationTime);
+             } else {
+                 return true;
+@@ -770,7 +770,7 @@ private void giveExpToCharacter(MapleCharacter attacker, Float personalExp, Floa
+         
+         return MapleLootManager.retrieveRelevantDrops(this.getId(), lootChars);
+     }
+-
++    
+     public MapleCharacter killBy(final MapleCharacter killer) {
+         distributeExperience(killer != null ? killer.getId() : 0);
+         
+@@ -824,7 +824,6 @@ public void run() {
+                                     
+                                     if(htKilled) {
+                                         reviveMap.killMonster(ht, killer, true);
+-                                        ht.broadcastMobHpBar(killer);
+                                     }
+                                 }
+                                 
+@@ -1041,16 +1040,20 @@ public boolean hasBossHPBar() {
+         return isBoss() && getTagColor() > 0;
+     }
+     
++    public void broadcastMonsterStatus() {
++        Collection<MonsterStatusEffect> mseList = this.getStati().values();
++        for (MapleCharacter chr : map.getAllPlayers()) {
++            announceMonsterStatusInternal(chr.getClient(), mseList);
++        }
++    }
++    
+     public void announceMonsterStatus(MapleClient client) {
+-        statiLock.lock();
+-        try {
+-            if (stati.size() > 0) {
+-                for (final MonsterStatusEffect mse : this.stati.values()) {
+-                    client.announce(MaplePacketCreator.applyMonsterStatus(getObjectId(), mse, null));
+-                }
+-            }
+-        } finally {
+-            statiLock.unlock();
++        announceMonsterStatusInternal(client, this.getStati().values());
++    }
++    
++    public void announceMonsterStatusInternal(MapleClient client, Collection<MonsterStatusEffect> mseList) {
++        for (MonsterStatusEffect mse : mseList) {
++            client.announce(MaplePacketCreator.applyMonsterStatus(getObjectId(), mse, null));
+         }
+     }
+     
+@@ -1203,7 +1206,7 @@ public boolean applyStatus(MapleCharacter from, final MonsterStatusEffect status
+                     if (oldEffect != null) {
+                         oldEffect.removeActiveStatus(stat);
+                         if (oldEffect.getStati().isEmpty()) {
+-                            MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                            MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
+                             service.interruptMobStatus(mapid, oldEffect);
+                         }
+                     }
+@@ -1310,7 +1313,7 @@ public void run() {
+             statiLock.unlock();
+         }
+         
+-        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
+         service.registerMobStatus(mapid, status, cancelTask, duration + animationTime - 100, overtimeAction, overtimeDelay);
+         return true;
+     }
+@@ -1362,7 +1365,7 @@ public void run() {
+             statiLock.unlock();
+         }
+         
+-        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++        MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
+         service.registerMobStatus(map.getId(), effect, cancelTask, duration);
+     }
+     
+@@ -1561,7 +1564,7 @@ public void run() {
+             }
+         };
+         
+-        MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++        MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_CLEAR_SKILL);
+         service.registerMobClearSkillAction(mmap.getId(), r, cooltime);
+     }
+ 
+@@ -1630,7 +1633,7 @@ public void run() {
+                 }
+             };
+             
+-            MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++            MobClearSkillService service = (MobClearSkillService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_CLEAR_SKILL);
+             service.registerMobClearSkillAction(mmap.getId(), r, cooltime);
+         } finally {
+             monsterLock.unlock();
+@@ -1678,7 +1681,7 @@ private DamageTask(int dealDamage, MapleCharacter chr, MonsterStatusEffect statu
+         public void run() {
+             int curHp = hp.get();
+             if(curHp <= 1) {
+-                MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
+                 service.interruptMobStatus(map.getId(), status);
+                 return;
+             }
+@@ -1687,7 +1690,7 @@ public void run() {
+             if (damage >= curHp) {
+                 damage = curHp - 1;
+                 if (type == 1 || type == 2) {
+-                    MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ServiceType.MOB_STATUS);
++                    MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
+                     service.interruptMobStatus(map.getId(), status);
+                 }
+             }
+@@ -1744,7 +1747,7 @@ public void run() {
+                     }
+                 };
+                 
+-                MobClearSkillService service = (MobClearSkillService) mmap.getChannelServer().getServiceAccess(ServiceType.MOB_CLEAR_SKILL);
++                MobClearSkillService service = (MobClearSkillService) mmap.getChannelServer().getServiceAccess(ChannelServices.MOB_CLEAR_SKILL);
+                 service.registerMobClearSkillAction(mmap.getId(), r, milli);
+             }
+         } finally {
+@@ -1780,7 +1783,7 @@ public int getPADamage() {
+     public Map<MonsterStatus, MonsterStatusEffect> getStati() {
+         statiLock.lock();
+         try {
+-            return Collections.unmodifiableMap(stati);
++            return new HashMap<>(stati);
+         } finally {
+             statiLock.unlock();
+         }
+@@ -2120,7 +2123,7 @@ public void aggroAutoAggroUpdate(MapleCharacter player) {
+         MapleCharacter chrController = this.getActiveController();
+         
+         if (chrController == null) {
+-            this.aggroSwitchController(player, true);
++        this.aggroSwitchController(player, true);
+         } else if (chrController.getId() == player.getId()) {
+             this.setControllerHasAggro(true);
+         }
+@@ -2227,7 +2230,7 @@ public void run() {
+         };
+         
+         // had to schedule this since mob wouldn't stick to puppet aggro who knows why
+-        OverallService service = (OverallService) this.getMap().getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        OverallService service = (OverallService) this.getMap().getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+         service.registerOverallAction(this.getMap().getId(), r, YamlConfig.config.server.UPDATE_INTERVAL);
+     }
+     
+diff --git a/src/server/life/MaplePlayerNPC.java b/src/server/life/MaplePlayerNPC.java
+index bddfba1b7..e49da183a 100644
+--- a/src/server/life/MaplePlayerNPC.java
++++ b/src/server/life/MaplePlayerNPC.java
+@@ -361,11 +361,15 @@ private static void fetchAvailableScriptIdsFromDb(byte branch, List<Integer> lis
+             int j = 0;
+             for(int i = branchSid; i < nextBranchSid; i++) {
+                 if(!usedScriptIds.contains(i)) {
+-                    availables.add(i);
+-                    j++;
+-                    
+-                    if(j == 20) {
+-                        break;
++                    if (MaplePlayerNPCFactory.isExistentScriptid(i)) {  // thanks Ark, Zein, geno, Ariel, JrCl0wn for noticing client crashes due to use of missing scriptids
++                        availables.add(i);
++                        j++;
++
++                        if(j == 20) {
++                            break;
++                        }
++                    } else {
++                        break;  // after this point no more scriptids expected...
+                     }
+                 }
+             }
+diff --git a/src/server/life/MaplePlayerNPCFactory.java b/src/server/life/MaplePlayerNPCFactory.java
+index b262da2d7..8abc2605d 100644
+--- a/src/server/life/MaplePlayerNPCFactory.java
++++ b/src/server/life/MaplePlayerNPCFactory.java
+@@ -19,6 +19,7 @@
+ */
+ package server.life;
+ 
++import constants.net.ServerConstants;
+ import java.io.File;
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -36,9 +37,15 @@
+  */
+ public class MaplePlayerNPCFactory {
+     
++    private static MapleDataProvider npcData = MapleDataProviderFactory.getDataProvider(new File("wz/Npc.wz"));
++    
+     private static final Map<Integer, List<MaplePlayerNPC>> dnpcMaps = new HashMap<>();
+     private static Integer runningDeveloperOid = 2147483000;  // 647 slots, long enough
+     
++    public static boolean isExistentScriptid(int scriptid) {
++        return npcData.getData(scriptid + ".img") != null;
++    }
++    
+     public static void loadDeveloperRoomMetadata(MapleDataProvider npc) {
+         MapleData thisData = npc.getData("9977777.img");
+         if(thisData != null) {
+@@ -60,7 +67,7 @@ public static void loadDeveloperRoomMetadata(MapleDataProvider npc) {
+     }
+     
+     public static void loadFactoryMetadata() {
+-        MapleDataProvider npc = MapleDataProviderFactory.getDataProvider(new File("wz/Npc.wz"));
++        MapleDataProvider npc = npcData;
+         loadDeveloperRoomMetadata(npc);
+ 
+         MapleDataProvider etc = MapleDataProviderFactory.getDataProvider(new File("wz/Etc.wz"));
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index e91b05bd6..a5cd921fd 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -32,8 +32,8 @@
+ import constants.game.GameConstants;
+ import java.util.LinkedList;
+ import java.util.Map;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.OverallService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.OverallService;
+ import tools.Randomizer;
+ import server.maps.MapleMap;
+ import server.maps.MapleMapObject;
+@@ -117,7 +117,7 @@ public void run() {
+             }
+         };
+ 
+-        OverallService service = (OverallService) monster.getMap().getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        OverallService service = (OverallService) monster.getMap().getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+         service.registerOverallAction(monster.getMap().getId(), toRun, animationTime);
+     }
+ 
+diff --git a/src/server/life/MobSkillFactory.java b/src/server/life/MobSkillFactory.java
+index d6f9a416e..584b73d76 100644
+--- a/src/server/life/MobSkillFactory.java
++++ b/src/server/life/MobSkillFactory.java
+@@ -27,11 +27,12 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import provider.MapleData;
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+@@ -46,9 +47,9 @@
+     private static Map<String, MobSkill> mobSkills = new HashMap<String, MobSkill>();
+     private final static MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Skill.wz"));
+     private static MapleData skillRoot = dataSource.getData("MobSkill.img");
+-    private final static ReentrantReadWriteLock dataLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MOBSKILL_FACTORY);
+-    private final static ReadLock rL = dataLock.readLock();
+-    private final static WriteLock wL = dataLock.writeLock();
++    private final static MonitoredReentrantReadWriteLock dataLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MOBSKILL_FACTORY);
++    private final static MonitoredReadLock rL = MonitoredReadLockFactory.createLock(dataLock);
++    private final static MonitoredWriteLock wL = MonitoredWriteLockFactory.createLock(dataLock);
+ 
+     public static MobSkill getMobSkill(final int skillId, final int level) {
+         final String key = skillId + "" + level;
+diff --git a/src/server/loot/MapleLootManager.java b/src/server/loot/MapleLootManager.java
+index bcfef5ee6..c1d933b71 100644
+--- a/src/server/loot/MapleLootManager.java
++++ b/src/server/loot/MapleLootManager.java
+@@ -56,14 +56,12 @@ private static boolean isRelevantDrop(MonsterDropEntry dropEntry, List<MapleChar
+                     qItemAmount = qCompleteAmount;
+                 }
+                 
+-                if (qItemAmount <= 0) {
+-                    continue;
+-                }
++                // thanks kvmba for noticing quest items with no required amount failing to be detected as such
+                 
+                 int qItemStatus = chrInv.hasItem(dropEntry.itemId, qItemAmount);
+                 if (qItemStatus == 2) {
+                     continue;
+-                } /*else if (restricted && qItemStatus == 1) {
++                } /*else if (restricted && qItemStatus == 1) {  // one-of-a-kind loots should be available everytime, thanks onechord for noticing
+                     continue;
+                 }*/
+             } /*else if (restricted && chrInv.hasItem(dropEntry.itemId, 1) > 0) {   // thanks Conrad, Legalize for noticing eligible loots not being available to drop for non-killer parties
+diff --git a/src/server/maps/MapleDoor.java b/src/server/maps/MapleDoor.java
+index a58f9897b..89dd65b7b 100644
+--- a/src/server/maps/MapleDoor.java
++++ b/src/server/maps/MapleDoor.java
+@@ -28,8 +28,8 @@
+ import tools.Pair;
+ 
+ import client.MapleCharacter;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.OverallService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.OverallService;
+ 
+ /**
+  *
+@@ -133,7 +133,7 @@ public static void attemptRemoveDoor(final MapleCharacter owner) {
+             if (effectTimeLeft > 0) {
+                 MapleMap town = destroyDoor.getTown();
+                 
+-                OverallService service = (OverallService) town.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++                OverallService service = (OverallService) town.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+                 service.registerOverallAction(town.getId(), new Runnable() {
+                     @Override
+                     public void run() {
+diff --git a/src/server/maps/MapleDoorObject.java b/src/server/maps/MapleDoorObject.java
+index 20995c960..44ff494cd 100644
+--- a/src/server/maps/MapleDoorObject.java
++++ b/src/server/maps/MapleDoorObject.java
+@@ -20,11 +20,14 @@
+ package server.maps;
+ 
+ import java.awt.Point;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import net.server.world.MapleParty;
+ import tools.MaplePacketCreator;
+ 
+@@ -41,9 +44,9 @@
+     private int linkedPortalId;
+     private Point linkedPos;
+     
+-    private final ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.PLAYER_DOOR, true);
+-    private ReentrantReadWriteLock.ReadLock rlock = locks.readLock();
+-    private ReentrantReadWriteLock.WriteLock wlock = locks.writeLock();
++    private final MonitoredReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.PLAYER_DOOR, true);
++    private MonitoredReadLock rlock = MonitoredReadLockFactory.createLock(locks);
++    private MonitoredWriteLock wlock = MonitoredWriteLockFactory.createLock(locks);
+     
+     public MapleDoorObject(int owner, MapleMap destination, MapleMap origin, int townPortalId, Point targetPosition, Point toPosition) {
+         super();
+diff --git a/src/server/maps/MapleFootholdTree.java b/src/server/maps/MapleFootholdTree.java
+index 5d897e681..ef077fdeb 100644
+--- a/src/server/maps/MapleFootholdTree.java
++++ b/src/server/maps/MapleFootholdTree.java
+@@ -169,25 +169,27 @@ public MapleFoothold findBelow(Point p) {
+         }
+         Collections.sort(xMatches);
+         for (MapleFoothold fh : xMatches) {
+-            if (!fh.isWall() && fh.getY1() != fh.getY2()) {
+-                int calcY;
+-                double s1 = Math.abs(fh.getY2() - fh.getY1());
+-                double s2 = Math.abs(fh.getX2() - fh.getX1());
+-                double s4 = Math.abs(p.x - fh.getX1());
+-                double alpha = Math.atan(s2 / s1);
+-                double beta = Math.atan(s1 / s2);
+-                double s5 = Math.cos(alpha) * (s4 / Math.cos(beta));
+-                if (fh.getY2() < fh.getY1()) {
+-                    calcY = fh.getY1() - (int) s5;
++            if (!fh.isWall()) {
++                if (fh.getY1() != fh.getY2()) {
++                    int calcY;
++                    double s1 = Math.abs(fh.getY2() - fh.getY1());
++                    double s2 = Math.abs(fh.getX2() - fh.getX1());
++                    double s4 = Math.abs(p.x - fh.getX1());
++                    double alpha = Math.atan(s2 / s1);
++                    double beta = Math.atan(s1 / s2);
++                    double s5 = Math.cos(alpha) * (s4 / Math.cos(beta));
++                    if (fh.getY2() < fh.getY1()) {
++                        calcY = fh.getY1() - (int) s5;
++                    } else {
++                        calcY = fh.getY1() + (int) s5;
++                    }
++                    if (calcY >= p.y) {
++                        return fh;
++                    }
+                 } else {
+-                    calcY = fh.getY1() + (int) s5;
+-                }
+-                if (calcY >= p.y) {
+-                    return fh;
+-                }
+-            } else if (!fh.isWall()) {
+-                if (fh.getY1() >= p.y) {
+-                    return fh;
++                    if (fh.getY1() >= p.y) {
++                        return fh;
++                    }
+                 }
+             }
+         }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index a5b90e371..a76e44bca 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -55,20 +55,21 @@
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import java.lang.ref.WeakReference;
+ import net.server.Server;
+ import net.server.coordinator.world.MapleMonsterAggroCoordinator;
+ import net.server.channel.Channel;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.FaceExpressionService;
+-import net.server.channel.services.task.MobMistService;
+-import net.server.channel.services.task.OverallService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.FaceExpressionService;
++import net.server.services.task.channel.MobMistService;
++import net.server.services.task.channel.OverallService;
+ import net.server.world.World;
+ import scripting.map.MapScriptManager;
+ import server.MapleItemInformationProvider;
+@@ -177,10 +178,10 @@
+     private int timeExpand;
+ 
+     //locks
+-    private ReadLock chrRLock;
+-    private WriteLock chrWLock;
+-    private ReadLock objectRLock;
+-    private WriteLock objectWLock;
++    private MonitoredReadLock chrRLock;
++    private MonitoredWriteLock chrWLock;
++    private MonitoredReadLock objectRLock;
++    private MonitoredWriteLock objectWLock;
+ 
+     private Lock lootLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.MAP_LOOT, true);
+     
+@@ -196,13 +197,13 @@ public MapleMap(int mapid, int world, int channel, int returnMapId, float monste
+         if (this.monsterRate == 0) {
+             this.monsterRate = 1;
+         }
+-        final ReentrantReadWriteLock chrLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_CHRS, true);
+-        chrRLock = chrLock.readLock();
+-        chrWLock = chrLock.writeLock();
++        final MonitoredReentrantReadWriteLock chrLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_CHRS, true);
++        chrRLock = MonitoredReadLockFactory.createLock(chrLock);
++        chrWLock = MonitoredWriteLockFactory.createLock(chrLock);
+ 
+-        final ReentrantReadWriteLock objectLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_OBJS, true);
+-        objectRLock = objectLock.readLock();
+-        objectWLock = objectLock.writeLock();
++        final MonitoredReentrantReadWriteLock objectLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_OBJS, true);
++        objectRLock = MonitoredReadLockFactory.createLock(objectLock);
++        objectWLock = MonitoredWriteLockFactory.createLock(objectLock);
+         
+         aggroMonitor = new MapleMonsterAggroCoordinator();
+     }
+@@ -570,7 +571,7 @@ public Point calcDropPos(Point initial, Point fallback) {
+             initial.x = xLimits.right;
+         }
+         
+-        Point ret = calcPointBelow(new Point(initial.x, initial.y - 85));
++        Point ret = calcPointBelow(new Point(initial.x, initial.y - 85));   // actual drop ranges: default - 120, explosive - 360
+         if (ret == null) {
+             ret = bsearchDropPos(initial, fallback);
+         }
+@@ -758,6 +759,10 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob, f
+         final List<MonsterDropEntry> otherQuestEntry = new ArrayList<>();
+         sortDropEntries(YamlConfig.config.server.USE_SPAWN_RELEVANT_LOOT ? mob.retrieveRelevantDrops() : mi.retrieveEffectiveDrop(mob.getId()), dropEntry, visibleQuestEntry, otherQuestEntry, chr);
+         
++        if (dropEntry.isEmpty() && visibleQuestEntry.isEmpty()) {   // thanks resinate
++            return;
++        }
++        
+         registerMobItemDrops(droptype, mobpos, chRate, pos, dropEntry, visibleQuestEntry, otherQuestEntry, globalEntry, chr, mob);
+     }
+     
+@@ -1333,6 +1338,18 @@ public int countAlivePlayers() {
+         return count;
+     }
+     
++    public int countBosses() {
++        int count = 0;
++        
++        for(MapleMonster mob: getAllMonsters()) {
++            if (mob.isBoss()) {
++                count++;
++            }
++        }
++        
++        return count;
++    }
++    
+     public boolean damageMonster(final MapleCharacter chr, final MapleMonster monster, final int damage) {
+         if (monster.getId() == 8800000) {
+             for (MapleMapObject object : chr.getMap().getMapObjects()) {
+@@ -1388,6 +1405,9 @@ private boolean removeKilledMonsterObject(MapleMonster monster) {
+             spawnedMonstersOnMap.decrementAndGet();
+             removeMapObject(monster);
+             monster.disposeMapObject();
++            if (monster.hasBossHPBar()) {   // thanks resinate for noticing boss HPbar not clearing after mob defeat in certain scenarios
++                broadcastBossHpMessage(monster, monster.hashCode(), monster.makeBossHPBarPacket(), monster.getPosition());
++            }
+             
+             return true;
+         } finally {
+@@ -1462,14 +1482,13 @@ public void killMonster(final MapleMonster monster, final MapleCharacter chr, fi
+                                 if (mons != null) {
+                                     if (mons.getId() == 8800000) {
+                                         makeMonsterReal(mons);
+-                                        mons.aggroUpdateController();
+                                         break;
+                                     }
+                                 }
+                             }
+                         }
+                     }
+-
++                    
+                     MapleCharacter dropOwner = monster.killBy(chr);
+                     if (withDrops && !monster.dropsDisabled()) {
+                         if (dropOwner == null) {
+@@ -1904,10 +1923,7 @@ public void sendPackets(MapleClient c) {
+         });
+         
+         monster.aggroUpdateController();
+-        
+-        if (monster.hasBossHPBar()) {
+-            broadcastBossHpMessage(monster, monster.hashCode(), monster.makeBossHPBarPacket(), monster.getPosition());
+-        }
++        updateBossSpawn(monster);
+         
+         spawnedMonstersOnMap.incrementAndGet();
+         addSelfDestructive(monster);
+@@ -1946,7 +1962,7 @@ public void run() {
+     public void dismissRemoveAfter(final MapleMonster monster) {
+         Runnable removeAfterAction = monster.popRemoveAfterAction();
+         if (removeAfterAction != null) {
+-            OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++            OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+             service.forceRunOverallAction(mapid, removeAfterAction);
+         }
+     }
+@@ -2009,6 +2025,7 @@ public void sendPackets(MapleClient c) {
+         }, null);
+         
+         monster.aggroUpdateController();
++        updateBossSpawn(monster);
+         
+         if ((monster.getTeam() == 1 || monster.getTeam() == 0) && (isCPQMap() || isCPQMap2())) {
+             List<MCSkill> teamS = null;
+@@ -2025,10 +2042,6 @@ public void sendPackets(MapleClient c) {
+                 }
+             }
+         }
+-        
+-        if (monster.hasBossHPBar()) {
+-            broadcastBossHpMessage(monster, monster.hashCode(), monster.makeBossHPBarPacket(), monster.getPosition());
+-        }
+ 
+         if (monster.getDropPeriodTime() > 0) { //9300102 - Watchhog, 9300061 - Moon Bunny (HPQ), 9300093 - Tylus
+             if (monster.getId() == 9300102) {
+@@ -2078,10 +2091,7 @@ public void sendPackets(MapleClient c) {
+         });
+         
+         monster.aggroUpdateController();
+-        
+-        if (monster.hasBossHPBar()) {
+-            broadcastBossHpMessage(monster, monster.hashCode(), monster.makeBossHPBarPacket(), monster.getPosition());
+-        }
++        updateBossSpawn(monster);
+ 
+         spawnedMonstersOnMap.incrementAndGet();
+         addSelfDestructive(monster);
+@@ -2105,8 +2115,9 @@ public void sendPackets(MapleClient c) {
+     public void makeMonsterReal(final MapleMonster monster) {
+         monster.setFake(false);
+         broadcastMessage(MaplePacketCreator.makeMonsterReal(monster));
+-        
++        monster.broadcastMonsterStatus();
+         monster.aggroUpdateController();
++        updateBossSpawn(monster);
+     }
+ 
+     public void spawnReactor(final MapleReactor reactor) {
+@@ -2208,7 +2219,7 @@ public void run() {
+             }
+         };
+         
+-        MobMistService service = (MobMistService) this.getChannelServer().getServiceAccess(ServiceType.MOB_MIST);
++        MobMistService service = (MobMistService) this.getChannelServer().getServiceAccess(ChannelServices.MOB_MIST);
+         service.registerMobMistCancelAction(mapid, mistSchedule, duration);
+     }
+     
+@@ -2308,7 +2319,7 @@ public final void spawnItemDropList(List<Integer> list, int minCopies, int maxCo
+     }
+ 
+     private void registerMapSchedule(Runnable r, long delay) {
+-        OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        OverallService service = (OverallService) this.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+         service.registerOverallAction(mapid, r, delay);
+     }
+     
+@@ -2795,7 +2806,7 @@ public void removePlayerPuppet(MapleCharacter player) {
+     public void removePlayer(MapleCharacter chr) {
+         Channel cserv = chr.getClient().getChannelServer();
+         
+-        FaceExpressionService service = (FaceExpressionService) this.getChannelServer().getServiceAccess(ServiceType.FACE_EXPRESSION);
++        FaceExpressionService service = (FaceExpressionService) this.getChannelServer().getServiceAccess(ChannelServices.FACE_EXPRESSION);
+         service.unregisterFaceExpression(mapid, chr);
+         chr.unregisterChairBuff();
+         
+@@ -2914,6 +2925,21 @@ private void broadcastMessage(MapleCharacter source, final byte[] packet, double
+         }
+     }
+     
++    private void updateBossSpawn(MapleMonster monster) {
++        if (monster.hasBossHPBar()) {
++            broadcastBossHpMessage(monster, monster.hashCode(), monster.makeBossHPBarPacket(), monster.getPosition());
++        }
++        if (monster.isBoss()) {
++            if (unclaimOwnership() != null) {
++                String mobName = MapleMonsterInformationProvider.getInstance().getMobNameFromId(monster.getId());
++                if (mobName != null) {
++                    mobName = mobName.trim();
++                    this.dropMessage(5, "This lawn has been taken siege by " + mobName + "'s forces and will be kept hold until their defeat.");
++                }
++            }
++        }
++    }
++    
+     public void broadcastBossHpMessage(MapleMonster mm, int bossHash, final byte[] packet) {
+         broadcastBossHpMessage(mm, bossHash, null, packet, Double.POSITIVE_INFINITY, null);
+     }
+@@ -3556,7 +3582,7 @@ public void run() {
+                             if (reactor.getDelay() > 0) {
+                                 MapleMap reactorMap = reactor.getMap();
+                                 
+-                                OverallService service = (OverallService) reactorMap.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++                                OverallService service = (OverallService) reactorMap.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+                                 service.registerOverallAction(reactorMap.getId(), new Runnable() {
+                                     @Override
+                                     public void run() {
+@@ -4219,8 +4245,13 @@ public boolean claimOwnership(MapleCharacter chr) {
+         }
+     }
+     
++    public MapleCharacter unclaimOwnership() {
++        MapleCharacter lastOwner = this.mapOwner;
++        return unclaimOwnership(lastOwner) ? lastOwner : null;
++    }
++    
+     public boolean unclaimOwnership(MapleCharacter chr) {
+-        if (mapOwner == chr) {
++        if (chr != null && mapOwner == chr) {
+             this.mapOwner = null;
+             chr.setOwnedMap(null);
+             
+@@ -4255,7 +4286,7 @@ public boolean isOwnershipRestricted(MapleCharacter chr) {
+     public void checkMapOwnerActivity() {
+         long timeNow = Server.getInstance().getCurrentTime();
+         if (timeNow - mapOwnerLastActivityTime > 60000) {
+-            if (unclaimOwnership(mapOwner)) {
++            if (unclaimOwnership() != null) {
+                 this.dropMessage(5, "This lawn is now free real estate.");
+             }
+         }
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 55b3f2ba7..d98158e6c 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -54,7 +54,7 @@
+         nameData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/String.wz")).getData("Map.img");
+         mapSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Map.wz"));
+     }
+-
++    
+     private static void loadLifeFromWz(MapleMap map, MapleData mapData) {
+         for (MapleData life : mapData.getChildByPath("life")) {
+             life.getName();
+@@ -309,9 +309,10 @@ public static MapleMap loadMapFromWz(int mapid, int world, int channel, EventIns
+                 }
+             }
+         }
++        
+         try {
+-            map.setMapName(MapleDataTool.getString("mapName", nameData.getChildByPath(getMapStringName(mapid)), ""));
+-            map.setStreetName(MapleDataTool.getString("streetName", nameData.getChildByPath(getMapStringName(mapid)), ""));
++            map.setMapName(loadPlaceName(mapid));
++            map.setStreetName(loadStreetName(mapid));
+         } catch (Exception e) {
+             if (mapid / 1000 != 1020) {     // explorer job introduction scenes
+                 e.printStackTrace();
+@@ -434,4 +435,20 @@ private static String getMapStringName(int mapid) {
+         return builder.toString();
+     }
+     
++    public static String loadPlaceName(int mapid) throws Exception {
++        try {
++            return MapleDataTool.getString("mapName", nameData.getChildByPath(getMapStringName(mapid)), "");
++        } catch (Exception e) {
++            return "";
++        }
++    }
++    
++    public static String loadStreetName(int mapid) throws Exception {
++        try {
++            return MapleDataTool.getString("streetName", nameData.getChildByPath(getMapStringName(mapid)), "");
++        } catch (Exception e) {
++            return "";
++        }
++    }
++    
+ }
+diff --git a/src/server/maps/MapleMapManager.java b/src/server/maps/MapleMapManager.java
+index db3df6d49..bda9c73af 100644
+--- a/src/server/maps/MapleMapManager.java
++++ b/src/server/maps/MapleMapManager.java
+@@ -21,11 +21,12 @@
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ import scripting.event.EventInstanceManager;
+ 
+ public class MapleMapManager {
+@@ -35,17 +36,17 @@
+     
+     private Map<Integer, MapleMap> maps = new HashMap<>();
+     
+-    private ReadLock mapsRLock;
+-    private WriteLock mapsWLock;
++    private MonitoredReadLock mapsRLock;
++    private MonitoredWriteLock mapsWLock;
+ 
+     public MapleMapManager(EventInstanceManager eim, int world, int channel) {
+         this.world = world;
+         this.channel = channel;
+         this.event = eim;
+ 
+-        ReentrantReadWriteLock rrwl = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_MANAGER);
+-        this.mapsRLock = rrwl.readLock();
+-        this.mapsWLock = rrwl.writeLock();
++        MonitoredReentrantReadWriteLock rrwl = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_MANAGER);
++        this.mapsRLock = MonitoredReadLockFactory.createLock(rrwl);
++        this.mapsWLock = MonitoredWriteLockFactory.createLock(rrwl);
+     }
+ 
+     public MapleMap resetMap(int mapid) {
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 753030343..6ec657c0a 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -36,8 +36,8 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import net.server.audit.locks.MonitoredLockType;
+-import net.server.channel.services.ServiceType;
+-import net.server.channel.services.task.OverallService;
++import net.server.services.type.ChannelServices;
++import net.server.services.task.channel.OverallService;
+ import server.partyquest.GuardianSpawnPoint;
+ 
+ /**
+@@ -371,7 +371,7 @@ public void run() {
+         
+         delayedRespawnRun = r;
+         
+-        OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++        OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+         service.registerOverallAction(map.getId(), r, this.getDelay());
+     }
+     
+@@ -379,7 +379,7 @@ public boolean forceDelayedRespawn() {
+         Runnable r = delayedRespawnRun;
+         
+         if (r != null) {
+-            OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ServiceType.OVERALL);
++            OverallService service = (OverallService) map.getChannelServer().getServiceAccess(ChannelServices.OVERALL);
+             service.forceRunOverallAction(map.getId(), r);
+             return true;
+         } else {
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index a33167d19..ab6914542 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -225,7 +225,7 @@ public boolean canQuestByInfoProgress(MapleCharacter chr) {
+             
+             int ixSize = ix.size();
+             for (int i = 0; i < ixSize; i++) {
+-                String progress = chr.getClient().getAbstractPlayerInteraction().getQuestProgress(infoNumber, i);
++                String progress = chr.getAbstractPlayerInteraction().getQuestProgress(infoNumber, i);
+                 String ixProgress = ix.get(i);
+                 
+                 if (!progress.contentEquals(ixProgress)) {
+@@ -387,19 +387,19 @@ public short getId() {
+     public int getStartItemAmountNeeded(int itemid) {
+         MapleQuestRequirement req = startReqs.get(MapleQuestRequirementType.ITEM);
+         if(req == null)
+-                return 0;
++                return Integer.MIN_VALUE;
+ 		
+         ItemRequirement ireq = (ItemRequirement) req;
+-        return ireq.getItemAmountNeeded(itemid);
++        return ireq.getItemAmountNeeded(itemid, false);
+     }
+     
+     public int getCompleteItemAmountNeeded(int itemid) {
+         MapleQuestRequirement req = completeReqs.get(MapleQuestRequirementType.ITEM);
+         if(req == null)
+-                return 0;
++                return Integer.MAX_VALUE;
+ 		
+         ItemRequirement ireq = (ItemRequirement) req;
+-        return ireq.getItemAmountNeeded(itemid);
++        return ireq.getItemAmountNeeded(itemid, true);
+     }
+ 
+     public int getMobAmountNeeded(int mid) {
+diff --git a/src/server/quest/actions/ItemAction.java b/src/server/quest/actions/ItemAction.java
+index 6d701603b..aa8b696a4 100644
+--- a/src/server/quest/actions/ItemAction.java
++++ b/src/server/quest/actions/ItemAction.java
+@@ -272,7 +272,7 @@ private boolean canHold(MapleCharacter chr, List<Pair<Item, MapleInventoryType>>
+                 }
+                 
+                 // thanks onechord for noticing quests unnecessarily giving out "full inventory" from quests that also takes items from players
+-                return chr.getClient().getAbstractPlayerInteraction().canHoldAllAfterRemoving(toAddItemids, toAddQuantity, toRemoveItemids, toRemoveQuantity);
++                return chr.getAbstractPlayerInteraction().canHoldAllAfterRemoving(toAddItemids, toAddQuantity, toRemoveItemids, toRemoveQuantity);
+         }
+ 	
+ 	private boolean canGetItem(ItemData item, MapleCharacter chr) {
+diff --git a/src/server/quest/requirements/ItemRequirement.java b/src/server/quest/requirements/ItemRequirement.java
+index 6308ce28f..67eb679c2 100644
+--- a/src/server/quest/requirements/ItemRequirement.java
++++ b/src/server/quest/requirements/ItemRequirement.java
+@@ -96,11 +96,12 @@ public boolean check(MapleCharacter chr, Integer npcid) {
+ 		return true;
+ 	}
+ 	
+-	public int getItemAmountNeeded(int itemid) {
+-                if(items.containsKey(itemid)) {
+-			return items.get(itemid);
+-		}
+-		
+-		return 0;
++	public int getItemAmountNeeded(int itemid, boolean complete) {
++                Integer amount = items.get(itemid);
++                if (amount != null) {
++			return amount;
++		} else {
++                        return complete ? Integer.MAX_VALUE : Integer.MIN_VALUE;
++                }
+ 	}
+ }
+diff --git a/src/tools/IntervalBuilder.java b/src/tools/IntervalBuilder.java
+index 1b578515b..f072b4796 100644
+--- a/src/tools/IntervalBuilder.java
++++ b/src/tools/IntervalBuilder.java
+@@ -22,11 +22,12 @@
+ import java.awt.geom.Line2D;
+ import java.util.ArrayList;
+ import java.util.List;
+-import java.util.concurrent.locks.ReentrantReadWriteLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReadLock;
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
++import net.server.audit.locks.MonitoredWriteLock;
++import net.server.audit.locks.factory.MonitoredReadLockFactory;
++import net.server.audit.locks.factory.MonitoredWriteLockFactory;
+ 
+ /**
+  *
+@@ -36,13 +37,13 @@
+         
+     private List<Line2D> intervalLimits = new ArrayList<>();
+     
+-    protected ReadLock intervalRlock;
+-    protected WriteLock intervalWlock;
++    protected MonitoredReadLock intervalRlock;
++    protected MonitoredWriteLock intervalWlock;
+     
+     public IntervalBuilder() {
+-        ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.INTERVAL, true);
+-        intervalRlock = locks.readLock();
+-        intervalWlock = locks.writeLock();
++        MonitoredReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.INTERVAL, true);
++        intervalRlock = MonitoredReadLockFactory.createLock(locks);
++        intervalWlock = MonitoredWriteLockFactory.createLock(locks);
+     }
+ 
+     private void refitOverlappedIntervals(int st, int en, int newFrom, int newTo) {
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index bad5a7988..333b68a14 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1086,7 +1086,6 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.writeShort(chr.getHp());
+                 mplew.writeBool(false);
+                 mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(18);
+                 return mplew.getPacket();
+         }
+         
+@@ -1103,7 +1102,6 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.writeInt(spawnPosition.x);    // spawn position placement thanks to Arnah (Vertisy)
+                 mplew.writeInt(spawnPosition.y);
+                 mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(18);
+                 return mplew.getPacket();
+         }
+         

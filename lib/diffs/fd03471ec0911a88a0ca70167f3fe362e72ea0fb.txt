@@ -1,0 +1,265 @@
+diff --git a/docs/feature_list.txt b/docs/feature_list.txt
+index 1a28ca525..5e9514529 100644
+--- a/docs/feature_list.txt
++++ b/docs/feature_list.txt
+@@ -18,17 +18,17 @@ Feature list:
+ ---------------------------
+ 
+ PQs:
+-* HPQ/KPQ/LPQ/LMPQ/OPQ/EllinPQ/PiratePQ/MagatiaPQ/HorntailPQ/AmoriaPQ 100%.
+-* CWKPQ as Expedition-based event 100%.
+-* Expeditions: Scarga/Horntail/Showa/Zakum/Pinkbean 100%.
++* HPQ/KPQ/LPQ/LMPQ/OPQ/EllinPQ/PiratePQ/MagatiaPQ/HorntailPQ/AmoriaPQ.
++* CWKPQ as Expedition-based event.
++* Expeditions: Scarga/Horntail/Showa/Zakum/Pinkbean.
+ * GuildPQ 100% + Guild queue with multi-lobby systems available.
+-* Brand-new PQs: BossRushPQ, CafePQ 100%.
+-* Mu Lung Dojo 100%.
++* Brand-new PQs: BossRushPQ, CafePQ.
++* Mu Lung Dojo.
+ * BalrogPQ semi-functional.
+ * Capt. Latanica remade as an event (parties can now fight the boss).
+ 
+ Quests:
+-* Doll house quest 100%.
++* Doll house quest functional.
+ * Quests can now reward properly items when matching a reward item with the player's job.
+ * Loads of quests have been patched.
+ * Quest rewards according to jobs works properly.
+@@ -39,7 +39,7 @@ Player Social Network:
+ * Beginners can create and join a "beginner-only" party (characters up to level 10).
+ 
+ Cash & Items:
+-* EXP/DROP/Cosmetic Coupons 100%.
++* EXP/DROP/Cosmetic Coupons.
+ * EXP/DROP coupons now appears as a buff effect when on active time.
+ * Great deal of cash items functional.
+ * New scroll: antibanish. For use only in cases where bosses send a player back to town.
+@@ -66,26 +66,26 @@ PQ potentials:
+ * EIM Pool system - After the first instance setup, next event instances are loaded beforehand and set on a pooling queue, optimizing future loadouts.
+ 
+ Player potentials:
+-* Adventurer Mount quests 100%.
++* Adventurer Mount quests functional.
+ * All Equipment levels up.
+ * Player level rates.
+ * Gain fame by quests.
+ 
+ Server potentials:
+-* Multi-worlds 100%.
++* Multi-worlds.
+ * Inventory auto-gather and auto-sorting feature.
+ * Enhanced auto-pot system: pet uses as many potions as necessary to reach the desired threshold.
+ * Enhanced buff system: smartly checks for the best available buff effects to be active on the player.
+ * Enhanced AP auto-assigner: exactly matches AP with the needed for the player's current level, surplus assigned to the primary attribute.
+ * Mastery book announcer displays droppers of needed books of a player, by reading underlying DB.
+ * Custom jail system (needs provided custom wz).
+-* Delete Character 100% (requires ENABLE_PIC activated).
++* Delete Character (requires ENABLE_PIC activated).
+ * Autosaver (periodically saves on DB current state of every player in-game).
+ * Both fixed and randomized versions of HP/MP growth rate available, regarding player job (enable one at ServerConstants). Placeholder for HP/MP washing feature.
+ 
+ Admin/GM commands:
+ * Server commands layered by GM levels.
+-* Spawn Zakum/Horntail/Pinkbean 100%.
++* Spawn Zakum/Horntail/Pinkbean.
+ * New commands.
+ 
+ External tools:
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 5d165adbb..f65336843 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -656,7 +656,7 @@ Revisto acesso concorrente sobre o componente EM da classe EIM.
+ Refatorado esquema de schedules por toda a source, diminuindo drasticamente as chamadas ao TimerManager.
+ Refatorado algumas chamadas à DB, busca somente aquilo que é necessário.
+ 
+-08 - 09 Novembro 2017,
++08 - 10 Novembro 2017,
+ Adicionado packet para extra slot pendant.
+ Corrigido possível bug em MapleMapFactory.
+-Modificado todas as DB tables agora utilizando InnoDB (ganhos do MyISAM em contraste se tornou ínfimo, para casos críticos).
+\ No newline at end of file
++Otimizado tabelas do SQL agora utilizando índices, promovendo queries mais rápidas, e uso do MyISAM somente em casos onde sabe-se que as tabelas são "somente leitura".
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 6df9a9d3f..694b48911 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS `accounts` (
+   `hwid` varchar(12) NOT NULL DEFAULT '',
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `name` (`name`),
+-  KEY `ranking1` (`id`,`banned`,`gm`)
++  KEY `ranking1` (`id`,`banned`,`gm`),
++  INDEX (id, name),
++  INDEX (id, nxCredit, maplePoint, nxPrepaid)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `alliance` (
+@@ -59,15 +61,16 @@ CREATE TABLE IF NOT EXISTS `alliance` (
+   `rank3` varchar(11) NOT NULL DEFAULT '',
+   `rank4` varchar(11) NOT NULL DEFAULT '',
+   `rank5` varchar(11) NOT NULL DEFAULT '',
+-  PRIMARY KEY (`id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++  PRIMARY KEY (`id`),
++  INDEX (name)
++) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `allianceguilds` (
+   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+   `allianceid` int(10) NOT NULL DEFAULT '-1',
+   `guildid` int(10) NOT NULL DEFAULT '-1',
+   PRIMARY KEY (`id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `area_info` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+@@ -184,7 +187,9 @@ CREATE TABLE IF NOT EXISTS `characters` (
+   KEY `accountid` (`accountid`),
+   KEY `party` (`party`),
+   KEY `ranking1` (`level`,`exp`),
+-  KEY `ranking2` (`gm`,`job`)
++  KEY `ranking2` (`gm`,`job`),
++  INDEX (id, accountid, world),
++  INDEX (id, accountid, name)
+ ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PACK_KEYS=0 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `cooldowns` (
+@@ -206,7 +211,7 @@ CREATE TABLE IF NOT EXISTS `temp_data` (
+   `chance` int(11) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`dropperid`, `itemid`),
+   KEY `mobid` (`dropperid`)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=0 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=0 ;
+ 
+ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+ (1, 9400121, 4000138, 1, 1, 0, 600000),
+@@ -12787,7 +12792,7 @@ CREATE TABLE IF NOT EXISTS `drop_data_global` (
+   `comments` varchar(45) DEFAULT NULL,
+   PRIMARY KEY (`id`),
+   KEY `mobid` (`continent`) USING BTREE
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC AUTO_INCREMENT=5 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC AUTO_INCREMENT=5 ;
+ 
+ INSERT INTO `drop_data_global` (`id`, `continent`, `dropType`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`, `comments`) VALUES
+ (1, 0, 0, 4031865, 1, 1, 0, 35000, 'NX Card 100 PTS'),
+@@ -12860,7 +12865,8 @@ CREATE TABLE IF NOT EXISTS `family_character` (
+   `name` varchar(255) NOT NULL,
+   `juniorsadded` int(11) NOT NULL,
+   `totalreputation` int(11) NOT NULL,
+-  PRIMARY KEY (`cid`)
++  PRIMARY KEY (`cid`),
++  INDEX (cid, familyid)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+ 
+ CREATE TABLE IF NOT EXISTS `gifts` (
+@@ -12891,7 +12897,8 @@ CREATE TABLE IF NOT EXISTS `guilds` (
+   `notice` varchar(101) DEFAULT NULL,
+   `signature` int(11) NOT NULL DEFAULT '0',
+   `allianceId` int(11) unsigned NOT NULL DEFAULT '0',
+-  PRIMARY KEY (`guildid`)
++  PRIMARY KEY (`guildid`),
++  INDEX (guildid, name)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `hiredmerchant` (
+@@ -13045,7 +13052,7 @@ CREATE TABLE IF NOT EXISTS `makercreatedata` (
+   `quantity` smallint(6) NOT NULL,
+   `tuc` tinyint(3) NOT NULL,
+   PRIMARY KEY (`id`,`itemid`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
++) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+ 
+ INSERT INTO `makercreatedata` (`id`, `itemid`, `req_level`, `req_maker_level`, `req_meso`, `req_item`, `req_equip`, `catalyst`, `quantity`, `tuc`) VALUES
+ (0, 2040727, 50, 1, 50000, 0, 1122013, 0, 1, 0),
+@@ -13884,7 +13891,7 @@ CREATE TABLE IF NOT EXISTS `makerrecipedata` (
+   `req_item` int(11) NOT NULL,
+   `count` smallint(6) NOT NULL,
+   PRIMARY KEY (`itemid`,`req_item`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
++) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+ 
+ INSERT INTO `makerrecipedata` (`itemid`, `req_item`, `count`) VALUES
+ (1002022, 4007001, 5),
+@@ -15808,7 +15815,7 @@ CREATE TABLE IF NOT EXISTS `makerrewarddata` (
+   `quantity` smallint(6) NOT NULL,
+   `prob` tinyint(3) unsigned NOT NULL DEFAULT '100',
+   PRIMARY KEY (`itemid`,`rewardid`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
++) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+ 
+ INSERT INTO `makerrewarddata` (`itemid`, `rewardid`, `quantity`, `prob`) VALUES
+ (4250000, 4250000, 1, 14),
+@@ -15937,7 +15944,7 @@ CREATE TABLE IF NOT EXISTS `monstercarddata` (
+   `mobid` int(11) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`id`) USING BTREE,
+   UNIQUE KEY `id` (`id`)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=309 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=309 ;
+ 
+ INSERT INTO `monstercarddata` (`id`, `cardid`, `mobid`) VALUES
+ (1, 2380000, 100100),
+@@ -16323,7 +16330,7 @@ CREATE TABLE IF NOT EXISTS `nxcoupons` (
+   `starthour` int(11) NOT NULL DEFAULT '0',
+   `endhour` int(11) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=41 ;
++) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=41 ;
+ 
+ INSERT INTO `nxcoupons` (`id`, `couponid`, `rate`, `activeday`, `starthour`, `endhour`) VALUES
+ (1,5211000,2,254,18,20),
+@@ -16456,7 +16463,7 @@ CREATE TABLE IF NOT EXISTS `reactordrops` (
+   `questid` int(5) NOT NULL DEFAULT '-1',
+   PRIMARY KEY (`reactordropid`),
+   KEY `reactorid` (`reactorid`)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PACK_KEYS=1 AUTO_INCREMENT=841 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 PACK_KEYS=1 AUTO_INCREMENT=841 ;
+ 
+ INSERT INTO `reactordrops` (`reactordropid`, `reactorid`, `itemid`, `chance`, `questid`) VALUES
+ (1, 2001, 4031161, 1, 1008),
+@@ -17339,7 +17346,7 @@ CREATE TABLE IF NOT EXISTS `shopitems` (
+   `pitch` int(11) NOT NULL DEFAULT '0',
+   `position` int(11) NOT NULL COMMENT 'sort is an arbitrary field designed to give leeway when modifying shops. The lowest number is 104 and it increments by 4 for each item to allow decent space for swapping/inserting/removing items.',
+   PRIMARY KEY (`shopitemid`)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=20047 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=20047 ;
+ 
+ INSERT INTO `shopitems` (`shopitemid`, `shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+ (1, 11000, 1332005, 500, 0, 104),
+@@ -20967,7 +20974,7 @@ CREATE TABLE IF NOT EXISTS `shops` (
+   `shopid` int(10) unsigned NOT NULL AUTO_INCREMENT,
+   `npcid` int(11) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`shopid`)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=10000000 ;
++) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=10000000 ;
+ 
+ INSERT INTO `shops` (`shopid`, `npcid`) VALUES
+ (11000, 11000),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index d309ad2ff..aa9bddafc 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19884,8 +19884,9 @@ USE `maplesolaxia`;
+     `chance` int(11) NOT NULL DEFAULT '0',
+     PRIMARY KEY (`id`),
+     UNIQUE KEY (`dropperid`, `itemid`),
+-    KEY `mobid` (`dropperid`)
+-  ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++    KEY `mobid` (`dropperid`),
++    INDEX (dropperid, itemid)
++  ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ 	#pass (sorted) data from one table to another
+   INSERT INTO drop_data (dropperid, itemid, minimum_quantity, maximum_quantity, questid, chance)
+@@ -21223,7 +21224,7 @@ USE `maplesolaxia`;
+     `mobid` int(11) NOT NULL DEFAULT '0',
+     PRIMARY KEY (`id`) USING BTREE,
+     UNIQUE KEY `id` (`id`)
+-  ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++  ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+   INSERT INTO `monstercarddata` (`cardid`, `mobid`) (SELECT itemid, min(dropperid) FROM drop_data where itemid>=2380000 and itemid<2390000 group by itemid);
+ 

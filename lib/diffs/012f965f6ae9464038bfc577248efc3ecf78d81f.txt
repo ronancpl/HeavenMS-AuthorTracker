@@ -1,0 +1,1285 @@
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 1a1bff73c..4881b9179 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -49,6 +49,7 @@ Player Social Network:
+ 
+ * Guild and Alliance system fully functional.
+ * Beginners can create and join a "beginner-only" party (characters up to level 10).
++* Enhanced synchronization on Player Shops and Hired Merchants. Transactions made are instantly informed to the owner.
+ 
+ Cash & Items:
+ 
+@@ -61,6 +62,7 @@ Cash & Items:
+ * Vega's spell.
+ * Owl of Minerva.
+ * Pet item ignore.
++* New Year's card (New Year effect sometimes d/c's a player).
+ 
+ Monsters, Maps & Reactors:
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 1324c9912..700c55eca 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -723,4 +723,9 @@ Adicionado comando "droplimit", cuja funcionalidade 
+ 11 - 12 Dezembro 2017,
+ Resolvido bug onde contador do drops do mapa não atualizaria seu valor em casos onde reatores consomem itens ou ao se aplicar comandos como "cleardrops".
+ Corrigido server enviando packets com BroadcastMessage somente para o world 0, ao invés de ser para o world alvo.
+-MapleQuestItemFetcher agora mostra quests já expiradas no relatório.
+\ No newline at end of file
++MapleQuestItemFetcher agora mostra quests já expiradas no relatório.
++
++17 - 19 Dezembro 2017,
++Implementado New Years card.
++Adicionado informação, destinado ao dono da loja, de compra de itens dos Player Shops e dos Hired Merchants.
++Resolvido um problema com overflow em Player Shops.
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 205f602b5..777f0eb6f 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -16369,6 +16369,21 @@ CREATE TABLE IF NOT EXISTS `mts_items` (
+   PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
++CREATE TABLE IF NOT EXISTS `newyear` (
++  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
++  `senderid` int(10) NOT NULL DEFAULT '-1',
++  `sendername` varchar(13) DEFAULT '',
++  `receiverid` int(10) NOT NULL DEFAULT '-1',
++  `receivername` varchar(13) DEFAULT '',
++  `message` varchar(120) DEFAULT '',
++  `senderdiscard` tinyint(1) NOT NULL DEFAULT '0',
++  `receiverdiscard` tinyint(1) NOT NULL DEFAULT '0',
++  `received` tinyint(1) NOT NULL DEFAULT '0',
++  `timesent` bigint(20) unsigned NOT NULL,
++  `timereceived` bigint(20) unsigned NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++
+ CREATE TABLE IF NOT EXISTS `notes` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+   `to` varchar(13) NOT NULL DEFAULT '',
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 430964850..41e921b01 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -116,6 +116,7 @@
+ import client.inventory.MapleWeaponType;
+ import client.inventory.ModifyInventory;
+ import client.inventory.PetDataFactory;
++import client.newyear.NewYearCardRecord;
+ import constants.ExpTable;
+ import constants.GameConstants;
+ import constants.ItemConstants;
+@@ -238,6 +239,7 @@
+     private MonsterBook monsterbook;
+     private MapleRing marriageRing;
+     private CashShop cashshop;
++    private Set<NewYearCardRecord> newyears = new LinkedHashSet<>();
+     private SavedLocation savedLocations[];
+     private SkillMacro[] skillMacros = new SkillMacro[5];
+     private List<Integer> lastmonthfameids;
+@@ -830,7 +832,7 @@ public void Hide(boolean hide, boolean login) {
+                 announce(MaplePacketCreator.getGMEffect(0x10, (byte) 0));
+                 List<MapleBuffStat> dsstat = Collections.singletonList(MapleBuffStat.DARKSIGHT);
+                 getMap().broadcastGMMessage(this, MaplePacketCreator.cancelForeignBuff(id, dsstat), false);
+-                getMap().broadcastMessage(this, MaplePacketCreator.spawnPlayerMapobject(this), false);
++                getMap().broadcastMessage(this, MaplePacketCreator.spawnPlayerMapObject(this), false);
+                 
+                 for(MapleSummon ms: this.getSummonsValues()) {
+                     getMap().broadcastNONGMMessage(this, MaplePacketCreator.spawnSummon(ms, false), false);
+@@ -843,7 +845,7 @@ public void Hide(boolean hide, boolean login) {
+                 if (!login) {
+                     getMap().broadcastMessage(this, MaplePacketCreator.removePlayerFromMap(getId()), false);
+                 }
+-                getMap().broadcastGMMessage(this, MaplePacketCreator.spawnPlayerMapobject(this), false);
++                getMap().broadcastGMMessage(this, MaplePacketCreator.spawnPlayerMapObject(this), false);
+                 List<Pair<MapleBuffStat, Integer>> dsstat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.DARKSIGHT, 0));
+                 getMap().broadcastGMMessage(this, MaplePacketCreator.giveForeignBuff(id, dsstat), false);
+                 for (MapleMonster mon : this.getControlledMonsters()) {
+@@ -1074,7 +1076,7 @@ public void changeJob(MapleJob newJob) {
+         guildUpdate();
+         
+         getMap().broadcastMessage(this, MaplePacketCreator.removePlayerFromMap(this.getId()), false);
+-        getMap().broadcastMessage(this, MaplePacketCreator.spawnPlayerMapobject(this), false);
++        getMap().broadcastMessage(this, MaplePacketCreator.spawnPlayerMapObject(this), false);
+         getMap().broadcastMessage(this, MaplePacketCreator.showForeignEffect(getId(), 8), false);
+         
+         if (GameConstants.hasSPTable(newJob) && newJob.getId() != 2001) {
+@@ -5338,6 +5340,8 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 }
+             }
+             
++            NewYearCardRecord.loadPlayerNewYearCards(ret);
++            
+             PreparedStatement ps2, ps3;
+             ResultSet rs2, rs3;
+             
+@@ -7571,7 +7575,7 @@ public void sendDestroyData(MapleClient client) {
+     @Override
+     public void sendSpawnData(MapleClient client) {
+         if (!this.isHidden() || client.getPlayer().gmLevel() > 1) {
+-            client.announce(MaplePacketCreator.spawnPlayerMapobject(this));
++            client.announce(MaplePacketCreator.spawnPlayerMapObject(this));
+         }
+ 
+         if (this.isHidden()) {
+@@ -7600,6 +7604,40 @@ public String getLinkedName() {
+     public CashShop getCashShop() {
+         return cashshop;
+     }
++    
++    public Set<NewYearCardRecord> getNewYearRecords() {
++        return newyears;
++    }
++    
++    public Set<NewYearCardRecord> getReceivedNewYearRecords() {
++        Set<NewYearCardRecord> received = new LinkedHashSet<>();
++        
++        for(NewYearCardRecord nyc : newyears) {
++            if(nyc.isReceiverCardReceived()) {
++                received.add(nyc);
++            }
++        }
++        
++        return received;
++    }
++    
++    public NewYearCardRecord getNewYearRecord(int cardid) {
++        for(NewYearCardRecord nyc : newyears) {
++            if(nyc.getId() == cardid) {
++                return nyc;
++            }
++        }
++        
++        return null;
++    }
++    
++    public void addNewYearRecord(NewYearCardRecord newyear) {
++        newyears.add(newyear);
++    }
++    
++    public void removeNewYearRecord(NewYearCardRecord newyear) {
++        newyears.remove(newyear);
++    }
+ 
+     public void portalDelay(long delay) {
+         this.portaldelay = System.currentTimeMillis() + delay;
+diff --git a/src/client/newyear/NewYearCardRecord.java b/src/client/newyear/NewYearCardRecord.java
+new file mode 100644
+index 000000000..2ff15d046
+--- /dev/null
++++ b/src/client/newyear/NewYearCardRecord.java
+@@ -0,0 +1,377 @@
++/*
++ * This file is part of the HeavenMS (MapleSolaxiaV2) Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package client.newyear;
++
++import client.MapleCharacter;
++
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++import java.util.HashSet;
++import java.util.Set;
++import java.util.concurrent.ScheduledFuture;
++import net.server.Server;
++import server.TimerManager;
++import tools.DatabaseConnection;
++import tools.MaplePacketCreator;
++
++/**
++ *
++ * @author Ronan (credits to Eric for showing the New Year opcodes and handler layout)
++ */
++public class NewYearCardRecord {
++    private int id;
++    
++    private int senderId; 
++    private String senderName; 
++    private boolean senderDiscardCard; 
++    
++    private int receiverId; 
++    private String receiverName; 
++    private boolean receiverDiscardCard; 
++    private boolean receiverReceivedCard;
++    
++    private String stringContent;
++    private long dateSent = 0;
++    private long dateReceived = 0;
++    
++    private ScheduledFuture<?> sendTask = null;
++    
++    public NewYearCardRecord(int senderid, String sender, int receiverid, String receiver, String message) {
++        this.id = -1;
++        
++        this.senderId = senderid;
++        this.senderName = sender;
++        this.senderDiscardCard = false;
++        
++        this.receiverId = receiverid;
++        this.receiverName = receiver;
++        this.receiverDiscardCard = false;
++        this.receiverReceivedCard = false;
++        
++        this.stringContent = message;
++        
++        this.dateSent = System.currentTimeMillis();
++        this.dateReceived = 0;
++    }
++    
++    private void setExtraNewYearCardRecord(int id, boolean senderDiscardCard, boolean receiverDiscardCard, boolean receiverReceivedCard, long dateSent, long dateReceived) {
++        this.id = id;
++        this.senderDiscardCard = senderDiscardCard;
++        this.receiverDiscardCard = receiverDiscardCard;
++        this.receiverReceivedCard = receiverReceivedCard;
++        
++        this.dateSent = dateSent;
++        this.dateReceived = dateReceived;
++    }
++    
++    public void setId(int cardid) {
++        this.id = cardid;
++    }
++    
++    public int getId() {
++        return this.id;
++    }
++    
++    public int getSenderId() {
++        return senderId;
++    }
++    
++    public String getSenderName() {
++        return senderName;
++    }
++    
++    public boolean isSenderCardDiscarded() {
++        return senderDiscardCard;
++    }
++    
++    public int getReceiverId() {
++        return receiverId;
++    }
++    
++    public String getReceiverName() {
++        return receiverName;
++    }
++    
++    public boolean isReceiverCardDiscarded() {
++        return receiverDiscardCard;
++    }
++    
++    public boolean isReceiverCardReceived() {
++        return receiverReceivedCard;
++    }
++    
++    public String getMessage() {
++        return stringContent;
++    }
++    
++    public long getDateSent() {
++        return dateSent;
++    }
++    
++    public long getDateReceived() {
++        return dateReceived;
++    }
++            
++    public static void saveNewYearCard(NewYearCardRecord newyear) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("INSERT INTO newyear VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
++                ps.setInt(1, newyear.senderId);
++                ps.setString(2, newyear.senderName);
++                ps.setInt(3, newyear.receiverId);
++                ps.setString(4, newyear.receiverName);
++                
++                ps.setString(5, newyear.stringContent);
++                
++                ps.setBoolean(6, newyear.senderDiscardCard);
++                ps.setBoolean(7, newyear.receiverDiscardCard);
++                ps.setBoolean(8, newyear.receiverReceivedCard);
++                
++                ps.setLong(9, newyear.dateSent);
++                ps.setLong(10, newyear.dateReceived);
++        
++                ps.executeUpdate();
++                try (ResultSet rs = ps.getGeneratedKeys()) {
++                    rs.next();
++                    newyear.id = rs.getInt(1);
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++    
++    public static void updateNewYearCard(NewYearCardRecord newyear) {
++        newyear.receiverReceivedCard = true;
++        newyear.dateReceived = System.currentTimeMillis();
++        
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("UPDATE newyear SET received=1, timereceived=? WHERE id=?")) {
++                ps.setLong(1, newyear.dateReceived);
++                ps.setInt(2, newyear.id);
++        
++                ps.executeUpdate();
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++    
++    public static NewYearCardRecord loadNewYearCard(int cardid) {
++        NewYearCardRecord nyc = Server.getInstance().getNewYearCard(cardid);
++        if(nyc != null) return nyc;
++        
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM newyear WHERE id = ?")) {
++                ps.setInt(1, cardid);
++                try (ResultSet rs = ps.executeQuery()) {
++                    if (rs.next()) {
++                        NewYearCardRecord newyear = new NewYearCardRecord(rs.getInt("senderid"), rs.getString("sendername"), rs.getInt("receiverid"), rs.getString("receivername"), rs.getString("message"));
++                        newyear.setExtraNewYearCardRecord(rs.getInt("id"), rs.getBoolean("senderdiscard"), rs.getBoolean("receiverdiscard"), rs.getBoolean("received"), rs.getLong("timesent"), rs.getLong("timereceived"));
++                        
++                        Server.getInstance().setNewYearCard(newyear);
++                        return newyear;
++                    }
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++        
++        return null;
++    }
++    
++    public static void loadPlayerNewYearCards(MapleCharacter chr) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM newyear WHERE senderid = ? OR receiverid = ?")) {
++                ps.setInt(1, chr.getId());
++                ps.setInt(2, chr.getId());
++                try (ResultSet rs = ps.executeQuery()) {
++                    while (rs.next()) {
++                        NewYearCardRecord newyear = new NewYearCardRecord(rs.getInt("senderid"), rs.getString("sendername"), rs.getInt("receiverid"), rs.getString("receivername"), rs.getString("message"));
++                        newyear.setExtraNewYearCardRecord(rs.getInt("id"), rs.getBoolean("senderdiscard"), rs.getBoolean("receiverdiscard"), rs.getBoolean("received"), rs.getLong("timesent"), rs.getLong("timereceived"));
++                        
++                        chr.addNewYearRecord(newyear);
++                    }
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++    
++    public static void printNewYearRecords(MapleCharacter chr) {
++        chr.dropMessage(5, "New Years: " + chr.getNewYearRecords().size());
++        
++        for(NewYearCardRecord nyc : chr.getNewYearRecords()) {
++            chr.dropMessage(5, "-------------------------------");
++            
++            chr.dropMessage(5, "Id: " + nyc.id);
++            
++            chr.dropMessage(5, "Sender id: " + nyc.senderId);
++            chr.dropMessage(5, "Sender name: " + nyc.senderName);
++            chr.dropMessage(5, "Sender discard: " + nyc.senderDiscardCard);
++            
++            chr.dropMessage(5, "Receiver id: " + nyc.receiverId);
++            chr.dropMessage(5, "Receiver name: " + nyc.receiverName);
++            chr.dropMessage(5, "Receiver discard: " + nyc.receiverDiscardCard);
++            chr.dropMessage(5, "Received: " + nyc.receiverReceivedCard);
++            
++            chr.dropMessage(5, "Message: " + nyc.stringContent);
++            chr.dropMessage(5, "Date sent: " + nyc.dateSent);
++            chr.dropMessage(5, "Date recv: " + nyc.dateReceived);
++        }
++    }
++    
++    private static int getCharacterWorld(int receiverid) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("SELECT world FROM characters WHERE id = ?")) {
++                ps.setInt(1, receiverid);
++                try (ResultSet rs = ps.executeQuery()) {
++                    if (rs.next()) {
++                        return rs.getInt("world");
++                    }
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++        
++        return -1;
++    }
++    
++    public void startNewYearCardTask() {
++        if(sendTask != null) return;
++        
++        sendTask = TimerManager.getInstance().register(new Runnable() {
++            @Override
++            public void run() {
++                int world = getCharacterWorld(receiverId);
++                if(world == -1) {
++                    sendTask.cancel(false);
++                    sendTask = null;
++                    
++                    return;
++                }
++                
++                MapleCharacter target = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(receiverId);
++                if(target != null && target.isLoggedin() && !target.isAwayFromWorld()) {
++                    target.announce(MaplePacketCreator.onNewYearCardRes(target, NewYearCardRecord.this, 0xC, 0));
++                }
++            }
++        }, 1000 * 60 * 60); //1 Hour
++    }
++    
++    public void stopNewYearCardTask() {
++        if(sendTask != null) {
++            sendTask.cancel(false);
++            sendTask = null;
++        }
++    }
++    
++    private static void deleteNewYearCard(int id) {
++        Server.getInstance().removeNewYearCard(id);
++        
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("DELETE FROM newyear WHERE id = ?")) {
++                ps.setInt(1, id);
++                ps.executeUpdate();
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++    
++    public static void removeAllNewYearCard(boolean send, MapleCharacter chr) {
++        int cid = chr.getId();
++        
++        /* not truly needed since it's going to be hard removed from the DB
++        String actor = (send ? "sender" : "receiver");
++        
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("UPDATE newyear SET " + actor + "id = 1, received = 0 WHERE " + actor + "id = ?")) {
++                ps.setInt(1, cid);
++                ps.executeUpdate();
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++        */
++        
++        Set<NewYearCardRecord> set = new HashSet<>(chr.getNewYearRecords());
++        for(NewYearCardRecord nyc : set) {
++            if(send) {
++                if(nyc.senderId == cid) {
++                    nyc.senderDiscardCard = true;
++                    nyc.receiverReceivedCard = false;
++                    
++                    chr.removeNewYearRecord(nyc);
++                    deleteNewYearCard(nyc.id);
++                    
++                    chr.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(chr, nyc, 0xE, 0));
++
++                    MapleCharacter other = chr.getClient().getWorldServer().getPlayerStorage().getCharacterById(nyc.getReceiverId());
++                    if(other != null && other.isLoggedin() && !other.isAwayFromWorld()) {
++                        other.removeNewYearRecord(nyc);
++                        other.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(other, nyc, 0xE, 0));
++
++                        other.dropMessage(6, "[NEW YEAR] " + chr.getName() + " threw away the New Year card.");
++                    }
++                }
++            } else {
++                if(nyc.receiverId == cid) {
++                    nyc.receiverDiscardCard = true;
++                    nyc.receiverReceivedCard = false;
++                    
++                    chr.removeNewYearRecord(nyc);
++                    deleteNewYearCard(nyc.id);
++                    
++                    chr.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(chr, nyc, 0xE, 0));
++
++                    MapleCharacter other = chr.getClient().getWorldServer().getPlayerStorage().getCharacterById(nyc.getSenderId());
++                    if(other != null && other.isLoggedin() && !other.isAwayFromWorld()) {
++                        other.removeNewYearRecord(nyc);
++                        other.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(other, nyc, 0xE, 0));
++
++                        other.dropMessage(6, "[NEW YEAR] " + chr.getName() + " threw away the New Year card.");
++                    }
++                }
++            }
++        }
++    }
++    
++    public static void startPendingNewYearCardRequests() {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM newyear WHERE timereceived = 0 AND senderdiscard = 0")) {
++                try (ResultSet rs = ps.executeQuery()) {
++                    while (rs.next()) {
++                        NewYearCardRecord newyear = new NewYearCardRecord(rs.getInt("senderid"), rs.getString("sendername"), rs.getInt("receiverid"), rs.getString("receivername"), rs.getString("message"));
++                        newyear.setExtraNewYearCardRecord(rs.getInt("id"), rs.getBoolean("senderdiscard"), rs.getBoolean("receiverdiscard"), rs.getBoolean("received"), rs.getLong("timesent"), rs.getLong("timereceived"));
++                        
++                        Server.getInstance().setNewYearCard(newyear);
++                        newyear.startNewYearCardTask();
++                    }
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++    }
++}
+diff --git a/src/constants/ItemConstants.java b/src/constants/ItemConstants.java
+index d2f5c40d9..d249f0417 100644
+--- a/src/constants/ItemConstants.java
++++ b/src/constants/ItemConstants.java
+@@ -89,6 +89,14 @@ public static boolean isPet(int itemId) {
+         return itemId / 1000 == 5000;
+     }
+     
++    public static boolean isNewYearCardEtc(int itemId) { 
++        return itemId / 10000 == 430;
++    } 
++     
++    public static boolean isNewYearCardUse(int itemId) { 
++        return itemId / 10000 == 216;
++    }
++    
+     public static boolean isAccessory(int itemId) {
+         return itemId >= 1110000 && itemId < 1140000;
+     }
+diff --git a/src/net/PacketProcessor.java b/src/net/PacketProcessor.java
+index ace217ff1..793729d97 100644
+--- a/src/net/PacketProcessor.java
++++ b/src/net/PacketProcessor.java
+@@ -226,6 +226,7 @@ public void reset(int channel) {
+             registerHandler(RecvOpcode.ALLIANCE_OPERATION, new AllianceOperationHandler());
+             registerHandler(RecvOpcode.USE_SOLOMON_ITEM, new UseSolomonHandler());
+             registerHandler(RecvOpcode.USE_GACHA_EXP, new UseGachaExpHandler());
++            registerHandler(RecvOpcode.NEW_YEAR_CARD_REQUEST, new NewYearCardHandler());
+             registerHandler(RecvOpcode.USE_ITEM_REWARD, new ItemRewardHandler());
+             registerHandler(RecvOpcode.USE_REMOTE, new RemoteGachaponHandler());
+             registerHandler(RecvOpcode.ACCEPT_FAMILY, new AcceptFamilyHandler());
+diff --git a/src/net/RecvOpcode.java b/src/net/RecvOpcode.java
+index 5f5a2dbc7..0d4fab95e 100644
+--- a/src/net/RecvOpcode.java
++++ b/src/net/RecvOpcode.java
+@@ -146,6 +146,7 @@
+     ENTER_MTS(0x9C),
+     USE_SOLOMON_ITEM(0x9D),
+     USE_GACHA_EXP(0x9E),
++    NEW_YEAR_CARD_REQUEST(0x9F),
+     CLICK_GUIDE(0xA2),
+     ARAN_COMBO_COUNTER(0xA3),
+     MOVE_PET(0xA7),
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 0282c68fb..fd2ecf5c0 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -68,6 +68,7 @@
+ import client.MapleClient;
+ import client.MapleCharacter;
+ import client.SkillFactory;
++import client.newyear.NewYearCardRecord;
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ import java.util.Calendar;
+@@ -91,6 +92,7 @@
+     private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
++    private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
+     
+     private boolean online = false;
+     public static long uptime = System.currentTimeMillis();
+@@ -109,6 +111,18 @@ public boolean isOnline() {
+     public List<Pair<Integer, String>> worldRecommendedList() {
+         return worldRecommendedList;
+     }
++    
++    public void setNewYearCard(NewYearCardRecord nyc) {
++        newyears.put(nyc.getId(), nyc);
++    }
++    
++    public NewYearCardRecord getNewYearCard(int cardid) {
++        return newyears.get(cardid);
++    }
++    
++    public NewYearCardRecord removeNewYearCard(int cardid) {
++        return newyears.remove(cardid);
++    }
+ 
+     /*
+     public void removeChannel(int worldid, int channel) {   //lol don't!
+@@ -306,6 +320,8 @@ public void run() {
+ 	MapleQuest.loadAllQuest();
+ 	System.out.println("Quest loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
+ 	
++        NewYearCardRecord.startPendingNewYearCardRequests();
++        
+         if(ServerConstants.USE_THREAD_TRACKER) ThreadTracker.getInstance().registerThreadTrackerTask();
+         
+         try {
+diff --git a/src/net/server/channel/handlers/GuildOperationHandler.java b/src/net/server/channel/handlers/GuildOperationHandler.java
+index 57d376be1..83d2f78b0 100644
+--- a/src/net/server/channel/handlers/GuildOperationHandler.java
++++ b/src/net/server/channel/handlers/GuildOperationHandler.java
+@@ -48,7 +48,7 @@ private boolean isGuildNameAcceptable(String name) {
+ 
+     private void respawnPlayer(MapleCharacter mc) {
+         mc.getMap().broadcastMessage(mc, MaplePacketCreator.removePlayerFromMap(mc.getId()), false);
+-        mc.getMap().broadcastMessage(mc, MaplePacketCreator.spawnPlayerMapobject(mc), false);
++        mc.getMap().broadcastMessage(mc, MaplePacketCreator.spawnPlayerMapObject(mc), false);
+     }
+ 
+     private class Invited {
+diff --git a/src/net/server/channel/handlers/NewYearCardHandler.java b/src/net/server/channel/handlers/NewYearCardHandler.java
+new file mode 100644
+index 000000000..58d9cfd69
+--- /dev/null
++++ b/src/net/server/channel/handlers/NewYearCardHandler.java
+@@ -0,0 +1,153 @@
++/*
++ * This file is part of the HeavenMS (MapleSolaxiaV2) Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++package net.server.channel.handlers;
++
++import constants.ItemConstants;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.inventory.Item;
++import client.newyear.NewYearCardRecord;
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++import net.AbstractMaplePacketHandler;
++import net.server.Server;
++import server.MapleItemInformationProvider;
++import tools.DatabaseConnection;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++/**
++ *
++ * @author Ronan - header layout courtesy of Eric 
++ */
++public final class NewYearCardHandler extends AbstractMaplePacketHandler {
++
++    @Override
++    public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {        
++        final MapleCharacter player = c.getPlayer();
++        byte reqMode = slea.readByte();                 //[00] -> NewYearReq (0 = Send) 
++        
++        if(reqMode == 0) {  // card has been sent
++            if(player.haveItem(2160101)) {  // new year's card
++                short slot = slea.readShort();                      //[00 2C] -> nPOS (Item Slot Pos) 
++                int itemid = slea.readInt();                        //[00 20 F5 E5] -> nItemID (item id) 
++
++                int status = getValidNewYearCardStatus(itemid, player, slot);
++                if(status == 0) {
++                    if(player.canHold(4300000, 1)) {
++                        String receiver = slea.readMapleAsciiString();  //[04 00 54 65 73 74] -> sReceiverName (person to send to) 
++
++                        int receiverid = getReceiverId(receiver, c.getWorld());
++                        if(receiverid != -1) {
++                            if(receiverid != c.getPlayer().getId()) {
++                                String message = slea.readMapleAsciiString();   //[06 00 4C 65 74 74 65 72] -> sContent (message)  
++
++                                NewYearCardRecord newyear = new NewYearCardRecord(player.getId(), player.getName(), receiverid, receiver, message);
++                                NewYearCardRecord.saveNewYearCard(newyear);
++                                player.addNewYearRecord(newyear);
++
++                                player.getClient().getAbstractPlayerInteraction().gainItem(2160101, (short)-1);
++                                player.getClient().getAbstractPlayerInteraction().gainItem(4300000, (short) 1);
++
++                                Server.getInstance().setNewYearCard(newyear);
++                                newyear.startNewYearCardTask();
++                                player.announce(MaplePacketCreator.onNewYearCardRes(player, newyear, 4, 0));    // successfully sent
++                            } else {
++                                player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, 0xF));   // cannot send to yourself
++                            }
++                        } else {
++                            player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, 0x13));  // cannot find such character
++                        }
++                    } else {
++                        player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, 0x10));  // inventory full
++                    }
++                } else {
++                    player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, status));  // item and inventory errors
++                }
++            } else {
++                player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, 0x11));  // have no card to send
++            }
++        } else {    //receiver accepted the card
++            int cardid = slea.readInt();
++            
++            NewYearCardRecord newyear = NewYearCardRecord.loadNewYearCard(cardid);
++            
++            if(newyear != null && newyear.getReceiverId() == player.getId() && !newyear.isReceiverCardReceived()) {
++                if(!newyear.isSenderCardDiscarded()) {
++                    if(player.canHold(4301000, 1)) {
++                        newyear.stopNewYearCardTask();
++                        NewYearCardRecord.updateNewYearCard(newyear);
++
++                        player.getClient().getAbstractPlayerInteraction().gainItem(4301000, (short)1);
++                        if(!newyear.getMessage().isEmpty()) player.dropMessage(6, "[NEW YEAR] " + newyear.getSenderName() + ": " + newyear.getMessage());
++
++                        player.addNewYearRecord(newyear);
++                        player.announce(MaplePacketCreator.onNewYearCardRes(player, newyear, 6, 0));    // successfully rcvd
++
++                        player.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(player, newyear, 0xD, 0));
++
++                        MapleCharacter sender = c.getWorldServer().getPlayerStorage().getCharacterById(newyear.getSenderId());
++                        if(sender != null && sender.isLoggedin() && !sender.isAwayFromWorld()) {
++                            sender.getMap().broadcastMessage(MaplePacketCreator.onNewYearCardRes(sender, newyear, 0xD, 0));
++                            sender.dropMessage(6, "[NEW YEAR] Your addressee successfully received the New Year card.");
++                        }
++                    } else {
++                        player.announce(MaplePacketCreator.onNewYearCardRes(player, -1, 5, 0x10));  // inventory full
++                    }
++                } else {
++                    player.dropMessage(6, "[NEW YEAR] The sender of the New Year card already dropped it. Nothing to receive.");
++                }
++            } else {
++                if(newyear == null) {
++                    player.dropMessage(6, "[NEW YEAR] The sender of the New Year card already dropped it. Nothing to receive.");
++                }
++            }
++        }
++    }
++    
++    private static int getReceiverId(String receiver, int world) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            try (PreparedStatement ps = con.prepareStatement("SELECT id, world FROM characters WHERE name LIKE ?")) {
++                ps.setString(1, receiver);
++                try (ResultSet rs = ps.executeQuery()) {
++                    if (rs.next()) {
++                        if(rs.getInt("world") == world) {
++                            return rs.getInt("id");
++                        }
++                    }
++                }
++            }
++        } catch(SQLException sqle) {
++            sqle.printStackTrace();
++        }
++        
++        return -1;
++    }
++    
++    private static int getValidNewYearCardStatus(int itemid, MapleCharacter player, short slot) {
++        if(!ItemConstants.isNewYearCardUse(itemid)) return 0x14;
++        
++        Item it = player.getInventory(MapleItemInformationProvider.getInstance().getInventoryType(itemid)).getItem(slot);        
++        return (it != null && it.getItemId() == itemid) ? 0 : 0x12;
++    } 
++}
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 5c50b8240..45265d4ab 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -336,7 +336,7 @@ public void setGuildAndRank(int cid, int guildid, int rank) {
+         }
+         if (bDifferentGuild) {
+             mc.getMap().broadcastMessage(mc, MaplePacketCreator.removePlayerFromMap(cid), false);
+-            mc.getMap().broadcastMessage(mc, MaplePacketCreator.spawnPlayerMapobject(mc), false);
++            mc.getMap().broadcastMessage(mc, MaplePacketCreator.spawnPlayerMapObject(mc), false);
+         }
+     }
+ 
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index 5b128fc0b..ff9af8099 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -28,6 +28,7 @@
+ import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
+ import client.inventory.ModifyInventory;
++import client.newyear.NewYearCardRecord;
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ 
+@@ -544,7 +545,7 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+                 c.getPlayer().setChalkboard(null);
+             }
+         }
+-        if (source == null || (!ItemConstants.isRechargable(itemId) && source.getQuantity() < quantity) || quantity < 0) {
++        if ((!ItemConstants.isRechargable(itemId) && source.getQuantity() < quantity) || quantity < 0) {
+             return;
+         }
+         Point dropPos = new Point(c.getPlayer().getPosition());
+@@ -553,6 +554,17 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+             target.setQuantity(quantity);
+             source.setQuantity((short) (source.getQuantity() - quantity));
+             c.announce(MaplePacketCreator.modifyInventory(true, Collections.singletonList(new ModifyInventory(1, source))));
++            
++            if(ItemConstants.isNewYearCardEtc(itemId)) {
++                if(itemId == 4300000) {
++                    NewYearCardRecord.removeAllNewYearCard(true, c.getPlayer());
++                    c.getAbstractPlayerInteraction().removeAll(4300000);
++                } else {
++                    NewYearCardRecord.removeAllNewYearCard(false, c.getPlayer());
++                    c.getAbstractPlayerInteraction().removeAll(4301000);
++                }
++            }
++            
+             boolean weddingRing = source.getItemId() == 1112803 || source.getItemId() == 1112806 || source.getItemId() == 1112807 || source.getItemId() == 1112809;
+             if (weddingRing) {
+                 c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), target, dropPos);
+@@ -572,7 +584,16 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+             c.announce(MaplePacketCreator.modifyInventory(true, Collections.singletonList(new ModifyInventory(3, source))));
+             if (src < 0) {
+                 c.getPlayer().equipChanged();
++            } else if(ItemConstants.isNewYearCardEtc(itemId)) {
++                if(itemId == 4300000) {
++                    NewYearCardRecord.removeAllNewYearCard(true, c.getPlayer());
++                    c.getAbstractPlayerInteraction().removeAll(4300000);
++                } else {
++                    NewYearCardRecord.removeAllNewYearCard(false, c.getPlayer());
++                    c.getAbstractPlayerInteraction().removeAll(4301000);
++                }
+             }
++            
+             if (c.getPlayer().getMap().getEverlast()) {
+                 if (ii.isDropRestricted(itemId) || ii.isCash(itemId) || isDroppedItemRestricted(source)) {
+                     c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), source, dropPos);
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index e662b74e0..ab67ae304 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -753,7 +753,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+                 applyto.setStance(0);
+                 
+                 applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.removePlayerFromMap(applyto.getId()), false);
+-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.spawnPlayerMapobject(applyto), false);
++                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.spawnPlayerMapObject(applyto), false);
+             }
+         }
+         if (isDispel() && makeChanceResult()) {
+@@ -919,7 +919,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+             applyto.removeAllCooldownsExcept(Buccaneer.TIME_LEAP, true);
+         } else if(isHyperBody() && !primary) {
+             applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.removePlayerFromMap(applyto.getId()), false);
+-            applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.spawnPlayerMapobject(applyto), false);
++            applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.spawnPlayerMapObject(applyto), false);
+         }
+         
+         return true;
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index 087d161dc..27a4bd5da 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -182,11 +182,13 @@ public void buy(MapleClient c, int item, short quantity) {
+                 c.announce(MaplePacketCreator.enableActions());
+                 return;
+             }
+-            int price = (int)Math.min((long)pItem.getPrice() * quantity, Integer.MAX_VALUE);
++            
++            int price = (int) Math.min((long)pItem.getPrice() * quantity, Integer.MAX_VALUE);
+             if (c.getPlayer().getMeso() >= price) {
+                 if (MapleInventoryManipulator.checkSpace(c, newItem.getItemId(), newItem.getQuantity(), newItem.getOwner())) {
+                     MapleInventoryManipulator.addFromDrop(c, newItem, false);
+                     c.getPlayer().gainMeso(-price, false);
++                    announceItemSold(newItem, price);   // idea thanks to vcoc
+                     
+                     synchronized (sold) {
+                         sold.add(new SoldItem(c.getPlayer().getName(), pItem.getItem().getItemId(), quantity, price));
+@@ -226,6 +228,16 @@ public void buy(MapleClient c, int item, short quantity) {
+             }
+         }
+     }
++    
++    private void announceItemSold(Item item, int mesos) {
++        String qtyStr = (item.getQuantity() > 1) ? " (qty. " + item.getQuantity() + ")" : "";
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        
++        MapleCharacter player = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
++        if(player != null && player.isLoggedin() && !player.isAwayFromWorld()) {
++            player.dropMessage(6, "[HIRED MERCHANT] Item '" + ii.getName(item.getItemId()) + "'" + qtyStr + " has been sold for " + mesos + " mesos.");
++        }
++    }
+ 
+     public void forceClose() {
+         Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
+@@ -508,7 +520,7 @@ private static boolean check(MapleCharacter chr, List<MaplePlayerShopItem> items
+         }
+         return true;
+     }
+-
++    
+     public int getChannel() {
+         return channel;
+     }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 0ef92dc95..64601a424 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2131,13 +2131,13 @@ public void run() {
+             }
+         }
+         if (chr.isHidden()) {
+-            broadcastGMMessage(chr, MaplePacketCreator.spawnPlayerMapobject(chr), false);
++            broadcastGMMessage(chr, MaplePacketCreator.spawnPlayerMapObject(chr), false);
+             chr.announce(MaplePacketCreator.getGMEffect(0x10, (byte) 1));
+ 
+             List<Pair<MapleBuffStat, Integer>> dsstat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.DARKSIGHT, 0));
+             broadcastGMMessage(chr, MaplePacketCreator.giveForeignBuff(chr.getId(), dsstat), false);
+         } else {
+-            broadcastMessage(chr, MaplePacketCreator.spawnPlayerMapobject(chr), false);
++            broadcastMessage(chr, MaplePacketCreator.spawnPlayerMapObject(chr), false);
+         }
+ 
+         sendObjectPlacement(chr.getClient());
+diff --git a/src/server/maps/MaplePlayerShop.java b/src/server/maps/MaplePlayerShop.java
+index 543bdb8ec..321967d43 100644
+--- a/src/server/maps/MaplePlayerShop.java
++++ b/src/server/maps/MaplePlayerShop.java
+@@ -34,9 +34,9 @@
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
+ import net.SendOpcode;
++import net.server.Server;
+ import server.MapleInventoryManipulator;
+-import server.maps.AbstractMapleMapObject;
+-import server.maps.MapleMapObjectType;
++import server.MapleItemInformationProvider;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.data.output.MaplePacketLittleEndianWriter;
+@@ -103,7 +103,7 @@ private void addVisitor(MapleCharacter visitor) {
+                     visitor.setSlot(i);
+                     this.broadcast(MaplePacketCreator.getPlayerShopNewVisitor(visitor, i + 1));
+                     
+-                    if(i == 2) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(this.getOwner(), 1));
++                    if(i == 2) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(owner, 1));
+                     break;
+                 }
+             }
+@@ -162,7 +162,7 @@ public void removeVisitor(MapleCharacter visitor) {
+                 visitorLock.unlock();
+             }
+             
+-            if(this.getOwner().getPlayerShop() != null) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(this.getOwner(), 4));
++            if(owner.getPlayerShop() != null) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(owner, 4));
+         }
+     }
+ 
+@@ -205,10 +205,15 @@ public void buy(MapleClient c, int item, short quantity) {
+                     return;
+                 }
+                 synchronized (c.getPlayer()) {
+-                    if (c.getPlayer().getMeso() >= (long) pItem.getPrice() * quantity) {
++                    int price = (int) Math.min((long)pItem.getPrice() * quantity, Integer.MAX_VALUE);
++                    
++                    if (c.getPlayer().getMeso() >= price) {
+                         if (MapleInventoryManipulator.addFromDrop(c, newItem, false)) {
+-                            c.getPlayer().gainMeso(-pItem.getPrice() * quantity, false);
+-                            owner.gainMeso(pItem.getPrice() * quantity, true);
++                            c.getPlayer().gainMeso(-price, false);
++                            
++                            announceItemSold(newItem, price);   // idea thanks to vcoc
++                            owner.gainMeso(price, true);
++                            
+                             pItem.setBundles((short) (pItem.getBundles() - quantity));
+                             if (pItem.getBundles() < 1) {
+                                 pItem.setDoesExist(false);
+@@ -227,6 +232,13 @@ public void buy(MapleClient c, int item, short quantity) {
+             }
+         }
+     }
++    
++    private void announceItemSold(Item item, int mesos) {
++        String qtyStr = (item.getQuantity() > 1) ? " (qty. " + item.getQuantity() + ")" : "";
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        
++        owner.dropMessage(6, "[PLAYER SHOP] Item '" + ii.getName(item.getItemId()) + "'" + qtyStr + " has been sold for " + mesos + " mesos.");
++    }
+ 
+     public void broadcastToVisitors(final byte[] packet) {
+         visitorLock.lock();
+@@ -283,7 +295,7 @@ public void removeVisitors() {
+         
+         for(MapleCharacter mc : visitorList) forceRemoveVisitor(mc);
+         if (owner != null) {
+-            forceRemoveVisitor(getOwner());
++            forceRemoveVisitor(owner);
+         }
+     }
+ 
+@@ -476,12 +488,12 @@ public synchronized boolean visitShop(MapleCharacter chr) {
+ 
+     @Override
+     public void sendDestroyData(MapleClient client) {
+-        client.announce(MaplePacketCreator.removeCharBox(this.getOwner()));
++        client.announce(MaplePacketCreator.removeCharBox(owner));
+     }
+ 
+     @Override
+     public void sendSpawnData(MapleClient client) {
+-        client.announce(MaplePacketCreator.addCharBox(this.getOwner(), 4));
++        client.announce(MaplePacketCreator.addCharBox(owner, 4));
+     }
+ 
+     @Override
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 162ba54c2..acea03069 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -33,6 +33,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
++import java.util.Set;
+ 
+ import net.SendOpcode;
+ import net.server.PlayerCoolDownValueHolder;
+@@ -98,6 +99,7 @@
+ import client.inventory.MapleInventoryType;
+ import client.inventory.MaplePet;
+ import client.inventory.ModifyInventory;
++import client.newyear.NewYearCardRecord;
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+ import constants.GameConstants;
+@@ -217,30 +219,18 @@ private static void addCharacterInfo(final MaplePacketLittleEndianWriter mplew,
+                 addRingInfo(mplew, chr);
+                 addTeleportInfo(mplew, chr);
+                 addMonsterBookInfo(mplew, chr);
+-                addNewYearInfo(mplew, chr);//have fun!
++                addNewYearInfo(mplew, chr);
+                 addAreaInfo(mplew, chr);//assuming it stayed here xd
+                 mplew.writeShort(0);
+         }
+ 
+         private static void addNewYearInfo(final MaplePacketLittleEndianWriter mplew, MapleCharacter chr) {
+-                mplew.writeShort(0);
+-                /*  
+-                 *(_DWORD *)this = CInPacket::Decode4(a2);
+-                 *((_DWORD *)v2 + 1) = CInPacket::Decode4(a2);
+-                 CInPacket::DecodeStr(&v7);
+-                 v9 = 0;
+-                 (*(void (__stdcall **)(char *, int))((char *)&loc_B1410B + 1))((char *)v2 + 8, v7);
+-                 *(_DWORD *)((char *)v2 + 21) = (unsigned __int8)CInPacket::Decode1(a2);
+-                 CInPacket::DecodeBuffer((char *)v2 + 25, 8);
+-                 *(_DWORD *)((char *)v2 + 33) = CInPacket::Decode4(a2);
+-                 CInPacket::DecodeStr(&v6);
+-                 LOBYTE(v8) = 1;
+-                 (*(void (__stdcall **)(char *, int))((char *)&loc_B1410B + 1))((char *)v2 + 37, v6);
+-                 *(_DWORD *)((char *)v2 + 50) = (unsigned __int8)CInPacket::Decode1(a2);
+-                 *(_DWORD *)((char *)v2 + 54) = (unsigned __int8)CInPacket::Decode1(a2);
+-                 CInPacket::DecodeBuffer((char *)v2 + 58, 8);
+-                 CInPacket::DecodeStr(&v9);
+-                 */
++                Set<NewYearCardRecord> received = chr.getReceivedNewYearRecords();
++            
++                mplew.writeShort(received.size());
++                for(NewYearCardRecord nyc : received) {
++                        encodeNewYearCard(nyc, mplew);
++                }
+         }
+ 
+         private static void addTeleportInfo(final MaplePacketLittleEndianWriter mplew, MapleCharacter chr) {
+@@ -1742,7 +1732,7 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+          * @param chr The character to spawn to other clients.
+          * @return The spawn player packet.
+          */
+-        public static byte[] spawnPlayerMapobject(MapleCharacter chr) {
++        public static byte[] spawnPlayerMapObject(MapleCharacter chr) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.SPAWN_PLAYER.getValue());
+                 mplew.writeInt(chr.getId());
+@@ -1834,7 +1824,7 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 
+                 mplew.writeShort(chr.getJob().getId());
+                 
+-                /* replace "mplew.writeShort(chr.getJob().getId())" with this snippet for 3rd party FJ animation on all classes
++                /* replace "mplew.writeShort(chr.getJob().getId())" with this snippet for 3rd person FJ animation on all classes
+                 if (chr.getJob().isA(MapleJob.HERMIT) || chr.getJob().isA(MapleJob.DAWNWARRIOR2) || chr.getJob().isA(MapleJob.NIGHTWALKER2)) {
+ 			mplew.writeShort(chr.getJob().getId());
+                 } else {
+@@ -1887,14 +1877,106 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 } else {
+                         mplew.write(0);
+                 }
+-                addRingLook(mplew, chr, true);
+-                addRingLook(mplew, chr, false);
++                addRingLook(mplew, chr, true);  // crush
++                addRingLook(mplew, chr, false); // friendship
+                 addMarriageRingLook(mplew, chr);
+-                mplew.skip(3);
++                encodeNewYearCardInfo(mplew, chr);  // new year seems to crash sometimes...
++                mplew.skip(2);
+                 mplew.write(chr.getTeam());//only needed in specific fields
+                 return mplew.getPacket();
+         }
+ 
++        private static void encodeNewYearCardInfo(MaplePacketLittleEndianWriter mplew, MapleCharacter chr) {
++                Set<NewYearCardRecord> newyears = chr.getReceivedNewYearRecords();
++                if(!newyears.isEmpty()) {
++                        mplew.write(1); 
++
++                        mplew.writeInt(newyears.size());
++                        for(NewYearCardRecord nyc : newyears) {
++                                mplew.writeInt(nyc.getId());
++                        }
++                } else {
++                        mplew.write(0); 
++                }
++        }
++        
++        public static byte[] onNewYearCardRes(MapleCharacter user, int cardId, int mode, int msg) {
++                NewYearCardRecord newyear = user.getNewYearRecord(cardId);
++                return onNewYearCardRes(user, newyear, mode, msg);
++        }
++        
++        public static byte[] onNewYearCardRes(MapleCharacter user, NewYearCardRecord newyear, int mode, int msg) { 
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.NEW_YEAR_CARD_RES.getValue()); 
++                mplew.write(mode); 
++                switch (mode) { 
++                        case 4: // Successfully sent a New Year Card\r\n to %s. 
++                        case 6: // Successfully received a New Year Card. 
++                                encodeNewYearCard(newyear, mplew);
++                                break;
++                            
++                        case 8: // Successfully deleted a New Year Card. 
++                                mplew.writeInt(newyear.getId());
++                                break;
++                            
++                        case 5: // Nexon's stupid and makes 4 modes do the same operation.. 
++                        case 7: 
++                        case 9: 
++                        case 0xB: 
++                                // 0x10: You have no free slot to store card.\r\ntry later on please. 
++                                // 0x11: You have no card to send. 
++                                // 0x12: Wrong inventory information ! 
++                                // 0x13: Cannot find such character ! 
++                                // 0x14: Incoherent Data ! 
++                                // 0x15: An error occured during DB operation. 
++                                // 0x16: An unknown error occured ! 
++                                // 0xF: You cannot send a card to yourself ! 
++                                mplew.write(msg);
++                                break; 
++                            
++                        case 0xA:   // GetUnreceivedList_Done
++                                int nSN = 1; 
++                                mplew.writeInt(nSN); 
++                                if ((nSN - 1) <= 98 && nSN > 0) {//lol nexon are you kidding 
++                                        for (int i = 0; i < nSN; i++) { 
++                                                mplew.writeInt(newyear.getId()); 
++                                                mplew.writeInt(newyear.getSenderId()); 
++                                                mplew.writeMapleAsciiString(newyear.getSenderName()); 
++                                        } 
++                                } 
++                                break;
++                            
++                        case 0xC:   // NotiArrived
++                                mplew.writeInt(newyear.getId());
++                                mplew.writeMapleAsciiString(newyear.getSenderName());
++                                break;
++                            
++                        case 0xD:   // BroadCast_AddCardInfo
++                                mplew.writeInt(newyear.getId()); 
++                                mplew.writeInt(user.getId()); 
++                                break; 
++                            
++                        case 0xE:   // BroadCast_RemoveCardInfo
++                                mplew.writeInt(newyear.getId());
++                                break; 
++                } 
++                return mplew.getPacket(); 
++        } 
++        
++        private static void encodeNewYearCard(NewYearCardRecord newyear, MaplePacketLittleEndianWriter mplew) { 
++                mplew.writeInt(newyear.getId());
++                mplew.writeInt(newyear.getSenderId()); 
++                mplew.writeMapleAsciiString(newyear.getSenderName()); 
++                mplew.writeBool(newyear.isSenderCardDiscarded()); 
++                mplew.writeLong(newyear.getDateSent()); 
++                mplew.writeInt(newyear.getReceiverId()); 
++                mplew.writeMapleAsciiString(newyear.getReceiverName()); 
++                mplew.writeBool(newyear.isReceiverCardDiscarded()); 
++                mplew.writeBool(newyear.isReceiverCardReceived()); 
++                mplew.writeLong(newyear.getDateReceived()); 
++                mplew.writeMapleAsciiString(newyear.getMessage()); 
++        } 
++        
+         private static void addRingLook(final MaplePacketLittleEndianWriter mplew, MapleCharacter chr, boolean crush) {
+                 List<MapleRing> rings;
+                 if (crush) {
+@@ -1922,15 +2004,17 @@ private static void addRingLook(final MaplePacketLittleEndianWriter mplew, Maple
+         }
+ 
+         private static void addMarriageRingLook(final MaplePacketLittleEndianWriter mplew, MapleCharacter chr) {
+-                if (chr.getMarriageRing() != null && !chr.getMarriageRing().equipped()) {
++                MapleRing ring = chr.getMarriageRing();
++            
++                if (ring != null && !ring.equipped()) {
+                         mplew.write(0);
+                         return;
+                 }
+-                mplew.writeBool(chr.getMarriageRing() != null);
+-                if (chr.getMarriageRing() != null) {
++                mplew.writeBool(ring != null);
++                if (ring != null) {
+                         mplew.writeInt(chr.getId());
+-                        mplew.writeInt(chr.getMarriageRing().getPartnerChrId());
+-                        mplew.writeInt(chr.getMarriageRing().getRingId());
++                        mplew.writeInt(ring.getPartnerChrId());
++                        mplew.writeInt(ring.getRingId());
+                 }
+         }
+ 
+diff --git a/tools/MapleQuestItemFetcher/nbproject/private/private.xml b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+index 531edc487..6807a2ba1 100644
+--- a/tools/MapleQuestItemFetcher/nbproject/private/private.xml
++++ b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+@@ -2,8 +2,6 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>

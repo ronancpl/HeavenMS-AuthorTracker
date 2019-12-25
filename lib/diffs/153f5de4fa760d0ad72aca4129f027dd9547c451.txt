@@ -1,0 +1,1089 @@
+diff --git a/docs/leftover.txt b/docs/leftover.txt
+index 38d0fbcee..b005a6c3c 100644
+--- a/docs/leftover.txt
++++ b/docs/leftover.txt
+@@ -2,8 +2,6 @@
+ 
+ Uncoded features:
+ NX Format
+-Name Change
+-World transfer
+ MTS (v53)
+ Family system (v67)
+ Family and Medal Quests(?)
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 3f106d8c6..3e84c0ac4 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -16342,6 +16342,17 @@ CREATE TABLE IF NOT EXISTS `mts_items` (
+   PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
++CREATE TABLE IF NOT EXISTS `namechanges` (
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `characterid` int(11) NOT NULL,
++  `old` varchar(13) NOT NULL,
++  `new` varchar(13) NOT NULL,
++  `requestTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  `completionTime` timestamp,
++  PRIMARY KEY (`id`),
++  INDEX (characterid)
++) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++
+ CREATE TABLE IF NOT EXISTS `newyear` (
+   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+   `senderid` int(10) NOT NULL DEFAULT '-1',
+@@ -21418,6 +21429,17 @@ CREATE TABLE IF NOT EXISTS `wishlists` (
+   PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
++CREATE TABLE IF NOT EXISTS `worldtransfers` (
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `characterid` int(11) NOT NULL,
++  `from` tinyint(3) NOT NULL,
++  `to` tinyint(3) NOT NULL,
++  `requestTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  `completionTime` timestamp,
++  PRIMARY KEY (`id`),
++  INDEX (characterid)
++) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
++
+ 
+ ALTER TABLE `dueyitems`
+   ADD CONSTRAINT `dueyitems_ibfk_1` FOREIGN KEY (`PackageId`) REFERENCES `dueypackages` (`PackageId`) ON DELETE CASCADE;
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index ba413682f..1ee1049b7 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -328,6 +328,7 @@
+     private int banishSp = -1;
+     private long banishTime = 0;
+     private long lastExpGainTime;
++    private boolean pendingNameChange; //only used to change name on logout, not to be relied upon elsewhere
+     
+     private MapleCharacter() {
+         super.setListener(new AbstractCharacterListener() {
+@@ -10364,6 +10365,379 @@ public void removeJailExpirationTime() {
+         jailExpiration = 0;
+     }
+     
++    public boolean registerNameChange(String newName) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            //check for pending name change
++            long currentTimeMillis = System.currentTimeMillis();
++            try (PreparedStatement ps = con.prepareStatement("SELECT completionTime FROM namechanges WHERE characterid=?")) { //double check, just in case
++                ps.setInt(1, getId());
++                ResultSet rs = ps.executeQuery();
++                while(rs.next()) {
++                    Timestamp completedTimestamp = rs.getTimestamp("completionTime");
++                    if(completedTimestamp == null) return false; //pending
++                    else if(completedTimestamp.getTime() + ServerConstants.NAME_CHANGE_COOLDOWN > currentTimeMillis) return false;
++                }
++            } catch(SQLException e) {
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to register name change for character " + getName() + ".");
++                return false;
++            }
++            try (PreparedStatement ps = con.prepareStatement("INSERT INTO namechanges (characterid, old, new) VALUES (?, ?, ?)")){
++                    ps.setInt(1, getId());
++                    ps.setString(2, getName());
++                    ps.setString(3, newName);
++                    ps.executeUpdate();
++                    this.pendingNameChange = true;
++                    return true;
++            } catch (SQLException e) {
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to register name change for character " + getName() + ".");
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to get DB connection.");
++        }
++        return false;
++    }
++    
++    public boolean cancelPendingNameChange() {
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("DELETE FROM namechanges WHERE characterid=? AND completionTime IS NULL")) {
++            ps.setInt(1, getId());
++            int affectedRows = ps.executeUpdate();
++            if(affectedRows > 0) pendingNameChange = false;
++            return affectedRows > 0; //rows affected
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to cancel name change for character " + getName() + ".");
++            return false;
++        }
++    }
++    
++    public void doPendingNameChange() { //called on logout
++        if(!pendingNameChange) return;
++        try (Connection con = DatabaseConnection.getConnection()) {
++            int nameChangeId = -1;
++            String newName = null;
++            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM namechanges WHERE characterid = ? AND completionTime IS NULL")) {
++                ps.setInt(1, getId());
++                ResultSet rs = ps.executeQuery();
++                if(!rs.next()) return;
++                nameChangeId = rs.getInt("id");
++                newName = rs.getString("new");
++            } catch(SQLException e) {
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to retrieve pending name changes for character " + getName() + ".");
++            }
++            con.setAutoCommit(false);
++            boolean success = doNameChange(con, getId(), getName(), newName, nameChangeId);
++            if(!success) con.rollback();
++            else FilePrinter.print(FilePrinter.CHANGE_CHARACTER_NAME, "Name change applied : from \"" + getName() + "\" to \"" + newName + "\" at " + Calendar.getInstance().getTime().toString());
++            con.setAutoCommit(true);
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to get DB connection.");
++        }
++    }
++    
++    public static void doNameChange(int characterId, String oldName, String newName, int nameChangeId) { //Don't do this while player is online
++        try (Connection con = DatabaseConnection.getConnection()) {
++            con.setAutoCommit(false);
++            boolean success = doNameChange(con, characterId, oldName, newName, nameChangeId);
++            if(!success) con.rollback();
++            con.setAutoCommit(true);
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to get DB connection.");
++        }
++    }
++    
++    public static boolean doNameChange(Connection con, int characterId, String oldName, String newName, int nameChangeId) {
++        try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET name = ? WHERE id = ?")) {
++            ps.setString(1, newName);
++            ps.setInt(2, characterId);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE rings SET partnername = ? WHERE partnername = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        /*try (PreparedStatement ps = con.prepareStatement("UPDATE playernpcs SET name = ? WHERE name = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE gifts SET `from` = ? WHERE `from` = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE dueypackages SET SenderName = ? WHERE SenderName = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE dueypackages SET SenderName = ? WHERE SenderName = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE inventoryitems SET owner = ? WHERE owner = ?")) { //GMS doesn't do this
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE mts_items SET owner = ? WHERE owner = ?")) { //GMS doesn't do this
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE newyear SET sendername = ? WHERE sendername = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE newyear SET receivername = ? WHERE receivername = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE notes SET `to` = ? WHERE `to` = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE notes SET `from` = ? WHERE `from` = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE nxcode SET retriever = ? WHERE retriever = ?")) {
++            ps.setString(1, newName);
++            ps.setString(2, oldName);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++            return false;
++        }*/
++        if(nameChangeId != -1) {
++            try (PreparedStatement ps = con.prepareStatement("UPDATE namechanges SET completionTime = ? WHERE id = ?")) {
++                ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
++                ps.setInt(2, nameChangeId);
++                ps.executeUpdate();
++            } catch(SQLException e) { 
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
++                return false;
++            }
++        }
++        return true;
++    }
++    
++    public int checkWorldTransferEligibility() {
++        if(getLevel() < 20) {
++            return 2;
++        } else if(getClient().getTempBanCalendar() != null && getClient().getTempBanCalendar().getTimeInMillis() + (30*24*60*60*1000) < Calendar.getInstance().getTimeInMillis()) {
++            return 3;
++        } else if(isMarried()) {
++            return 4;
++        } else if(getGuildRank() < 2) {
++            return 5;
++        } else if(getFamily() != null) {
++            return 8;
++        } else {
++            return 0;
++        }
++    }
++    
++    public static String checkWorldTransferEligibility(Connection con, int characterId, int oldWorld, int newWorld) {
++        if(!ServerConstants.ALLOW_CASHSHOP_WORLD_TRANSFER) return "World transfers disabled.";
++        int accountId = -1;
++        try (PreparedStatement ps = con.prepareStatement("SELECT accountid, level, guildid, guildrank, partnerId, familyId FROM characters WHERE id = ?")) {
++            ps.setInt(1, characterId);
++            ResultSet rs = ps.executeQuery();
++            if(!rs.next()) return "Character does not exist.";
++            accountId = rs.getInt("accountid");
++            if(rs.getInt("level") < 20) return "Character is under level 20.";
++            if(rs.getInt("familyId") != -1) return "Character is in family.";
++            if(rs.getInt("partnerId") != 0) return "Character is married.";
++            if(rs.getInt("guildid") != 0 && rs.getInt("guildrank") < 2) return "Character is the leader of a guild.";
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e);
++            return "SQL Error";
++        }
++        try (PreparedStatement ps = con.prepareStatement("SELECT tempban FROM accounts WHERE id = ?")) {
++            ps.setInt(1, accountId);
++            ResultSet rs = ps.executeQuery();
++            if(!rs.next()) return "Account does not exist.";
++            if(rs.getLong("tempban") != 0 && !rs.getString("tempban").equals("2018-06-20 00:00:00.0")) return "Account has been banned.";
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e);
++            return "SQL Error";
++        }
++        try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) AS rowcount FROM characters WHERE accountid = ? AND world = ?")) {
++            ps.setInt(1, accountId);
++            ps.setInt(2, newWorld);
++            ResultSet rs = ps.executeQuery();
++            if(!rs.next()) return "SQL Error";
++            if(rs.getInt("rowcount") >= 3) return "Too many characters on destination world.";
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e);
++            return "SQL Error";
++        }
++        return null;
++    }
++    
++    public boolean registerWorldTransfer(int newWorld) {
++        try (Connection con = DatabaseConnection.getConnection()) {
++            //check for pending world transfer
++            long currentTimeMillis = System.currentTimeMillis();
++            try (PreparedStatement ps = con.prepareStatement("SELECT completionTime FROM worldtransfers WHERE characterid=?")) { //double check, just in case
++                ps.setInt(1, getId());
++                ResultSet rs = ps.executeQuery();
++                while(rs.next()) {
++                    Timestamp completedTimestamp = rs.getTimestamp("completionTime");
++                    if(completedTimestamp == null) return false; //pending
++                    else if(completedTimestamp.getTime() + ServerConstants.WORLD_TRANSFER_COOLDOWN > currentTimeMillis) return false;
++                }
++            } catch(SQLException e) {
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to register world transfer for character " + getName() + ".");
++                return false;
++            }
++            try (PreparedStatement ps = con.prepareStatement("INSERT INTO worldtransfers (characterid, `from`, `to`) VALUES (?, ?, ?)")){
++                    ps.setInt(1, getId());
++                    ps.setInt(2, getWorld());
++                    ps.setInt(3, newWorld);
++                    ps.executeUpdate();
++                    return true;
++            } catch (SQLException e) {
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to register world transfer for character " + getName() + ".");
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to get DB connection.");
++        }
++        return false;
++    }
++    
++    public boolean cancelPendingWorldTranfer() {
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("DELETE FROM worldtransfers WHERE characterid=? AND completionTime IS NULL")) {
++            ps.setInt(1, getId());
++            int affectedRows = ps.executeUpdate();
++            return affectedRows > 0; //rows affected
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to cancel pending world transfer for character " + getName() + ".");
++            return false;
++        }
++    }
++    
++    public static boolean doWorldTransfer(Connection con, int characterId, int oldWorld, int newWorld, int worldTransferId) {
++        int mesos = 0;
++        try (PreparedStatement ps = con.prepareStatement("SELECT meso FROM characters WHERE id = ?")) {
++            ps.setInt(1, characterId);
++            ResultSet rs = ps.executeQuery();
++            if(!rs.next()) {
++                FilePrinter.printError(FilePrinter.WORLD_TRANSFER, "Character data invalid? (charid " + characterId + ")");
++                return false;
++            }
++            mesos = rs.getInt("meso");
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET world = ?, meso = ?, guildid = ?, guildrank = ? WHERE id = ?")) {
++            ps.setInt(1, newWorld);
++            ps.setInt(2, Math.min(mesos, 1000000)); //might want a limit in ServerConstants for this
++            ps.setInt(3, 0);
++            ps.setInt(4, 5);
++            ps.setInt(5, characterId);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Character ID : " + characterId);
++            return false;
++        }
++        try (PreparedStatement ps = con.prepareStatement("DELETE FROM buddies WHERE characterid = ? OR buddyid = ?")) {
++            ps.setInt(1, characterId);
++            ps.setInt(2, characterId);
++            ps.executeUpdate();
++        } catch(SQLException e) { 
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Character ID : " + characterId);
++            return false;
++        }
++        if(worldTransferId != -1) {
++            try (PreparedStatement ps = con.prepareStatement("UPDATE worldtransfers SET completionTime = ? WHERE id = ?")) {
++                ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
++                ps.setInt(2, worldTransferId);
++                ps.executeUpdate();
++            } catch(SQLException e) { 
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Character ID : " + characterId);
++                return false;
++            }
++        }
++        return true;
++    }
++    
+     public String getLastCommandMessage() {
+         return this.commandtext;
+     }
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 149e8b88b..70b4e8da4 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -121,6 +121,7 @@
+ 	private final Lock lock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT, true);
+         private final Lock encoderLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_ENCODER, true);
+         private static final Lock loginLocks[] = new Lock[200];  // thanks Masterrulax & try2hack for pointing out a bottleneck issue here
++    private Calendar tempBanCalendar;
+ 	private int votePoints;
+ 	private int voteTime = -1;
+         private int visibleWorlds;
+@@ -640,7 +641,7 @@ public int login(String login, String pwd, String nibbleHwid) {
+                 }
+ 	}
+ 
+-	public Calendar getTempBanCalendar() {
++	public Calendar getTempBanCalendarFromDB() {
+ 		Connection con = null;
+ 		PreparedStatement ps = null;
+ 		ResultSet rs = null;
+@@ -654,10 +655,12 @@ public Calendar getTempBanCalendar() {
+ 				return null;
+ 			}
+ 			long blubb = rs.getLong("tempban");
+-			if (blubb == 0) { // basically if timestamp in db is 0000-00-00
++			
++			if (blubb == 0 || rs.getString("tempban").equals("2018-06-20 00:00:00.0")) { // 0000-00-00 or 2018-06-20 (default set in LoginPasswordHandler)
+ 				return null;
+ 			}
+ 			lTempban.setTimeInMillis(rs.getTimestamp("tempban").getTime());
++			tempBanCalendar = lTempban;
+ 			return lTempban;
+ 		} catch (SQLException e) {
+                     e.printStackTrace();
+@@ -678,6 +681,14 @@ public Calendar getTempBanCalendar() {
+ 		}
+ 		return null;//why oh why!?!
+ 	}
++	
++	public Calendar getTempBanCalendar() {
++	    return tempBanCalendar;
++	}
++	
++	public boolean hasBeenBanned() {
++	    return tempBanCalendar != null;
++	}
+ 
+ 	public static long dottedQuadToLong(String dottedQuad) throws RuntimeException {
+ 		String[] quads = dottedQuad.split("\\.");
+@@ -1017,6 +1028,7 @@ private void disconnectInternal(boolean shutdown, boolean cashshop) {//once per
+                                         player.saveCharToDB(true);
+                                         
+ 					player.logOff();
++					if(ServerConstants.INSTANT_NAME_CHANGE) player.doPendingNameChange();
+                                         clear();
+ 				} else {
+                                         getChannelServer().removePlayer(player);
+@@ -1329,6 +1341,10 @@ public short getAvailableCharacterWorldSlots() {
+                 return (short) Math.max(0, characterSlots - Server.getInstance().getAccountWorldCharacterCount(accId, world));
+ 	}
+         
++    public short getAvailableCharacterWorldSlots(int world) {
++        return (short) Math.max(0, characterSlots - Server.getInstance().getAccountWorldCharacterCount(accId, world));
++    }
++        
+ 	public short getCharacterSlots() {
+ 		return characterSlots;
+ 	}
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 46339c645..0ace201a7 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -126,6 +126,8 @@
+     //Cash Shop Configuration
+     public static final boolean USE_JOINT_CASHSHOP_INVENTORY = true;//Enables usage of a same cash shop inventory for explorers, cygnus and legends. Items from exclusive cash shop inventories won't show up on the shared inventory, though.
+     public static final boolean USE_CLEAR_OUTDATED_COUPONS = true;  //Enables deletion of older code coupon registry from the DB, freeing so-long irrelevant data.
++    public static final boolean ALLOW_CASHSHOP_NAME_CHANGE = true;  //Allows players to buy name changes in the cash shop.
++    public static final boolean ALLOW_CASHSHOP_WORLD_TRANSFER =true;//Allows players to buy world transfers in the cash shop.
+     
+     //Maker Configuration
+     public static final boolean USE_MAKER_PERMISSIVE_ATKUP = true;  //Allows players to use attack-based strengthening gems on non-weapon items.
+@@ -169,6 +171,9 @@
+     public static final int TOT_MOB_QUEST_REQUIREMENT = 77;             //Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
+     public static final int MOB_REACTOR_REFRESH_TIME = 30 * 1000;       //Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
+     public static final int PARTY_SEARCH_REENTRY_LIMIT = 10;            //Max amount of times a party leader is allowed to persist on the Party Search before entry expiration (thus needing to manually restart the Party Search to be able to search for members).
++    public static final int NAME_CHANGE_COOLDOWN = 30*24*60*60*1000;    //Cooldown for name changes, default (GMS) is 30 days.
++    public static final int WORLD_TRANSFER_COOLDOWN=NAME_CHANGE_COOLDOWN;//Cooldown for world tranfers, default is same as name change (30 days).
++    public static final boolean INSTANT_NAME_CHANGE = false;            //Whether or not to wait for server restart to apply name changes. Does on reconnect otherwise (requires queries on every login).
+     
+     //Dangling Items/Locks Configuration
+     public static final int ITEM_EXPIRE_TIME  = 3 * 60 * 1000;  //Time before items start disappearing. Recommended to be set up to 3 minutes.
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 1caaf8e61..7892ce7d4 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -103,6 +103,7 @@
+ import server.quest.MapleQuest;
+ import tools.AutoJCE;
+ import tools.DatabaseConnection;
++import tools.FilePrinter;
+ import tools.Pair;
+ import org.apache.mina.core.session.IoSession;
+ 
+@@ -881,7 +882,8 @@ public void init() {
+         } catch (SQLException sqle) {
+             sqle.printStackTrace();
+         }
+-        
++        applyAllNameChanges(); //name changes can be missed by INSTANT_NAME_CHANGE
++        applyAllWorldTransfers();
+         MaplePet.clearMissingPetsFromDb();
+         MapleCashidGenerator.loadExistentCashIdsFromDb();
+         
+@@ -1554,6 +1556,82 @@ private boolean isFirstAccountLogin(Integer accId) {
+         }
+     }
+     
++    private static void applyAllNameChanges() {
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("SELECT * FROM namechanges WHERE completionTime IS NULL")) {
++            ResultSet rs = ps.executeQuery();
++            List<Pair<String, String>> changedNames = new LinkedList<Pair<String, String>>(); //logging only
++            while(rs.next()) {
++                con.setAutoCommit(false);
++                int nameChangeId = rs.getInt("id");
++                int characterId = rs.getInt("characterId");
++                String oldName = rs.getString("old");
++                String newName = rs.getString("new");
++                boolean success = MapleCharacter.doNameChange(con, characterId, oldName, newName, nameChangeId);                
++                if(!success) con.rollback(); //discard changes
++                else changedNames.add(new Pair<String, String>(oldName, newName));
++                con.setAutoCommit(true);
++            }
++            //log
++            for(Pair<String, String> namePair : changedNames) {
++                FilePrinter.print(FilePrinter.CHANGE_CHARACTER_NAME, "Name change applied : from \"" + namePair.getLeft() + "\" to \"" + namePair.getRight() + "\" at " + Calendar.getInstance().getTime().toString());
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Failed to retrieve list of pending name changes.");
++        }
++    }
++    
++    private static void applyAllWorldTransfers() {
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("SELECT * FROM worldtransfers WHERE completionTime IS NULL")) {
++            ResultSet rs = ps.executeQuery();
++            List<Integer> removedTransfers = new LinkedList<Integer>();
++            while(rs.next()) {
++                int nameChangeId = rs.getInt("id");
++                int characterId = rs.getInt("characterId");
++                int oldWorld = rs.getInt("from");
++                int newWorld = rs.getInt("to");
++                String reason = MapleCharacter.checkWorldTransferEligibility(con, characterId, oldWorld, newWorld); //check if character is still eligible
++                if(reason != null) {
++                    removedTransfers.add(nameChangeId);
++                    FilePrinter.print(FilePrinter.WORLD_TRANSFER, "World transfer cancelled : Character ID " + characterId + " at " + Calendar.getInstance().getTime().toString() + ", Reason : " + reason);
++                    try (PreparedStatement delPs = con.prepareStatement("DELETE FROM worldtransfers WHERE id = ?")) {
++                        delPs.setInt(1, nameChangeId);
++                        delPs.executeUpdate();
++                    } catch(SQLException e) { 
++                        e.printStackTrace();
++                        FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to delete world transfer for character ID " + characterId);
++                    }
++                }
++            }
++            rs.beforeFirst();
++            List<Pair<Integer, Pair<Integer, Integer>>> worldTransfers = new LinkedList<Pair<Integer, Pair<Integer, Integer>>>(); //logging only <charid, <oldWorld, newWorld>>
++            while(rs.next()) {
++                con.setAutoCommit(false);
++                int nameChangeId = rs.getInt("id");
++                if(removedTransfers.contains(nameChangeId)) continue;
++                int characterId = rs.getInt("characterId");
++                int oldWorld = rs.getInt("from");
++                int newWorld = rs.getInt("to");
++                boolean success = MapleCharacter.doWorldTransfer(con, characterId, oldWorld, newWorld, nameChangeId);
++                if(!success) con.rollback();
++                else worldTransfers.add(new Pair<Integer, Pair<Integer, Integer>>(characterId, new Pair<Integer, Integer>(oldWorld, newWorld)));
++                con.setAutoCommit(true);
++            }
++            //log
++            for(Pair<Integer, Pair<Integer, Integer>> worldTransferPair : worldTransfers) {
++                int charId = worldTransferPair.getLeft();
++                int oldWorld = worldTransferPair.getRight().getLeft();
++                int newWorld = worldTransferPair.getRight().getRight();
++                FilePrinter.print(FilePrinter.WORLD_TRANSFER, "World transfer applied : Character ID " + charId + " from World " + oldWorld + " to World " + newWorld + " at " + Calendar.getInstance().getTime().toString());
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            FilePrinter.printError(FilePrinter.WORLD_TRANSFER, e, "Failed to retrieve list of pending world transfers.");
++        }
++    }
++    
+     public void loadAccountCharacters(MapleClient c) {
+         Integer accId = c.getAccID();
+         if (!isFirstAccountLogin(accId)) {
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index 9ebb36ccb..f1b51fadf 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -34,6 +34,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import net.AbstractMaplePacketHandler;
++import net.server.Server;
+ import server.CashShop;
+ import server.CashShop.CashItem;
+ import server.CashShop.CashItemFactory;
+@@ -343,7 +344,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         slea.readByte();
+                         MapleCharacter partner = c.getChannelServer().getPlayerStorage().getCharacterByName(sentTo);
+                         if (partner == null) {
+-                            chr.dropMessage(5, "The partner you specified cannot be found. Please make sure your partner is online and in the same channel.");
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0xBE));
+                         } else {
+                             // Need to check to make sure its actually an equip and the right SN...
+                             if(itemRing.toItem() instanceof Equip) {
+@@ -351,7 +352,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                                 Pair<Integer, Integer> rings = MapleRing.createRing(itemRing.getItemId(), chr, partner);
+                                 eqp.setRingId(rings.getLeft());
+                                 cs.addToInventory(eqp);
+-                                c.announce(MaplePacketCreator.showBoughtCashItem(eqp, c.getAccID()));
++                                c.announce(MaplePacketCreator.showBoughtCashRing(eqp, partner.getName(), c.getAccID()));
+                                 cs.gift(partner.getId(), chr.getName(), text, eqp.getSN(), rings.getRight());
+                                 cs.gainCash(payment, -itemRing.getPrice());
+                                 chr.addFriendshipRing(MapleRing.loadFromDb(rings.getLeft()));
+@@ -368,6 +369,65 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+ 
+                     c.announce(MaplePacketCreator.showCash(c.getPlayer()));
++                } else if (action == 0x2E) { //name change
++                    CashItem cItem = CashItemFactory.getItem(slea.readInt());
++                    if (cItem == null || !canBuy(chr, cItem, cs.getCash(4))) {
++                        c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                        c.enableCSActions();
++                        return;
++                    }
++                    if(cItem.getSN() == 50600000 && ServerConstants.ALLOW_CASHSHOP_NAME_CHANGE) {
++                        slea.readMapleAsciiString(); //old name
++                        String newName = slea.readMapleAsciiString();
++                        if(!MapleCharacter.canCreateChar(newName) || chr.getLevel() < 10) { //(longest ban duration isn't tracked currently)
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                            c.enableCSActions();
++                            return;
++                        } else if(c.getTempBanCalendar() != null && c.getTempBanCalendar().getTimeInMillis() + (30*24*60*60*1000) > Calendar.getInstance().getTimeInMillis()) {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                            c.enableCSActions();
++                            return;
++                        }
++                        if(chr.registerNameChange(newName)) { //success
++                            Item item = cItem.toItem();
++                            c.announce(MaplePacketCreator.showNameChangeSuccess(item, c.getAccID()));
++                            cs.addToInventory(item);
++                            cs.gainCash(4, cItem, chr.getWorld());
++                        } else {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                        }
++                    }
++                    c.enableCSActions();
++                } else if(action == 0x31) { //world transfer
++                    CashItem cItem = CashItemFactory.getItem(slea.readInt());
++                    if (cItem == null || !canBuy(chr, cItem, cs.getCash(4))) {
++                        c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                        c.enableCSActions();
++                        return;
++                    }
++                    if(cItem.getSN() == 50600001 && ServerConstants.ALLOW_CASHSHOP_WORLD_TRANSFER) {
++                        int newWorldSelection = slea.readInt();
++                        
++                        int worldTransferError = chr.checkWorldTransferEligibility();
++                        if(worldTransferError != 0 || newWorldSelection >= Server.getInstance().getWorldsSize() || Server.getInstance().getWorldsSize() <= 1) {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                            return;
++                        } else if(newWorldSelection == c.getWorld()) {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0xDC));
++                            return;
++                        } else if(c.getAvailableCharacterWorldSlots(newWorldSelection) < 1 || Server.getInstance().getAccountWorldCharacterCount(c.getAccID(), newWorldSelection) >= 3) {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0xDF));
++                            return;
++                        } else if(chr.registerWorldTransfer(newWorldSelection)) {
++                            Item item = cItem.toItem();
++                            c.announce(MaplePacketCreator.showWorldTransferSuccess(item, c.getAccID()));
++                            cs.addToInventory(item);
++                            cs.gainCash(4, cItem, chr.getWorld());
++                        } else {
++                            c.announce(MaplePacketCreator.showCashShopMessage((byte)0));
++                        }
++                    }
++                    c.enableCSActions();
+                 } else {
+                     System.out.println("Unhandled action: " + action + "\n" + slea);
+                 }
+diff --git a/src/net/server/channel/handlers/TransferNameHandler.java b/src/net/server/channel/handlers/TransferNameHandler.java
+index 373c101ce..426a37a5b 100644
+--- a/src/net/server/channel/handlers/TransferNameHandler.java
++++ b/src/net/server/channel/handlers/TransferNameHandler.java
+@@ -20,14 +20,25 @@
+ 
+ package net.server.channel.handlers;
+ 
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++import java.sql.Timestamp;
++import java.util.Calendar;
++import java.sql.Connection;
++
++import client.MapleCharacter;
+ import client.MapleClient;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
++import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+  *
+  * @author Ronan
++ * @author Ubaware
+  */
+ public final class TransferNameHandler extends AbstractMaplePacketHandler {
+     
+@@ -40,7 +51,37 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             c.announce(MaplePacketCreator.enableActions());
+             return;
+         }
+-        
+-        c.announce(MaplePacketCreator.sendNameTransferRules(4));
++        if(!ServerConstants.ALLOW_CASHSHOP_NAME_CHANGE) {
++            c.announce(MaplePacketCreator.sendNameTransferRules(4));
++            return;
++        }
++        MapleCharacter chr = c.getPlayer();
++        if(chr.getLevel() < 10) {
++            c.announce(MaplePacketCreator.sendNameTransferRules(4));
++            return;
++        } else if(c.getTempBanCalendar() != null && c.getTempBanCalendar().getTimeInMillis() + (30*24*60*60*1000) < Calendar.getInstance().getTimeInMillis()) {
++            c.announce(MaplePacketCreator.sendNameTransferRules(2));
++            return;
++        }
++        //sql queries
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("SELECT completionTime FROM namechanges WHERE characterid=?")) { //double check, just in case
++            ps.setInt(1, chr.getId());
++            ResultSet rs = ps.executeQuery();
++            while(rs.next()) {
++                Timestamp completedTimestamp = rs.getTimestamp("completionTime");
++                if(completedTimestamp == null) { //has pending name request
++                    c.announce(MaplePacketCreator.sendNameTransferRules(1));
++                    return;
++                } else if(completedTimestamp.getTime() + ServerConstants.NAME_CHANGE_COOLDOWN > System.currentTimeMillis()) {
++                    c.announce(MaplePacketCreator.sendNameTransferRules(3));
++                    return;
++                };
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            return;
++        }
++        c.announce(MaplePacketCreator.sendNameTransferRules(0));
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/TransferNameResultHandler.java b/src/net/server/channel/handlers/TransferNameResultHandler.java
+index b12999a38..6e75bbc1d 100644
+--- a/src/net/server/channel/handlers/TransferNameResultHandler.java
++++ b/src/net/server/channel/handlers/TransferNameResultHandler.java
+@@ -35,6 +35,6 @@
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         String name = slea.readMapleAsciiString();
+-        c.announce(MaplePacketCreator.sendNameTransferCheck(MapleCharacter.canCreateChar(name)));
++        c.announce(MaplePacketCreator.sendNameTransferCheck(name, MapleCharacter.canCreateChar(name)));
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/TransferWorldHandler.java b/src/net/server/channel/handlers/TransferWorldHandler.java
+index 79657dfca..d822c247b 100644
+--- a/src/net/server/channel/handlers/TransferWorldHandler.java
++++ b/src/net/server/channel/handlers/TransferWorldHandler.java
+@@ -20,14 +20,25 @@
+ 
+ package net.server.channel.handlers;
+ 
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++import java.sql.Timestamp;
++
++import client.MapleCharacter;
+ import client.MapleClient;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
++import net.server.Server;
++import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+  *
+  * @author Ronan
++ * @author Ubaware
+  */
+ public final class TransferWorldHandler extends AbstractMaplePacketHandler {
+     
+@@ -40,7 +51,34 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             c.announce(MaplePacketCreator.enableActions());
+             return;
+         }
+-        
+-        c.announce(MaplePacketCreator.sendWorldTransferRules(9));
++        MapleCharacter chr = c.getPlayer();
++        if(!ServerConstants.ALLOW_CASHSHOP_WORLD_TRANSFER || Server.getInstance().getWorldsSize() <= 1) {
++            c.announce(MaplePacketCreator.sendWorldTransferRules(9, c));
++            return;
++        }
++        int worldTransferError = chr.checkWorldTransferEligibility();
++        if(worldTransferError != 0) {
++            c.announce(MaplePacketCreator.sendWorldTransferRules(worldTransferError, c));
++            return;
++        }
++        try (Connection con = DatabaseConnection.getConnection();
++                PreparedStatement ps = con.prepareStatement("SELECT completionTime FROM worldtransfers WHERE characterid=?")) {
++            ps.setInt(1, chr.getId());
++            ResultSet rs = ps.executeQuery();
++            while(rs.next()) {
++                Timestamp completedTimestamp = rs.getTimestamp("completionTime");
++                if(completedTimestamp == null) { //has pending world transfer
++                    c.announce(MaplePacketCreator.sendWorldTransferRules(6, c));
++                    return;
++                } else if(completedTimestamp.getTime() + ServerConstants.WORLD_TRANSFER_COOLDOWN > System.currentTimeMillis()) {
++                    c.announce(MaplePacketCreator.sendWorldTransferRules(7, c));
++                    return;
++                };
++            }
++        } catch(SQLException e) {
++            e.printStackTrace();
++            return;
++        }
++        c.announce(MaplePacketCreator.sendWorldTransferRules(0, c));
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 31b75fee3..978ce9c28 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -423,6 +423,24 @@ public void run() {
+             	}
+             }, 1000 * 10);
+             remove(c, position, itemId);
++        } else if (itemType == 540) {
++            slea.readByte();
++            slea.readInt();
++            if(itemId == 5400000) { //name change
++                if(player.cancelPendingNameChange()) {
++                    player.dropMessage(1, "Successfully canceled pending name change.");
++                } else {
++                    player.dropMessage(1, "You do not have a pending name change.");
++                }
++            } else if(itemId == 5401000) { //world transfer
++                if(player.cancelPendingWorldTranfer()) {
++                    player.dropMessage(1, "Successfully canceled pending world transfer.");
++                } else {
++                    player.dropMessage(1, "You do not have a pending world transfer.");
++                }
++            }
++            remove(c, position, itemId);
++            c.announce(MaplePacketCreator.enableActions());
+         } else if (itemType == 543) {
+             if(itemId == 5432000 && !c.gainCharacterSlot()) {
+                 player.dropMessage(1, "You have already used up all 12 extra character slots.");
+diff --git a/src/net/server/handlers/login/LoginPasswordHandler.java b/src/net/server/handlers/login/LoginPasswordHandler.java
+index 3a2041d51..49c35adee 100644
+--- a/src/net/server/handlers/login/LoginPasswordHandler.java
++++ b/src/net/server/handlers/login/LoginPasswordHandler.java
+@@ -135,7 +135,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             c.announce(MaplePacketCreator.getLoginFailed(3));
+             return;
+         }
+-        Calendar tempban = c.getTempBanCalendar();
++        Calendar tempban = c.getTempBanCalendarFromDB();
+         if (tempban != null) {
+             if (tempban.getTimeInMillis() > Calendar.getInstance().getTimeInMillis()) {
+                 c.announce(MaplePacketCreator.getTempBan(tempban.getTimeInMillis(), c.getGReason()));
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index 0e934c1dd..0d787b146 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -59,6 +59,8 @@
+             QUEST_UNCODED = "game/quests/UncodedQuests.txt",
+             AUTOSAVING_CHARACTER = "players/SaveCharAuto.txt",
+             SAVING_CHARACTER = "players/SaveChar.txt",
++            CHANGE_CHARACTER_NAME = "players/NameChange.txt",
++            WORLD_TRANSFER = "players/WorldTransfer.txt",
+             USED_COMMANDS = "commands/UsedCommands.txt",
+             DEADLOCK_ERROR = "deadlocks/Deadlocks.txt",
+             DEADLOCK_STACK = "deadlocks/Path.txt",
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index a2f6c124f..fe25226db 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -81,6 +81,7 @@
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import net.server.world.PartyOperation;
++import net.server.world.World;
+ import server.CashShop.CashItem;
+ import server.CashShop.CashItemFactory;
+ import server.CashShop.SpecialCashItem;
+@@ -6091,18 +6092,33 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+             8: must quit family,
+             9: unknown error
+         */
+-        public static byte[] sendWorldTransferRules(int error) {
++        public static byte[] sendWorldTransferRules(int error, MapleClient c) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CASHSHOP_CHECK_TRANSFER_WORLD_POSSIBLE_RESULT.getValue());
+-                mplew.writeInt(0);
+-                mplew.write(0); 
++                mplew.writeInt(0); //ignored
+                 mplew.write(error);
+                 mplew.writeInt(0);
+-                
++                mplew.writeBool(error == 0); //0 = ?, otherwise list servers
++                if(error == 0) {
++                    List<World> worlds = Server.getInstance().getWorlds();
++                    mplew.writeInt(worlds.size());
++                    for(World world : worlds) {
++                        mplew.writeMapleAsciiString(GameConstants.WORLD_NAMES[world.getId()]);
++                    }
++                }
+                 return mplew.getPacket();
+         }
+         
+-        /*  1: name change already submitted
++        public static byte[] showWorldTransferSuccess(Item item, int accountId) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
++            mplew.write(0xA0);
++            addCashItemInformation(mplew, item, accountId);
++            return mplew.getPacket();
++    }
++        
++        /*  0: no error, send rules
++            1: name change already submitted
+             2: name change within a month
+             3: recently banned
+             4: unknown error
+@@ -6117,15 +6133,28 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+         
++        /*  0: Name available
++         * >0: Name is in use
++         * <0: Unknown error
++         */
+         
+-        public static byte[] sendNameTransferCheck(boolean canUseName) {
++        public static byte[] sendNameTransferCheck(String availableName, boolean canUseName) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CASHSHOP_CHECK_NAME_CHANGE.getValue());
+-                mplew.writeShort(0);
++                //Send provided name back to client to add to temporary cache of checked & accepted names
++                mplew.writeMapleAsciiString(availableName);
+                 mplew.writeBool(!canUseName);
+                 return mplew.getPacket();
+         }
+         
++        public static byte[] showNameChangeSuccess(Item item, int accountId) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
++                mplew.write(0x9E);
++                addCashItemInformation(mplew, item, accountId);
++                return mplew.getPacket();
++        }
++        
+         public static byte[] showMTSCash(MapleCharacter p) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MTS_OPERATION2.getValue());
+@@ -7708,8 +7737,20 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+                 return mplew.getPacket();
+         }
+         
++        public static byte[] showBoughtCashRing(Item ring, String recipient, int accountId) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
++            mplew.write(0x87);
++            addCashItemInformation(mplew, ring, accountId);
++            mplew.writeMapleAsciiString(recipient);
++            mplew.writeInt(ring.getItemId());
++            mplew.writeShort(1); //quantity
++            return mplew.getPacket();
++        }
++        
+         /*
+          * 00 = Due to an unknown error, failed
++         * A3 = Request timed out. Please try again.
+          * A4 = Due to an unknown error, failed + warpout
+          * A5 = You don't have enough cash.
+          * A6 = long as shet msg
+@@ -7726,6 +7767,7 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+          * B2 = Expired Coupon
+          * B3 = Coupon has been used already
+          * B4 = Nexon internet cafes? lolfk
++         * B8 = Due to gender restrictions, the coupon cannot be used.
+          * BB = inv full
+          * BC = long as shet "(not?) available to purchase by a use at the premium" msg
+          * BD = invalid gift recipient
+@@ -7738,6 +7780,8 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+          * C4 = check birthday code
+          * C7 = only available to users buying cash item, whatever msg too long
+          * C8 = already applied for this
++         * CD = You have reached the daily purchase limit for the cash shop.
++         * D0 = coupon account limit reached
+          * D2 = coupon system currently unavailable
+          * D3 = item can only be used 15 days after registration
+          * D4 = not enough gift tokens
+@@ -7851,6 +7895,23 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+ 
+                 return mplew.getPacket();
+         }
++        
++        public static byte[] deleteCashItem(Item item) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
++            mplew.write(0x6C);
++            mplew.writeLong(item.getCashId());
++            return mplew.getPacket();
++        }
++        
++        public static byte[] refundCashItem(Item item, int maplePoints) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
++            mplew.write(0x85);
++            mplew.writeLong(item.getCashId());
++            mplew.writeInt(maplePoints);
++            return mplew.getPacket();
++        }
+ 
+         public static byte[] putIntoCashInventory(Item item, int accountId) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();

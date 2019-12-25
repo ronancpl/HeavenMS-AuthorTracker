@@ -1,0 +1,3462 @@
+diff --git a/docs/issues.txt b/docs/issues.txt
+index b0d48368c..56f339dda 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -12,9 +12,8 @@ Known issues:
+ - Dragon Roar doesn't show the stun effect to players.
+ - Cygnus job 'Final Attack' skills not functional.
+ - Steal skill doesn't deduct the loot from the drop pool from a mob.
+-- Using Shark Wave with Transformation on female thunderbreakers will cause consecutive attacks to proc immediately.
+ - Snipe will show much higher damage value than actually applicable to the attacker.
+-- Some monster status such as freeze and weapon/magic reflect doesn't behave properly in certain scenarios. Freeze seems to not work on mobs with low OID or are starters from server boot time.
++- Some monster status such as weapon/magic reflect doesn't behave properly in certain scenarios.
+ - On low-end connections, things such as command summoning a player that is currently logging in (already visible to other players) may cause the player to freeze, consequently freezing the account as well since the server-side disconnection doesn't happen.
+ - Reportedly, there are cases where mob positions fail to sync between player's client-view.
+ - Visual equip EXP watch value will present stuttering for early levels requirement (EXP needed less than 100), and requirement at level 200 will not progress at all due to the level cap in client.
+@@ -32,14 +31,13 @@ Missing features list:
+ 
+ ---------------------------
+ ** Others **
+-- Family system
+ - MTS
+ ---------------------------
+ 
+ 
+ ---------------------------
+ ** Quest **
+-- Family & Medal quests.
++- Medal quests.
+ ---------------------------
+ 
+ 
+@@ -50,7 +48,7 @@ Missing features list:
+ 
+ ---------------------------
+ ** Packet issues & advanced PQs **
+-- Mystic Doors (won't deploy players properly is some situations, only destination map matches).
++- Mystic Doors (won't deploy players properly in some situations, only destination map matches).
+ - Nett's Pyramid Party Quest
+ ---------------------------
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 0d0e91ac3..a0a39b884 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -2111,4 +2111,28 @@ Corrigido informações de mount não sendo atualizado para o jogador assim que
+ Revisado sistema criado para manutenção de pacotes enviados através do IoSession, tal sistema agora atuando como uma "pool" ao invés de uma "factory".
+ 
+ 29 Agosto 2019,
+-Revisado uso de loop em espera ocupada no sistema de manutenção de pacotes enviados. Em geral, threads que solicitam anúncio de pacotes não necessitam evitar esperar até que cada pacote seja enviado.
+\ No newline at end of file
++Revisado uso de loop em espera ocupada no sistema de manutenção de pacotes enviados. Em geral, threads que solicitam anúncio de pacotes não necessitam evitar esperar até que cada pacote seja enviado.
++
++30 Agosto 2019,
++Corrigido skill Seal não atuando devidamente para Blaze Wizard.
++Corrigido skill Seal atuando em bosses.
++Refatorado funções ainda utilizando invocável desabstraindo o mesmo, assim evitando múltiplos casts de tipo ao decorrer da busca pelo motor de scripts.
++
++02 - 03 Setembro 2019,
++Revisado pontos de spawn usados em warps em vários scripts do servidor.
++Refatorado métodos da CPQ buscando jogadores pelo storage de canais. Não deveria mais haver necessidade já que a partir de uma atualização recente membros offline contém objeto de jogador nulo, e ao reentrar o MPC já assume o novo objeto de jogador.
++
++05 - 06 Setembro 2019,
++Adicionado doors em mapas de cidade como objetos visíveis em campo.
++Corrigido aplicação de status de mobs, onde em várias ocasiões os mobs poderiam parecer inafetáveis aos mesmos.
++
++07 Setembro 2019,
++Corrigido jogador não recebendo informações de debuffs em outros jogadores ao trocar de mapas.
++
++10 - 12 Setembro 2019,
++Corrigido algumas skills de tipo "mágico", que não usam cargas, não mostrando dano para outros jogadores quando golpe ocorre suficientemente perto.
++Adicionado checagem por evidência de disponibilidade de scripts em quests.
++Corrigido inscrição de itens no MTS levando a certos atributos de itens sendo perdidos no processo.
++Adicionado ganho de MaxHP extra da skill para Thunderbreakers, em ambos casos de aumento de nível e de MaxHP usando AP.
++Refatorado ação de autopots, permitindo o mesmo a agir imediatamente após detecção de perda suficiente de HP/MP ao usar itens ou skills.
++Adicionado efeito sonoro de portal ao atravessar Mystic Door.
+\ No newline at end of file
+diff --git a/scripts/event/BalrogBattle.js b/scripts/event/BalrogBattle.js
+index ad2122ebe..499d793ec 100644
+--- a/scripts/event/BalrogBattle.js
++++ b/scripts/event/BalrogBattle.js
+@@ -245,6 +245,7 @@ function monsterKilled(mob, eim) {
+                         eim.clearPQ();
+ 
+                         eim.dispatchUpdateQuestMobCount(bossMobId, entryMap);
++                        eim.dispatchUpdateQuestMobCount(9101003, entryMap); // thanks Atoot for noticing quest not getting updated after boss kill
+                         mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
+                 } else {
+                         if(count == 1) {
+diff --git a/scripts/event/GuardianNex.js b/scripts/event/GuardianNex.js
+index 982ee33b5..360e41454 100644
+--- a/scripts/event/GuardianNex.js
++++ b/scripts/event/GuardianNex.js
+@@ -24,7 +24,7 @@ function respawn(eim){}
+ 
+ function playerEntry(eim, player){
+ 	var cave = eim.getMapInstance(eventMap + 10 * eim.getIntProperty("nex"));
+-	player.changeMap(cave);
++	player.changeMap(cave, 1);
+ }
+ 
+ function scheduledTimeout(eim){
+diff --git a/scripts/event/Puppeteer.js b/scripts/event/Puppeteer.js
+index 35baa8c0d..0fd8898cb 100644
+--- a/scripts/event/Puppeteer.js
++++ b/scripts/event/Puppeteer.js
+@@ -24,7 +24,7 @@ function respawn(eim){}
+ 
+ function playerEntry(eim, player){
+ 	var cave = eim.getMapInstance(eventMap);
+-	player.changeMap(cave);
++	player.changeMap(cave, 1);
+ }
+ 
+ function scheduledTimeout(eim){
+diff --git a/scripts/event/RockSpirit.js b/scripts/event/RockSpirit.js
+index 149ced9bd..9bd072658 100644
+--- a/scripts/event/RockSpirit.js
++++ b/scripts/event/RockSpirit.js
+@@ -63,7 +63,7 @@ function respawn(eim) {
+ 
+ function playerEntry(eim, player) {
+     var amplifierMap = eim.getMapInstance(entryMap.getId());
+-    player.changeMap(amplifierMap);
++    player.changeMap(amplifierMap, 1);
+     eim.schedule("timeOut", timer);
+ }
+ 
+diff --git a/scripts/event/RockSpiritVIP.js b/scripts/event/RockSpiritVIP.js
+index 0d2ecba42..60085fb57 100644
+--- a/scripts/event/RockSpiritVIP.js
++++ b/scripts/event/RockSpiritVIP.js
+@@ -63,7 +63,7 @@ function respawn(eim) {
+ 
+ function playerEntry(eim, player) {
+ 	var amplifierMap = eim.getMapInstance(entryMap.getId());
+-	player.changeMap(amplifierMap);
++	player.changeMap(amplifierMap, 1);
+         eim.schedule("timeOut", timer);
+ }
+ 
+diff --git a/scripts/npc/1052007.js b/scripts/npc/1052007.js
+index 8636978a8..27a0f1a4d 100644
+--- a/scripts/npc/1052007.js
++++ b/scripts/npc/1052007.js
+@@ -66,7 +66,7 @@ function action(mode, type, selection) {
+     		ticketSelection = selection;
+             if (ticketSelection > -1) {
+                 cm.gainItem(4031035 + ticketSelection, -1);
+-                cm.warp(103000897 + (ticketSelection * 3));
++                cm.warp(103000897 + (ticketSelection * 3), "st00");  // thanks IxianMace for noticing a few scripts having misplaced warp SP's
+                 hasTicket = false;
+                 cm.dispose();
+                 return;
+diff --git a/scripts/npc/1052008.js b/scripts/npc/1052008.js
+index 33176a4bf..095fd671c 100644
+--- a/scripts/npc/1052008.js
++++ b/scripts/npc/1052008.js
+@@ -28,6 +28,6 @@ function start() {
+         cm.gainItem(4031039,1);
+     else
+         cm.gainItem(4020000 + ((Math.random()*5)|0), 1);
+-    cm.warp(103000100);
++    cm.warp(103000100, 0);
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1052009.js b/scripts/npc/1052009.js
+index 6a83c44ff..f1de2aab8 100644
+--- a/scripts/npc/1052009.js
++++ b/scripts/npc/1052009.js
+@@ -28,6 +28,6 @@ function start() {
+         cm.gainItem(4031040,1);
+     else
+         cm.gainItem(prizes[parseInt(Math.random() * prizes.length)],1);
+-    cm.warp(103000100);
++    cm.warp(103000100, 0);
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1052010.js b/scripts/npc/1052010.js
+index 4e072e482..7f75e4c2a 100644
+--- a/scripts/npc/1052010.js
++++ b/scripts/npc/1052010.js
+@@ -28,6 +28,6 @@ function start() {
+         cm.gainItem(4031041,1);
+     else
+         cm.gainItem(prizes[parseInt(Math.random() * prizes.length)],1);
+-    cm.warp(103000100);
++    cm.warp(103000100, 0);
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1052012.js b/scripts/npc/1052012.js
+index 8c03fb6da..bb683cac6 100644
+--- a/scripts/npc/1052012.js
++++ b/scripts/npc/1052012.js
+@@ -53,7 +53,7 @@ function action(mode, type, selection) {
+                                 cm.sendOk("Oh, you don't have the money, right? Sorry, I can't let you in.");
+                         } else {
+                                 cm.gainMeso(-5000);
+-                                cm.warp(193000000);
++                                cm.warp(193000000, "out00");
+                         }
+                     
+                         cm.dispose();
+diff --git a/scripts/npc/1061018.js b/scripts/npc/1061018.js
+index 1fd6b88c2..a603b7044 100644
+--- a/scripts/npc/1061018.js
++++ b/scripts/npc/1061018.js
+@@ -28,7 +28,7 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1){
+                         if(cm.getEventInstance().isEventCleared()) {
+-                                cm.warp(cm.getMapId() == 105100300 ? 105100301 : 105100401);
++                                cm.warp(cm.getMapId() == 105100300 ? 105100301 : 105100401, 0);
+                         } else {
+                                 cm.warp(105100100);
+                         }
+diff --git a/scripts/npc/1072002.js b/scripts/npc/1072002.js
+index dad871dbf..3f2ed5c98 100644
+--- a/scripts/npc/1072002.js
++++ b/scripts/npc/1072002.js
+@@ -69,7 +69,7 @@ function action(mode, type, selection) {
+                     cm.gainItem(4031010, -1);
+                     cm.sendOk("You will have to collect me #b30 #t4031013##k. Good luck.")
+                 } else if (status == 4) {
+-                    cm.warp(108000100);
++                    cm.warp(108000100, 0);
+                     cm.dispose();
+                 }
+                 else {
+diff --git a/scripts/npc/1090000.js b/scripts/npc/1090000.js
+index 60b573219..a15d3b3a3 100644
+--- a/scripts/npc/1090000.js
++++ b/scripts/npc/1090000.js
+@@ -222,7 +222,7 @@ function action(mode, type, selection) {
+ 					cm.sendOk("All the training maps are currently in use. Please try again later.");
+ 					cm.dispose();
+ 				} else {
+-					cm.warp(map);
++					cm.warp(map, 0);
+ 					cm.dispose();
+ 					return;
+                 }
+diff --git a/scripts/npc/2013001.js b/scripts/npc/2013001.js
+index 5ee0327ee..699dd060b 100644
+--- a/scripts/npc/2013001.js
++++ b/scripts/npc/2013001.js
+@@ -278,7 +278,7 @@ function action(mode, type, selection) {
+                 if(cm.getMap().countMonsters() > 0) {
+                     cm.sendNext("This is the hidden room of the tower. After eliminating all monsters on this room, talk to me to gain access to the treasure room, leaving the center tower access behind.");
+                 } else {
+-                    cm.warp(920011100);
++                    cm.warp(920011100, "st00");
+                 }
+                 break;
+         }
+diff --git a/scripts/npc/2030000.js b/scripts/npc/2030000.js
+index 77b591c37..fc7dd3e48 100644
+--- a/scripts/npc/2030000.js
++++ b/scripts/npc/2030000.js
+@@ -33,7 +33,7 @@ var status = 0;
+ 
+ function start() {
+     if(cm.haveItem(4031450, 1)) {
+-        cm.warp(921100100);
++        cm.warp(921100100, 1);
+         cm.dispose();
+         return;
+     }
+diff --git a/scripts/npc/2040045.js b/scripts/npc/2040045.js
+index 228077ff5..01f546487 100644
+--- a/scripts/npc/2040045.js
++++ b/scripts/npc/2040045.js
+@@ -54,7 +54,7 @@ function action(mode, type, selection) {
+                         cm.sendYesNo("Would you like to leave the bonus stage?");
+                 }
+                 else {
+-                        cm.warp(922011100);
++                        cm.warp(922011100, "st00");
+                         cm.dispose();
+                 }
+         }
+diff --git a/scripts/npc/2081010.js b/scripts/npc/2081010.js
+index 0b564e239..019a54527 100644
+--- a/scripts/npc/2081010.js
++++ b/scripts/npc/2081010.js
+@@ -44,7 +44,7 @@ function action(mode, type, selection){
+     }
+     
+     else if(status == 1) {
+-	cm.warp(exitMap);
++	cm.warp(exitMap, "st00");
+         cm.dispose();
+     }
+ }
+diff --git a/scripts/npc/2083002.js b/scripts/npc/2083002.js
+index 14328826c..c7cbd0763 100644
+--- a/scripts/npc/2083002.js
++++ b/scripts/npc/2083002.js
+@@ -34,7 +34,7 @@ function action(mode, type, selection) {
+         cm.dispose();
+     else {
+         if(cm.getMapId() > 240050400) cm.warp(240050600);
+-        else cm.warp(240040700);
++        else cm.warp(240040700, "out00");
+         
+         cm.dispose();
+     }
+diff --git a/scripts/npc/2091005.js b/scripts/npc/2091005.js
+index 24cf9806c..57ad24c0c 100644
+--- a/scripts/npc/2091005.js
++++ b/scripts/npc/2091005.js
+@@ -330,7 +330,7 @@ function action(mode, type, selection) {
+                         cm.sendYesNo("So, you're giving up? You're really going to leave?");
+                     } else {
+                         if (mode == 1) {
+-                            cm.warp(925020002);
++                            cm.warp(925020002, "st00");
+                         }
+                         cm.dispose();
+                         return;
+diff --git a/scripts/npc/2091005_old.js b/scripts/npc/2091005_old.js
+index ffaae970c..028204db3 100644
+--- a/scripts/npc/2091005_old.js
++++ b/scripts/npc/2091005_old.js
+@@ -225,7 +225,7 @@ function action(mode, type, selection) {
+                 cm.sendAcceptDecline("So, you're giving up? You're really going to leave?");
+             } else {
+                 if (mode == 1) {
+-                    cm.warp(925020002);
++                    cm.warp(925020002, "st00");
+                 }
+                 cm.dispose();
+             }
+diff --git a/scripts/npc/2111000.js b/scripts/npc/2111000.js
+index 2a40b90e3..3ae1c9dba 100644
+--- a/scripts/npc/2111000.js
++++ b/scripts/npc/2111000.js
+@@ -30,7 +30,7 @@
+ */
+ function start() {
+     if(cm.isQuestStarted(3310) && !cm.haveItem(4031709, 1)) {
+-        cm.warp(926120100);
++        cm.warp(926120100, "out00");
+     } else {
+         cm.sendNext("Alchemy....and Alchemist.....both of them are important. But more importantly, it is the Magatia that tolerate everything. The honor of Magatia should be protected by me.");
+     }
+diff --git a/scripts/npc/2111003.js b/scripts/npc/2111003.js
+index 948460a2b..aa22675e6 100644
+--- a/scripts/npc/2111003.js
++++ b/scripts/npc/2111003.js
+@@ -33,7 +33,7 @@
+ 
+ function start() {
+     if(cm.isQuestStarted(3335) && !cm.haveItem(4031695, 1)) {
+-        cm.warp(926120300);
++        cm.warp(926120300, "out00");
+         cm.dispose();
+     } else {
+         cm.sendOk("Emotion that I feel is real? Or just illusion coming from mechanical error?");
+diff --git a/scripts/npc/2112003.js b/scripts/npc/2112003.js
+index bbf907d81..10a4fda4d 100644
+--- a/scripts/npc/2112003.js
++++ b/scripts/npc/2112003.js
+@@ -50,7 +50,7 @@ function action(mode, type, selection) {
+                         if(status == 0) {
+                                 cm.sendYesNo("We must keep fighting to save Romeo, please keep your pace. If you are not feeling so well to continue, your companions and I will understand... So, are you going to retreat?");
+                         } else if(status == 1) {
+-                                cm.warp(926110700);
++                                cm.warp(926110700, 0);
+                                 cm.dispose();
+                         }
+                 } else {
+diff --git a/scripts/npc/2112004.js b/scripts/npc/2112004.js
+index 02b02a895..44da2246d 100644
+--- a/scripts/npc/2112004.js
++++ b/scripts/npc/2112004.js
+@@ -50,7 +50,7 @@ function action(mode, type, selection) {
+                         if(status == 0) {
+                                 cm.sendYesNo("We must keep fighting to save Juliet, please keep your pace. If you are not feeling so well to continue, your companions and I will understand... So, are you going to retreat?");
+                         } else if(status == 1) {
+-                                cm.warp(926100700);
++                                cm.warp(926100700, 0);
+                                 cm.dispose();
+                         }
+                 } else {
+diff --git a/scripts/npc/2112005.js b/scripts/npc/2112005.js
+index 29860dce6..14de11379 100644
+--- a/scripts/npc/2112005.js
++++ b/scripts/npc/2112005.js
+@@ -93,7 +93,7 @@ function action(mode, type, selection) {
+                                         cm.sendYesNo("We must keep fighting to save Romeo, please keep your pace. If you are not feeling so well to continue, your companions and I will understand... So, are you going to retreat?");
+                                 }
+                         } else {
+-                                cm.warp(926110700);
++                                cm.warp(926110700, 0);
+                                 cm.dispose();
+                         }
+                 } else {
+@@ -111,15 +111,15 @@ function action(mode, type, selection) {
+                                 if(cm.canHold(4001160)) {
+                                         cm.gainItem(4001160, 1);
+                                         
+-                                        if(eim.getIntProperty("normalClear") == 1) cm.warp(926110600);
+-                                        else cm.warp(926110500);
++                                        if(eim.getIntProperty("normalClear") == 1) cm.warp(926110600, 0);
++                                        else cm.warp(926110500, 0);
+                                 } else {
+                                         cm.sendOk("Make sure you have a space on your ETC inventory.");
+                                 }
+                                 
+                                 cm.dispose();
+                         } else {
+-                                cm.warp(926110600);
++                                cm.warp(926110600, 0);
+                                 cm.dispose();
+                         }
+                 }
+diff --git a/scripts/npc/2112006.js b/scripts/npc/2112006.js
+index 3ab191194..2a1ad0c22 100644
+--- a/scripts/npc/2112006.js
++++ b/scripts/npc/2112006.js
+@@ -93,7 +93,7 @@ function action(mode, type, selection) {
+                                         cm.sendYesNo("We must keep fighting to save Juliet, please keep your pace. If you are not feeling so well to continue, your companions and I will understand... So, are you going to retreat?");
+                                 }
+                         } else {
+-                                cm.warp(926100700);
++                                cm.warp(926100700, 0);
+                                 cm.dispose();
+                         }
+                 } else {
+@@ -111,15 +111,15 @@ function action(mode, type, selection) {
+                                 if(cm.canHold(4001159)) {
+                                         cm.gainItem(4001159, 1);
+                                         
+-                                        if(eim.getIntProperty("normalClear") == 1) cm.warp(926100600);
+-                                        else cm.warp(926100500);
++                                        if(eim.getIntProperty("normalClear") == 1) cm.warp(926100600, 0);
++                                        else cm.warp(926100500, 0);
+                                 } else {
+                                         cm.sendOk("Make sure you have a space on your ETC inventory.");
+                                 }
+                                 
+                                 cm.dispose();
+                         } else {
+-                                cm.warp(926100600);
++                                cm.warp(926100600, 0);
+                                 cm.dispose();
+                         }
+                 }
+diff --git a/scripts/npc/2112011.js b/scripts/npc/2112011.js
+index 4e3b223f7..e6f2cc19e 100644
+--- a/scripts/npc/2112011.js
++++ b/scripts/npc/2112011.js
+@@ -51,7 +51,7 @@ function action(mode, type, selection) {
+                 } else {
+                         if(!cm.isQuestCompleted(7770)) cm.completeQuest(7770);
+                         
+-                        cm.warp(926110600);
++                        cm.warp(926110600, 0);
+                         cm.dispose();
+                 }
+         }
+diff --git a/scripts/npc/2133001.js b/scripts/npc/2133001.js
+index 74a85d579..d28855533 100644
+--- a/scripts/npc/2133001.js
++++ b/scripts/npc/2133001.js
+@@ -92,10 +92,10 @@ function action(mode, type, selection) {
+                                 cm.gainItem(4001169, -20);
+                                 cm.getEventInstance().warpEventTeam(930000500);
+                             } else {
+-                                cm.warp(930000800);
++                                cm.warp(930000800, 0);
+                             }
+                         } else {
+-                            cm.warp(930000800);
++                            cm.warp(930000800, 0);
+                         }
+                         
+                         cm.dispose();
+diff --git a/scripts/npc/2133002.js b/scripts/npc/2133002.js
+index 1804c49b1..59c3d759c 100644
+--- a/scripts/npc/2133002.js
++++ b/scripts/npc/2133002.js
+@@ -19,7 +19,7 @@ function action(mode, type, selection) {
+ 	cm.removeAll(4001163);
+ 	cm.removeAll(4001169);
+ 	cm.removeAll(2270004);
+-	cm.warp(930000800);
++	cm.warp(930000800, 0);
+ 	cm.dispose();
+     }
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/2133004.js b/scripts/npc/2133004.js
+index 4affde77c..ef0d283fe 100644
+--- a/scripts/npc/2133004.js
++++ b/scripts/npc/2133004.js
+@@ -25,7 +25,7 @@ function action(mode, type, selection) {
+                     }                        
+                 } else if(status == 1) {
+                         if (!cm.haveItem(4001163)) {
+-                                cm.warp(930000800);
++                                cm.warp(930000800, 0);
+                         } else {
+                                 cm.getEventInstance().warpEventTeam(930000600);
+                         }
+diff --git a/scripts/npc/9000001.js b/scripts/npc/9000001.js
+index 55eaf9a27..c0501bf00 100644
+--- a/scripts/npc/9000001.js
++++ b/scripts/npc/9000001.js
+@@ -59,7 +59,7 @@ function action(mode, type, selection) {
+ 						cm.divideTeams();
+         
+ 					cm.getEvent().minusLimit();
+-					cm.warp(cm.getEvent().getMapId());
++					cm.warp(cm.getEvent().getMapId(), 0);
+ 					cm.dispose();
+ 				} else {
+ 					cm.sendNext("Either the event has not been started, you already have the #bScroll of Secrets#k, or you have already participated in this event within the last 24 hours. Please try again later!");
+diff --git a/scripts/npc/9000021.js b/scripts/npc/9000021.js
+index c6d7bbc9d..b2dd15c36 100644
+--- a/scripts/npc/9000021.js
++++ b/scripts/npc/9000021.js
+@@ -55,7 +55,7 @@ function action(mode, type, selection) {
+             cm.sendOk("Very well. Remember, there you can assemble a team or take on the fightings on your own, it's up to you. Good luck!");
+         } else if(status == 4) {
+             cm.getPlayer().saveLocation("BOSSPQ");
+-            cm.warp(970030000);
++            cm.warp(970030000, "out00");
+             cm.dispose();
+         }
+     }
+diff --git a/scripts/npc/9010022.js b/scripts/npc/9010022.js
+index a7c160e6e..f4718a16d 100644
+--- a/scripts/npc/9010022.js
++++ b/scripts/npc/9010022.js
+@@ -71,10 +71,10 @@ function action(mode, type, selection) {
+                     cm.warp(980030000, 3); 
+                     break; 
+                 case 5: 
+-                    cm.warp(926010000); 
++                    cm.warp(926010000, 4); 
+                     break; 
+                 case 6: 
+-                    cm.warp(910320000); 
++                    cm.warp(910320000, 2);
+                     break; 
+             } 
+             cm.dispose(); 
+diff --git a/scripts/npc/9010022_old.js b/scripts/npc/9010022_old.js
+index d62b2984b..8a9e49bdb 100644
+--- a/scripts/npc/9010022_old.js
++++ b/scripts/npc/9010022_old.js
+@@ -66,10 +66,10 @@ function action(mode, type, selection) {
+                     cm.warp(980030000, 3); 
+                     break; 
+                 case 5: 
+-                    cm.warp(926010000); 
++                    cm.warp(926010000, 4); 
+                     break; 
+                 case 6: 
+-                    cm.warp(910320000); 
++                    cm.warp(910320000, 2);
+                     break; 
+             } 
+             cm.dispose(); 
+diff --git a/scripts/npc/9060000.js b/scripts/npc/9060000.js
+index 4181d1e6e..aeb86ff6f 100644
+--- a/scripts/npc/9060000.js
++++ b/scripts/npc/9060000.js
+@@ -45,7 +45,7 @@ function action(mode, type, selection){
+         if (completed) {
+             cm.getEventInstance().clearPQ();
+         } else {
+-            cm.warp(923010100);
++            cm.warp(923010100, 0);
+         }
+         
+         cm.dispose();
+diff --git a/scripts/npc/9120003.js b/scripts/npc/9120003.js
+index fb3e89c5e..fb08eed27 100644
+--- a/scripts/npc/9120003.js
++++ b/scripts/npc/9120003.js
+@@ -49,7 +49,7 @@ function action(mode, type, selection) {
+         cm.sendOk("Please check and see if you have " + price + " mesos to enter this place.");
+     else {
+         cm.gainMeso(-price);
+-        cm.warp(801000100 + 100 * cm.getPlayer().getGender());
++        cm.warp(801000100 + 100 * cm.getPlayer().getGender(), "out00");
+     }
+     cm.dispose();
+ }
+diff --git a/scripts/npc/9120015.js b/scripts/npc/9120015.js
+index bb0a9642d..f5846c1ac 100644
+--- a/scripts/npc/9120015.js
++++ b/scripts/npc/9120015.js
+@@ -50,7 +50,7 @@ function action(mode, type, selection) {
+                 cm.dispose();
+             }
+         } else {
+-            cm.warp(801040000);
++            cm.warp(801040000, "in00");
+             cm.dispose();
+         }
+     }
+diff --git a/scripts/npc/9120200.js b/scripts/npc/9120200.js
+index 4d9bb231a..e517b0783 100644
+--- a/scripts/npc/9120200.js
++++ b/scripts/npc/9120200.js
+@@ -30,9 +30,9 @@ function action(mode, type, selection) {
+         cm.dispose();
+     } else {
+         if (mode == 0) {
+-            cm.sendOk("If you want to return to #m801000000#, then talk to me");
++            cm.sendOk("If you want to return to #m801000000#, then talk to me.");
+             cm.dispose();
+-        } if (mode == 1) {
++        } else if (mode == 1) {
+             status++;
+         }
+         if (status == 1) {
+diff --git a/scripts/npc/9270033.js b/scripts/npc/9270033.js
+index b12b21126..186a9d1c4 100644
+--- a/scripts/npc/9270033.js
++++ b/scripts/npc/9270033.js
+@@ -60,7 +60,7 @@ function action(mode, type, selection) {
+                                 }
+                         }
+                     
+-                        cm.warp(541010110);
++                        cm.warp(541010110, 0);
+                         cm.dispose();
+                 }
+         }
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index 233382105..5654952e9 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -62,6 +62,7 @@ function writeFeatureTab_Skills() {
+         addFeature("Chair Mastery - map chair boosts HP/MP rec.");
+         addFeature("Mu Lung Dojo skills functional.");
+         addFeature("Monster Magnet skill no longer crashes players.");
++        addFeature("HP/MP consumption from skills triggers pet autopot.");
+ }
+ 
+ function writeFeatureTab_Quests() {
+@@ -278,7 +279,6 @@ function writeFeatureTab_Project() {
+         addFeature("Protected many flaws with login management system.");
+         addFeature("Developed a robust anti-exploit login coordinator.");
+         addFeature("Revised uniqueness aspect of logged in accounts.");
+-        addFeature("Developed pooling system for IoSession sent packets.");
+         addFeature("Usage of HikariCP to improve DB connection calls.");
+         addFeature("Usage of Java Threadpool to improve runnable calls.");
+         addFeature("Developed many survey tools for content profiling.");
+diff --git a/scripts/npc/ThiefPassword.js b/scripts/npc/ThiefPassword.js
+index ca6df9a42..efc0ff1db 100644
+--- a/scripts/npc/ThiefPassword.js
++++ b/scripts/npc/ThiefPassword.js
+@@ -23,7 +23,7 @@ function action(mode, type, selection){
+ 	else if(status == 1){
+ 		if(cm.getText() == "Open Sesame"){
+ 			if(cm.isQuestCompleted(3925))
+-				cm.warp(260010402);
++				cm.warp(260010402, 1);
+ 			else
+                                 cm.playerMessage(5, "Although you said the right answer, the door will not budge.");
+ 
+diff --git a/scripts/portal/MC2revive.js b/scripts/portal/MC2revive.js
+index 07e400272..283d3925f 100644
+--- a/scripts/portal/MC2revive.js
++++ b/scripts/portal/MC2revive.js
+@@ -1,8 +1,5 @@
+ function enter(pi) {
+-    if ( pi.getPlayer().getTeam() == 0 ) {
+-	pi.warp( pi.getMapId() - 100);
+-    } else {
+-	pi.warp( pi.getMapId() - 100);
+-    }
++    pi.playPortalSound();
++    pi.warp( pi.getMapId() - 100);
+     return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/MD_drakeroom.js b/scripts/portal/MD_drakeroom.js
+index 96ee511d5..86339e773 100644
+--- a/scripts/portal/MD_drakeroom.js
++++ b/scripts/portal/MD_drakeroom.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_error.js b/scripts/portal/MD_error.js
+index 0d91482f3..51018666a 100644
+--- a/scripts/portal/MD_error.js
++++ b/scripts/portal/MD_error.js
+@@ -34,7 +34,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -46,7 +46,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_golem.js b/scripts/portal/MD_golem.js
+index b4a46ae2f..539e980cc 100644
+--- a/scripts/portal/MD_golem.js
++++ b/scripts/portal/MD_golem.js
+@@ -34,7 +34,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -46,7 +46,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_high.js b/scripts/portal/MD_high.js
+index b13aa89c3..4c429593f 100644
+--- a/scripts/portal/MD_high.js
++++ b/scripts/portal/MD_high.js
+@@ -34,7 +34,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -46,7 +46,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_mushroom.js b/scripts/portal/MD_mushroom.js
+index 4d15371ba..46f12dc1b 100644
+--- a/scripts/portal/MD_mushroom.js
++++ b/scripts/portal/MD_mushroom.js
+@@ -34,7 +34,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -46,7 +46,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_pig.js b/scripts/portal/MD_pig.js
+index 21a3c676b..31d1bbbdf 100644
+--- a/scripts/portal/MD_pig.js
++++ b/scripts/portal/MD_pig.js
+@@ -34,7 +34,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -46,7 +46,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_protect.js b/scripts/portal/MD_protect.js
+index 4dd9fdc25..7bdef62c0 100644
+--- a/scripts/portal/MD_protect.js
++++ b/scripts/portal/MD_protect.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_rabbit.js b/scripts/portal/MD_rabbit.js
+index 7e9ad57cc..0d3737702 100644
+--- a/scripts/portal/MD_rabbit.js
++++ b/scripts/portal/MD_rabbit.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_remember.js b/scripts/portal/MD_remember.js
+index 3c4f007a6..21d2a3ff3 100644
+--- a/scripts/portal/MD_remember.js
++++ b/scripts/portal/MD_remember.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_roundTable.js b/scripts/portal/MD_roundTable.js
+index 44aa8bbcc..8f4050bd6 100644
+--- a/scripts/portal/MD_roundTable.js
++++ b/scripts/portal/MD_roundTable.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_sand.js b/scripts/portal/MD_sand.js
+index 217b3efed..d459d074b 100644
+--- a/scripts/portal/MD_sand.js
++++ b/scripts/portal/MD_sand.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/MD_treasure.js b/scripts/portal/MD_treasure.js
+index b811797c2..cc37b21a8 100644
+--- a/scripts/portal/MD_treasure.js
++++ b/scripts/portal/MD_treasure.js
+@@ -32,7 +32,7 @@ function enter(pi) {
+                 for (var i = 0; i < dungeons; i++) {
+                     if(pi.startDungeonInstance(dungeonid + i)) {
+                         pi.playPortalSound();
+-                        pi.warpParty(dungeonid + i);
++                        pi.warpParty(dungeonid + i, "out00");
+                         return true;
+                     }
+                 }
+@@ -44,7 +44,7 @@ function enter(pi) {
+             for (var i = 0; i < dungeons; i++) {
+                 if(pi.startDungeonInstance(dungeonid + i)) {
+                     pi.playPortalSound();
+-                    pi.warp(dungeonid + i);
++                    pi.warp(dungeonid + i, "out00");
+                     return true;
+                 }
+             }
+diff --git a/scripts/portal/NextMap.js b/scripts/portal/NextMap.js
+index c0cbd12fe..c73dd2619 100644
+--- a/scripts/portal/NextMap.js
++++ b/scripts/portal/NextMap.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+ 	pi.playPortalSound();
+-	pi.warp(pi.getMapId() + 100);
++	pi.warp(pi.getMapId() + 100, 0);
+ 	return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/Pinkin.js b/scripts/portal/Pinkin.js
+index 08e1b2604..08d5b5f1a 100644
+--- a/scripts/portal/Pinkin.js
++++ b/scripts/portal/Pinkin.js
+@@ -19,7 +19,7 @@
+ */
+ 
+ /*
+-Vs Pink Bean - Ressurection stage portal
++Vs Pink Bean - Resurrection stage portal
+ @author Ronan
+ */
+ 
+diff --git a/scripts/portal/Populatus00.js b/scripts/portal/Populatus00.js
+index 20c64ee7b..deed0cea9 100644
+--- a/scripts/portal/Populatus00.js
++++ b/scripts/portal/Populatus00.js
+@@ -50,7 +50,7 @@ function enter(pi) {
+         }
+     } else {
+         pi.playPortalSound();
+-        pi.warp(922020300);
++        pi.warp(922020300, 0);
+         return true;
+     }
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/gaga_success.js b/scripts/portal/gaga_success.js
+index cd6b93d9f..c32a40e07 100644
+--- a/scripts/portal/gaga_success.js
++++ b/scripts/portal/gaga_success.js
+@@ -1,6 +1,6 @@
+ //Author: kevintjuh93
+ 
+ function enter(pi) {  
+-	pi.playPortalSound(); pi.warp(922240100 + (pi.getPlayer().getMapId() - 922240000));
++	pi.playPortalSound(); pi.warp(922240100 + (pi.getPlayer().getMapId() - 922240000), 0);
+ 	return true;
+ }  
+\ No newline at end of file
+diff --git a/scripts/portal/jnr6_out.js b/scripts/portal/jnr6_out.js
+index ba099b9be..aec7e9956 100644
+--- a/scripts/portal/jnr6_out.js
++++ b/scripts/portal/jnr6_out.js
+@@ -1,6 +1,6 @@
+ function enter(pi) {
+     if (pi.getMap().getReactorByName("jnr6_out").getState() == 1) {
+-	pi.playPortalSound(); pi.warp(926110300);
++	pi.playPortalSound(); pi.warp(926110300, 0);
+         return true;
+     } else {
+ 	pi.playerMessage(5, "The portal is not opened yet.");
+diff --git a/scripts/portal/skyrom.js b/scripts/portal/skyrom.js
+index 6473e4e45..ff5dba59d 100644
+--- a/scripts/portal/skyrom.js
++++ b/scripts/portal/skyrom.js
+@@ -21,7 +21,7 @@
+ function enter(pi) {
+     if(pi.isQuestStarted(3935) && !pi.haveItem(4031574, 1)) {
+         if(pi.getWarpMap(926000010).countPlayers() == 0) {
+-            pi.playPortalSound(); pi.warp(926000010);
++            pi.playPortalSound(); pi.warp(926000010, 0);
+             return true;
+         } else {
+             pi.message("Someone is already trying this map.");
+diff --git a/scripts/portal/stageBogo.js b/scripts/portal/stageBogo.js
+index 6ec238c3c..115efd4a7 100644
+--- a/scripts/portal/stageBogo.js
++++ b/scripts/portal/stageBogo.js
+@@ -24,6 +24,6 @@
+     @Author Ronan
+ */
+ function enter(pi) {
+-    pi.playPortalSound(); pi.warp(670010800);
++    pi.playPortalSound(); pi.warp(670010800, 0);
+     return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2568.js b/scripts/quest/2568.js
+index 6f2c64f01..846cbd3f5 100644
+--- a/scripts/quest/2568.js
++++ b/scripts/quest/2568.js
+@@ -16,7 +16,7 @@ function start(mode, type, selection) {
+ 			
+ 		} else {
+ 			qm.forceStartQuest();
+-			qm.warp(912060200);
++			qm.warp(912060200, 0);
+ 		}
+ 		qm.dispose();
+ 	}
+diff --git a/scripts/quest/3933.js b/scripts/quest/3933.js
+index 401d2bf45..04b126182 100644
+--- a/scripts/quest/3933.js
++++ b/scripts/quest/3933.js
+@@ -48,7 +48,7 @@ function start(mode, type, selection) {
+                 qm.sendOk("There is someone currently in this map, come back later.");
+                 qm.dispose();
+             } else {
+-                qm.warp(926000000);
++                qm.warp(926000000, "st00");
+                 qm.forceStartQuest();
+                 qm.dispose();
+             }
+diff --git a/scripts/reactor/2200001.js b/scripts/reactor/2200001.js
+index 7c8117f80..850a492c4 100644
+--- a/scripts/reactor/2200001.js
++++ b/scripts/reactor/2200001.js
+@@ -28,5 +28,5 @@
+ 
+ function act(){
+     rm.playerMessage(5,"You have found a secret factory!");
+-    rm.warp(Math.random() < .5 ? 922000020 : 922000021);
++    rm.warp(Math.random() < .5 ? 922000020 : 922000021, 0);
+ }
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 7bd871eec..19794a205 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -16325,6 +16325,9 @@ CREATE TABLE IF NOT EXISTS `mts_items` (
+   `position` int(11) DEFAULT '0',
+   `upgradeslots` int(11) DEFAULT '0',
+   `level` int(11) DEFAULT '0',
++  `itemlevel` int(11) NOT NULL DEFAULT '1',
++  `itemexp` int(11) unsigned NOT NULL DEFAULT '0',
++  `ringid` int(11) NOT NULL DEFAULT '-1',
+   `str` int(11) DEFAULT '0',
+   `dex` int(11) DEFAULT '0',
+   `int` int(11) DEFAULT '0',
+@@ -16348,6 +16351,8 @@ CREATE TABLE IF NOT EXISTS `mts_items` (
+   `transfer` int(2) DEFAULT '0',
+   `vicious` int(2) unsigned NOT NULL DEFAULT '0',
+   `flag` int(2) unsigned NOT NULL DEFAULT '0',
++  `expiration` bigint(20) NOT NULL DEFAULT '-1',
++  `giftFrom` varchar(26) NOT NULL,
+   PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+diff --git a/src/client/AbstractCharacterListener.java b/src/client/AbstractCharacterListener.java
+index 439d52a07..fd09457f4 100644
+--- a/src/client/AbstractCharacterListener.java
++++ b/src/client/AbstractCharacterListener.java
+@@ -26,5 +26,6 @@
+ public interface AbstractCharacterListener {
+     public void onHpChanged(int oldHp);
+     public void onHpmpPoolUpdate();
++    public void onStatUpdate();
+     public void onAnnounceStatPoolUpdate();
+ }
+diff --git a/src/client/AbstractMapleCharacterObject.java b/src/client/AbstractMapleCharacterObject.java
+index b58498759..03c2c1a49 100644
+--- a/src/client/AbstractMapleCharacterObject.java
++++ b/src/client/AbstractMapleCharacterObject.java
+@@ -220,6 +220,10 @@ private void dispatchHpmpPoolUpdated() {
+         listener.onHpmpPoolUpdate();
+     }
+     
++    private void dispatchStatUpdated() {
++        listener.onStatUpdate();
++    }
++    
+     private void dispatchStatPoolUpdateAnnounced() {
+         listener.onAnnounceStatPoolUpdate();
+     }
+@@ -299,6 +303,7 @@ private void changeStatPool(Long hpMpPool, Long strDexIntLuk, Long newSp, int ne
+         try {
+             statUpdates.clear();
+             boolean poolUpdate = false;
++            boolean statUpdate = false;
+ 
+             if (hpMpPool != null) {
+                 short newHp = (short) (hpMpPool >> 48);
+@@ -370,7 +375,7 @@ private void changeStatPool(Long hpMpPool, Long strDexIntLuk, Long newSp, int ne
+                     statUpdates.put(MapleStat.AVAILABLEAP, remainingAp);
+                 }
+ 
+-                poolUpdate = true;  // recalc stats
++                statUpdate = true;
+             }
+             
+             if (newSp != null) {
+@@ -385,6 +390,10 @@ private void changeStatPool(Long hpMpPool, Long strDexIntLuk, Long newSp, int ne
+                 if (poolUpdate) {
+                     dispatchHpmpPoolUpdated();
+                 }
++                
++                if (statUpdate) {
++                    dispatchStatUpdated();
++                }
+ 
+                 if (!silent) {
+                     dispatchStatPoolUpdateAnnounced();
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 8c8411e99..54d913fc2 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -91,6 +91,7 @@
+ import server.maps.FieldLimit;
+ import server.maps.MapleHiredMerchant;
+ import server.maps.MapleDoor;
++import server.maps.MapleDoorObject;
+ import server.maps.MapleDragon;
+ import server.maps.MapleMap;
+ import server.maps.MapleMapEffect;
+@@ -136,6 +137,7 @@
+ import client.inventory.manipulator.MapleInventoryManipulator;
+ import client.newyear.NewYearCardRecord;
+ import client.processor.FredrickProcessor;
++import client.processor.PetAutopotProcessor;
+ import constants.ExpTable;
+ import constants.GameConstants;
+ import constants.ItemConstants;
+@@ -145,6 +147,7 @@
+ import constants.skills.Bishop;
+ import constants.skills.BlazeWizard;
+ import constants.skills.Bowmaster;
++import constants.skills.Brawler;
+ import constants.skills.Buccaneer;
+ import constants.skills.Corsair;
+ import constants.skills.Crusader;
+@@ -166,7 +169,7 @@
+ import constants.skills.Ranger;
+ import constants.skills.Shadower;
+ import constants.skills.Sniper;
+-import constants.skills.Swordsman;
++import constants.skills.Warrior;
+ import constants.skills.ThunderBreaker;
+ import org.apache.mina.util.ConcurrentHashSet;
+ 
+@@ -357,6 +360,11 @@ public void onHpmpPoolUpdate() {
+                 }
+             }
+             
++            @Override
++            public void onStatUpdate() {
++                recalcLocalStats();
++            }
++            
+             @Override
+             public void onAnnounceStatPoolUpdate() {
+                 List<Pair<MapleStat, Integer>> statup = new ArrayList<>(8);
+@@ -1647,7 +1655,9 @@ private static void updatePartyTownDoors(MapleParty party, MapleCharacter target
+             
+             for(MapleDoor door : partyDoors.values()) {
+                 for(MapleCharacter pchar : partyMembers) {
+-                    door.getTownDoor().sendDestroyData(pchar.getClient(), true);
++                    MapleDoorObject mdo = door.getTownDoor();
++                    mdo.sendDestroyData(pchar.getClient(), true);
++                    pchar.removeVisibleMapObject(mdo);
+                 }
+             }
+             
+@@ -1655,7 +1665,9 @@ private static void updatePartyTownDoors(MapleParty party, MapleCharacter target
+                 Collection<MapleDoor> leaverDoors = partyLeaver.getDoors();
+                 for(MapleDoor door : leaverDoors) {
+                     for(MapleCharacter pchar : partyMembers) {
+-                        door.getTownDoor().sendDestroyData(pchar.getClient(), true);
++                        MapleDoorObject mdo = door.getTownDoor();
++                        mdo.sendDestroyData(pchar.getClient(), true);
++                        pchar.removeVisibleMapObject(mdo);
+                     }
+                 }
+             }
+@@ -1666,7 +1678,9 @@ private static void updatePartyTownDoors(MapleParty party, MapleCharacter target
+ 
+                 if(door != null) {
+                     for(MapleCharacter pchar : partyMembers) {
+-                        door.getTownDoor().sendSpawnData(pchar.getClient());
++                        MapleDoorObject mdo = door.getTownDoor();
++                        mdo.sendSpawnData(pchar.getClient());
++                        pchar.addVisibleMapObject(mdo);
+                     }
+                 }
+             }
+@@ -1677,17 +1691,24 @@ private static void updatePartyTownDoors(MapleParty party, MapleCharacter target
+             
+             if(partyDoors != null) {
+                 for(MapleDoor door : partyDoors.values()) {
+-                    door.getTownDoor().sendDestroyData(partyLeaver.getClient(), true);
++                    MapleDoorObject mdo = door.getTownDoor();
++                    mdo.sendDestroyData(partyLeaver.getClient(), true);
++                    partyLeaver.removeVisibleMapObject(mdo);
+                 }
+             }
+             
+             for(MapleDoor door : leaverDoors) {
+-                door.getTownDoor().sendDestroyData(partyLeaver.getClient(), true);
++                MapleDoorObject mdo = door.getTownDoor();
++                mdo.sendDestroyData(partyLeaver.getClient(), true);
++                partyLeaver.removeVisibleMapObject(mdo);
+             }
+             
+             for(MapleDoor door : leaverDoors) {
+                 door.updateDoorPortal(partyLeaver);
+-                door.getTownDoor().sendSpawnData(partyLeaver.getClient());
++                
++                MapleDoorObject mdo = door.getTownDoor();
++                mdo.sendSpawnData(partyLeaver.getClient());
++                partyLeaver.addVisibleMapObject(mdo);
+             }
+         }
+     }
+@@ -2697,6 +2718,24 @@ public void announceDiseases() {
+         }
+     }
+     
++    public void collectDiseases() {
++        for (MapleCharacter chr : map.getAllPlayers()) {
++            int cid = chr.getId();
++            
++            for (Entry<MapleDisease, Pair<Long, MobSkill>> di : chr.getAllDiseases().entrySet()) {
++                MapleDisease disease = di.getKey();
++                MobSkill skill = di.getValue().getRight();
++                final List<Pair<MapleDisease, Integer>> debuff = Collections.singletonList(new Pair<>(disease, Integer.valueOf(skill.getX())));
++
++                if (disease != MapleDisease.SLOW) {
++                    this.announce(MaplePacketCreator.giveForeignDebuff(cid, debuff, skill));
++                } else {
++                    this.announce(MaplePacketCreator.giveForeignSlowDebuff(cid, debuff, skill));
++                }
++            }
++        }
++    }
++    
+     public void giveDebuff(final MapleDisease disease, MobSkill skill) {
+         if (!hasDisease(disease) && getDiseasesSize() < 2) {
+             if (!(disease == MapleDisease.SEDUCE || disease == MapleDisease.STUN)) {
+@@ -6063,12 +6102,8 @@ public boolean hasEntered(String script) {
+     }
+ 
+     public boolean hasEntered(String script, int mapId) {
+-        if (entered.containsKey(mapId)) {
+-            if (entered.get(mapId).equals(script)) {
+-                return true;
+-            }
+-        }
+-        return false;
++        String e = entered.get(mapId);
++        return script.equals(e);
+     }
+ 
+     public void hasGivenFame(MapleCharacter to) {
+@@ -6416,7 +6451,7 @@ public synchronized void levelUp(boolean takeexp) {
+             addhp += Randomizer.rand(12, 16);
+             addmp += Randomizer.rand(10, 12);
+         } else if (job.isA(MapleJob.WARRIOR) || job.isA(MapleJob.DAWNWARRIOR1)) {
+-            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(DawnWarrior.MAX_HP_INCREASE) : SkillFactory.getSkill(Swordsman.IMPROVED_MAX_HP_INCREASE);
++            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(DawnWarrior.MAX_HP_INCREASE) : SkillFactory.getSkill(Warrior.IMPROVED_MAXHP);
+             if (job.isA(MapleJob.CRUSADER)) {
+                 improvingMaxMP = SkillFactory.getSkill(1210000);
+             } else if (job.isA(MapleJob.DAWNWARRIOR2)) {
+@@ -6437,7 +6472,7 @@ public synchronized void levelUp(boolean takeexp) {
+             addhp += 30000;
+             addmp += 30000;
+         } else if (job.isA(MapleJob.PIRATE) || job.isA(MapleJob.THUNDERBREAKER1)) {
+-            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(ThunderBreaker.IMPROVE_MAX_HP) : SkillFactory.getSkill(5100000);
++            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(ThunderBreaker.IMPROVE_MAX_HP) : SkillFactory.getSkill(Brawler.IMPROVE_MAX_HP);
+             improvingMaxHPLevel = getSkillLevel(improvingMaxHP);
+             addhp += Randomizer.rand(22, 28);
+             addmp += Randomizer.rand(18, 23);
+@@ -6446,7 +6481,7 @@ public synchronized void levelUp(boolean takeexp) {
+             int aids = Randomizer.rand(4, 8);
+             addmp += aids + Math.floor(aids * 0.1);
+         }
+-        if (improvingMaxHPLevel > 0 && (job.isA(MapleJob.WARRIOR) || job.isA(MapleJob.PIRATE) || job.isA(MapleJob.DAWNWARRIOR1))) {
++        if (improvingMaxHPLevel > 0 && (job.isA(MapleJob.WARRIOR) || job.isA(MapleJob.PIRATE) || job.isA(MapleJob.DAWNWARRIOR1) || job.isA(MapleJob.THUNDERBREAKER1))) {
+             addhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getX();
+         }
+         if (improvingMaxMPLevel > 0 && (job.isA(MapleJob.MAGICIAN) || job.isA(MapleJob.CRUSADER) || job.isA(MapleJob.BLAZEWIZARD1))) {
+@@ -7920,7 +7955,7 @@ private void updateLocalStats() {
+                 client.announce(MaplePacketCreator.updatePlayerStats(hpmpupdate, true, this));
+             }
+ 
+-            if (oldmaxhp != localmaxhp) {
++            if (oldmaxhp != localmaxhp) {   // thanks Wh1SK3Y for pointing out a deadlock occuring related to party members HP
+                 updatePartyMemberHP();
+             }
+         } finally {
+@@ -8072,15 +8107,11 @@ public void resetBattleshipHp() {
+     }
+     
+     public void resetEnteredScript() {
+-        if (entered.containsKey(map.getId())) {
+-            entered.remove(map.getId());
+-        }
++        entered.remove(map.getId());
+     }
+ 
+     public void resetEnteredScript(int mapId) {
+-        if (entered.containsKey(mapId)) {
+-            entered.remove(mapId);
+-        }
++        entered.remove(mapId);
+     }
+ 
+     public void resetEnteredScript(String script) {
+@@ -9102,11 +9133,35 @@ public boolean applyHpMpChange(int hpCon, int hpchange, int mpchange) {
+             }
+ 
+             updateHpMp(nextHp, nextMp);
+-            return true;
+         } finally {
+             statWlock.unlock();
+             effLock.unlock();
+         }
++        
++        // autopot on HPMP deplete... thanks shavit for finding out D. Roar doesn't trigger autopot request
++        if (hpchange < 0) {
++            MapleKeyBinding autohpPot = this.getKeymap().get(91);
++            if (autohpPot != null) {
++                int autohpItemid = autohpPot.getAction();
++                Item autohpItem = this.getInventory(MapleInventoryType.USE).findById(autohpItemid);
++                if (autohpItem != null) {
++                    PetAutopotProcessor.runAutopotAction(client, autohpItem.getPosition(), autohpItemid);
++                }
++            }
++        }
++        
++        if (mpchange < 0) {
++            MapleKeyBinding autompPot = this.getKeymap().get(92);
++            if (autompPot != null) {
++                int autompItemid = autompPot.getAction();
++                Item autompItem = this.getInventory(MapleInventoryType.USE).findById(autompItemid);
++                if (autompItem != null) {
++                    PetAutopotProcessor.runAutopotAction(client, autompItem.getPosition(), autompItemid);
++                }
++            }
++        }
++        
++        return true;
+     }
+     
+     public void setInventory(MapleInventoryType type, MapleInventory inv) {
+diff --git a/src/client/MapleFamily.java b/src/client/MapleFamily.java
+index e87e41799..efd017ffc 100644
+--- a/src/client/MapleFamily.java
++++ b/src/client/MapleFamily.java
+@@ -217,7 +217,11 @@ public static void loadAllFamilies() {
+                     int repsToSenior = rsEntries.getInt("reptosenior");
+                     String precepts = rsEntries.getString("precepts");
+                     //Timestamp lastResetTime = rsEntries.getTimestamp("lastresettime"); //taken care of by FamilyDailyResetWorker
+-                    MapleFamily family = Server.getInstance().getWorld(world).getFamily(familyid);
++                    World wserv = Server.getInstance().getWorld(world);
++                    if (wserv == null) {
++                        continue;
++                    }
++                    MapleFamily family = wserv.getFamily(familyid);
+                     if(family == null) {
+                         family = new MapleFamily(familyid, world);
+                         Server.getInstance().getWorld(world).addFamily(familyid, family);
+diff --git a/src/client/SkillFactory.java b/src/client/SkillFactory.java
+index 1bd4aa0c6..7b542c0e2 100644
+--- a/src/client/SkillFactory.java
++++ b/src/client/SkillFactory.java
+@@ -68,7 +68,7 @@
+ import constants.skills.Sniper;
+ import constants.skills.Spearman;
+ import constants.skills.SuperGM;
+-import constants.skills.Swordsman;
++import constants.skills.Warrior;
+ import constants.skills.ThunderBreaker;
+ import constants.skills.WhiteKnight;
+ import constants.skills.WindArcher;
+@@ -189,7 +189,7 @@ private static Skill loadFromData(int id, MapleData data) {
+                 case Beginner.MONSTER_RIDER:
+                 case Beginner.ECHO_OF_HERO:
+                 case Beginner.MAP_CHAIR:
+-                case Swordsman.IRON_BODY:
++                case Warrior.IRON_BODY:
+                 case Fighter.AXE_BOOSTER:
+                 case Fighter.POWER_GUARD:
+                 case Fighter.RAGE:
+diff --git a/src/client/processor/AssignAPProcessor.java b/src/client/processor/AssignAPProcessor.java
+index fd9e2d8aa..30fe248e2 100644
+--- a/src/client/processor/AssignAPProcessor.java
++++ b/src/client/processor/AssignAPProcessor.java
+@@ -38,6 +38,7 @@
+ import constants.skills.Brawler;
+ import constants.skills.DawnWarrior;
+ import constants.skills.Magician;
++import constants.skills.ThunderBreaker;
+ import constants.skills.Warrior;
+ import java.util.ArrayList;
+ import java.util.Collection;
+@@ -697,7 +698,7 @@ private static int calcHpChange(MapleCharacter player, boolean usedAPReset) {
+             }
+         } else if (job.isA(MapleJob.PIRATE) || job.isA(MapleJob.THUNDERBREAKER1)) {
+             if(!usedAPReset) {
+-                Skill increaseHP = SkillFactory.getSkill(Brawler.IMPROVE_MAX_HP);
++                Skill increaseHP = SkillFactory.getSkill(job.isA(MapleJob.PIRATE) ? Brawler.IMPROVE_MAX_HP : ThunderBreaker.IMPROVE_MAX_HP);
+                 int sLvl = player.getSkillLevel(increaseHP);
+ 
+                 if(sLvl > 0)
+diff --git a/src/client/processor/FredrickProcessor.java b/src/client/processor/FredrickProcessor.java
+index af68116bd..9b2a14ce0 100644
+--- a/src/client/processor/FredrickProcessor.java
++++ b/src/client/processor/FredrickProcessor.java
+@@ -37,7 +37,6 @@
+ import java.util.LinkedList;
+ import java.util.List;
+ import client.inventory.manipulator.MapleInventoryManipulator;
+-import constants.ServerConstants;
+ import java.util.Collections;
+ import net.server.Server;
+ import net.server.world.World;
+diff --git a/src/client/processor/PetAutopotProcessor.java b/src/client/processor/PetAutopotProcessor.java
+new file mode 100644
+index 000000000..faaf04912
+--- /dev/null
++++ b/src/client/processor/PetAutopotProcessor.java
+@@ -0,0 +1,178 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    Copyleft (L) 2016 - 2019 RonanLana (HeavenMS)
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package client.processor;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.inventory.Item;
++import client.inventory.MapleInventory;
++import client.inventory.MapleInventoryType;
++import client.inventory.manipulator.MapleInventoryManipulator;
++import constants.ServerConstants;
++import java.util.List;
++import server.MapleItemInformationProvider;
++import server.MapleStatEffect;
++import tools.MaplePacketCreator;
++
++/**
++ *
++ * @author Ronan - multi-pot consumption feature
++ */
++public class PetAutopotProcessor {
++    
++    private static class AutopotAction {
++        
++        private MapleClient c;
++        private short slot;
++        private int itemId;
++        
++        private Item toUse;
++        private List<Item> toUseList;
++
++        private boolean hasHpGain, hasMpGain;
++        private int maxHp, maxMp, curHp, curMp;
++        private double incHp, incMp;
++        
++        private boolean cursorOnNextAvailablePot(MapleCharacter chr) {
++            if(toUseList == null) {
++                toUseList = chr.getInventory(MapleInventoryType.USE).linkedListById(itemId);
++            }
++
++            toUse = null;
++            while(!toUseList.isEmpty()) {
++                Item it = toUseList.remove(0);
++
++                if(it.getQuantity() > 0) {
++                    toUse = it;
++                    slot = it.getPosition();
++
++                    return true;
++                }
++            }
++
++            return false;
++        }
++        
++        public AutopotAction(MapleClient c, short slot, int itemId) {
++            this.c = c;
++            this.slot = slot;
++            this.itemId = itemId;
++        }
++        
++        public void run() {
++            MapleClient c = this.c;
++            MapleCharacter chr = c.getPlayer();
++            if (!chr.isAlive()) {
++                c.announce(MaplePacketCreator.enableActions());
++                return;
++            }
++            
++            int useCount = 0, qtyCount = 0;
++            MapleStatEffect stat = null;
++
++            MapleInventory useInv = chr.getInventory(MapleInventoryType.USE);
++            useInv.lockInventory();
++            try {
++                toUse = useInv.getItem(slot);
++                if (toUse != null) {
++                    if (toUse.getItemId() != itemId) {
++                        c.announce(MaplePacketCreator.enableActions());
++                        return;
++                    }
++
++                    toUseList = null;
++
++                    // from now on, toUse becomes the "cursor" for the current pot being used
++                    if (toUse.getQuantity() <= 0) {
++                        if (!cursorOnNextAvailablePot(chr)) {
++                            c.announce(MaplePacketCreator.enableActions());
++                            return;
++                        }
++                    }
++
++                    stat = MapleItemInformationProvider.getInstance().getItemEffect(toUse.getItemId());
++                    hasHpGain = stat.getHp() > 0 || stat.getHpRate() > 0.0;
++                    hasMpGain = stat.getMp() > 0 || stat.getMpRate() > 0.0;
++
++                    maxHp = chr.getCurrentMaxHp();
++                    maxMp = chr.getCurrentMaxMp();
++
++                    curHp = chr.getHp();
++                    curMp = chr.getMp();
++
++                    incHp = stat.getHp();
++                    if(incHp <= 0 && hasHpGain) incHp = Math.ceil(maxHp * stat.getHpRate());
++
++                    incMp = stat.getMp();
++                    if(incMp <= 0 && hasMpGain) incMp = Math.ceil(maxMp * stat.getMpRate());
++
++                    if (ServerConstants.USE_COMPULSORY_AUTOPOT) {
++                        if (hasHpGain) {
++                            qtyCount = (int) Math.ceil(((ServerConstants.PET_AUTOHP_RATIO * maxHp) - curHp) / incHp);
++                        }
++
++                        if (hasMpGain) {
++                            qtyCount = Math.max(qtyCount, (int) Math.ceil(((ServerConstants.PET_AUTOMP_RATIO * maxMp) - curMp) / incMp));
++                        }
++                    } else {
++                        qtyCount = 1;   // non-compulsory autopot concept thanks to marcuswoon
++                    }
++
++                    while (true) {
++                        short qtyToUse = (short) Math.min(qtyCount, toUse.getQuantity());
++                        MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, qtyToUse, false);
++
++                        curHp += (incHp * qtyToUse);
++                        curMp += (incMp * qtyToUse);
++
++                        useCount += qtyToUse;
++                        qtyCount -= qtyToUse;
++
++                        if(toUse.getQuantity() == 0 && qtyCount > 0) {
++                            // depleted out the current slot, fetch for more
++
++                            if(!cursorOnNextAvailablePot(chr)) {
++                                break;    // no more pots available
++                            }
++                        } else {
++                            break;    // gracefully finished it's job, quit the loop
++                        }
++                    }
++                }
++            } finally {
++                useInv.unlockInventory();
++            }
++
++            for (int i = 0; i < useCount; i++) {
++                stat.applyTo(chr);
++            }
++
++            chr.announce(MaplePacketCreator.enableActions());
++        }
++    }
++    
++    public static void runAutopotAction(MapleClient c, short slot, int itemid) {
++        AutopotAction action = new AutopotAction(c, slot, itemid);
++        action.run();
++    }
++    
++}
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index c3887e84e..4a29d301c 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -135,7 +135,7 @@
+     public static final boolean USE_MAKER_FEE_HEURISTICS = true;    //Apply compiled values for stimulants and reagents into the Maker fee calculations (max error revolves around 50k mesos). Set false to use basic constant values instead (results are never higher than requested by the client-side).
+     
+     //Custom Configuration
+-    public static final boolean USE_ENABLE_CUSTOM_NPC_SCRIPT = true;//Enables usage of custom HeavenMS NPC scripts (Agent E, Coco, etc). Will not disable Abdula (it's actually useful for the gameplay), quests or NPC shops.
++    public static final boolean USE_ENABLE_CUSTOM_NPC_SCRIPT = true;//Enables usage of custom HeavenMS NPC scripts (Agent E, Coco, etc). Will not disable Abdula (it's actually useful for the gameplay) or quests.
+     public static final boolean USE_STARTER_MERGE = false;          //Allows any players to use the Equipment Merge custom mechanic (as opposed to the high-level, Maker lv3 requisites).
+     
+     //Commands Configuration
+diff --git a/src/constants/skills/Aran.java b/src/constants/skills/Aran.java
+index 923807c63..7a78c8ff6 100644
+--- a/src/constants/skills/Aran.java
++++ b/src/constants/skills/Aran.java
+@@ -47,7 +47,6 @@
+     public static final int HIDDEN_FULL_TRIPLE = 21110008;
+     public static final int SMART_KNOCKBACK = 21111001;
+     public static final int OVER_SWING = 21120002;
+-    public static final int HIGH_DEFENSE = 21120004;
+     public static final int COMBO_TEMPEST = 21120006;
+     public static final int COMBO_BARRIER = 21120007;
+     public static final int HIDDEN_OVER_DOUBLE = 21120009;
+diff --git a/src/constants/skills/Swordsman.java b/src/constants/skills/Swordsman.java
+deleted file mode 100644
+index 979a87696..000000000
+--- a/src/constants/skills/Swordsman.java
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package constants.skills;
+-
+-/**
+- *
+- * @author BubblesDev
+- */
+-public class Swordsman {
+-    public static final int IMPROVED_MAX_HP_INCREASE = 1000001;
+-    public static final int IRON_BODY = 1000003;
+-}
+\ No newline at end of file
+diff --git a/src/constants/skills/Warrior.java b/src/constants/skills/Warrior.java
+index 050f8a4f1..7bb463fa7 100644
+--- a/src/constants/skills/Warrior.java
++++ b/src/constants/skills/Warrior.java
+@@ -11,4 +11,5 @@
+ public class Warrior {
+     public static final int  IMPROVED_HPREC = 1000000;
+     public static final int  IMPROVED_MAXHP = 1000001;
++    public static final int  IRON_BODY = 1000003;
+ }
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 9efc1f515..a370db5cc 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -677,6 +677,7 @@ public void runAnnouncePlayerDiseasesSchedule() {
+             MapleCharacter player = c.getPlayer();
+             if(player != null && player.isLoggedinWorld()) {
+                 player.announceDiseases();
++                player.collectDiseases();
+             }
+         }
+         
+@@ -1111,18 +1112,25 @@ public MapleGuild getGuild(int id, int world) {
+     
+     public MapleGuild getGuild(int id, int world, MapleCharacter mc) {
+         synchronized (guilds) {
+-            if (guilds.get(id) != null) {
+-                return guilds.get(id);
++            MapleGuild g = guilds.get(id);
++            if (g != null) {
++                return g;
+             }
+-            MapleGuild g = new MapleGuild(id, world);
++            
++            g = new MapleGuild(id, world);
+             if (g.getId() == -1) {
+                 return null;
+             }
+             
+             if(mc != null) {
+-                mc.setMGC(g.getMGC(mc.getId()));
+-                if(g.getMGC(mc.getId()) == null) System.out.println("null for " + mc.getName() + " when loading guild " + id);
+-                g.getMGC(mc.getId()).setCharacter(mc);
++                MapleGuildCharacter mgc = g.getMGC(mc.getId());
++                if (mgc != null) {
++                    mc.setMGC(mgc);
++                    mgc.setCharacter(mc);
++                } else {
++                    FilePrinter.printError(FilePrinter.GUILD_CHAR_ERROR, "Could not find " + mc.getName() + " when loading guild " + id + ".");
++                }
++                
+                 g.setOnline(mc.getId(), true, mc.getClient().getChannel());
+             }
+             
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 717275096..2ca1a9bce 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -653,16 +653,16 @@ protected AttackInfo parseDamage(LittleEndianAccessor lea, MapleCharacter chr, b
+         
+         // Find the base damage to base futher calculations on.
+         // Several skills have their own formula in this section.
+-        long calcDmgMax = 0;	
++        long calcDmgMax = 0;
+         
+-        if(magic && ret.skill != 0) {
+-            calcDmgMax = (chr.getTotalMagic() * chr.getTotalMagic() / 1000 + chr.getTotalMagic()) / 30 + chr.getTotalInt() / 200;
++        if(magic && ret.skill != 0) {   // thanks onechord for noticing a few false positives stemming from maxdmg as 0
++            calcDmgMax = (long) (Math.ceil((chr.getTotalMagic() * Math.ceil(chr.getTotalMagic() / 1000.0) + chr.getTotalMagic()) / 30.0) + Math.ceil(chr.getTotalInt() / 200.0));
+         } else if(ret.skill == 4001344 || ret.skill == NightWalker.LUCKY_SEVEN || ret.skill == NightLord.TRIPLE_THROW) {
+-            calcDmgMax = (chr.getTotalLuk() * 5) * chr.getTotalWatk() / 100;
++            calcDmgMax = (long) ((chr.getTotalLuk() * 5) * Math.ceil(chr.getTotalWatk() / 100.0));
+         } else if(ret.skill == DragonKnight.DRAGON_ROAR) {
+-            calcDmgMax = (chr.getTotalStr() * 4 + chr.getTotalDex()) * chr.getTotalWatk() / 100;
++            calcDmgMax = (long) ((chr.getTotalStr() * 4 + chr.getTotalDex()) * Math.ceil(chr.getTotalWatk() / 100.0));
+         } else if(ret.skill == NightLord.VENOMOUS_STAR || ret.skill == Shadower.VENOMOUS_STAB) {
+-            calcDmgMax = (int) (18.5 * (chr.getTotalStr() + chr.getTotalLuk()) + chr.getTotalDex() * 2) / 100 * chr.calculateMaxBaseDamage(chr.getTotalWatk());
++            calcDmgMax = (long) (Math.ceil((18.5 * (chr.getTotalStr() + chr.getTotalLuk()) + chr.getTotalDex() * 2) / 100.0) * chr.calculateMaxBaseDamage(chr.getTotalWatk()));
+         } else {
+             calcDmgMax = chr.calculateMaxBaseDamage(chr.getTotalWatk());
+         }
+diff --git a/src/net/server/channel/handlers/AllianceOperationHandler.java b/src/net/server/channel/handlers/AllianceOperationHandler.java
+index 0c74c7614..f24956088 100644
+--- a/src/net/server/channel/handlers/AllianceOperationHandler.java
++++ b/src/net/server/channel/handlers/AllianceOperationHandler.java
+@@ -124,7 +124,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 Server.getInstance().resetAllianceGuildPlayersRank(guildid);
+                 
+                 chr.getMGC().setAllianceRank(2);
+-                Server.getInstance().getGuild(chr.getGuildId()).getMGC(chr.getId()).setAllianceRank(2);
++                MapleGuild g = Server.getInstance().getGuild(chr.getGuildId());
++                if (g != null) {
++                    g.getMGC(chr.getId()).setAllianceRank(2);
++                }
++                
+                 chr.saveGuildStatus();
+ 
+                 Server.getInstance().allianceMessage(alliance.getId(), MaplePacketCreator.addGuildToAlliance(alliance, guildid, c), -1, -1);
+diff --git a/src/net/server/channel/handlers/CloseRangeDamageHandler.java b/src/net/server/channel/handlers/CloseRangeDamageHandler.java
+index 00dc153da..cc5551c57 100644
+--- a/src/net/server/channel/handlers/CloseRangeDamageHandler.java
++++ b/src/net/server/channel/handlers/CloseRangeDamageHandler.java
+@@ -33,7 +33,6 @@
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import client.MapleJob;
+-import client.MapleStat;
+ import client.Skill;
+ import client.SkillFactory;
+ import constants.GameConstants;
+@@ -47,6 +46,7 @@
+ import constants.skills.WindArcher;
+ 
+ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
++    
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter chr = c.getPlayer();
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index a3ff880cd..ce78a5ca1 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -152,6 +152,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         equip.setWdef((short) rs.getInt("wdef"));
+                         equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                         equip.setLevel((byte) rs.getInt("level"));
++                        equip.setItemLevel(rs.getByte("itemlevel"));
++                        equip.setItemExp(rs.getInt("itemexp"));
++                        equip.setRingId(rs.getInt("ringid"));
++                        equip.setExpiration(rs.getLong("expiration"));
++                        equip.setGiftFrom(rs.getString("giftFrom"));
++                        
+                         items.add(new MTSItemInfo((Item) equip, rs.getInt("price") + 100 + (int) (rs.getInt("price") * 0.1), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                     }
+                 }
+@@ -209,7 +215,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             equip.setWdef((short) rs.getInt("wdef"));
+                             equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                             equip.setLevel((byte) rs.getInt("level"));
++                            equip.setItemLevel(rs.getByte("itemlevel"));
++                            equip.setItemExp(rs.getInt("itemexp"));
++                            equip.setRingId(rs.getInt("ringid"));
+                             equip.setFlag((short) rs.getInt("flag"));
++                            equip.setExpiration(rs.getLong("expiration"));
++                            equip.setGiftFrom(rs.getString("giftFrom"));
+                             items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                         }
+                     }
+@@ -256,7 +267,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             equip.setWdef((short) rs.getInt("wdef"));
+                             equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                             equip.setLevel((byte) rs.getInt("level"));
++                            equip.setItemLevel(rs.getByte("itemlevel"));
++                            equip.setItemExp(rs.getInt("itemexp"));
++                            equip.setRingId(rs.getInt("ringid"));
+                             equip.setFlag((short) rs.getInt("flag"));
++                            equip.setExpiration(rs.getLong("expiration"));
++                            equip.setGiftFrom(rs.getString("giftFrom"));
+                             items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                         }
+                     }
+diff --git a/src/net/server/channel/handlers/MTSHandler.java b/src/net/server/channel/handlers/MTSHandler.java
+index 6ebd342c9..3ccdc2f00 100644
+--- a/src/net/server/channel/handlers/MTSHandler.java
++++ b/src/net/server/channel/handlers/MTSHandler.java
+@@ -160,48 +160,55 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         }
+                         if (!i.getInventoryType().equals(MapleInventoryType.EQUIP)) {
+                             Item item = (Item) i;
+-                            ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, seller, price, owner, sellername, sell_ends) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
++                            ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, expiration, giftFrom, seller, price, owner, sellername, sell_ends) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                             ps.setInt(1, 1);
+                             ps.setInt(2, (int) invType.getType());
+                             ps.setInt(3, item.getItemId());
+                             ps.setInt(4, quantity);
+-                            ps.setInt(5, c.getPlayer().getId());
+-                            ps.setInt(6, price);
+-                            ps.setString(7, item.getOwner());
+-                            ps.setString(8, c.getPlayer().getName());
+-                            ps.setString(9, date);
++                            ps.setLong(5, item.getExpiration());
++                            ps.setString(6, item.getGiftFrom());
++                            ps.setInt(7, c.getPlayer().getId());
++                            ps.setInt(8, price);
++                            ps.setString(9, item.getOwner());
++                            ps.setString(10, c.getPlayer().getName());
++                            ps.setString(11, date);
+                         } else {
+                             Equip equip = (Equip) i;
+-                            ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, seller, price, upgradeslots, level, str, dex, `int`, luk, hp, mp, watk, matk, wdef, mdef, acc, avoid, hands, speed, jump, locked, owner, sellername, sell_ends, vicious, flag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
++                            ps = con.prepareStatement("INSERT INTO mts_items (tab, type, itemid, quantity, expiration, giftFrom, seller, price, upgradeslots, level, str, dex, `int`, luk, hp, mp, watk, matk, wdef, mdef, acc, avoid, hands, speed, jump, locked, owner, sellername, sell_ends, vicious, flag, itemexp, itemlevel, ringid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                             ps.setInt(1, 1);
+                             ps.setInt(2, (int) invType.getType());
+                             ps.setInt(3, equip.getItemId());
+                             ps.setInt(4, quantity);
+-                            ps.setInt(5, c.getPlayer().getId());
+-                            ps.setInt(6, price);
+-                            ps.setInt(7, equip.getUpgradeSlots());
+-                            ps.setInt(8, equip.getLevel());
+-                            ps.setInt(9, equip.getStr());
+-                            ps.setInt(10, equip.getDex());
+-                            ps.setInt(11, equip.getInt());
+-                            ps.setInt(12, equip.getLuk());
+-                            ps.setInt(13, equip.getHp());
+-                            ps.setInt(14, equip.getMp());
+-                            ps.setInt(15, equip.getWatk());
+-                            ps.setInt(16, equip.getMatk());
+-                            ps.setInt(17, equip.getWdef());
+-                            ps.setInt(18, equip.getMdef());
+-                            ps.setInt(19, equip.getAcc());
+-                            ps.setInt(20, equip.getAvoid());
+-                            ps.setInt(21, equip.getHands());
+-                            ps.setInt(22, equip.getSpeed());
+-                            ps.setInt(23, equip.getJump());
+-                            ps.setInt(24, 0);
+-                            ps.setString(25, equip.getOwner());
+-                            ps.setString(26, c.getPlayer().getName());
+-                            ps.setString(27, date);
+-                            ps.setInt(28, equip.getVicious());
+-                            ps.setInt(29, equip.getFlag());
++                            ps.setLong(5, equip.getExpiration());
++                            ps.setString(6, equip.getGiftFrom());
++                            ps.setInt(7, c.getPlayer().getId());
++                            ps.setInt(8, price);
++                            ps.setInt(9, equip.getUpgradeSlots());
++                            ps.setInt(10, equip.getLevel());
++                            ps.setInt(11, equip.getStr());
++                            ps.setInt(12, equip.getDex());
++                            ps.setInt(13, equip.getInt());
++                            ps.setInt(14, equip.getLuk());
++                            ps.setInt(15, equip.getHp());
++                            ps.setInt(16, equip.getMp());
++                            ps.setInt(17, equip.getWatk());
++                            ps.setInt(18, equip.getMatk());
++                            ps.setInt(19, equip.getWdef());
++                            ps.setInt(20, equip.getMdef());
++                            ps.setInt(21, equip.getAcc());
++                            ps.setInt(22, equip.getAvoid());
++                            ps.setInt(23, equip.getHands());
++                            ps.setInt(24, equip.getSpeed());
++                            ps.setInt(25, equip.getJump());
++                            ps.setInt(26, 0);
++                            ps.setString(27, equip.getOwner());
++                            ps.setString(28, c.getPlayer().getName());
++                            ps.setString(29, date);
++                            ps.setInt(30, equip.getVicious());
++                            ps.setInt(31, equip.getFlag());
++                            ps.setInt(32, equip.getItemExp());
++                            ps.setByte(33, equip.getItemLevel());    // thanks Jefe for noticing missing itemlevel labels
++                            ps.setInt(34, equip.getRingId());
+                         }
+                         ps.executeUpdate();
+                         ps.close();
+@@ -320,8 +327,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             equip.setWdef((short) rs.getInt("wdef"));
+                             equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                             equip.setLevel((byte) rs.getInt("level"));
++                            equip.setItemLevel(rs.getByte("itemlevel"));
++                            equip.setItemExp(rs.getInt("itemexp"));
++                            equip.setRingId(rs.getInt("ringid"));
+                             equip.setVicious((byte) rs.getInt("vicious"));
+                             equip.setFlag((short) rs.getInt("flag"));
++                            equip.setExpiration(rs.getLong("expiration"));
++                            equip.setGiftFrom(rs.getString("giftFrom"));
+                             equip.setPosition(c.getPlayer().getInventory(ItemConstants.getInventoryType(rs.getInt("itemid"))).getNextFreeSlot());
+                             i = equip.copy();
+                         }
+@@ -569,6 +581,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                     equip.setLevel((byte) rs.getInt("level"));
+                     equip.setFlag((short) rs.getInt("flag"));
++                    equip.setItemLevel(rs.getByte("itemlevel"));
++                    equip.setItemExp(rs.getInt("itemexp"));
++                    equip.setRingId(rs.getInt("ringid"));
++                    equip.setExpiration(rs.getLong("expiration"));
++                    equip.setGiftFrom(rs.getString("giftFrom"));
+                     items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                 }
+             }
+@@ -623,7 +640,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             equip.setWdef((short) rse.getInt("wdef"));
+                             equip.setUpgradeSlots((byte) rse.getInt("upgradeslots"));
+                             equip.setLevel((byte) rse.getInt("level"));
++                            equip.setItemLevel(rs.getByte("itemlevel"));
++                            equip.setItemExp(rs.getInt("itemexp"));
++                            equip.setRingId(rs.getInt("ringid"));
+                             equip.setFlag((short) rs.getInt("flag"));
++                            equip.setExpiration(rs.getLong("expiration"));
++                            equip.setGiftFrom(rs.getString("giftFrom"));
+                             items.add(new MTSItemInfo((Item) equip, rse.getInt("price"), rse.getInt("id"), rse.getInt("seller"), rse.getString("sellername"), rse.getString("sell_ends")));
+                         }
+                     }
+@@ -686,7 +708,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     equip.setWdef((short) rs.getInt("wdef"));
+                     equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                     equip.setLevel((byte) rs.getInt("level"));
++                    equip.setItemLevel(rs.getByte("itemlevel"));
++                    equip.setItemExp(rs.getInt("itemexp"));
++                    equip.setRingId(rs.getInt("ringid"));
+                     equip.setFlag((short) rs.getInt("flag"));
++                    equip.setExpiration(rs.getLong("expiration"));
++                    equip.setGiftFrom(rs.getString("giftFrom"));
+                     items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                 }
+             }
+@@ -747,7 +774,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     equip.setWdef((short) rs.getInt("wdef"));
+                     equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                     equip.setLevel((byte) rs.getInt("level"));
++                    equip.setItemLevel(rs.getByte("itemlevel"));
++                    equip.setItemExp(rs.getInt("itemexp"));
++                    equip.setRingId(rs.getInt("ringid"));
+                     equip.setFlag((short) rs.getInt("flag"));
++                    equip.setExpiration(rs.getLong("expiration"));
++                    equip.setGiftFrom(rs.getString("giftFrom"));
+                     items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                 }
+             }
+@@ -841,7 +873,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     equip.setWdef((short) rs.getInt("wdef"));
+                     equip.setUpgradeSlots((byte) rs.getInt("upgradeslots"));
+                     equip.setLevel((byte) rs.getInt("level"));
++                    equip.setItemLevel(rs.getByte("itemlevel"));
++                    equip.setItemExp(rs.getInt("itemexp"));
++                    equip.setRingId(rs.getInt("ringid"));
+                     equip.setFlag((short) rs.getInt("flag"));
++                    equip.setExpiration(rs.getLong("expiration"));
++                    equip.setGiftFrom(rs.getString("giftFrom"));
+                     items.add(new MTSItemInfo((Item) equip, rs.getInt("price"), rs.getInt("id"), rs.getInt("seller"), rs.getString("sellername"), rs.getString("sell_ends")));
+                 }
+             }
+diff --git a/src/net/server/channel/handlers/MagicDamageHandler.java b/src/net/server/channel/handlers/MagicDamageHandler.java
+index b2288be8a..52778e8b1 100644
+--- a/src/net/server/channel/handlers/MagicDamageHandler.java
++++ b/src/net/server/channel/handlers/MagicDamageHandler.java
+@@ -62,9 +62,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         c.announce(MaplePacketCreator.getEnergy("energy", chr.getDojoEnergy()));
+                 }
+ 
+-                int charge = (attack.skill == Evan.FIRE_BREATH || attack.skill == Evan.ICE_BREATH || attack.skill == FPArchMage.BIG_BANG || attack.skill == ILArchMage.BIG_BANG || attack.skill == Bishop.BIG_BANG) ? attack.charge : -1;
+-                byte[] packet = MaplePacketCreator.magicAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, attack.allDamage, charge, attack.speed, attack.direction, attack.display);
+-		
++                byte[] packet;
++                if ((attack.skill == Evan.FIRE_BREATH || attack.skill == Evan.ICE_BREATH || attack.skill == FPArchMage.BIG_BANG || attack.skill == ILArchMage.BIG_BANG || attack.skill == Bishop.BIG_BANG)) {
++                        packet = MaplePacketCreator.magicAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, attack.allDamage, attack.charge, attack.speed, attack.direction, attack.display);
++                } else {
++                        packet = MaplePacketCreator.closeRangeAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, attack.allDamage, attack.speed, attack.direction, attack.display);
++                }
++                
+ 		chr.getMap().broadcastMessage(chr, packet, false, true);
+ 		MapleStatEffect effect = attack.getAttackEffect(chr, null);
+ 		Skill skill = SkillFactory.getSkill(attack.skill);
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 67d6704ed..b1c52deae 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -36,7 +36,6 @@
+ import server.maps.MapleMap;
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
+-import server.movement.LifeMovementFragment;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
+diff --git a/src/net/server/channel/handlers/PetAutoPotHandler.java b/src/net/server/channel/handlers/PetAutoPotHandler.java
+index 305f09dd0..c27d06a80 100644
+--- a/src/net/server/channel/handlers/PetAutoPotHandler.java
++++ b/src/net/server/channel/handlers/PetAutoPotHandler.java
+@@ -4,167 +4,39 @@
+ 		       Matthias Butz <matze@odinms.de>
+ 		       Jan Christian Meyer <vimes@odinms.de>
+ 
+-    Copyleft (L) 2016 - 2018 RonanLana (HeavenMS)
+-
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+     published by the Free Software Foundation version 3 as published by
+     the Free Software Foundation. You may not use, modify or distribute
+     this program under any other version of the GNU Affero General Public
+     License.
++
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU Affero General Public License for more details.
++
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ package net.server.channel.handlers;
+ 
+ import client.MapleClient;
+-import client.MapleCharacter;
+-import client.inventory.Item;
+-import client.inventory.MapleInventory;
+-import client.inventory.MapleInventoryType;
++import client.processor.PetAutopotProcessor;
+ import net.AbstractMaplePacketHandler;
+-import client.inventory.manipulator.MapleInventoryManipulator;
+-import server.MapleItemInformationProvider;
+-import server.MapleStatEffect;
+-import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+-import constants.ServerConstants;
+-import java.util.List;
+ 
+-/**
+- *
+- * @author Ronan - multi-pot consumption feature
+- */
+ public final class PetAutoPotHandler extends AbstractMaplePacketHandler {
+-    short slot;
+-    int itemId;
+-    Item toUse;
+-    List<Item> toUseList;
+-    
+-    boolean hasHpGain, hasMpGain;
+-    int maxHp, maxMp, curHp, curMp;
+-    double incHp, incMp;
+     
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-        if (!c.getPlayer().isAlive()) {
+-            c.announce(MaplePacketCreator.enableActions());
+-            return;
+-        }
+-        
+         slea.readByte();
+         slea.readLong();
+         slea.readInt();
+-        slot = slea.readShort();
+-        itemId = slea.readInt();
+-        
+-        MapleCharacter chr = c.getPlayer();
+-        MapleInventory useInv = chr.getInventory(MapleInventoryType.USE);
+-        
+-        int useCount = 0, qtyCount = 0;
+-        MapleStatEffect stat = null;
+-        
+-        useInv.lockInventory();
+-        try {
+-            toUse = useInv.getItem(slot);
+-            
+-            if (toUse != null) {
+-                if (toUse.getItemId() != itemId) {
+-                    c.announce(MaplePacketCreator.enableActions());
+-                    return;
+-                }
+-                
+-                toUseList = null;
+-                
+-                // from now on, toUse becomes the "cursor" for the current pot being used
+-                if (toUse.getQuantity() <= 0) {
+-                    if (!cursorOnNextAvailablePot(chr)) {
+-                        c.announce(MaplePacketCreator.enableActions());
+-                        return;
+-                    }
+-                }
+-                
+-                stat = MapleItemInformationProvider.getInstance().getItemEffect(toUse.getItemId());
+-                hasHpGain = stat.getHp() > 0 || stat.getHpRate() > 0.0;
+-                hasMpGain = stat.getMp() > 0 || stat.getMpRate() > 0.0;
+-                
+-                maxHp = chr.getCurrentMaxHp();
+-                maxMp = chr.getCurrentMaxMp();
+-                
+-                curHp = chr.getHp();
+-                curMp = chr.getMp();
+-                
+-                incHp = stat.getHp();
+-                if(incHp <= 0 && hasHpGain) incHp = Math.ceil(maxHp * stat.getHpRate());
+-                
+-                incMp = stat.getMp();
+-                if(incMp <= 0 && hasMpGain) incMp = Math.ceil(maxMp * stat.getMpRate());
+-                
+-                if (ServerConstants.USE_COMPULSORY_AUTOPOT) {
+-                    if (hasHpGain) {
+-                        qtyCount = (int) Math.ceil(((ServerConstants.PET_AUTOHP_RATIO * maxHp) - curHp) / incHp);
+-                    }
+-
+-                    if (hasMpGain) {
+-                        qtyCount = Math.max(qtyCount, (int) Math.ceil(((ServerConstants.PET_AUTOMP_RATIO * maxMp) - curMp) / incMp));
+-                    }
+-                } else {
+-                    qtyCount = 1;   // non-compulsory autopot concept thanks to marcuswoon
+-                }
+-
+-                while (true) {
+-                    short qtyToUse = (short) Math.min(qtyCount, toUse.getQuantity());
+-                    MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, qtyToUse, false);
+-                    
+-                    curHp += (incHp * qtyToUse);
+-                    curMp += (incMp * qtyToUse);
+-                    
+-                    useCount += qtyToUse;
+-                    qtyCount -= qtyToUse;
+-                    
+-                    if(toUse.getQuantity() == 0 && qtyCount > 0) {
+-                        // depleted out the current slot, fetch for more
+-
+-                        if(!cursorOnNextAvailablePot(chr)) {
+-                            break;    // no more pots available
+-                        }
+-                    } else {
+-                        break;    // gracefully finished it's job, quit the loop
+-                    }
+-                }
+-            }
+-        } finally {
+-            useInv.unlockInventory();
+-        }
+-        
+-        for (int i = 0; i < useCount; i++) {
+-            stat.applyTo(chr);
+-        }
++        short slot = slea.readShort();
++        int itemId = slea.readInt();
+         
+-        chr.announce(MaplePacketCreator.enableActions());
++        PetAutopotProcessor.runAutopotAction(c, slot, itemId);
+     }
+     
+-    private boolean cursorOnNextAvailablePot(MapleCharacter chr) {
+-        if(toUseList == null) {
+-            toUseList = chr.getInventory(MapleInventoryType.USE).linkedListById(itemId);
+-        }
+-
+-        toUse = null;
+-        while(!toUseList.isEmpty()) {
+-            Item it = toUseList.remove(0);
+-
+-            if(it.getQuantity() > 0) {
+-                toUse = it;
+-                slot = it.getPosition();
+-
+-                return true;
+-            }
+-        }
+-        
+-        return false;
+-    } 
+ }
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index ba04ceb46..05cf6b391 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -268,11 +268,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         if(familyEntry != null) {
+                             familyEntry.setCharacter(player);
+                             player.setFamilyEntry(familyEntry);
++                            
++                            c.announce(MaplePacketCreator.getFamilyInfo(familyEntry));
++                            familyEntry.announceToSenior(MaplePacketCreator.sendFamilyLoginNotice(player.getName(), true), true);
+                         } else {
+                             FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Player " + player.getName() + "'s family doesn't have an entry for them. (" + f.getID() + ")");
+                         }
+-                        c.announce(MaplePacketCreator.getFamilyInfo(familyEntry));
+-                        familyEntry.announceToSenior(MaplePacketCreator.sendFamilyLoginNotice(player.getName(), true), true);
+                     } else {
+                         FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Player " + player.getName() + " has an invalid family ID. (" + player.getFamilyId() + ")");
+                         c.announce(MaplePacketCreator.getFamilyInfo(null));
+@@ -379,8 +380,6 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             final List<Pair<MapleDisease, Integer>> debuff = Collections.singletonList(new Pair<>(e.getKey(), Integer.valueOf(e.getValue().getRight().getX())));
+                             c.announce(MaplePacketCreator.giveDebuff(debuff, e.getValue().getRight()));
+                         }
+-
+-                        player.announceDiseases();
+                     }
+                 } else {
+                     if(player.isRidingBattleship()) {
+diff --git a/src/net/server/channel/handlers/PlayerMapTransitionHandler.java b/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
+index af7ccc57b..13a02d3cc 100644
+--- a/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
++++ b/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
+@@ -26,6 +26,8 @@
+ import java.util.Collections;
+ import java.util.List;
+ import net.AbstractMaplePacketHandler;
++import server.life.MapleMonster;
++import server.maps.MapleMapObject;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -48,5 +50,21 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.HOMING_BEACON, 0));
+             chr.announce(MaplePacketCreator.giveBuff(1, beaconid, stat));
+         }
++        
++        for (MapleMapObject mo : chr.getMap().getMonsters()) {    // thanks BHB, IxianMace, Jefe for noticing several issues regarding mob statuses (such as freeze)
++            MapleMonster m = (MapleMonster) mo;
++            if (m.getSpawnEffect() == 0 || m.getHp() < m.getMaxHp()) {     // avoid effect-spawning mobs
++                if (m.getController() == chr) {
++                    c.announce(MaplePacketCreator.stopControllingMonster(m.getObjectId()));
++                    m.sendDestroyData(c);
++                    m.aggroRedirectController();
++                } else {
++                    m.sendDestroyData(c);
++                }
++
++                m.aggroSwitchController(chr, false);
++                m.sendSpawnData(c);
++            }
++        }
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 6d34fdb59..7d8ca471b 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -244,7 +244,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 Skill highDef = SkillFactory.getSkill(Aran.HIGH_DEFENSE);
+                 int hdLevel = chr.getSkillLevel(highDef);
+                 if (highDef != null && hdLevel > 0) {
+-                    damage *= (highDef.getEffect(hdLevel).getX() / 1000.0);
++                    damage *= Math.ceil(highDef.getEffect(hdLevel).getX() / 1000.0);
+                 }
+             }
+             Integer mesoguard = chr.getBuffedValue(MapleBuffStat.MESOGUARD);
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index fd767f6c9..7a9cffa00 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -580,14 +580,6 @@ public void changeRank(MapleGuildCharacter mgc, int newRank) {
+         }
+         
+         membersLock.lock();
+-        members.sort(new Comparator<MapleGuildCharacter>() {
+-            @Override
+-            public int compare(MapleGuildCharacter t, MapleGuildCharacter o) {
+-                if(t.getGuildRank() <= 1 && o.getGuildRank() > 1) return -1;
+-                else if(t.getGuildRank() > 1 && o.getGuildRank() <= 1) return 1;
+-                else return 0;
+-            }
+-        });
+         try {
+             this.broadcast(MaplePacketCreator.changeRank(mgc));
+         } finally {
+@@ -597,7 +589,7 @@ public int compare(MapleGuildCharacter t, MapleGuildCharacter o) {
+     
+     public void setGuildNotice(String notice) {
+         this.notice = notice;
+-        writeToDB(false);
++        this.writeToDB(false);
+         
+         membersLock.lock();
+         try {
+diff --git a/src/net/server/world/MapleParty.java b/src/net/server/world/MapleParty.java
+index 13dadd62c..d4d192e59 100644
+--- a/src/net/server/world/MapleParty.java
++++ b/src/net/server/world/MapleParty.java
+@@ -130,7 +130,7 @@ public MaplePartyCharacter getMemberById(int id) {
+     public Collection<MaplePartyCharacter> getMembers() {
+         lock.lock();
+         try {
+-            return Collections.unmodifiableList(members);
++            return new LinkedList<>(members);
+         } finally {
+             lock.unlock();
+         }
+@@ -139,7 +139,7 @@ public MaplePartyCharacter getMemberById(int id) {
+     public List<MaplePartyCharacter> getPartyMembers() {
+         lock.lock();
+         try {
+-            return Collections.unmodifiableList(members);
++            return new LinkedList<>(members);
+         } finally {
+             lock.unlock();
+         }
+diff --git a/src/scripting/AbstractScriptManager.java b/src/scripting/AbstractScriptManager.java
+index a2b2ce6d8..0b0ceeafd 100644
+--- a/src/scripting/AbstractScriptManager.java
++++ b/src/scripting/AbstractScriptManager.java
+@@ -65,9 +65,7 @@ protected NashornScriptEngine getScriptEngine(String path) {
+     }
+ 
+     protected NashornScriptEngine getScriptEngine(String path, MapleClient c) {
+-        String cachePath = "scripts/" + path;
+-        NashornScriptEngine engine = c.getScriptEngine(cachePath);
+-
++        NashornScriptEngine engine = c.getScriptEngine("scripts/" + path);
+         if (engine == null) {
+             engine = getScriptEngine(path);
+             c.setScriptEngine(path, engine);
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index bee4ba6e5..4daeeade3 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -31,7 +31,6 @@
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+-import javax.script.Invocable;
+ import javax.script.ScriptException;
+ 
+ import constants.ServerConstants;
+@@ -59,6 +58,7 @@
+ import java.util.Set;
+ import java.util.concurrent.Semaphore;
+ import java.util.concurrent.TimeUnit;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import net.server.audit.LockCollector;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.MonitoredReentrantLock;
+@@ -72,7 +72,7 @@
+  * @author Ronan
+  */
+ public class EventManager {
+-    private Invocable iv;
++    private NashornScriptEngine iv;
+     private Channel cserv;
+     private World wserv;
+     private Server server;
+@@ -95,7 +95,7 @@
+     
+     private static final int maxLobbys = 8;     // an event manager holds up to this amount of concurrent lobbys
+     
+-    public EventManager(Channel cserv, Invocable iv, String name) {
++    public EventManager(Channel cserv, NashornScriptEngine iv, String name) {
+         this.server = Server.getInstance();
+         this.iv = iv;
+         this.cserv = cserv;
+@@ -256,7 +256,7 @@ public Channel getChannelServer() {
+         return cserv;
+     }
+     
+-    public Invocable getIv() {
++    public NashornScriptEngine getIv() {
+         return iv;
+     }
+ 
+diff --git a/src/scripting/event/EventScriptManager.java b/src/scripting/event/EventScriptManager.java
+index 87af1a564..af13ce689 100644
+--- a/src/scripting/event/EventScriptManager.java
++++ b/src/scripting/event/EventScriptManager.java
+@@ -27,8 +27,8 @@
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+-import javax.script.Invocable;
+ import javax.script.ScriptEngine;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ 
+ import net.server.channel.Channel;
+ import scripting.AbstractScriptManager;
+@@ -41,11 +41,11 @@
+ 
+     private class EventEntry {
+ 
+-        public EventEntry(Invocable iv, EventManager em) {
++        public EventEntry(NashornScriptEngine iv, EventManager em) {
+             this.iv = iv;
+             this.em = em;
+         }
+-        public Invocable iv;
++        public NashornScriptEngine iv;
+         public EventManager em;
+     }
+     private Map<String, EventEntry> events = new LinkedHashMap<>();
+@@ -54,7 +54,7 @@ public EventScriptManager(Channel cserv, String[] scripts) {
+         super();
+         for (String script : scripts) {
+             if (!script.equals("")) {
+-                Invocable iv = getScriptEngine("event/" + script + ".js");
++                NashornScriptEngine iv = getScriptEngine("event/" + script + ".js");
+                 events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+             }
+         }
+@@ -71,7 +71,7 @@ public EventManager getEventManager(String event) {
+     public void init() {
+         for (EventEntry entry : events.values()) {
+             try {
+-                ((ScriptEngine) entry.iv).put("em", entry.em);
++                entry.iv.put("em", entry.em);
+                 entry.iv.invokeFunction("init", (Object) null);
+             } catch (Exception ex) {
+                 Logger.getLogger(EventScriptManager.class.getName()).log(Level.SEVERE, null, ex);
+@@ -88,7 +88,7 @@ private void reloadScripts() {
+         Channel cserv = events.values().iterator().next().em.getChannelServer();
+         for (Entry<String, EventEntry> entry : events.entrySet()) {
+             String script = entry.getKey();
+-            Invocable iv = getScriptEngine("event/" + script + ".js");
++            NashornScriptEngine iv = getScriptEngine("event/" + script + ".js");
+             events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+         }
+     }
+diff --git a/src/scripting/map/MapScriptManager.java b/src/scripting/map/MapScriptManager.java
+index 04acbecc3..976b37521 100644
+--- a/src/scripting/map/MapScriptManager.java
++++ b/src/scripting/map/MapScriptManager.java
+@@ -21,23 +21,19 @@
+  */
+ package scripting.map;
+ 
++import client.MapleCharacter;
+ import client.MapleClient;
+-import constants.ServerConstants;
+-import java.io.File;
+-import java.io.FileReader;
+-import java.io.IOException;
+ import java.lang.reflect.UndeclaredThrowableException;
+ import java.util.HashMap;
+ import java.util.Map;
+-import javax.script.Compilable;
+-import javax.script.Invocable;
+-import javax.script.ScriptEngine;
+ import javax.script.ScriptEngineFactory;
+ import javax.script.ScriptEngineManager;
+ import javax.script.ScriptException;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
++import scripting.AbstractScriptManager;
+ import tools.FilePrinter;
+ 
+-public class MapScriptManager {
++public class MapScriptManager extends AbstractScriptManager {
+ 
+     private static MapScriptManager instance = new MapScriptManager();
+     
+@@ -45,7 +41,7 @@ public static MapScriptManager getInstance() {
+         return instance;
+     }
+     
+-    private Map<String, Invocable> scripts = new HashMap<>();
++    private Map<String, NashornScriptEngine> scripts = new HashMap<>();
+     private ScriptEngineFactory sef;
+ 
+     private MapScriptManager() {
+@@ -57,53 +53,42 @@ public void reloadScripts() {
+         scripts.clear();
+     }
+ 
+-    public boolean scriptExists(String scriptName, boolean firstUser) {
+-        File scriptFile = new File("scripts/map/" + (firstUser ? "onFirstUserEnter/" : "onUserEnter/") + scriptName + ".js");
+-        return scriptFile.exists();
+-    }
+-
+-    public void runMapScript(MapleClient c, String scriptName, boolean firstUser) {
+-        if (scripts.containsKey(scriptName)) {
++    public boolean runMapScript(MapleClient c, String mapScriptPath, boolean firstUser) {
++        if (firstUser) {
++            MapleCharacter chr = c.getPlayer();
++            int mapid = chr.getMapId();
++            if (chr.hasEntered(mapScriptPath, mapid)) {
++                return false;
++            } else {
++                chr.enteredScript(mapScriptPath, mapid);
++            }
++        }
++        
++        NashornScriptEngine iv = scripts.get(mapScriptPath);
++        if (iv != null) {
+             try {
+-                scripts.get(scriptName).invokeFunction("start", new MapScriptMethods(c));
++                iv.invokeFunction("start", new MapScriptMethods(c));
++                return true;
+             } catch (final ScriptException | NoSuchMethodException e) {
+                 e.printStackTrace();
+             }
+-            return;
+         }
+-        String type = firstUser ? "onFirstUserEnter/" : "onUserEnter/";
+-
+-        File scriptFile = new File("scripts/map/" + type + scriptName + ".js");
+-        if (!scriptExists(scriptName, firstUser)) {
+-            return;
+-        }
+-        FileReader fr = null;
+-        ScriptEngine se = sef.getScriptEngine();
++        
+         try {
+-            fr = new FileReader(scriptFile);
+-            
+-            // java 8 support here thanks to Arufonsu
+-            if (ServerConstants.JAVA_8){
+-                    se.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
++            iv = getScriptEngine("map/" + mapScriptPath + ".js");
++            if (iv == null) {
++                return false;
+             }
+             
+-            ((Compilable) se).compile(fr).eval();
+-            
+-            final Invocable script = ((Invocable) se);
+-            scripts.put(scriptName, script);
+-            script.invokeFunction("start", new MapScriptMethods(c));
++            scripts.put(mapScriptPath, iv);
++            iv.invokeFunction("start", new MapScriptMethods(c));
++            return true;
+         } catch (final UndeclaredThrowableException | ScriptException ute) {
+-            FilePrinter.printError(FilePrinter.MAP_SCRIPT + type + scriptName + ".txt", ute);
++            FilePrinter.printError(FilePrinter.MAP_SCRIPT + mapScriptPath + ".txt", ute);
+         } catch (final Exception e) {
+-            FilePrinter.printError(FilePrinter.MAP_SCRIPT + type + scriptName + ".txt", e);
+-        } finally {
+-            if (fr != null) {
+-                try {
+-                    fr.close();
+-                } catch (IOException e) {
+-                    e.printStackTrace();
+-                }
+-            }
++            FilePrinter.printError(FilePrinter.MAP_SCRIPT + mapScriptPath + ".txt", e);
+         }
++        
++        return false;
+     }
+ }
+\ No newline at end of file
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index c659335e0..3a99a829b 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -679,12 +679,11 @@ public void cpqLobby(int field) {
+             try {
+                 final MapleMap map, mapExit;
+                 Channel cs = c.getChannelServer();
+-                PlayerStorage ps = cs.getPlayerStorage();
+                 
+                 map = cs.getMapFactory().getMap(980000100 + 100 * field);
+                 mapExit = cs.getMapFactory().getMap(980000000);
+                 for (MaplePartyCharacter mpc : c.getPlayer().getParty().getMembers()) {
+-                    final MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                    final MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.setChallenged(false);
+                         mc.changeMap(map, map.getPortal(0));
+@@ -715,9 +714,8 @@ public MapleCharacter getChrById(int id) {
+         }
+ 
+         public void cancelCPQLobby() {
+-            PlayerStorage ps = c.getChannelServer().getPlayerStorage();
+             for (MaplePartyCharacter mpc : c.getPlayer().getParty().getMembers()) {
+-                MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                MapleCharacter mc = mpc.getPlayer();
+                 if (mc != null) {
+                     mc.clearCpqTimer();
+                 }
+@@ -741,11 +739,11 @@ public void startCPQ(final MapleCharacter challenger, final int field) {
+                 final MapleMap lobbyMap = getPlayer().getMap();
+                 if (challenger != null) {
+                     if (challenger.getParty() == null) {
+-                        throw new RuntimeException("Nao existe oponente!");
++                        throw new RuntimeException("No opponent found!");
+                     }
+-                    PlayerStorage ps = c.getChannelServer().getPlayerStorage();
++                    
+                     for (MaplePartyCharacter mpc : challenger.getParty().getMembers()) {
+-                        MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                        MapleCharacter mc = mpc.getPlayer();
+                         if (mc != null) {
+                             mc.changeMap(lobbyMap, lobbyMap.getPortal(0));
+                             TimerManager tMan = TimerManager.getInstance();
+@@ -758,7 +756,7 @@ public void run() {
+                         }
+                     }
+                     for (MaplePartyCharacter mpc : getPlayer().getParty().getMembers()) {
+-                        MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                        MapleCharacter mc = mpc.getPlayer();
+                         if (mc != null) {
+                             TimerManager tMan = TimerManager.getInstance();
+                             tMan.schedule(new Runnable() {
+@@ -776,15 +774,14 @@ public void run() {
+                     @Override
+                     public void run() {
+                         try {
+-                            PlayerStorage ps = c.getChannelServer().getPlayerStorage();
+                             for (MaplePartyCharacter mpc : getPlayer().getParty().getMembers()) {
+-                                MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                                MapleCharacter mc = mpc.getPlayer();
+                                 if (mc != null) {
+                                     mc.setMonsterCarnival(null);
+                                 }
+                             }
+                             for (MaplePartyCharacter mpc : challenger.getParty().getMembers()) {
+-                                MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                                MapleCharacter mc = mpc.getPlayer();
+                                 if (mc != null) {
+                                     mc.setMonsterCarnival(null);
+                                 }
+@@ -809,11 +806,11 @@ public void startCPQ2(final MapleCharacter challenger, final int field) {
+                 final MapleMap lobbyMap = getPlayer().getMap();
+                 if (challenger != null) {
+                     if (challenger.getParty() == null) {
+-                        throw new RuntimeException("Não existe oponente!");
++                        throw new RuntimeException("No opponent found!");
+                     }
+-                    PlayerStorage ps = c.getChannelServer().getPlayerStorage();
++                    
+                     for (MaplePartyCharacter mpc : challenger.getParty().getMembers()) {
+-                        MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                        MapleCharacter mc = mpc.getPlayer();
+                         if (mc != null) {
+                             mc.changeMap(lobbyMap, lobbyMap.getPortal(0));
+                             mapClock(10);
+@@ -826,15 +823,14 @@ public void startCPQ2(final MapleCharacter challenger, final int field) {
+                     @Override
+                     public void run() {
+                         try {
+-                            PlayerStorage ps = c.getChannelServer().getPlayerStorage();
+                             for (MaplePartyCharacter mpc : getPlayer().getParty().getMembers()) {
+-                                MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                                MapleCharacter mc = mpc.getPlayer();
+                                 if (mc != null) {
+                                     mc.setMonsterCarnival(null);
+                                 }
+                             }
+                             for (MaplePartyCharacter mpc : challenger.getParty().getMembers()) {
+-                                MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                                MapleCharacter mc = mpc.getPlayer();
+                                 if (mc != null) {
+                                     mc.setMonsterCarnival(null);
+                                 }
+@@ -907,12 +903,11 @@ public void cpqLobby2(int field) {
+             try {
+                 final MapleMap map, mapExit;
+                 Channel cs = c.getChannelServer();
+-                PlayerStorage ps = c.getChannelServer().getPlayerStorage();
+                 
+                 mapExit = cs.getMapFactory().getMap(980030000);
+                 map = cs.getMapFactory().getMap(980031000 + 1000 * field);
+                 for (MaplePartyCharacter mpc : c.getPlayer().getParty().getMembers()) {
+-                    final MapleCharacter mc = ps.getCharacterById(mpc.getId());
++                    final MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.setChallenged(false);
+                         mc.changeMap(map, map.getPortal(0));
+diff --git a/src/scripting/npc/NPCScriptManager.java b/src/scripting/npc/NPCScriptManager.java
+index bee8cc60f..d310efa2a 100644
+--- a/src/scripting/npc/NPCScriptManager.java
++++ b/src/scripting/npc/NPCScriptManager.java
+@@ -29,8 +29,6 @@
+ import java.util.List;
+ import java.util.Map;
+ 
+-import javax.script.Invocable;
+-import javax.script.ScriptEngine;
+ import javax.script.ScriptException;
+ 
+ import jdk.nashorn.api.scripting.NashornScriptEngine;
+@@ -54,10 +52,10 @@ public static NPCScriptManager getInstance() {
+     }
+ 
+     private Map<MapleClient, NPCConversationManager> cms = new HashMap<>();
+-    private Map<MapleClient, Invocable> scripts = new HashMap<>();
++    private Map<MapleClient, NashornScriptEngine> scripts = new HashMap<>();
+ 
+     public boolean isNpcScriptAvailable(MapleClient c, String fileName) {
+-        Invocable iv = null;
++        NashornScriptEngine iv = null;
+         if (fileName != null) {
+             iv = getScriptEngine("npc/" + fileName + ".js", c);
+         }
+@@ -96,7 +94,7 @@ public void start(String filename, MapleClient c, int npc, List<MaplePartyCharac
+             NashornScriptEngine iv = getScriptEngine("npc/" + filename + ".js", c);
+ 
+             if (iv == null) {
+-                c.getPlayer().dropMessage(1, npc + "");
++                c.getPlayer().dropMessage(1, "NPC " + npc + " is uncoded.");
+                 cm.dispose();
+                 return;
+             }
+@@ -173,7 +171,7 @@ private boolean start(MapleClient c, int npc, int oid, String fileName, MapleCha
+     }
+ 
+     public void action(MapleClient c, byte mode, byte type, int selection) {
+-        Invocable iv = scripts.get(c);
++        NashornScriptEngine iv = scripts.get(c);
+         if (iv != null) {
+             try {
+                 c.setClickedNPC();
+diff --git a/src/scripting/portal/PortalScriptManager.java b/src/scripting/portal/PortalScriptManager.java
+index 137291e6e..926f5fd52 100644
+--- a/src/scripting/portal/PortalScriptManager.java
++++ b/src/scripting/portal/PortalScriptManager.java
+@@ -22,23 +22,17 @@
+ package scripting.portal;
+ 
+ import client.MapleClient;
+-import constants.ServerConstants;
+-import java.io.File;
+-import java.io.FileReader;
+-import java.io.IOException;
+ import java.lang.reflect.UndeclaredThrowableException;
+ import java.util.HashMap;
+ import java.util.Map;
+-import javax.script.Compilable;
+-import javax.script.Invocable;
+-import javax.script.ScriptEngine;
+ import javax.script.ScriptEngineFactory;
+ import javax.script.ScriptEngineManager;
+-import javax.script.ScriptException;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
++import scripting.AbstractScriptManager;
+ import server.maps.MaplePortal;
+ import tools.FilePrinter;
+ 
+-public class PortalScriptManager {
++public class PortalScriptManager extends AbstractScriptManager {
+ 
+     private static PortalScriptManager instance = new PortalScriptManager();
+     
+@@ -46,7 +40,7 @@ public static PortalScriptManager getInstance() {
+         return instance;
+     }
+     
+-    private Map<String, PortalScript> scripts = new HashMap<>();
++    private Map<String, NashornScriptEngine> scripts = new HashMap<>();
+     private ScriptEngineFactory sef;
+ 
+     private PortalScriptManager() {
+@@ -54,47 +48,28 @@ private PortalScriptManager() {
+         sef = sem.getEngineByName("javascript").getFactory();
+     }
+ 
+-    private PortalScript getPortalScript(String scriptName) {
+-        if (scripts.containsKey(scriptName)) {
+-            return scripts.get(scriptName);
++    private NashornScriptEngine getPortalScript(String scriptName) {
++        String scriptPath = "portal/" + scriptName + ".js";
++        NashornScriptEngine iv = scripts.get(scriptPath);
++        if (iv != null) {
++            return iv;
+         }
+-        File scriptFile = new File("scripts/portal/" + scriptName + ".js");
+-        if (!scriptFile.exists()) {
+-            scripts.put(scriptName, null);
++        
++        iv = getScriptEngine(scriptPath);
++        if (iv == null) {
+             return null;
+         }
+-        FileReader fr = null;
+-        ScriptEngine portal = sef.getScriptEngine();
+-        try {
+-            fr = new FileReader(scriptFile);
+-            
+-            // java 8 support here thanks to Arufonsu
+-            if (ServerConstants.JAVA_8){
+-                    portal.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+-            }
+-            
+-            ((Compilable) portal).compile(fr).eval();
+-        } catch (ScriptException | IOException | UndeclaredThrowableException e) {
+-            FilePrinter.printError(FilePrinter.PORTAL + scriptName + ".txt", e);
+-        } finally {
+-            if (fr != null) {
+-                try {
+-                    fr.close();
+-                } catch (IOException e) {
+-                    e.printStackTrace();
+-                }
+-            }
+-        }
+-        PortalScript script = ((Invocable) portal).getInterface(PortalScript.class);
+-        scripts.put(scriptName, script);
+-        return script;
++        
++        scripts.put(scriptPath, iv);
++        return iv;
+     }
+ 
+     public boolean executePortalScript(MaplePortal portal, MapleClient c) {
+         try {
+-            PortalScript script = getPortalScript(portal.getScriptName());
+-            if (script != null) {
+-                return script.enter(new PortalPlayerInteraction(c, portal));
++            NashornScriptEngine iv = getPortalScript(portal.getScriptName());
++            if (iv != null) {
++                boolean couldWarp = (boolean) iv.invokeFunction("enter", new PortalPlayerInteraction(c, portal));
++                return couldWarp;
+             }
+         } catch (UndeclaredThrowableException ute) {
+             FilePrinter.printError(FilePrinter.PORTAL + portal.getScriptName() + ".txt", ute);
+diff --git a/src/scripting/quest/QuestScriptManager.java b/src/scripting/quest/QuestScriptManager.java
+index 97cbc75e6..8d9628769 100644
+--- a/src/scripting/quest/QuestScriptManager.java
++++ b/src/scripting/quest/QuestScriptManager.java
+@@ -25,8 +25,6 @@
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+-import javax.script.Invocable;
+-
+ import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import scripting.AbstractScriptManager;
+ import server.quest.MapleQuest;
+@@ -48,7 +46,16 @@ public static QuestScriptManager getInstance() {
+ 	}
+     
+ 	private Map<MapleClient, QuestActionManager> qms = new HashMap<>();
+-	private Map<MapleClient, Invocable> scripts = new HashMap<>();
++	private Map<MapleClient, NashornScriptEngine> scripts = new HashMap<>();
++        
++        private NashornScriptEngine getQuestScriptEngine(MapleClient c, short questid) {
++                NashornScriptEngine iv = getScriptEngine("quest/" + questid + ".js", c);
++                if (iv == null && GameConstants.isMedalQuest(questid)) {
++                        iv = getScriptEngine("quest/medalQuest.js", c);   // start generic medal quest
++                }
++
++                return iv;
++        }
+         
+ 	public void start(MapleClient c, short questid, int npc) {
+                 MapleQuest quest = MapleQuest.getInstance(questid);
+@@ -63,18 +70,19 @@ public void start(MapleClient c, short questid, int npc) {
+                         }
+                         if(c.canClickNPC()) {
+                                 qms.put(c, qm);
+-                                NashornScriptEngine iv = getScriptEngine("quest/" + questid + ".js", c);
+-                                if (iv == null) {
+-                                        if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+-                                                iv = getScriptEngine("quest/medalQuest.js", c);
+-                                        } else {
+-                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.");
+-                                        }
++                                
++                                if (!quest.hasScriptRequirement(false)) {   // lack of scripted quest checks found thanks to Mali, Resinate
++                                        qm.dispose();
++                                        return;
+                                 }
+-                                if (iv == null || QuestScriptManager.getInstance() == null) {
++                                
++                                NashornScriptEngine iv = getQuestScriptEngine(c, questid);
++                                if (iv == null) {
++                                        FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.");
+                                         qm.dispose();
+                                         return;
+                                 }
++                                
+                                 iv.put("qm", qm);
+                                 scripts.put(c, iv);
+                                 c.setClickedNPC();
+@@ -90,7 +98,7 @@ public void start(MapleClient c, short questid, int npc) {
+ 	}
+ 
+ 	public void start(MapleClient c, byte mode, byte type, int selection) {
+-		Invocable iv = scripts.get(c);
++		NashornScriptEngine iv = scripts.get(c);
+ 		if (iv != null) {
+ 			try {
+ 				c.setClickedNPC();
+@@ -118,16 +126,19 @@ public void end(MapleClient c, short questid, int npc) {
+ 			}
+ 			if(c.canClickNPC()){
+ 				qms.put(c, qm);
+-				NashornScriptEngine iv = getScriptEngine("quest/" + questid + ".js", c);
+-				if (iv == null) {
+-                                        if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+-                                                iv = getScriptEngine("quest/medalQuest.js", c);
+-                                        } else {
+-                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.");
+-                                                qm.dispose();
+-                                                return;
+-                                        }
+-				}
++				
++                                if (!quest.hasScriptRequirement(true)) {
++                                        qm.dispose();
++                                        return;
++                                }
++                                
++                                NashornScriptEngine iv = getQuestScriptEngine(c, questid);
++                                if (iv == null) {
++                                        FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.");
++                                        qm.dispose();
++                                        return;
++                                }
++				
+ 				iv.put("qm", qm);
+ 				scripts.put(c, iv);
+ 				c.setClickedNPC();
+@@ -143,7 +154,7 @@ public void end(MapleClient c, short questid, int npc) {
+ 	}
+ 
+ 	public void end(MapleClient c, byte mode, byte type, int selection) {
+-		Invocable iv = scripts.get(c);
++		NashornScriptEngine iv = scripts.get(c);
+ 		if (iv != null) {
+ 			try {
+ 				c.setClickedNPC();
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index cecac7436..084ceac83 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -35,8 +35,8 @@
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+-import javax.script.Invocable;
+ import javax.script.ScriptException;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import scripting.AbstractPlayerInteraction;
+ import scripting.event.EventInstanceManager;
+ import scripting.event.EventManager;
+@@ -58,10 +58,10 @@
+  */
+ public class ReactorActionManager extends AbstractPlayerInteraction {
+     private MapleReactor reactor;
+-    private Invocable iv;
++    private NashornScriptEngine iv;
+     private ScheduledFuture<?> sprayTask = null;
+ 
+-    public ReactorActionManager(MapleClient c, MapleReactor reactor, Invocable iv) {
++    public ReactorActionManager(MapleClient c, MapleReactor reactor, NashornScriptEngine iv) {
+         super(c);
+         this.reactor = reactor;
+         this.iv = iv;
+diff --git a/src/scripting/reactor/ReactorScriptManager.java b/src/scripting/reactor/ReactorScriptManager.java
+index e4d1cb438..7fcb1acac 100644
+--- a/src/scripting/reactor/ReactorScriptManager.java
++++ b/src/scripting/reactor/ReactorScriptManager.java
+@@ -29,7 +29,6 @@
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+-import javax.script.Invocable;
+ import javax.script.ScriptException;
+ 
+ import jdk.nashorn.api.scripting.NashornScriptEngine;
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index f82b07657..d15904122 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -824,6 +824,7 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+                     break;
+                 case ILMage.SEAL:
+                 case FPMage.SEAL:
++                case BlazeWizard.SEAL:
+                     monsterStatus.put(MonsterStatus.SEAL, Integer.valueOf(1));
+                     break;
+                 case Hermit.SHADOW_WEB: // shadow web
+@@ -1200,6 +1201,8 @@ private void applyMonsterBuff(MapleCharacter applyfrom) {
+             MapleMonster monster = (MapleMonster) mo;
+             if (isDispel()) {
+                 monster.debuffMob(skill_.getId());
++            } else if (isSeal() && monster.isBoss()) {  // thanks IxianMace for noticing seal working on bosses
++                // do nothing
+             } else {
+                 if (makeChanceResult()) {
+                     monster.applyStatus(applyfrom, new MonsterStatusEffect(getMonsterStati(), skill_, null, false), isPoison(), getDuration());
+@@ -1705,6 +1708,10 @@ private boolean isShadowClaw() {
+     private boolean isCrash() {
+         return skill && (sourceid == DragonKnight.POWER_CRASH || sourceid == Crusader.ARMOR_CRASH || sourceid == WhiteKnight.MAGIC_CRASH);
+     }
++    
++    private boolean isSeal() {
++        return skill && (sourceid == ILMage.SEAL || sourceid == FPMage.SEAL || sourceid == BlazeWizard.SEAL);
++    }
+ 
+     private boolean isDispel() {
+         return skill && (sourceid == Priest.DISPEL || sourceid == SuperGM.HEAL_PLUS_DISPEL);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 48a456334..0a2e6e720 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -101,6 +101,7 @@
+     private List<Integer> stolenItems = new ArrayList<>(5);
+     private int team;
+     private int parentMobOid = 0;
++    private int spawnEffect = 0;
+     private final HashMap<Integer, AtomicLong> takenDamage = new HashMap<>();
+     private ScheduledFuture<?> monsterItemDrop = null;
+     private Runnable removeAfterAction = null;
+@@ -138,6 +139,14 @@ private void initWithStats(MapleMonsterStats baseStats) {
+         
+         maxHpPlusHeal.set(hp.get());
+     }
++    
++    public void setSpawnEffect(int effect) {
++        spawnEffect = effect;
++    }
++    
++    public int getSpawnEffect() {
++        return spawnEffect;
++    }
+ 
+     public void disableDrops() {
+         this.dropsDisabled = true;
+@@ -1060,6 +1069,7 @@ public void sendSpawnData(MapleClient client) {
+     @Override
+     public void sendDestroyData(MapleClient client) {
+         client.announce(MaplePacketCreator.killMonster(getObjectId(), false));
++        client.announce(MaplePacketCreator.killMonster(getObjectId(), true));
+     }
+ 
+     @Override
+diff --git a/src/server/maps/MapleDoor.java b/src/server/maps/MapleDoor.java
+index 19533145c..6f270cca9 100644
+--- a/src/server/maps/MapleDoor.java
++++ b/src/server/maps/MapleDoor.java
+@@ -102,10 +102,12 @@ private void broadcastRemoveDoor(MapleCharacter owner) {
+ 
+         for (MapleCharacter chr : targetChars) {
+             areaDoor.sendDestroyData(chr.getClient());
++            chr.removeVisibleMapObject(areaDoor);
+         }
+ 
+         for (MapleCharacter chr : townChars) {
+             townDoor.sendDestroyData(chr.getClient());
++            chr.removeVisibleMapObject(townDoor);
+         }
+         
+         owner.removePartyDoor(false);
+@@ -115,6 +117,7 @@ private void broadcastRemoveDoor(MapleCharacter owner) {
+                 MapleDoor door = chr.getMainTownDoor();
+                 if (door != null) {
+                     townDoor.sendSpawnData(chr.getClient());
++                    chr.addVisibleMapObject(townDoor);
+                 }
+             }
+         }
+diff --git a/src/server/maps/MapleDoorObject.java b/src/server/maps/MapleDoorObject.java
+index 813c1fa00..20995c960 100644
+--- a/src/server/maps/MapleDoorObject.java
++++ b/src/server/maps/MapleDoorObject.java
+@@ -87,6 +87,8 @@ private Point getLinkedPortalPosition() {
+     public void warp(final MapleCharacter chr) {
+         MapleParty party = chr.getParty();
+         if (chr.getId() == ownerId || (party != null && party.getMemberById(ownerId) != null)) {
++            chr.announce(MaplePacketCreator.playPortalSound());
++            
+             if(!inTown() && party == null) {
+                 chr.changeMap(to, getLinkedPortalId());
+             } else {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index d8bdb16ae..f60d03c49 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2063,6 +2063,8 @@ public void spawnMonsterWithEffect(final MapleMonster monster, final int effect,
+         
+         spos.y--;
+         monster.setPosition(spos);
++        monster.setSpawnEffect(effect);
++        
+         spawnAndAddRangedMapObject(monster, new DelayedPacketCreation() {
+             @Override
+             public void sendPackets(MapleClient c) {
+@@ -2116,7 +2118,11 @@ public void spawnDoor(final MapleDoorObject door) {
+         spawnAndAddRangedMapObject(door, new DelayedPacketCreation() {
+             @Override
+             public void sendPackets(MapleClient c) {
+-                door.sendSpawnData(c, false);
++                MapleCharacter chr = c.getPlayer();
++                if (chr != null) {
++                    door.sendSpawnData(c, false);
++                    chr.addVisibleMapObject(door);
++                }
+             }
+         }, new SpawnCondition() {
+             @Override
+@@ -2465,22 +2471,23 @@ public void addPlayer(final MapleCharacter chr) {
+         chr.setMapId(mapid);
+         chr.updateActiveEffects();
+         
++        MapScriptManager msm = MapScriptManager.getInstance();
+         if (chrSize == 1) {
+             if(!hasItemMonitor()) {
+                 startItemMonitor();
+                 aggroMonitor.startAggroCoordinator();
+             }
+             
+-            if (onFirstUserEnter.length() != 0 && !chr.hasEntered(onFirstUserEnter, mapid) && MapScriptManager.getInstance().scriptExists(onFirstUserEnter, true)) {
+-                chr.enteredScript(onFirstUserEnter, mapid);
+-                MapScriptManager.getInstance().runMapScript(chr.getClient(), onFirstUserEnter, true);
++            if (onFirstUserEnter.length() != 0) {
++                msm.runMapScript(chr.getClient(), "onFirstUserEnter/" + onFirstUserEnter, true);
+             }
+         }
+         if (onUserEnter.length() != 0) {
+             if (onUserEnter.equals("cygnusTest") && (mapid < 913040000 || mapid > 913040006)) {
+                 chr.saveLocation("INTRO");
+             }
+-            MapScriptManager.getInstance().runMapScript(chr.getClient(), onUserEnter, false);
++            
++            msm.runMapScript(chr.getClient(), "onUserEnter/" + onUserEnter, false);
+         }
+         if (FieldLimit.CANNOTUSEMOUNTS.check(fieldLimit) && chr.getBuffedValue(MapleBuffStat.MONSTER_RIDING) != null) {
+             chr.cancelEffectFromBuffStat(MapleBuffStat.MONSTER_RIDING);
+@@ -3020,8 +3027,8 @@ private static boolean isNonRangedType(MapleMapObjectType type) {
+         }
+     }
+ 
+-    private void sendObjectPlacement(MapleClient mapleClient) {
+-        MapleCharacter chr = mapleClient.getPlayer();
++    private void sendObjectPlacement(MapleClient c) {
++        MapleCharacter chr = c.getPlayer();
+         Collection<MapleMapObject> objects;
+         
+         objectRLock.lock();
+@@ -3033,7 +3040,7 @@ private void sendObjectPlacement(MapleClient mapleClient) {
+         
+         for (MapleMapObject o : objects) {
+             if (isNonRangedType(o.getType())) {
+-                o.sendSpawnData(mapleClient);
++                o.sendSpawnData(c);
+             } else if (o.getType() == MapleMapObjectType.MONSTER) {
+                 ((MapleMonster) o).aggroUpdateController();
+             } else if (o.getType() == MapleMapObjectType.SUMMON) {
+diff --git a/src/server/partyquest/MonsterCarnival.java b/src/server/partyquest/MonsterCarnival.java
+index b86a3632c..a96d0fc6e 100644
+--- a/src/server/partyquest/MonsterCarnival.java
++++ b/src/server/partyquest/MonsterCarnival.java
+@@ -50,7 +50,7 @@ public MonsterCarnival(MapleParty p1, MapleParty p2, int mapid, boolean cpq1, in
+                 bluePortal = 1;
+             }
+             for (MaplePartyCharacter mpc : p1.getMembers()) {
+-                MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                MapleCharacter mc = mpc.getPlayer();
+                 if (mc != null) {
+                     mc.setMonsterCarnival(this);
+                     mc.setTeam(0);
+@@ -64,7 +64,7 @@ public MonsterCarnival(MapleParty p1, MapleParty p2, int mapid, boolean cpq1, in
+                 }
+             }
+             for (MaplePartyCharacter mpc : p2.getMembers()) {
+-                MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                MapleCharacter mc = mpc.getPlayer();
+                 if (mc != null) {
+                     mc.setMonsterCarnival(this);
+                     mc.setTeam(1);
+@@ -213,7 +213,7 @@ protected void dispose(boolean warpout) {
+             out = cs.getMapFactory().getMap(980000010);
+         }
+         for (MaplePartyCharacter mpc : leader1.getParty().getMembers()) {
+-            MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++            MapleCharacter mc = mpc.getPlayer();
+             if (mc != null) {
+                 mc.resetCP();
+                 mc.setTeam(-1);
+@@ -224,7 +224,7 @@ protected void dispose(boolean warpout) {
+             }
+         }
+         for (MaplePartyCharacter mpc : leader2.getParty().getMembers()) {
+-            MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++            MapleCharacter mc = mpc.getPlayer();
+             if (mc != null) {
+                 mc.resetCP();
+                 mc.setTeam(-1);
+@@ -269,7 +269,7 @@ private void finish(int winningTeam) {
+             Channel cs = map.getChannelServer();
+             if (winningTeam == 0) {
+                 for (MaplePartyCharacter mpc : leader1.getParty().getMembers()) {
+-                    MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                    MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.gainFestivalPoints(this.redTotalCP);
+                         mc.setMonsterCarnival(null);
+@@ -283,7 +283,7 @@ private void finish(int winningTeam) {
+                     }
+                 }
+                 for (MaplePartyCharacter mpc : leader2.getParty().getMembers()) {
+-                    MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                    MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.gainFestivalPoints(this.blueTotalCP);
+                         mc.setMonsterCarnival(null);
+@@ -298,7 +298,7 @@ private void finish(int winningTeam) {
+                 }
+             } else if (winningTeam == 1) {
+                 for (MaplePartyCharacter mpc : leader2.getParty().getMembers()) {
+-                    MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                    MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.gainFestivalPoints(this.blueTotalCP);
+                         mc.setMonsterCarnival(null);
+@@ -312,7 +312,7 @@ private void finish(int winningTeam) {
+                     }
+                 }
+                 for (MaplePartyCharacter mpc : leader1.getParty().getMembers()) {
+-                    MapleCharacter mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++                    MapleCharacter mc = mpc.getPlayer();
+                     if (mc != null) {
+                         mc.gainFestivalPoints(this.redTotalCP);
+                         mc.setMonsterCarnival(null);
+@@ -393,12 +393,10 @@ public void complete() {
+         if (chnl != chnl1) {
+             throw new RuntimeException("Os lideres estao em canais diferentes.");
+         }
+-
+-        Channel cs = map.getChannelServer();
++        
+         map.killAllMonsters();
+         for (MaplePartyCharacter mpc : leader1.getParty().getMembers()) {
+-            MapleCharacter mc;
+-            mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++            MapleCharacter mc = mpc.getPlayer();
+             if (mc != null) {
+                 if (redWin) {
+                     mc.getClient().announce(MaplePacketCreator.showEffect("quest/carnival/win"));
+@@ -412,8 +410,7 @@ public void complete() {
+             }
+         }
+         for (MaplePartyCharacter mpc : leader2.getParty().getMembers()) {
+-            MapleCharacter mc;
+-            mc = cs.getPlayerStorage().getCharacterById(mpc.getId());
++            MapleCharacter mc = mpc.getPlayer();
+             if (mc != null) {
+                 if (!redWin) {
+                     mc.getClient().announce(MaplePacketCreator.showEffect("quest/carnival/win"));
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index cf7e8f94f..88d081dab 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -490,6 +490,8 @@ private MapleQuestRequirement getRequirement(MapleQuestRequirementType type, Map
+ 				ret = new BuffExceptRequirement(this, data);
+ 				break;
+ 			case SCRIPT:
++                                ret = new ScriptRequirement(this, data);
++                                break;
+ 			case NORMAL_AUTO_START:
+ 			case START:
+ 			case END:
+@@ -561,7 +563,6 @@ public int getMedalRequirement() {
+         
+         public int getNpcRequirement(boolean complete) {
+                 Map<MapleQuestRequirementType, MapleQuestRequirement> reqs = !complete ? startReqs : completeReqs;
+-                
+                 MapleQuestRequirement mqr = reqs.get(MapleQuestRequirementType.NPC);
+                 if (mqr != null) {
+                         return ((NpcRequirement) mqr).get();
+@@ -570,6 +571,17 @@ public int getNpcRequirement(boolean complete) {
+                 }
+         }
+         
++        public boolean hasScriptRequirement(boolean complete) {
++                Map<MapleQuestRequirementType, MapleQuestRequirement> reqs = !complete ? startReqs : completeReqs;
++                MapleQuestRequirement mqr = reqs.get(MapleQuestRequirementType.SCRIPT);
++                
++                if (mqr != null) {
++                        return ((ScriptRequirement) mqr).get();
++                } else {
++                        return false;
++                }
++        }
++        
+         public String getName() {
+                 return name;
+         }
+diff --git a/src/server/quest/requirements/ScriptRequirement.java b/src/server/quest/requirements/ScriptRequirement.java
+new file mode 100644
+index 000000000..52ec7e0d4
+--- /dev/null
++++ b/src/server/quest/requirements/ScriptRequirement.java
+@@ -0,0 +1,53 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package server.quest.requirements;
++    
++import client.MapleCharacter;
++import provider.MapleData;
++import provider.MapleDataTool;
++import server.quest.MapleQuest;
++import server.quest.MapleQuestRequirementType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class ScriptRequirement extends MapleQuestRequirement {
++        private boolean reqScript;
++        
++	public ScriptRequirement(MapleQuest quest, MapleData data) {
++		super(MapleQuestRequirementType.BUFF);
++		processData(data);
++	}
++	
++	@Override
++	public void processData(MapleData data) {
++                reqScript = !MapleDataTool.getString(data, "").isEmpty();
++	}
++	
++	@Override
++	public boolean check(MapleCharacter chr, Integer npcid) {
++                return true;
++	}
++        
++        public boolean get() {
++                return reqScript;
++        }
++}
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index 6d18b80ea..d21987a62 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -43,6 +43,7 @@
+             MOB_MOVEMENT = "game/MobMovement.txt",
+             MAP_SCRIPT = "game/mapscript/",
+             DIRECTION = "game/directions/",
++            GUILD_CHAR_ERROR = "guilds/GuildCharError.txt",
+             SAVE_CHAR = "players/SaveToDB.txt",
+             INSERT_CHAR = "players/InsertCharacter.txt",
+             LOAD_CHAR = "players/LoadCharFromDB.txt",
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 4fe628a42..47010ff93 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -17944,7 +17944,7 @@
+         </imgdir>
+         <imgdir name="1">
+           <int name="id" value="4000017"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="20"/>
+         </imgdir>
+         <imgdir name="2">
+           <int name="id" value="4031154"/>
+diff --git a/wz/Quest.wz/QuestInfo.img.xml b/wz/Quest.wz/QuestInfo.img.xml
+index 296d0a4c7..d89f6d0f9 100644
+--- a/wz/Quest.wz/QuestInfo.img.xml
++++ b/wz/Quest.wz/QuestInfo.img.xml
+@@ -4232,7 +4232,7 @@ You can now begin the &quot;Manji&apos;s Request&quot; quest.
+     <int name="area" value="30"/>
+   </imgdir>
+   <imgdir name="2057">
+-    <string name="name" value="Shumi&apos;s Lost Bundle of Money"/>
++    <string name="name" value="Shumi&apos;s Lost Sack of Money"/>
+     <null name="parent"/>
+     <string name="0" value="Let&apos;s go look for Shumi in Kerning City."/>
+     <string name="1" value="I ran into Shumi again at Kerning City. A while ago, she got a favor from JM From the Streetz to get an elixir for him, only to have the sack of money fall down and lose it all in the process. I guess I can find it at the deep part of the subway station, the #bconstruction site B3#k, again."/>
+diff --git a/wz/String.wz/Consume.img.xml b/wz/String.wz/Consume.img.xml
+index 39f3c90f2..81e66477f 100644
+--- a/wz/String.wz/Consume.img.xml
++++ b/wz/String.wz/Consume.img.xml
+@@ -8129,7 +8129,7 @@
+   </imgdir>
+   <imgdir name="2382092">
+     <string name="name" value="Renegade Spore Card"/>
+-    <string name="desc" value="A card featuring Renegade Spores\n#cWhen hunting in the Mushroom Castle: \nJump +1"/>
++    <string name="desc" value="A card featuring Renegade Spores\n#cWhen hunting in the Mushroom Castle: \nAvoidability +1"/>
+   </imgdir>
+   <imgdir name="2382093">
+     <string name="name" value="Poison Mushroom Card"/>

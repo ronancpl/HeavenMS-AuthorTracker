@@ -1,0 +1,213 @@
+diff --git a/scripts/event/WeddingCathedral.js b/scripts/event/WeddingCathedral.js
+index 80dd24866..1041876ef 100644
+--- a/scripts/event/WeddingCathedral.js
++++ b/scripts/event/WeddingCathedral.js
+@@ -65,6 +65,7 @@ function setup(level, lobbyid) {
+         eim.setProperty("canJoin", "1");
+         eim.setProperty("groomId", "0");
+         eim.setProperty("brideId", "0");
++        eim.setProperty("confirmedVows", "-1");
+         
+         eim.getInstanceMap(680000400).resetPQ(level);
+         if(eventBoss) spawnCakeBoss(eim);
+@@ -92,7 +93,7 @@ function playerEntry(eim, player) {
+ 
+ function stopBlessings(eim) {
+         var mapobj = eim.getMapInstance(entryMap + 10);
+-        mapobj.dropMessage(6, "Wedding Assistant: Alright, now the couple is preparing to make it official. Tighten your seatbelts!");
++        mapobj.dropMessage(6, "Wedding Assistant: Alright people, our couple are preparing their vows to each other right now.");
+         
+         eim.setIntProperty("weddingStage", 2);
+ }
+diff --git a/scripts/event/WeddingChapel.js b/scripts/event/WeddingChapel.js
+index 114372f94..a859a9d33 100644
+--- a/scripts/event/WeddingChapel.js
++++ b/scripts/event/WeddingChapel.js
+@@ -65,6 +65,7 @@ function setup(level, lobbyid) {
+         eim.setProperty("canJoin", "1");
+         eim.setProperty("groomId", "0");
+         eim.setProperty("brideId", "0");
++        eim.setProperty("confirmedVows", "-1");
+         
+         eim.getInstanceMap(680000400).resetPQ(level);
+         if(eventBoss) spawnCakeBoss(eim);
+@@ -92,7 +93,7 @@ function playerEntry(eim, player) {
+ 
+ function stopBlessings(eim) {
+         var mapobj = eim.getMapInstance(entryMap + 10);
+-        mapobj.dropMessage(6, "Wedding Assistant: Alright, now the couple is preparing to make it official. Tighten your seatbelts!");
++        mapobj.dropMessage(6, "Wedding Assistant: Alright people, our couple are preparing their vows to each other right now.");
+         
+         eim.setIntProperty("weddingStage", 2);
+ }
+diff --git a/scripts/npc/9201002.js b/scripts/npc/9201002.js
+index 419f3a574..d2ce9b99e 100644
+--- a/scripts/npc/9201002.js
++++ b/scripts/npc/9201002.js
+@@ -311,29 +311,40 @@ function action(mode, type, selection) {
+ 
+                             switch(state) {
+                                 case 0:
+-                                    eim.setIntProperty("weddingStage", 3);
+-                                    var cmPartner = partner.getClient().getAbstractPlayerInteraction();
+-
+-                                    var playerItemId = detectPlayerItemid(player);
+-                                    var partnerItemId = (playerItemId % 2 == 1) ? playerItemId + 1 : playerItemId - 1;
+-
+-                                    var marriageRingId = getRingId((playerItemId % 2 == 1) ? playerItemId : partnerItemId);
+-
+-                                    cm.gainItem(playerItemId, -1);
+-                                    cmPartner.gainItem(partnerItemId, -1);
+-
+-                                    RingActionHandler.giveMarriageRings(player, partner, marriageRingId);
+-                                    player.setMarriageItemId(marriageRingId);
+-                                    partner.setMarriageItemId(marriageRingId);
+-                                    
+-                                    //var marriageId = eim.getIntProperty("weddingId");
+-                                    //player.announce(Wedding.OnMarriageResult(marriageId, player, true));
+-                                    //partner.announce(Wedding.OnMarriageResult(marriageId, player, true));
+-
+-                                    giveCoupleBlessings(eim, player, partner);
++                                    var pid = eim.getIntProperty("confirmedVows");
++                                    if(pid != -1) {
++                                        if(pid == player.getId()) {
++                                            cm.sendOk("You have already confirmed your vows. All that is left is for your partner to confirm now.");
++                                        } else {
++                                            eim.setIntProperty("weddingStage", 3);
++                                            var cmPartner = partner.getClient().getAbstractPlayerInteraction();
++
++                                            var playerItemId = detectPlayerItemid(player);
++                                            var partnerItemId = (playerItemId % 2 == 1) ? playerItemId + 1 : playerItemId - 1;
++
++                                            var marriageRingId = getRingId((playerItemId % 2 == 1) ? playerItemId : partnerItemId);
++
++                                            cm.gainItem(playerItemId, -1);
++                                            cmPartner.gainItem(partnerItemId, -1);
++
++                                            RingActionHandler.giveMarriageRings(player, partner, marriageRingId);
++                                            player.setMarriageItemId(marriageRingId);
++                                            partner.setMarriageItemId(marriageRingId);
++
++                                            //var marriageId = eim.getIntProperty("weddingId");
++                                            //player.announce(Wedding.OnMarriageResult(marriageId, player, true));
++                                            //partner.announce(Wedding.OnMarriageResult(marriageId, player, true));
++
++                                            giveCoupleBlessings(eim, player, partner);
++
++                                            cm.getMap().dropMessage(6, "High Priest John: By the power vested in me through the mighty Maple tree, I now pronounce you  Husband and Wife. You may kiss the bride!");
++                                            eim.schedule("showMarriedMsg", 2 * 1000);
++                                        }
++                                    } else {
++                                        eim.setIntProperty("confirmedVows", player.getId());
++                                        mapobj.dropMessage(6, "Wedding Assistant: " + player.getName() + " has confirmed vows! Alright, one step away to make it official. Tighten your seatbelts!");
++                                    }
+                                     
+-                                    cm.getMap().dropMessage(6, "High Priest John: By the power vested in me through the mighty Maple tree, I now pronounce you  Husband and Wife. You may kiss the bride!");
+-                                    eim.schedule("showMarriedMsg", 2 * 1000);
+                                     break;
+ 
+                                 case -1:
+diff --git a/scripts/npc/9201011.js b/scripts/npc/9201011.js
+index e4ce97f8c..a2e56e2ef 100644
+--- a/scripts/npc/9201011.js
++++ b/scripts/npc/9201011.js
+@@ -192,29 +192,40 @@ function action(mode, type, selection) {
+ 
+                         switch(state) {
+                             case 0:
+-                                eim.setIntProperty("weddingStage", 3);
+-                                var cmPartner = partner.getClient().getAbstractPlayerInteraction();
+-
+-                                var playerItemId = detectPlayerItemid(player);
+-                                var partnerItemId = (playerItemId % 2 == 1) ? playerItemId + 1 : playerItemId - 1;
+-
+-                                var marriageRingId = getRingId((playerItemId % 2 == 1) ? playerItemId : partnerItemId);
+-
+-                                cm.gainItem(playerItemId, -1);
+-                                cmPartner.gainItem(partnerItemId, -1);
+-
+-                                RingActionHandler.giveMarriageRings(player, partner, marriageRingId);
+-                                player.setMarriageItemId(marriageRingId);
+-                                partner.setMarriageItemId(marriageRingId);
+-
+-                                //var marriageId = eim.getIntProperty("weddingId");
+-                                //player.announce(Wedding.OnMarriageResult(marriageId, player, true));
+-                                //partner.announce(Wedding.OnMarriageResult(marriageId, player, true));
+-
+-                                giveCoupleBlessings(eim, player, partner);
+-
+-                                cm.getMap().dropMessage(6, "Wayne: I'll call it out right now, and it shall go on: you guys are the key of the other's lock, a lace of a pendant. That's it, snog yourselves!");
+-                                eim.schedule("showMarriedMsg", 2 * 1000);
++                                var pid = eim.getIntProperty("confirmedVows");
++                                if(pid != -1) {
++                                    if(pid == player.getId()) {
++                                        cm.sendOk("You have already confirmed your vows. All that is left is for your partner to confirm now.");
++                                    } else {
++                                        eim.setIntProperty("weddingStage", 3);
++                                        var cmPartner = partner.getClient().getAbstractPlayerInteraction();
++
++                                        var playerItemId = detectPlayerItemid(player);
++                                        var partnerItemId = (playerItemId % 2 == 1) ? playerItemId + 1 : playerItemId - 1;
++
++                                        var marriageRingId = getRingId((playerItemId % 2 == 1) ? playerItemId : partnerItemId);
++
++                                        cm.gainItem(playerItemId, -1);
++                                        cmPartner.gainItem(partnerItemId, -1);
++
++                                        RingActionHandler.giveMarriageRings(player, partner, marriageRingId);
++                                        player.setMarriageItemId(marriageRingId);
++                                        partner.setMarriageItemId(marriageRingId);
++
++                                        //var marriageId = eim.getIntProperty("weddingId");
++                                        //player.announce(Wedding.OnMarriageResult(marriageId, player, true));
++                                        //partner.announce(Wedding.OnMarriageResult(marriageId, player, true));
++
++                                        giveCoupleBlessings(eim, player, partner);
++
++                                        cm.getMap().dropMessage(6, "Wayne: I'll call it out right now, and it shall go on: you guys are the key of the other's lock, a lace of a pendant. That's it, snog yourselves!");
++                                        eim.schedule("showMarriedMsg", 2 * 1000);
++                                    }
++                                } else {
++                                    eim.setIntProperty("confirmedVows", player.getId());
++                                    mapobj.dropMessage(6, "Wedding Assistant: " + player.getName() + " has confirmed vows! Alright, one step away to make it official. Tighten your seatbelts!");
++                                }
++                                
+                                 break;
+ 
+                             case -1:
+diff --git a/src/net/server/channel/handlers/DueyHandler.java b/src/net/server/channel/handlers/DueyHandler.java
+index c089c5f5c..620cfdd94 100644
+--- a/src/net/server/channel/handlers/DueyHandler.java
++++ b/src/net/server/channel/handlers/DueyHandler.java
+@@ -252,11 +252,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         }
+     }
+ 
+-    private void addMesoToDB(int mesos, String sName, int recipientID) {
++    private static void addMesoToDB(int mesos, String sName, int recipientID) {
+         addItemToDB(null, 1, mesos, sName, recipientID);
+     }
+ 
+-    private void addItemToDB(Item item, int quantity, int mesos, String sName, int recipientID) {
++    public static void addItemToDB(Item item, int quantity, int mesos, String sName, int recipientID) {
+         Connection con = null;
+         try {
+             con = DatabaseConnection.getConnection();
+@@ -344,7 +344,7 @@ private void addItemToDB(Item item, int quantity, int mesos, String sName, int r
+         }
+     }
+ 
+-    private String getCurrentDate() {
++    private static String getCurrentDate() {
+         String date = "";
+         Calendar cal = Calendar.getInstance();
+         int day = cal.get(Calendar.DATE) - 1; // instant duey ?
+@@ -373,7 +373,7 @@ private static int getFee(int meso) {
+         return fee;
+     }
+ 
+-    private void removeItemFromDB(int packageid) {
++    private static void removeItemFromDB(int packageid) {
+         Connection con = null;
+         try {
+             con = DatabaseConnection.getConnection();

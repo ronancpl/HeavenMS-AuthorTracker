@@ -1,0 +1,1537 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index cd199561a..eb7572aeb 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1,9 +1,10 @@
+-﻿NEW NPC SCRIPTS:
++﻿CUSTOM NPC SCRIPTS:
+ 	Coco -> 9000017
+ 	Agent E -> 9000036
+ 
+-NEW NPC SHOP:
++CUSTOM NPC SHOPS:
+ 	Spindle -> 9201082
++	T-1337 -> 9201101
+ 
+ LOGS:
+ 
+@@ -791,4 +792,17 @@ Adicionado efeito de som ao atravessar portais para a maioria dos scripts de por
+ Adicionado diversos drops de skill/mastery books para mobs level 90+.
+ Corrigido problema com PQs onde jogadores que saíam do grupo não eram transportados para fora do mapa do evento devidamente.
+ Corrigido problema com PQs onde jogadores eram expulsos de eventos já completados ao tentar sair/debandar da party.
+-Corrigido possível problema de exploit com Vega's scroll.
+\ No newline at end of file
++Corrigido possível problema de exploit com Vega's scroll.
++
++17 - 19 Fevereiro 2018,
++Adicionado custom npc shop de consumíveis para o T-1337.
++Normalizado drop data do Pianus esquerdo, removido drops do Jr. Newtie que evolui pra Nest Golem.
++Melhorado qualidade das mensagens aos usuários das expedições.
++Melhorado sistema de drops dos monstros aliados (Moon Bunny, Watch Hog, etc), agora fornecendo devidas exclusividades aos itens de quests. Drops de mobs aliados agora seguem o mesmo padrão dos drops de mobs normais.
++Modificado autopot agora usando variáveis temporárias para calcular o consumo de pots, ao invés de usar o valor volátil de HP/MP do objeto do jogador.
++Resolvido bug com portais introduzido no patch anterior, que quebrou a sintaxe de código em alguns casos.
++Novo comando: reach. Transporta o usuário do comando a um ponto próximo ao jogador alvo.
++
++20 Fevereiro 2018,
++Corrigido skill Steal não agindo corretamente. Ratio de drops agora segue conformante ao determinado pelas chances de sair cada item (itens comuns cairão com mais frequência).
++Modificado skill Steal para não dropar mais itens de PQ nem de quest.
+\ No newline at end of file
+diff --git a/scripts/event/AreaBossBamboo.js b/scripts/event/AreaBossBamboo.js
+index 1ee03e835..ecf4f4ad9 100644
+--- a/scripts/event/AreaBossBamboo.js
++++ b/scripts/event/AreaBossBamboo.js
+@@ -40,7 +40,7 @@ function cancelSchedule() {
+ }
+ 
+ function start() {
+-    var mapObj = em.getChannelServer().getMapFactory().getMap(800020120);
++    var mapObj = em.getChannelServer().getMapFactory().getMap(800020120);   // original mapid was 251010101
+     var mobObj = Packages.server.life.MapleLifeFactory.getMonster(6090002);
+ 	
+ 	if(mapObj.getMonsterById(6090002) != null) {
+diff --git a/scripts/event/CWKPQ.js b/scripts/event/CWKPQ.js
+index 2c1453342..b76ff3701 100644
+--- a/scripts/event/CWKPQ.js
++++ b/scripts/event/CWKPQ.js
+@@ -222,7 +222,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -279,7 +279,7 @@ function playerDead(eim, player) {}
+ function playerRevive(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+     }
+     else {
+@@ -290,7 +290,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/event/HorntailBattle.js b/scripts/event/HorntailBattle.js
+index 15c4378ba..a3f923cd4 100644
+--- a/scripts/event/HorntailBattle.js
++++ b/scripts/event/HorntailBattle.js
+@@ -107,7 +107,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -125,7 +125,7 @@ function playerDead(eim, player) {}
+ function playerRevive(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+     }
+     else {
+@@ -136,7 +136,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/event/PinkBeanBattle.js b/scripts/event/PinkBeanBattle.js
+index 4c51416ba..95efbd74d 100644
+--- a/scripts/event/PinkBeanBattle.js
++++ b/scripts/event/PinkBeanBattle.js
+@@ -109,7 +109,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue this expedition.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -144,7 +144,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue this expedition.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/event/ScargaBattle.js b/scripts/event/ScargaBattle.js
+index 99c682736..f32a8aa1c 100644
+--- a/scripts/event/ScargaBattle.js
++++ b/scripts/event/ScargaBattle.js
+@@ -93,7 +93,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -111,7 +111,7 @@ function playerDead(eim, player) {}
+ function playerRevive(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+     }
+     else {
+@@ -122,7 +122,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/event/ShowaBattle.js b/scripts/event/ShowaBattle.js
+index e46fc64dd..1b34e1342 100644
+--- a/scripts/event/ShowaBattle.js
++++ b/scripts/event/ShowaBattle.js
+@@ -99,7 +99,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -117,7 +117,7 @@ function playerDead(eim, player) {}
+ function playerRevive(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+     }
+     else {
+@@ -128,7 +128,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/event/ZakumBattle.js b/scripts/event/ZakumBattle.js
+index 88c5448bd..858161063 100644
+--- a/scripts/event/ZakumBattle.js
++++ b/scripts/event/ZakumBattle.js
+@@ -95,7 +95,7 @@ function scheduledTimeout(eim) {
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+ 	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-            eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++            eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+         }
+@@ -113,7 +113,7 @@ function playerDead(eim, player) {}
+ function playerRevive(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+     }
+     else {
+@@ -124,7 +124,7 @@ function playerRevive(eim, player) {
+ 
+ function playerDisconnected(eim, player) {
+     if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
+-        eim.dropMessage(5, "[Expedition] Either the leader has quitted the event or there is no longer the minimum number of members required to continue this event.");
++        eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+     }
+diff --git a/scripts/npc/1061018.js b/scripts/npc/1061018.js
+index dcac42e94..2832db459 100644
+--- a/scripts/npc/1061018.js
++++ b/scripts/npc/1061018.js
+@@ -3,7 +3,6 @@ importPackage(Packages.server.events);
+ var status = 0;
+ var dispose = false;
+ function start(){
+-    status == 0;
+     action(1, 0, 0);
+ }
+ 
+diff --git a/scripts/npc/1092015.js b/scripts/npc/1092015.js
+new file mode 100644
+index 000000000..97f5e4991
+--- /dev/null
++++ b/scripts/npc/1092015.js
+@@ -0,0 +1,47 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Water Filter */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("I'm bored! Someone come play with me!");
++                        cm.dispose();
++                }
++        }
++}
+diff --git a/scripts/npc/1100003.js b/scripts/npc/1100003.js
+index 914b314d0..11b909b3f 100644
+--- a/scripts/npc/1100003.js
++++ b/scripts/npc/1100003.js
+@@ -37,8 +37,9 @@ function action(mode, type, selection) {
+ 		status++;
+ 		if (status == 0) {
+                         if(!hasCoupon) {
++                                var display = "";
+                                 for(var i=0; i < menu.length; i++) {
+-					var display = "\r\n#L"+i+"##b Victoria Island (1000 mesos)#k";
++					display += "\r\n#L"+i+"##b Victoria Island (1000 mesos)#k";
+ 				}			
+ 				cm.sendSimple("Eh, Hello...again. Do you want to leave Ereve and go somewhere else? If so, you've come to the right place. I operate a ferry that goes from #bEreve#k to #bVictoria Island#k, I can take you to #bVictoria Island#k if you want... You'll have to pay a fee of #b1000#k Mesos.\r\n"+display);
+                         } else {
+diff --git a/scripts/npc/1100004.js b/scripts/npc/1100004.js
+index 2a366d442..175ea5a9c 100644
+--- a/scripts/npc/1100004.js
++++ b/scripts/npc/1100004.js
+@@ -31,8 +31,9 @@ function action(mode, type, selection) {
+         }
+         status++;
+         if (status == 0) {
++            var display = "";
+             for (var i = 0; i < menu.length; i++) {
+-                var display = "\r\n#L" + i + "##b Orbis (1000 mesos)#k";
++                display += "\r\n#L" + i + "##b Orbis (1000 mesos)#k";
+             }
+             cm.sendSimple("Hmm... The winds are favorable. Are you thinking of leaving ereve and going somwhere else? This ferry sails to Orbis on the Ossyria Continent, Have you taking care of everything you needed to in Ereve? If you happen to be headed toward #bOrbis#k i can take you there. What do you day? Are you going to go to Orbis?\r\n" + display);
+ 
+diff --git a/scripts/npc/1100007.js b/scripts/npc/1100007.js
+index 72ebcfe59..c536c0219 100644
+--- a/scripts/npc/1100007.js
++++ b/scripts/npc/1100007.js
+@@ -32,10 +32,11 @@ function action(mode, type, selection) {
+ 		}
+ 		status++;
+ 		if (status == 0) {
+-			for(var i=0; i < menu.length; i++) {
+-					var display = "\r\n#L"+i+"##b Ereve (1000 mesos)#k";
+-				}			
+-				cm.sendSimple("Eh... So... Um... Are you trying to leave Victoria to go to a different region? You can take this boat to #bEreve#k. There, you will see bright sunlight shinning on the leaves and feel a gentle breeze on your skin. It's where Shinsoo and Empress Cygnus are. Would you like to go to Ereve? It will take about #b2 Minutes#k, and it will cost you #b1000#k mesos.\r\n"+display);
++			var display = "";
++                        for(var i=0; i < menu.length; i++) {
++                                display += "\r\n#L"+i+"##b Ereve (1000 mesos)#k";
++                        }			
++                        cm.sendSimple("Eh... So... Um... Are you trying to leave Victoria to go to a different region? You can take this boat to #bEreve#k. There, you will see bright sunlight shinning on the leaves and feel a gentle breeze on your skin. It's where Shinsoo and Empress Cygnus are. Would you like to go to Ereve? It will take about #b2 Minutes#k, and it will cost you #b1000#k mesos.\r\n"+display);
+ 			
+ 		} else if(status == 1) {
+ 		 if(cm.getMeso() < 1000) {
+diff --git a/scripts/npc/1100008.js b/scripts/npc/1100008.js
+index efe41fcf4..4db742751 100644
+--- a/scripts/npc/1100008.js
++++ b/scripts/npc/1100008.js
+@@ -32,8 +32,9 @@ function action(mode, type, selection) {
+ 		}
+ 		status++;
+ 		if (status == 0) {
++                        var display = "";
+                         for(var i=0; i < menu.length; i++) {
+-                                var display = "\r\n#L"+i+"##b Ereve (1000 mesos)#k";
++                                display += "\r\n#L"+i+"##b Ereve (1000 mesos)#k";
+                         }			
+                         cm.sendSimple("This ship will head towards #bEreve#k, an island where you'll find crimson leaves soaking up the sun, the gentle breeze that glides past the stream, and the Empress of Maple Cygnus. If you're interested in joining the Cygnus Knights, Then you should definitly pay a visit here. Are you interested in visiting Ereve?, The Trip will cost you #b1000#k Mesos\r\n"+display);
+ 
+diff --git a/scripts/npc/1200003.js b/scripts/npc/1200003.js
+index e7ba9a104..a2ed2537b 100644
+--- a/scripts/npc/1200003.js
++++ b/scripts/npc/1200003.js
+@@ -32,8 +32,9 @@ function action(mode, type, selection) {
+ 		}
+ 		status++;
+ 		if (status == 0) {
++                        var display = "";
+ 			for(var i=0; i < menu.length; i++) {
+-                                var display = "\r\n#L"+i+"##b Lith Harbor (800 mesos)#k";
++                                display += "\r\n#L"+i+"##b Lith Harbor (800 mesos)#k";
+                         }			
+                         cm.sendSimple("Are you trying to leave Rien? Board this ship and I'll take you from #bRien#k to #bLith Harbor#k and back. for a #bfee of 800#k Mesos. Would you like to head over to Lith Harbor now? It'll take about a minute to get there.\r\n"+display);
+ 			
+diff --git a/scripts/npc/1200004.js b/scripts/npc/1200004.js
+index 12d99695b..accabbda1 100644
+--- a/scripts/npc/1200004.js
++++ b/scripts/npc/1200004.js
+@@ -32,8 +32,9 @@ function action(mode, type, selection) {
+ 		}
+ 		status++;
+ 		if (status == 0) {
++                        var display = "";
+ 			for(var i=0; i < menu.length; i++) {
+-                                var display = "\r\n#L"+i+"##b Rien (800 mesos)#k";
++                                display += "\r\n#L"+i+"##b Rien (800 mesos)#k";
+                         }
+                         cm.sendSimple("Are you thinking about leaving Victoria Island and heading to our town? If you board this ship, I can take you from #bLith Harbor#k to #bRien#k and back. But you must pay a #bfee of 800#k Mesos. Would you like to go to Rien? It'll take about a minute to get there.\r\n"+display);
+ 			
+diff --git a/scripts/npc/2030008.js b/scripts/npc/2030008.js
+index 359512bab..21d68b88e 100644
+--- a/scripts/npc/2030008.js
++++ b/scripts/npc/2030008.js
+@@ -101,7 +101,7 @@ function action(mode, type, selection) {
+             } else {
+                 if(cm.haveItem(4031061) && cm.haveItem(4031062)) {
+                     if(!cm.haveItem(4000082, 30)) {
+-                        cm.sendOk("You have completed the trials, however there still the need of #b30 #t4000082##k to forge the #t4001017#.");
++                        cm.sendOk("You have completed the trials, however there's still the need of #b30 #t4000082##k to forge the #t4001017#.");
+                     } else {
+                         cm.completeQuest(100201);
+                         cm.gainItem(4031061, -1);
+@@ -109,7 +109,7 @@ function action(mode, type, selection) {
+                         cm.gainItem(4000082, -30);
+ 
+                         cm.gainItem(4001017, 1);
+-                        cm.sendNext("You have completed the trials, from now on having my approval to challenge Zakum.");
++                        cm.sendNext("You #rhave completed the trials#k, from now on having my approval to challenge Zakum.");
+                     }
+                     
+                     cm.dispose();
+diff --git a/scripts/npc/2032002.js b/scripts/npc/2032002.js
+index a5e9ffc5b..53aba7e94 100644
+--- a/scripts/npc/2032002.js
++++ b/scripts/npc/2032002.js
+@@ -79,9 +79,9 @@ function action(mode, type, selection) {
+                     else {
+                         gotAllDocs = cm.haveItem(4001015, 30);
+                         if (!gotAllDocs) { //documents
+-                            cm.sendYesNo("So, you brought the fire ore with you? In that case, I can give you and your party a piece of it that should be more than enough to make the core of Zakum. Make sure your whole party has room in their inventory before proceeding.");
++                            cm.sendYesNo("So, you brought the fire ore with you? In that case, I can give to you and to each member of your party a piece of it, that should be more than enough to make the core of Zakum. Make sure your whole party has room in their inventory before proceeding.");
+                         } else {
+-                            cm.sendYesNo("So, you brought the fire ore and the documents with you? In that case, I can give you and your party a piece of it that should be more than enough to make the core of Zakum. As well, since you brought the documents with you, I can also give you a special item which will #bbring you to the mine's entrance at any time#k. Make sure your whole party has room in their inventory before proceeding.");
++                            cm.sendYesNo("So, you brought the fire ore and the documents with you? In that case, I can give to you and to each member of your party a piece of it, that should be more than enough to make the core of Zakum. As well, since you #rbrought the documents#k with you, I can also provide you a special item which will #bbring you to the mine's entrance at any time#k. Make sure your whole party has room in their inventory before proceeding.");
+                         }
+                     }
+                 } else if (selection == 2)
+diff --git a/scripts/npc/2032003.js b/scripts/npc/2032003.js
+index fc40ba717..4be04e853 100644
+--- a/scripts/npc/2032003.js
++++ b/scripts/npc/2032003.js
+@@ -38,7 +38,7 @@ function action(mode, type, selection) {
+         status++;
+         
+         if (status == 0) {
+-            cm.sendNext("Congratulations on getting this far!  Well, I suppose I'd better give you your #bBreath of Fire#k.  You've certainly earned it!");
++            cm.sendNext("Congratulations on getting this far! Well, I suppose I'd better give you the #bBreath of Fire#k. You've certainly earned it!");
+         } else if (status == 1) {
+             if(!cm.canHold(4031062)) {
+                 cm.sendOk("Try freeing a slot to receive the #b#t4031062##k.");
+diff --git a/scripts/npc/2040021.js b/scripts/npc/2040021.js
+index 5f52af461..24ae22511 100644
+--- a/scripts/npc/2040021.js
++++ b/scripts/npc/2040021.js
+@@ -143,7 +143,7 @@ function action(mode, type, selection) {
+             cost = costSet[selectedItem];
+         }
+         //Ludi fee is -10%, array not changed unlike 2040016 and 2040020
+-        cost *= .9;
++        cost *= 0.9;
+         var prompt = "You want me to make a #t" + item + "#? In that case, I'm going to need specific items from you in order to make it. Make sure you have room in your inventory, though!#b";
+         if(stimulator)
+             prompt += "\r\n#i"+stimID+"# 1 #t" + stimID + "#";
+diff --git a/scripts/npc/9000007.js b/scripts/npc/9000007.js
+new file mode 100644
+index 000000000..ac126a322
+--- /dev/null
++++ b/scripts/npc/9000007.js
+@@ -0,0 +1,47 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Chun Ji */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("Just a kid... Don't talk to me...");
++                        cm.dispose();
++                }
++        }
++}
+diff --git a/scripts/npc/9201101.js b/scripts/npc/9201101.js
+index 6e008b082..da8f052d3 100644
+--- a/scripts/npc/9201101.js
++++ b/scripts/npc/9201101.js
+@@ -1,9 +1,14 @@
+ /**
+- *9201083 - T-1337
++ *9201101 - T-1337
+  *@author Ronan
+  */
+  
+ function start() {
+-    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    if(Packages.server.MapleShopFactory.getInstance().getShop(9201101) != null) {
++        cm.openShopNPC(9201101);
++    } else {
++        cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    }
++    
+     cm.dispose();
+ }
+diff --git a/scripts/npc/9209000.js b/scripts/npc/9209000.js
+index 86bc63e98..81d56ade5 100644
+--- a/scripts/npc/9209000.js
++++ b/scripts/npc/9209000.js
+@@ -30,13 +30,20 @@ function action(mode, type, selection) {
+ 
+         if (status == 0) {
+             var greeting = "Hello, I'm #p9209000#, the Skill & Mastery Book announcer! ";
++            
++            var jobrank = cm.getJob().getId() % 10;
++            if(jobrank < 2) {
++                cm.sendOk(greeting + "Keep training yourself until you reach the #r4th job#k of your class. New opportunities for improvement will arrive when you reach that feat!");
++                cm.dispose();
++                return;
++            }
++            
+             skillbook = cm.getAvailableSkillBooks();
+             masterybook = cm.getAvailableMasteryBooks();
+ 
+             if(skillbook.length == 0 && masterybook.length == 0) {
+-                cm.sendOk(greeting + "There are no more books available to further improve your job skills for now. Either you #bmaxed out everything#k or #byou didn't reach the minimum requisites to use some skill books#k yet.");
++                cm.sendOk(greeting + "There are no books available to further improve your job skills for now. Either you #bmaxed out everything#k or #byou didn't reach the minimum requisites to use some skill books#k yet.");
+                 cm.dispose();
+-
+             } else if(skillbook.length > 0 && masterybook.length > 0) {
+                 var sendStr = greeting + "New opportunities for skill improvement have been located for you to improve your skills! Pick a type to take a look onto.\r\n\r\n#b";
+ 
+@@ -51,7 +58,7 @@ function action(mode, type, selection) {
+                 selected = 2;
+                 cm.sendNext(greeting + "New opportunities for skill improvement have been located for you to improve your skills! Only skill upgrades available.");
+             }
+-
++            
+         } else if(status == 1) {
+             var sendStr = "The following books are currently available:\r\n\r\n";
+             if(selected == 0) selected = selection;
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index bdd23d304..45c6b0b44 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -166,6 +166,7 @@ function writeSolaxiaCommandsLv2() {    //JrGM
+         addCommand("warp", "");
+         addCommand("warpto", "");
+         addCommand("warphere", "");
++        addCommand("reach", "");
+         addCommand("gmshop", "");
+         addCommand("heal", "");
+         addCommand("item", "");
+diff --git a/scripts/portal/Masteria_CM2_E.js b/scripts/portal/Masteria_CM2_E.js
+index b164abc39..1f9f77728 100644
+--- a/scripts/portal/Masteria_CM2_E.js
++++ b/scripts/portal/Masteria_CM2_E.js
+@@ -1,4 +1,4 @@
+-F/*
++/*
+ 	This file is part of the OdinMS Maple Story Server
+     Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+ 		       Matthias Butz <matze@odinms.de>
+diff --git a/scripts/portal/TD_MC_first.js b/scripts/portal/TD_MC_first.js
+index cccd26b8e..591741cd0 100644
+--- a/scripts/portal/TD_MC_first.js
++++ b/scripts/portal/TD_MC_first.js
+@@ -1,15 +1,15 @@
+ function enter(pi) {
+-	if (pi.isQuestStarted(2300) || pi.isQuestCompleted(2300)
+-                        || pi.isQuestStarted(2301) || pi.isQuestCompleted(2301) 
+-			|| pi.isQuestStarted(2302) || pi.isQuestCompleted(2302) 
+-			|| pi.isQuestStarted(2303) || pi.isQuestCompleted(2303)
+-			|| pi.isQuestStarted(2304) || pi.isQuestCompleted(2304) 
+-			|| pi.isQuestStarted(2305) || pi.isQuestCompleted(2305) 
+-			|| pi.isQuestStarted(2306) || pi.isQuestCompleted(2306)
+-			|| pi.isQuestStarted(2307) || pi.isQuestCompleted(2307)
+-			|| pi.isQuestStarted(2308) || pi.isQuestCompleted(2308)
+-			|| pi.isQuestStarted(2309) || pi.isQuestCompleted(2309)
+-			|| pi.isQuestStarted(2310) || pi.isQuestCompleted(2310)) {
++	if (pi.isQuestStarted(2300) || pi.isQuestCompleted(2300) ||
++                        pi.isQuestStarted(2301) || pi.isQuestCompleted(2301) || 
++			pi.isQuestStarted(2302) || pi.isQuestCompleted(2302) || 
++			pi.isQuestStarted(2303) || pi.isQuestCompleted(2303) ||
++			pi.isQuestStarted(2304) || pi.isQuestCompleted(2304) || 
++			pi.isQuestStarted(2305) || pi.isQuestCompleted(2305) || 
++			pi.isQuestStarted(2306) || pi.isQuestCompleted(2306) ||
++			pi.isQuestStarted(2307) || pi.isQuestCompleted(2307) ||
++			pi.isQuestStarted(2308) || pi.isQuestCompleted(2308) ||
++			pi.isQuestStarted(2309) || pi.isQuestCompleted(2309) ||
++			pi.isQuestStarted(2310) || pi.isQuestCompleted(2310)) {
+ 		pi.playPortalSound();
+ 		pi.warp(106020000, 0);
+ 		return true;
+diff --git a/scripts/portal/Zakum05.js b/scripts/portal/Zakum05.js
+index debb46706..1afbeb322 100644
+--- a/scripts/portal/Zakum05.js
++++ b/scripts/portal/Zakum05.js
+@@ -30,7 +30,7 @@ function enter(pi) {
+     }
+     
+     if (!pi.isQuestCompleted(100201)) {
+-        pi.getPlayer().dropMessage(5,"You do not have completed all the trials yet. You may not attempt the boss right now.");
++        pi.getPlayer().dropMessage(5,"You haven't completed all the trials yet. You may not attempt the boss right now.");
+         return false;
+     }
+     
+diff --git a/scripts/portal/entertraining.js b/scripts/portal/entertraining.js
+index 5d345b719..14f5f6c9c 100644
+--- a/scripts/portal/entertraining.js
++++ b/scripts/portal/entertraining.js
+@@ -1,13 +1,13 @@
+ function enter(pi) {
+-	if (pi.isQuestStarted(1041))
+-		pi.warp(1010100, 4);
+-	else if (pi.isQuestStarted(1042))
+-		pi.warp(1010200, 4);
+-	else if (pi.isQuestStarted(1043))
+-		pi.warp(1010300, 4);
+-	else if (pi.isQuestStarted(1044))
++	if (pi.isQuestStarted(1041)) {
++		pi.playPortalSound(); pi.warp(1010100, 4);
++        } else if (pi.isQuestStarted(1042)) {
++		pi.playPortalSound(); pi.warp(1010200, 4);
++        } else if (pi.isQuestStarted(1043)) {
++		pi.playPortalSound(); pi.warp(1010300, 4);
++        } else if (pi.isQuestStarted(1044)) {
+ 		pi.playPortalSound(); pi.warp(1010400, 4);
+-	else {
++        } else {
+ 		pi.message("Only the adventurers that have been trained by Mai may enter.");
+ 		return false;
+ 	}
+diff --git a/scripts/portal/hontale_Bopen.js b/scripts/portal/hontale_Bopen.js
+index 0048dd7a6..d8577d964 100644
+--- a/scripts/portal/hontale_Bopen.js
++++ b/scripts/portal/hontale_Bopen.js
+@@ -23,13 +23,19 @@
+  * @author Jvlaple
+  */
+ function enter(pi) {
++    var nextMap;
++    var eim;
++    var target;
++    var targetPortal;
++    var avail;
++    
+     if (pi.getPlayer().getMapId() == 240050101) {
+-        var nextMap = 240050102;
+-        var eim = pi.getPlayer().getEventInstance()
+-        var target = eim.getMapInstance(nextMap);
+-        var targetPortal = target.getPortal("sp");
++        nextMap = 240050102;
++        eim = pi.getPlayer().getEventInstance();
++        target = eim.getMapInstance(nextMap);
++        targetPortal = target.getPortal("sp");
+         // only let people through if the eim is ready
+-        var avail = eim.getProperty("1stageclear");
++        avail = eim.getProperty("1stageclear");
+         if (avail == null) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+@@ -40,12 +46,12 @@ function enter(pi) {
+         }
+     }
+     else if (pi.getPlayer().getMapId() == 240050102) {
+-        var nextMap = 240050103;
+-        var eim = pi.getPlayer().getEventInstance()
+-        var target = eim.getMapInstance(nextMap);
+-        var targetPortal = target.getPortal("sp");
++        nextMap = 240050103;
++        eim = pi.getPlayer().getEventInstance();
++        target = eim.getMapInstance(nextMap);
++        targetPortal = target.getPortal("sp");
+         // only let people through if the eim is ready
+-        var avail = eim.getProperty("2stageclear");
++        avail = eim.getProperty("2stageclear");
+         if (avail == null) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+@@ -56,12 +62,12 @@ function enter(pi) {
+         }
+     }
+     else if (pi.getPlayer().getMapId() == 240050103) {
+-        var nextMap = 240050104;
+-        var eim = pi.getPlayer().getEventInstance()
+-        var target = eim.getMapInstance(nextMap);
+-        var targetPortal = target.getPortal("sp");
++        nextMap = 240050104;
++        eim = pi.getPlayer().getEventInstance();
++        target = eim.getMapInstance(nextMap);
++        targetPortal = target.getPortal("sp");
+         // only let people through if the eim is ready
+-        var avail = eim.getProperty("3stageclear");
++        avail = eim.getProperty("3stageclear");
+         if (avail == null) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+@@ -72,12 +78,12 @@ function enter(pi) {
+         }
+     }
+     else if (pi.getPlayer().getMapId() == 240050104) {
+-        var nextMap = 240050105;
+-        var eim = pi.getPlayer().getEventInstance()
+-        var target = eim.getMapInstance(nextMap);
+-        var targetPortal = target.getPortal("sp");
++        nextMap = 240050105;
++        eim = pi.getPlayer().getEventInstance();
++        target = eim.getMapInstance(nextMap);
++        targetPortal = target.getPortal("sp");
+         // only let people through if the eim is ready
+-        var avail = eim.getProperty("4stageclear");
++        avail = eim.getProperty("4stageclear");
+         if (avail == null) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+@@ -88,15 +94,15 @@ function enter(pi) {
+         }
+     }
+     else if (pi.getPlayer().getMapId() == 240050105) {
+-        var nextMap = 240050100;
+-        var eim = pi.getPlayer().getEventInstance()
+-        var target = eim.getMapInstance(nextMap);
+-        var targetPortal = target.getPortal("st00");
++        nextMap = 240050100;
++        eim = pi.getPlayer().getEventInstance();
++        target = eim.getMapInstance(nextMap);
++        targetPortal = target.getPortal("st00");
+         
+-        var avail = eim.getProperty("5stageclear");
++        avail = eim.getProperty("5stageclear");
+         if (avail == null) {
+             if (pi.haveItem(4001092) && pi.isEventLeader()) {
+-                pi.getEventInstance().showClearEffect();
++                eim.showClearEffect();
+                 pi.getPlayer().dropMessage(6, "The leader's key break the seal for a flash...");
+                 pi.getPlayer().changeMap(target, targetPortal);
+                 eim.setIntProperty("5stageclear", 1);
+diff --git a/scripts/portal/lpq5.js b/scripts/portal/lpq5.js
+index 87f4438df..961cef852 100644
+--- a/scripts/portal/lpq5.js
++++ b/scripts/portal/lpq5.js
+@@ -26,7 +26,7 @@ LudiPQ - 1 - 2 Portal
+ 
+ function enter(pi) {
+ 	var nextMap = 922010700;
+-	var eim = pi.getPlayer().getEventInstance()
++	var eim = pi.getPlayer().getEventInstance();
+ 	var target = eim.getMapInstance(nextMap);
+ 	var targetPortal = target.getPortal("st00");
+ 	// only let people through if the eim is ready
+diff --git a/scripts/portal/out_pepeking.js b/scripts/portal/out_pepeking.js
+index e1c2474ae..5532f8eef 100644
+--- a/scripts/portal/out_pepeking.js
++++ b/scripts/portal/out_pepeking.js
+@@ -8,7 +8,7 @@ function enter(pi) {
+ 	var questProgress = pi.getQuestProgress(2330, 3300005) + pi.getQuestProgress(2330, 3300006) + pi.getQuestProgress(2330, 3300007); //3 Yetis
+  	if(questProgress == 3 && !pi.hasItem(4032388)) {
+  		if(pi.canHold(4032388)){
+- 			pi.getPlayer().message("You have aquired a key to the Wedding Hall. King Pepe must have dropped it.")
++ 			pi.getPlayer().message("You have aquired a key to the Wedding Hall. King Pepe must have dropped it.");
+  			pi.gainItem(4032388, 1);
+  
+  			pi.playPortalSound();
+diff --git a/scripts/reactor/2110000.js b/scripts/reactor/2110000.js
+index f58582d39..8a61e7fe3 100644
+--- a/scripts/reactor/2110000.js
++++ b/scripts/reactor/2110000.js
+@@ -26,6 +26,6 @@
+ */
+ 
+ function act(){
+-    rm.playerMessage(5, "An unknown force has returned you to the starting point.");
++    rm.playerMessage(5, "An unknown force has moved you to the starting point.");
+     rm.warp(280010000, 0);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2602000.js b/scripts/reactor/2602000.js
+new file mode 100644
+index 000000000..7e8b4f333
+--- /dev/null
++++ b/scripts/reactor/2602000.js
+@@ -0,0 +1,28 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2612004.js - Queen's treasure room
++ *@author Ronan
++ */
++ 
++function act() {
++	rm.dropItems();
++}
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index fa92ad799..c8b218ffa 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -20021,7 +20021,10 @@ USE `heavenms`;
+ (1110100, 4032379, 1, 1, 2409, 40000),
+ (1210100, 4032379, 1, 1, 2409, 40000),
+ (2130100, 4001344, 1, 1, 0, 7000),
+-(7220002, 4031789, 1, 1, 3844, 999999);
++(7220002, 4031789, 1, 1, 3844, 999999),
++(9300102, 4031507, 1, 1, 6002, 999999),
++(9300061, 4001101, 1, 1, 0, 999999),
++(9300093, 4031495, 1, 1, 6192, 999999);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+@@ -20115,7 +20118,7 @@ USE `heavenms`;
+ (8190003, 2280013, 1, 1, 0, 1000),
+ (9400121, 2280014, 1, 1, 0, 40000),
+ (8200001, 2280015, 1, 1, 0, 1000),
+-(8190001, 2280016, 1, 1, 0, 1000),
++(8190000, 2280016, 1, 1, 0, 1000),
+ (8200011, 2290001, 1, 1, 0, 1000),
+ (8150300, 2290003, 1, 1, 0, 1000),
+ (8200000, 2290005, 1, 1, 0, 1000),
+@@ -20153,7 +20156,7 @@ USE `heavenms`;
+ (8190004, 2290071, 1, 1, 0, 1000),
+ (8190004, 2290073, 1, 1, 0, 1000),
+ (9400582, 2290074, 1, 1, 0, 1000),
+-(8190001, 2290075, 1, 1, 0, 1000),
++(8190000, 2290075, 1, 1, 0, 1000),
+ (9400582, 2290079, 1, 1, 0, 1000),
+ (9400580, 2290083, 1, 1, 0, 1000),
+ (8150302, 2290085, 1, 1, 0, 1000),
+@@ -20164,7 +20167,7 @@ USE `heavenms`;
+ (8200005, 2290095, 1, 1, 0, 1000),
+ (8150302, 2290096, 1, 1, 0, 1000),
+ (8200003, 2290101, 1, 1, 0, 1000),
+-(8190001, 2290103, 1, 1, 0, 1000),
++(9400121, 2290103, 1, 1, 0, 40000),
+ (8150301, 2290107, 1, 1, 0, 1000),
+ (9420513, 2290108, 1, 1, 0, 40000),
+ (8150300, 2290111, 1, 1, 0, 1000),
+@@ -20233,6 +20236,14 @@ USE `heavenms`;
+   DELETE FROM temp_data WHERE dropperid=9300090;
+   DELETE FROM temp_data WHERE dropperid=9420501;
+ 
++  # normalize item drops for left-side Pianus
++  DELETE FROM temp_data WHERE dropperid=8520000;
++
++  INSERT INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`)
++  SELECT  8520000, temp_data.itemid, temp_data.minimum_quantity, temp_data.maximum_quantity, temp_data.questid, temp_data.chance
++  FROM    temp_data
++  WHERE   temp_data.dropperid = 8510000;
++
+   # delete/normalize item drops from clones of Pink Bean
+   DELETE FROM temp_data WHERE dropperid=8820000;
+   DELETE FROM temp_data WHERE dropperid>=8820010 AND dropperid<=8820014;
+@@ -20396,6 +20407,9 @@ USE `heavenms`;
+   DELETE FROM drop_data WHERE dropperid = 9500100;
+   DELETE FROM drop_data where dropperid >= 9300141 AND dropperid <= 9300154 AND (itemid < 4001130 OR itemid >= 4001136);
+ 
++  # remove drop data from mobs which respawns as other mobs
++  DELETE FROM drop_data WHERE dropperid = 8190001;
++
+   # remove key of dimension dropping outside PQ
+   DELETE FROM drop_data WHERE itemid=4001023 AND dropperid!=9300012;
+ 
+@@ -21873,7 +21887,6 @@ USE `heavenms`;
+ (8150300, 0, 666, 986, 0, 400000),
+ (8150301, 0, 730, 1070, 0, 400000),
+ (8150302, 0, 764, 1115, 0, 400000),
+-(8190001, 0, 800, 1162, 0, 400000),
+ (8220003, 0, 3381, 15830, 0, 400000),
+ (8220005, 0, 4350, 19860, 0, 400000),
+ (8220006, 0, 5466, 24400, 0, 400000),
+diff --git a/sql/db_shopupdate.sql b/sql/db_shopupdate.sql
+index 4e4239d65..22de23d3e 100644
+--- a/sql/db_shopupdate.sql
++++ b/sql/db_shopupdate.sql
+@@ -3,13 +3,14 @@
+ 
+ USE `heavenms`;
+ 
+-# Scroll shop at Spindle, chair shop at Kino Konoko
++# Scroll shop at Spindle, chair shop at Kino Konoko, potion shop at T-1337
+ INSERT INTO `shops` (`shopid`,`npcid`) VALUES
+ (9110002,9110002),
+-(9201082,9201082);
++(9201082,9201082),
++(9201101,9201101);
+ 
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+-(9201082, 2040004, 500000, 0, 1),
++(9201082, 2040004, 480000, 0, 1),
+ (9201082, 2040025, 500000, 0, 2),
+ (9201082, 2040029, 500000, 0, 3),
+ (9201082, 2040017, 500000, 0, 4),
+@@ -25,81 +26,83 @@ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`
+ (9201082, 2040613, 400000, 0, 14),
+ (9201082, 2040701, 450000, 0, 15),
+ (9201082, 2040704, 450000, 0, 16),
+-(9201082, 2040804, 550000, 0, 17),
+-(9201082, 2040817, 550000, 0, 18),
+-(9201082, 2040914, 300000, 0, 19),
+-(9201082, 2040919, 300000, 0, 20),
+-(9201082, 2041007, 300000, 0, 21),
+-(9201082, 2041010, 300000, 0, 22),
+-(9201082, 2041013, 300000, 0, 23),
+-(9201082, 2041016, 300000, 0, 24),
+-(9201082, 2041019, 300000, 0, 25),
+-(9201082, 2041022, 300000, 0, 26),
+-(9201082, 2044901, 520000, 0, 27),
+-(9201082, 2044701, 520000, 0, 28),
+-(9201082, 2043001, 520000, 0, 29),
+-(9201082, 2043801, 520000, 0, 30),
+-(9201082, 2044601, 520000, 0, 31),
+-(9201082, 2040727, 50000, 0, 32),
+-(9201082, 2041058, 50000, 0, 33),
+-(9201082, 2040807, 1000000, 0, 34),
+-(9201082, 2040005, 15000, 0, 35),
+-(9201082, 2040026, 15000, 0, 36),
+-(9201082, 2040031, 15000, 0, 37),
+-(9201082, 2040016, 15000, 0, 38),
+-(9201082, 2040302, 25000, 0, 39),
+-(9201082, 2040318, 25000, 0, 40),
+-(9201082, 2040323, 25000, 0, 41),
+-(9201082, 2040412, 20000, 0, 42),
+-(9201082, 2040419, 20000, 0, 43),
+-(9201082, 2040502, 25000, 0, 44),
+-(9201082, 2040514, 25000, 0, 45),
+-(9201082, 2040517, 25000, 0, 46),
+-(9201082, 2040534, 25000, 0, 47),
+-(9201082, 2040612, 20000, 0, 48),
+-(9201082, 2040702, 20000, 0, 49),
+-(9201082, 2040705, 25000, 0, 50),
+-(9201082, 2040805, 100000, 0, 51),
+-(9201082, 2040816, 100000, 0, 52),
+-(9201082, 2040915, 55000, 0, 53),
+-(9201082, 2040920, 55000, 0, 54),
+-(9201082, 2041008, 55000, 0, 55),
+-(9201082, 2041011, 55000, 0, 56),
+-(9201082, 2041014, 30000, 0, 57),
+-(9201082, 2041017, 30000, 0, 58),
+-(9201082, 2041020, 30000, 0, 59),
+-(9201082, 2041023, 30000, 0, 60),
+-(9201082, 2044902, 50000, 0, 61),
+-(9201082, 2044702, 50000, 0, 62),
+-(9201082, 2043002, 50000, 0, 63),
+-(9201082, 2043802, 50000, 0, 64),
+-(9201082, 2044602, 50000, 0, 65),
+-(9201082, 2049200, 170000, 0, 66),
+-(9201082, 2049201, 220000, 0, 67),
+-(9201082, 2049202, 170000, 0, 68),
+-(9201082, 2049203, 220000, 0, 69),
+-(9201082, 2049204, 170000, 0, 70),
+-(9201082, 2049205, 220000, 0, 71),
+-(9201082, 2049206, 170000, 0, 72),
+-(9201082, 2049207, 220000, 0, 73),
+-(9201082, 2049208, 140000, 0, 74),
+-(9201082, 2049209, 170000, 0, 75),
+-(9201082, 2049210, 140000, 0, 76),
+-(9201082, 2049211, 170000, 0, 77),
+-(9201082, 2040101, 540000, 0, 78),
+-(9201082, 2040100, 700000, 0, 79),
+-(9201082, 2040106, 540000, 0, 80),
+-(9201082, 2040105, 700000, 0, 81),
+-(9201082, 2040201, 540000, 0, 82),
+-(9201082, 2040200, 700000, 0, 83),
+-(9201082, 2040206, 540000, 0, 84),
+-(9201082, 2040205, 700000, 0, 85),
+-(9201082, 2070016, 120000000, 0, 86),
+-(9201082, 2070018, 190000000, 0, 87),
+-(9201082, 2030007, 1800000, 0, 88),
+-(9201082, 4001017, 60000000, 0, 89);
++(9201082, 2040707, 450000, 0, 17),
++(9201082, 2040804, 550000, 0, 18),
++(9201082, 2040817, 550000, 0, 19),
++(9201082, 2040914, 480000, 0, 20),
++(9201082, 2040919, 480000, 0, 21),
++(9201082, 2041007, 470000, 0, 22),
++(9201082, 2041010, 470000, 0, 23),
++(9201082, 2041013, 500000, 0, 24),
++(9201082, 2041016, 500000, 0, 25),
++(9201082, 2041019, 500000, 0, 26),
++(9201082, 2041022, 500000, 0, 27),
++(9201082, 2044901, 520000, 0, 28),
++(9201082, 2044701, 520000, 0, 29),
++(9201082, 2043001, 520000, 0, 30),
++(9201082, 2043801, 520000, 0, 31),
++(9201082, 2044601, 520000, 0, 32),
++(9201082, 2040727, 50000, 0, 33),
++(9201082, 2041058, 50000, 0, 34),
++(9201082, 2040807, 1000000, 0, 35),
++(9201082, 2040005, 22000, 0, 36),
++(9201082, 2040026, 23000, 0, 37),
++(9201082, 2040031, 23000, 0, 38),
++(9201082, 2040016, 23000, 0, 39),
++(9201082, 2040302, 25000, 0, 40),
++(9201082, 2040318, 25000, 0, 41),
++(9201082, 2040323, 25000, 0, 42),
++(9201082, 2040412, 20000, 0, 43),
++(9201082, 2040419, 20000, 0, 44),
++(9201082, 2040502, 25000, 0, 45),
++(9201082, 2040514, 25000, 0, 46),
++(9201082, 2040517, 25000, 0, 47),
++(9201082, 2040534, 25000, 0, 48),
++(9201082, 2040612, 20000, 0, 49),
++(9201082, 2040702, 20000, 0, 50),
++(9201082, 2040705, 25000, 0, 51),
++(9201082, 2040708, 20000, 0, 52),
++(9201082, 2040805, 100000, 0, 53),
++(9201082, 2040816, 100000, 0, 54),
++(9201082, 2040915, 55000, 0, 55),
++(9201082, 2040920, 55000, 0, 56),
++(9201082, 2041008, 38000, 0, 57),
++(9201082, 2041011, 38000, 0, 58),
++(9201082, 2041014, 40000, 0, 59),
++(9201082, 2041017, 40000, 0, 60),
++(9201082, 2041020, 40000, 0, 61),
++(9201082, 2041023, 40000, 0, 62),
++(9201082, 2044902, 50000, 0, 63),
++(9201082, 2044702, 50000, 0, 64),
++(9201082, 2043002, 50000, 0, 65),
++(9201082, 2043802, 50000, 0, 66),
++(9201082, 2044602, 50000, 0, 67),
++(9201082, 2049200, 170000, 0, 68),
++(9201082, 2049201, 220000, 0, 69),
++(9201082, 2049202, 170000, 0, 70),
++(9201082, 2049203, 220000, 0, 71),
++(9201082, 2049204, 170000, 0, 72),
++(9201082, 2049205, 220000, 0, 73),
++(9201082, 2049206, 170000, 0, 74),
++(9201082, 2049207, 220000, 0, 75),
++(9201082, 2049208, 140000, 0, 76),
++(9201082, 2049209, 170000, 0, 77),
++(9201082, 2049210, 140000, 0, 78),
++(9201082, 2049211, 170000, 0, 79),
++(9201082, 2040101, 540000, 0, 80),
++(9201082, 2040100, 700000, 0, 81),
++(9201082, 2040106, 540000, 0, 82),
++(9201082, 2040105, 700000, 0, 83),
++(9201082, 2040201, 540000, 0, 84),
++(9201082, 2040200, 700000, 0, 85),
++(9201082, 2040206, 540000, 0, 86),
++(9201082, 2040205, 700000, 0, 87),
++(9201082, 2070016, 120000000, 0, 88),
++(9201082, 2070018, 190000000, 0, 89),
++(9201082, 2030007, 1800000, 0, 90),
++(9201082, 4001017, 60000000, 0, 91);
+ 
+-UPDATE shopitems SET price = 11*price WHERE (`position` >= 32 and `position` <= 77 and `shopid` = 9201082);
++UPDATE shopitems SET price = 11*price WHERE (`position` >= 33 and `position` <= 79 and `shopid` = 9201082);
+ 
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+ (1031100, 3010015, 20000, 0, 100),
+@@ -108,7 +111,25 @@ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`
+ (9110002, 3010007, 10000000, 0, 100),
+ (9201020, 3010009, 4200000, 0, 96),
+ (9201020, 3010014, 7000000, 0, 100),
+-(1081000, 3010013, 4000000, 0, 100);
++(1081000, 3010013, 4000000, 0, 100),
++(9201101, 2022338, 2100000, 0, 100),
++(9201101, 2022339, 2800000, 0, 104),
++(9201101, 2022340, 4000000, 0, 108),
++(9201101, 2022341, 2800000, 0, 112),
++(9201101, 2022342, 2000000, 0, 116),
++(9201101, 2022343, 4700000, 0, 120),
++(9201101, 2022344, 5000000, 0, 124),
++(9201101, 2022345, 4000000, 0, 128),
++(9201101, 2002028, 5000000, 0, 132),
++(9201101, 2022544, 100000, 0, 136),
++(9201101, 2022545, 4400000, 0, 140),
++(9201101, 2020027, 2100000, 0, 144),
++(9201101, 2022113, 1800000, 0, 148),
++(9201101, 2022121, 12000000, 0, 152),
++(9201101, 2022123, 12000000, 0, 156),
++(9201101, 2022277, 5300000, 0, 160),
++(9201101, 2012008, 4200000, 0, 164),
++(9201101, 2022251, 3800000, 0, 168);
+ 
+ # adding antibanish scrolls
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 11bbea503..f18cb0b16 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -1120,6 +1120,25 @@ else if (type.equals("cash")) {
+ 				player.dropMessage("Unknown player.");
+ 			}
+                     break;
++                    
++                case "reach":
++                        if (sub.length < 2){
++                                player.yellowMessage("Syntax: !reach <playername>");
++                                break;
++                        }
++                        
++                        victim = c.getWorldServer().getPlayerStorage().getCharacterByName(sub[1]);
++                        if(victim != null && victim.isLoggedin()) {
++                                if (player.getClient().getChannel() != victim.getClient().getChannel()) {
++                                        player.dropMessage("Player '" + victim.getName() + "' is at channel " + victim.getClient().getChannel() + ".");
++                                } else {
++                                        MapleMap map = victim.getMap();
++                                        player.changeMap(map, map.findClosestPortal(victim.getPosition()));
++                                }
++                        } else {
++                                player.dropMessage("Unknown player.");
++                        }
++                    break;
+                 
+                 case "gmshop":
+ 			MapleShopFactory.getInstance().getShop(1337).sendShop(c);
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 58b545841..c0d549603 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -295,21 +295,24 @@ public void run() {
+                     } else if (attack.skill == Bandit.STEAL) {                    	
+                         Skill steal = SkillFactory.getSkill(Bandit.STEAL);
+                         if (monster.getStolen().size() < 1) { // One steal per mob <3
+-                            if (Math.random() < 0.3 && steal.getEffect(player.getSkillLevel(steal)).makeChanceResult()) { //Else it drops too many cool stuff :(
+-                                List<MonsterDropEntry> toSteals = MapleMonsterInformationProvider.getInstance().retrieveDrop(monster.getId());
+-                                Collections.shuffle(toSteals);
+-                                int toSteal = toSteals.get(rand(0, (toSteals.size() - 1))).itemId;
+-                                MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+-                                Item item;
+-                                if (ItemConstants.getInventoryType(toSteal).equals(MapleInventoryType.EQUIP)) {
+-                                    item = ii.randomizeStats((Equip) ii.getEquipById(toSteal));
+-                                } else {
+-                                    item = new Item(toSteal, (byte) 0, (short) 1, -1);
++                            if (steal.getEffect(player.getSkillLevel(steal)).makeChanceResult()) {
++                                MapleMonsterInformationProvider mi = MapleMonsterInformationProvider.getInstance();
++                                
++                                List<Integer> dropPool = mi.retrieveDropPool(monster.getId());
++                                if(!dropPool.isEmpty()) {
++                                    Integer rndPool = (int) Math.floor(Math.random() * dropPool.get(dropPool.size() - 1));
++                                    
++                                    int i = 0;
++                                    while(rndPool >= dropPool.get(i)) i++;
++                                    
++                                    List<MonsterDropEntry> toSteal = new ArrayList<>();
++                                    toSteal.add(mi.retrieveDrop(monster.getId()).get(i));
++                                    
++                                    player.getMap().dropItemsFromMonster(toSteal, player, monster);
++                                    monster.addStolen(toSteal.get(0).itemId);
+                                 }
+-                                player.getMap().spawnItemDrop(monster, player, item, monster.getPosition(), false, false);
+-                                monster.addStolen(toSteal);
+                             }
+-                        }                        
++                        }
+                     } else if (attack.skill == FPArchMage.FIRE_DEMON) {
+                         monster.setTempEffectiveness(Element.ICE, ElementalEffectiveness.WEAK, SkillFactory.getSkill(FPArchMage.FIRE_DEMON).getEffect(player.getSkillLevel(SkillFactory.getSkill(FPArchMage.FIRE_DEMON))).getDuration() * 1000);
+                     } else if (attack.skill == ILArchMage.ICE_DEMON) {
+diff --git a/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java b/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
+index a47db3a25..8d43442d3 100644
+--- a/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
++++ b/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
+@@ -35,6 +35,7 @@
+  */
+ 
+ public final class MobDamageMobFriendlyHandler extends AbstractMaplePacketHandler {
++        @Override
+ 	public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+ 		int attacker = slea.readInt();
+ 		slea.readInt();
+@@ -66,12 +67,12 @@ else if(monster.getId() == 9300138) {   //romeo
+                         }
+                         
+                         c.getPlayer().getMap().killFriendlies(monster);
++                } else {
++                        if (monster.getId() == 9300061) {
++                                MapleMap map = c.getPlayer().getEventInstance().getMapInstance(monster.getMap().getId());
++                                map.addBunnyHit();
++                        }
+                 }
+-                
+-		if (monster.getId() == 9300061) {
+-                        MapleMap map = c.getPlayer().getEventInstance().getMapInstance(monster.getMap().getId());
+-			map.addBunnyHit();
+-		}
+ 
+ 		c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.MobDamageMobFriendly(monster, damage), monster.getPosition());
+ 		c.announce(MaplePacketCreator.enableActions());
+diff --git a/src/net/server/channel/handlers/PetAutoPotHandler.java b/src/net/server/channel/handlers/PetAutoPotHandler.java
+index 4da5a0895..93b4cfdc2 100644
+--- a/src/net/server/channel/handlers/PetAutoPotHandler.java
++++ b/src/net/server/channel/handlers/PetAutoPotHandler.java
+@@ -49,6 +49,10 @@
+     boolean hasMpGain;
+     short maxHp;
+     short maxMp;
++    short incHp;
++    short incMp;
++    int curHp;
++    int curMp;
+     
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+@@ -91,14 +95,27 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             maxHp = maxHpMp.left;
+             maxMp = maxHpMp.right;
+             
++            incHp = stat.getHp();
++            if(incHp <= 0 && hasHpGain) incHp = (short)((maxHp * stat.getHpRate()) / 100.0);
++            
++            incMp = stat.getMp();
++            if(incMp <= 0 && hasMpGain) incMp = (short)((maxMp * stat.getMpRate()) / 100.0);
++            
++            curHp = chr.getHp();
++            curMp = chr.getMp();
++            
++            //System.out.println("\n-------------------\n");
+             while(true) {
+                 do {
+                     MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, (short) 1, false);
+                     stat.applyTo(chr);
++                    
++                    curHp += incHp;
++                    curMp += incMp;
+ 
+                     //System.out.println();
+-                    //System.out.println("hp: " + hasHpGain + " player hp " + chr.getHp() + " maxhp " + maxHp);
+-                    //System.out.println("mp: " + hasMpGain + " player mp " + chr.getMp() + " maxmp " + maxMp);
++                    //System.out.println("hp: " + hasHpGain + " player hp " + curHp + " maxhp " + maxHp);
++                    //System.out.println("mp: " + hasMpGain + " player mp " + curMp + " maxmp " + maxMp);
+                     //System.out.println("redo? " + (shouldReusePot(chr) && toUse.getQuantity() > 0));
+                 } while(shouldReusePot(chr) && toUse.getQuantity() > 0);
+ 
+@@ -154,6 +171,6 @@ private boolean cursorOnNextAvailablePot(MapleCharacter chr) {
+     }
+     
+     private boolean shouldReusePot(MapleCharacter chr) {
+-        return (hasHpGain && chr.getHp() < ServerConstants.PET_AUTOHP_RATIO * maxHp) || (hasMpGain && chr.getMp() < ServerConstants.PET_AUTOMP_RATIO * maxMp);
++        return (hasHpGain && curHp < ServerConstants.PET_AUTOHP_RATIO * maxHp) || (hasMpGain && curMp < ServerConstants.PET_AUTOMP_RATIO * maxMp);
+     } 
+ }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index cdeb59172..9fd6997bb 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -111,6 +111,7 @@
+     protected List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
+     protected Map<Integer, Boolean> consumeOnPickupCache = new HashMap<>();
+     protected Map<Integer, Boolean> isQuestItemCache = new HashMap<>();
++    protected Map<Integer, Boolean> isPartyQuestItemCache = new HashMap<>();
+     protected Map<Integer, String> equipmentSlotCache = new HashMap<>();
+     protected Map<Integer, Boolean> noCancelMouseCache = new HashMap<>();
+     protected Map<Integer, Integer> mobCrystalMakerCache = new HashMap<>();
+@@ -129,6 +130,9 @@ private MapleItemInformationProvider() {
+         etcStringData = stringData.getData("Etc.img");
+         insStringData = stringData.getData("Ins.img");
+         petStringData = stringData.getData("Pet.img");
++        
++        isQuestItemCache.put(0, false);
++        isPartyQuestItemCache.put(0, false);
+     }
+ 
+     public static MapleItemInformationProvider getInstance() {
+@@ -1231,6 +1235,16 @@ public boolean isQuestItem(int itemId) {
+         isQuestItemCache.put(itemId, questItem);
+         return questItem;
+     }
++    
++    public boolean isPartyQuestItem(int itemId) {
++        if (isPartyQuestItemCache.containsKey(itemId)) {
++            return isPartyQuestItemCache.get(itemId);
++        }
++        MapleData data = getItemData(itemId);
++        boolean partyquestItem = (data != null && MapleDataTool.getIntConvert("info/pquest", data, 0) == 1);
++        isPartyQuestItemCache.put(itemId, partyquestItem);
++        return partyquestItem;
++    }
+ 
+     public int getQuestIdFromItem(int itemId) {
+         MapleData data = getItemData(itemId);
+diff --git a/src/server/expeditions/MapleExpedition.java b/src/server/expeditions/MapleExpedition.java
+index 2b8634332..450b00e56 100644
+--- a/src/server/expeditions/MapleExpedition.java
++++ b/src/server/expeditions/MapleExpedition.java
+@@ -96,7 +96,8 @@ public MapleExpedition(MapleCharacter player, MapleExpeditionType met) {
+ 	private void beginRegistration() {
+ 		registering = true;
+                 leader.announce(MaplePacketCreator.getClock(type.getRegistrationTime() * 60));
+-		startMap.broadcastMessage(MaplePacketCreator.serverNotice(6, "[Expedition] " + leader.getName() + " has been declared the expedition captain. Please register for the expedition."));
++		startMap.broadcastMessage(leader, MaplePacketCreator.serverNotice(6, "[Expedition] " + leader.getName() + " has been declared the expedition captain. Please register for the expedition."), false);
++                leader.announce(MaplePacketCreator.serverNotice(6, "[Expedition] You have become the expedition captain. Gather enough people for your team then talk to the NPC to start."));
+ 		scheduleRegistrationEnd();
+ 	}
+ 
+diff --git a/src/server/life/MapleMonsterInformationProvider.java b/src/server/life/MapleMonsterInformationProvider.java
+index 5f9a8876f..eb0bdcbc6 100644
+--- a/src/server/life/MapleMonsterInformationProvider.java
++++ b/src/server/life/MapleMonsterInformationProvider.java
+@@ -34,6 +34,7 @@
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+ import provider.MapleDataTool;
++import server.MapleItemInformationProvider;
+ import tools.DatabaseConnection;
+ import tools.Pair;
+ 
+@@ -43,6 +44,8 @@
+ 	private static final MapleMonsterInformationProvider instance = new MapleMonsterInformationProvider();
+ 	private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<>();
+ 	private final List<MonsterGlobalDropEntry> globaldrops = new ArrayList<>();
++        
++        private final Map<Integer, List<Integer>> dropsChancePool = new HashMap<>();    // thanks to ronan
+ 
+ 	protected MapleMonsterInformationProvider() {
+ 		retrieveGlobal();
+@@ -148,6 +151,31 @@ private void retrieveGlobal() {
+ 		drops.put(monsterId, ret);
+ 		return ret;
+ 	}
++        
++        public final List<Integer> retrieveDropPool(final int monsterId) {  // ignores Quest and Party Quest items
++		if (dropsChancePool.containsKey(monsterId)) {
++			return dropsChancePool.get(monsterId);
++		}
++                
++                MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                
++                List<MonsterDropEntry> dropList = retrieveDrop(monsterId);
++		List<Integer> ret = new ArrayList<>();
++                
++                int accProp = 0;
++                for(MonsterDropEntry mde : dropList) {
++                        if(!ii.isQuestItem(mde.itemId) && !ii.isPartyQuestItem(mde.itemId)) {
++                                accProp += mde.chance;
++                        }
++
++                        ret.add(accProp);
++                }
++                
++		if(accProp == 0) ret.clear();    // don't accept mobs dropping no relevant items
++                
++                dropsChancePool.put(monsterId, ret);
++		return ret;
++	}
+ 
+ 	public static ArrayList<Pair<Integer, String>> getMobsIDsFromName(String search)
+ 	{
+@@ -206,6 +234,7 @@ public static String getMobNameFromID(int id)
+ 
+ 	public final void clearDrops() {
+ 		drops.clear();
++                dropsChancePool.clear();
+ 		globaldrops.clear();
+ 		retrieveGlobal();
+ 	}
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index dc57854be..ad92746ff 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -583,7 +583,7 @@ private byte dropItemsFromMonsterOnMap(List<MonsterDropEntry> dropEntry, Point p
+         MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+         
+         for (final MonsterDropEntry de : dropEntry) {
+-            if (Randomizer.nextInt(999999) < de.chance * chRate) {
++            if (Randomizer.nextInt(999999) < (long) de.chance * chRate) {
+                 if (droptype == 3) {
+                     pos.x = (int) (mobpos + (d % 2 == 0 ? (40 * (d + 1) / 2) : -(40 * (d / 2))));
+                 } else {
+@@ -644,7 +644,7 @@ private byte dropGlobalItemsFromMonsterOnMap(List<MonsterGlobalDropEntry> global
+         return d;
+     }
+     
+-    private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob) {
++    private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob, final boolean useBaseRate) {
+         if (mob.dropsDisabled() || !dropsOn) {
+             return;
+         }
+@@ -658,6 +658,8 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob) {
+         if (stati != null) {
+             chRate *= (stati.getStati().get(MonsterStatus.SHOWDOWN).doubleValue() / 100.0 + 1.0);
+         }
++        
++        if(useBaseRate) chRate = 1;
+ 
+         final MapleMonsterInformationProvider mi = MapleMonsterInformationProvider.getInstance();
+         
+@@ -676,6 +678,24 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob) {
+         dropItemsFromMonsterOnMap(questEntry, pos, d, chRate, droptype, mobpos, chr, mob);
+     }
+     
++    public void dropItemsFromMonster(List<MonsterDropEntry> list, final MapleCharacter chr, final MapleMonster mob) {
++        if (mob.dropsDisabled() || !dropsOn) {
++            return;
++        }
++        
++        final byte droptype = (byte) (chr.getParty() != null ? 1 : 0);
++        final int mobpos = mob.getPosition().x;
++        int chRate = 1000000;   // guaranteed item drop
++        byte d = 1;
++        Point pos = new Point(0, mob.getPosition().y);
++        
++        dropItemsFromMonsterOnMap(list, pos, d, chRate, droptype, mobpos, chr, mob);
++    }
++    
++    public void dropFromFriendlyMonster(final MapleCharacter chr, final MapleMonster mob) {
++        dropFromMonster(chr, mob, true);
++    }
++    
+     public void dropFromReactor(final MapleCharacter chr, final MapleReactor reactor, Item drop, Point dropPos, short questid) {
+         spawnDrop(drop, this.calcDropPos(dropPos, reactor.getPosition()), reactor, chr, (byte)(chr.getParty() != null ? 1 : 0), questid);
+     }
+@@ -1139,7 +1159,7 @@ public void killMonster(final MapleMonster monster, final MapleCharacter chr, fi
+             if (dropOwner == null) {
+                 dropOwner = chr;
+             }
+-            dropFromMonster(dropOwner, monster);
++            dropFromMonster(dropOwner, monster, false);
+         }
+         
+         if (monster.hasBossHPBar()) {
+@@ -1551,16 +1571,21 @@ public void addBunnyHit() {
+         }
+     }
+ 
+-    private void monsterItemDrop(final MapleMonster m, final Item item, long delay) {
++    private void monsterItemDrop(final MapleMonster m, long delay) {
+         final ScheduledFuture<?> monsterItemDrop = TimerManager.getInstance().register(new Runnable() {
+             @Override
+             public void run() {
+-                if (m.isAlive() && !MapleMap.this.getPlayers().isEmpty()) {
+-                    if (item.getItemId() == 4001101) {
++                List<MapleMapObject> chrList = MapleMap.this.getPlayers();
++                
++                if (m.isAlive() && !chrList.isEmpty()) {
++                    MapleCharacter chr = (MapleCharacter) chrList.get(0);
++                    
++                    if (m.getId() == 9300061) {
+                         MapleMap.this.riceCakes++;
+                         MapleMap.this.broadcastMessage(MaplePacketCreator.serverNotice(6, "The Moon Bunny made rice cake number " + (MapleMap.this.riceCakes)));
+                     }
+-                    spawnItemDrop(m, (MapleCharacter) getPlayers().get(0), item, m.getPosition(), false, false);
++                    
++                    dropFromFriendlyMonster(chr, m);
+                 }
+             }
+         }, delay, delay);
+@@ -1643,11 +1668,11 @@ public void sendPackets(MapleClient c) {
+ 
+         if (monster.getDropPeriodTime() > 0) { //9300102 - Watchhog, 9300061 - Moon Bunny (HPQ), 9300093 - Tylus
+             if (monster.getId() == 9300102) {
+-                monsterItemDrop(monster, new Item(4031507, (short) 0, (short) 1), monster.getDropPeriodTime());
++                monsterItemDrop(monster, monster.getDropPeriodTime());
+             } else if (monster.getId() == 9300061) {
+-                monsterItemDrop(monster, new Item(4001101, (short) 0, (short) 1), monster.getDropPeriodTime() / 3);
++                monsterItemDrop(monster, monster.getDropPeriodTime() / 3);
+             } else if (monster.getId() == 9300093) {
+-                monsterItemDrop(monster, new Item(4031495, (short) 0, (short) 1), monster.getDropPeriodTime());
++                monsterItemDrop(monster, monster.getDropPeriodTime());
+             } else {
+                 FilePrinter.printError(FilePrinter.UNHANDLED_EVENT, "UNCODED TIMED MOB DETECTED: " + monster.getId() + "\r\n");
+             }
+@@ -1947,7 +1972,7 @@ public void searchItemReactors(final MapleReactor react) {
+             for(final MapleMapItem drop : list) {
+                 final Item item = drop.getItem();
+             
+-                if (reactItem == item.getItemId() && reactQty == item.getQuantity()) {
++                if (item != null && reactItem == item.getItemId() && reactQty == item.getQuantity()) {
+                     if (reactArea.contains(drop.getPosition())) {
+                         MapleClient owner = drop.getOwnerClient();
+                         if(owner != null) {
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 45a9b0f17..ae5989e19 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -248,8 +248,10 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid) {
+             map.setMapName(MapleDataTool.getString("mapName", nameData.getChildByPath(getMapStringName(omapid)), ""));
+             map.setStreetName(MapleDataTool.getString("streetName", nameData.getChildByPath(getMapStringName(omapid)), ""));
+         } catch (Exception e) {
+-            e.printStackTrace();
+-            System.err.println("Not found mapid " + omapid);
++            if(omapid / 1000 != 1020) {     // explorer job introducion scenes
++                e.printStackTrace();
++                System.err.println("Not found mapid " + omapid);
++            }
+ 
+             map.setMapName("");
+             map.setStreetName("");
+diff --git a/wz/Item.wz/Etc/0400.img.xml b/wz/Item.wz/Etc/0400.img.xml
+index 8686e1453..f0f30a2fa 100644
+--- a/wz/Item.wz/Etc/0400.img.xml
++++ b/wz/Item.wz/Etc/0400.img.xml
+@@ -6232,6 +6232,7 @@
+         <vector name="origin" x="-2" y="32"/>
+       </canvas>
+       <int name="price" value="1"/>
++      <int name="pquest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04001023">
+@@ -7281,6 +7282,7 @@
+         <vector name="origin" x="-6" y="25"/>
+       </canvas>
+       <int name="price" value="1"/>
++      <int name="pquest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04001107">

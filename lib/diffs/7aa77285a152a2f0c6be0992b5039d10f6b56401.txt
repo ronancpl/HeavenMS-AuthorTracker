@@ -1,0 +1,52 @@
+diff --git a/cores/mina-core-2.0.19.jar b/cores/mina-core-2.0.19.jar
+new file mode 100644
+index 000000000..0afdf38ac
+Binary files /dev/null and b/cores/mina-core-2.0.19.jar differ
+diff --git a/cores/mina-core-2.0.7.jar b/cores/mina-core-2.0.7.jar
+deleted file mode 100644
+index c5f384c2c..000000000
+Binary files a/cores/mina-core-2.0.7.jar and /dev/null differ
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index cee4d37ba..75996a805 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -88,33 +88,12 @@ public MapleServerHandler(int world, int channel) {
+     
+     @Override
+     public void exceptionCaught(IoSession session, Throwable cause) {
+-        if (cause instanceof org.apache.mina.core.write.WriteToClosedSessionException) {
+-            return;
+-        }
+-        
+-        /*
+-    	System.out.println("disconnect by exception");
+-        cause.printStackTrace();
+-        */
+-        
+-        MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+-        
+-        if (client != null) {
+-            if (cause instanceof IOException) { // mina closes session automatically and does not call sessionClosed on IOException
+-                if (isLoginServerHandler()) {
+-                    MapleSessionCoordinator.getInstance().closeLoginSession(session);
+-                } else {
+-                    MapleSessionCoordinator.getInstance().closeSession(session, null);
+-                }
+-                
+-                try {
+-                    client.disconnect(false, client.getPlayer() != null && client.getPlayer().getCashShop().isOpened());
+-                } catch (Throwable t) {
+-                    FilePrinter.printError(FilePrinter.ACCOUNT_STUCK, t);
+-                } finally {
+-                    session.removeAttribute(MapleClient.CLIENT_KEY);
+-                }
+-            } else if (client.getPlayer() != null) {
++        if (cause instanceof IOException) { // mina closes session automatically and does not call sessionClosed on IOException
++            session.closeNow(); // calls sessionClosed
++        } else {
++            MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
++            
++            if (client != null && client.getPlayer() != null) {
+                 FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, cause, "Exception caught by: " + client.getPlayer());
+             }
+         }

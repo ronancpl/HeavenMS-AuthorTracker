@@ -1,0 +1,3169 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 6a7722e40..36a94961c 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -256,4 +256,11 @@ Registros de objetos MapleGuildCharacter agora esta sincronizado entre MapleChar
+ Correção e proteção a acessos concorrentes em mecânicas de comercialização entre jogadores.
+ Quests com limite de tempo agora expiram. Tempo restante também é mostrado na aba da quest.
+ Estrutura de dados que lida com status de quests do jogador agora foi protegido para acesso concorrente.
+-Montarias, tanto como pets, não ficam com "fome" com o tempo caso os flags PETS_NEVER_HUNGRY estejam setados.
+\ No newline at end of file
++Montarias, tanto como pets, não ficam com "fome" com o tempo caso os flags PETS_NEVER_HUNGRY estejam setados.
++
++27 - 28 Maio 2017,
++Reajuste de diretório dos scripts de NPCs, agora podendo ser acessados por todos os mundos.
++Consertado casos onde jogador tenta acessar o Cash Shop, enquanto abertas janelas/abas interativas, ocasionando crash no jogo.
++Resolvido alguns problemas com Player Shops, não retornado todos os itens ao jogador ao sair da loja.
++Refatoração de código referente às diversas naturezas de fechamento das janelas interativas (minigames, messenger, npc/player shops, etc), agora utilizando um mesmo código.
++Adição de restrição de acesso ao Cash Shop pelos jogadores presentes nas salas da Free Market (evitando assim fechamento de lojas de jogadores que tentem acessar o CS).
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 83e676f73..9018321ab 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -11,32 +11,6 @@
+         </file>
+     </editor-bookmarks>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleStatEffect.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/provider/MapleDataTool.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PlayerInteractionHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/UseCashItemHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/UseItemHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/MovePetHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/quest/QuestActionManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/guild/MapleAlliance.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/Server.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PlayerLoggedinHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/tools/LogHelper.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/2010009.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/tools/MaplePacketCreator.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleMount.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/guild/MapleGuild.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/TimerManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleQuestStatus.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/QuestActionHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleTrade.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleInventoryManipulator.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/CharInfoRequestHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleClient.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/quest/MapleQuest.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>
+diff --git a/scripts/npc/world0/1002000.js b/scripts/npc/1002000.js
+similarity index 100%
+rename from scripts/npc/world0/1002000.js
+rename to scripts/npc/1002000.js
+diff --git a/scripts/npc/world0/1002002.js b/scripts/npc/1002002.js
+similarity index 100%
+rename from scripts/npc/world0/1002002.js
+rename to scripts/npc/1002002.js
+diff --git a/scripts/npc/world0/1002003.js b/scripts/npc/1002003.js
+similarity index 100%
+rename from scripts/npc/world0/1002003.js
+rename to scripts/npc/1002003.js
+diff --git a/scripts/npc/world0/1002004.js b/scripts/npc/1002004.js
+similarity index 100%
+rename from scripts/npc/world0/1002004.js
+rename to scripts/npc/1002004.js
+diff --git a/scripts/npc/world0/1002005.js b/scripts/npc/1002005.js
+similarity index 100%
+rename from scripts/npc/world0/1002005.js
+rename to scripts/npc/1002005.js
+diff --git a/scripts/npc/world0/1002007.js b/scripts/npc/1002007.js
+similarity index 100%
+rename from scripts/npc/world0/1002007.js
+rename to scripts/npc/1002007.js
+diff --git a/scripts/npc/world0/1002100.js b/scripts/npc/1002100.js
+similarity index 100%
+rename from scripts/npc/world0/1002100.js
+rename to scripts/npc/1002100.js
+diff --git a/scripts/npc/world0/1012000.js b/scripts/npc/1012000.js
+similarity index 100%
+rename from scripts/npc/world0/1012000.js
+rename to scripts/npc/1012000.js
+diff --git a/scripts/npc/world0/1012002.js b/scripts/npc/1012002.js
+similarity index 100%
+rename from scripts/npc/world0/1012002.js
+rename to scripts/npc/1012002.js
+diff --git a/scripts/npc/world0/1012005.js b/scripts/npc/1012005.js
+similarity index 100%
+rename from scripts/npc/world0/1012005.js
+rename to scripts/npc/1012005.js
+diff --git a/scripts/npc/world0/1012006.js b/scripts/npc/1012006.js
+similarity index 100%
+rename from scripts/npc/world0/1012006.js
+rename to scripts/npc/1012006.js
+diff --git a/scripts/npc/world0/1012007.js b/scripts/npc/1012007.js
+similarity index 100%
+rename from scripts/npc/world0/1012007.js
+rename to scripts/npc/1012007.js
+diff --git a/scripts/npc/world0/1012008.js b/scripts/npc/1012008.js
+similarity index 100%
+rename from scripts/npc/world0/1012008.js
+rename to scripts/npc/1012008.js
+diff --git a/scripts/npc/world0/1012009.js b/scripts/npc/1012009.js
+similarity index 100%
+rename from scripts/npc/world0/1012009.js
+rename to scripts/npc/1012009.js
+diff --git a/scripts/npc/world0/1012100.js b/scripts/npc/1012100.js
+similarity index 100%
+rename from scripts/npc/world0/1012100.js
+rename to scripts/npc/1012100.js
+diff --git a/scripts/npc/world0/1012103.js b/scripts/npc/1012103.js
+similarity index 100%
+rename from scripts/npc/world0/1012103.js
+rename to scripts/npc/1012103.js
+diff --git a/scripts/npc/world0/1012104.js b/scripts/npc/1012104.js
+similarity index 100%
+rename from scripts/npc/world0/1012104.js
+rename to scripts/npc/1012104.js
+diff --git a/scripts/npc/world0/1012105.js b/scripts/npc/1012105.js
+similarity index 100%
+rename from scripts/npc/world0/1012105.js
+rename to scripts/npc/1012105.js
+diff --git a/scripts/npc/world0/1012112.js b/scripts/npc/1012112.js
+similarity index 100%
+rename from scripts/npc/world0/1012112.js
+rename to scripts/npc/1012112.js
+diff --git a/scripts/npc/world0/1012113.js b/scripts/npc/1012113.js
+similarity index 100%
+rename from scripts/npc/world0/1012113.js
+rename to scripts/npc/1012113.js
+diff --git a/scripts/npc/world0/1012114.js b/scripts/npc/1012114.js
+similarity index 100%
+rename from scripts/npc/world0/1012114.js
+rename to scripts/npc/1012114.js
+diff --git a/scripts/npc/world0/1012118.js b/scripts/npc/1012118.js
+similarity index 100%
+rename from scripts/npc/world0/1012118.js
+rename to scripts/npc/1012118.js
+diff --git a/scripts/npc/world0/1012119.js b/scripts/npc/1012119.js
+similarity index 100%
+rename from scripts/npc/world0/1012119.js
+rename to scripts/npc/1012119.js
+diff --git a/scripts/npc/world0/1013001.js b/scripts/npc/1013001.js
+similarity index 100%
+rename from scripts/npc/world0/1013001.js
+rename to scripts/npc/1013001.js
+diff --git a/scripts/npc/world0/1013002.js b/scripts/npc/1013002.js
+similarity index 100%
+rename from scripts/npc/world0/1013002.js
+rename to scripts/npc/1013002.js
+diff --git a/scripts/npc/world0/1013104.js b/scripts/npc/1013104.js
+similarity index 100%
+rename from scripts/npc/world0/1013104.js
+rename to scripts/npc/1013104.js
+diff --git a/scripts/npc/world0/1013200.js b/scripts/npc/1013200.js
+similarity index 100%
+rename from scripts/npc/world0/1013200.js
+rename to scripts/npc/1013200.js
+diff --git a/scripts/npc/world0/10200.js b/scripts/npc/10200.js
+similarity index 100%
+rename from scripts/npc/world0/10200.js
+rename to scripts/npc/10200.js
+diff --git a/scripts/npc/world0/10201.js b/scripts/npc/10201.js
+similarity index 100%
+rename from scripts/npc/world0/10201.js
+rename to scripts/npc/10201.js
+diff --git a/scripts/npc/world0/10202.js b/scripts/npc/10202.js
+similarity index 100%
+rename from scripts/npc/world0/10202.js
+rename to scripts/npc/10202.js
+diff --git a/scripts/npc/world0/10203.js b/scripts/npc/10203.js
+similarity index 100%
+rename from scripts/npc/world0/10203.js
+rename to scripts/npc/10203.js
+diff --git a/scripts/npc/world0/10204.js b/scripts/npc/10204.js
+similarity index 100%
+rename from scripts/npc/world0/10204.js
+rename to scripts/npc/10204.js
+diff --git a/scripts/npc/world0/1022000.js b/scripts/npc/1022000.js
+similarity index 100%
+rename from scripts/npc/world0/1022000.js
+rename to scripts/npc/1022000.js
+diff --git a/scripts/npc/world0/1022001.js b/scripts/npc/1022001.js
+similarity index 100%
+rename from scripts/npc/world0/1022001.js
+rename to scripts/npc/1022001.js
+diff --git a/scripts/npc/world0/1022003.js b/scripts/npc/1022003.js
+similarity index 100%
+rename from scripts/npc/world0/1022003.js
+rename to scripts/npc/1022003.js
+diff --git a/scripts/npc/world0/1022004.js b/scripts/npc/1022004.js
+similarity index 100%
+rename from scripts/npc/world0/1022004.js
+rename to scripts/npc/1022004.js
+diff --git a/scripts/npc/world0/1022005.js b/scripts/npc/1022005.js
+similarity index 100%
+rename from scripts/npc/world0/1022005.js
+rename to scripts/npc/1022005.js
+diff --git a/scripts/npc/world0/1022101.js b/scripts/npc/1022101.js
+similarity index 100%
+rename from scripts/npc/world0/1022101.js
+rename to scripts/npc/1022101.js
+diff --git a/scripts/npc/world0/1022101_old.js b/scripts/npc/1022101_old.js
+similarity index 100%
+rename from scripts/npc/world0/1022101_old.js
+rename to scripts/npc/1022101_old.js
+diff --git a/scripts/npc/world0/1022105.js b/scripts/npc/1022105.js
+similarity index 100%
+rename from scripts/npc/world0/1022105.js
+rename to scripts/npc/1022105.js
+diff --git a/scripts/npc/world0/1032000.js b/scripts/npc/1032000.js
+similarity index 100%
+rename from scripts/npc/world0/1032000.js
+rename to scripts/npc/1032000.js
+diff --git a/scripts/npc/world0/1032001.js b/scripts/npc/1032001.js
+similarity index 100%
+rename from scripts/npc/world0/1032001.js
+rename to scripts/npc/1032001.js
+diff --git a/scripts/npc/world0/1032002.js b/scripts/npc/1032002.js
+similarity index 100%
+rename from scripts/npc/world0/1032002.js
+rename to scripts/npc/1032002.js
+diff --git a/scripts/npc/world0/1032003.js b/scripts/npc/1032003.js
+similarity index 100%
+rename from scripts/npc/world0/1032003.js
+rename to scripts/npc/1032003.js
+diff --git a/scripts/npc/world0/1032004.js b/scripts/npc/1032004.js
+similarity index 100%
+rename from scripts/npc/world0/1032004.js
+rename to scripts/npc/1032004.js
+diff --git a/scripts/npc/world0/1032005.js b/scripts/npc/1032005.js
+similarity index 100%
+rename from scripts/npc/world0/1032005.js
+rename to scripts/npc/1032005.js
+diff --git a/scripts/npc/world0/1032006.js b/scripts/npc/1032006.js
+similarity index 100%
+rename from scripts/npc/world0/1032006.js
+rename to scripts/npc/1032006.js
+diff --git a/scripts/npc/world0/1032007.js b/scripts/npc/1032007.js
+similarity index 100%
+rename from scripts/npc/world0/1032007.js
+rename to scripts/npc/1032007.js
+diff --git a/scripts/npc/world0/1032008.js b/scripts/npc/1032008.js
+similarity index 100%
+rename from scripts/npc/world0/1032008.js
+rename to scripts/npc/1032008.js
+diff --git a/scripts/npc/world0/1032009.js b/scripts/npc/1032009.js
+similarity index 100%
+rename from scripts/npc/world0/1032009.js
+rename to scripts/npc/1032009.js
+diff --git a/scripts/npc/world0/1032100.js b/scripts/npc/1032100.js
+similarity index 100%
+rename from scripts/npc/world0/1032100.js
+rename to scripts/npc/1032100.js
+diff --git a/scripts/npc/world0/1032102.js b/scripts/npc/1032102.js
+similarity index 100%
+rename from scripts/npc/world0/1032102.js
+rename to scripts/npc/1032102.js
+diff --git a/scripts/npc/world0/1032114.js b/scripts/npc/1032114.js
+similarity index 100%
+rename from scripts/npc/world0/1032114.js
+rename to scripts/npc/1032114.js
+diff --git a/scripts/npc/world0/1043000.js b/scripts/npc/1043000.js
+similarity index 100%
+rename from scripts/npc/world0/1043000.js
+rename to scripts/npc/1043000.js
+diff --git a/scripts/npc/world0/1043001.js b/scripts/npc/1043001.js
+similarity index 100%
+rename from scripts/npc/world0/1043001.js
+rename to scripts/npc/1043001.js
+diff --git a/scripts/npc/world0/1052001.js b/scripts/npc/1052001.js
+similarity index 100%
+rename from scripts/npc/world0/1052001.js
+rename to scripts/npc/1052001.js
+diff --git a/scripts/npc/world0/1052002.js b/scripts/npc/1052002.js
+similarity index 100%
+rename from scripts/npc/world0/1052002.js
+rename to scripts/npc/1052002.js
+diff --git a/scripts/npc/world0/1052003.js b/scripts/npc/1052003.js
+similarity index 100%
+rename from scripts/npc/world0/1052003.js
+rename to scripts/npc/1052003.js
+diff --git a/scripts/npc/world0/1052004.js b/scripts/npc/1052004.js
+similarity index 100%
+rename from scripts/npc/world0/1052004.js
+rename to scripts/npc/1052004.js
+diff --git a/scripts/npc/world0/1052005.js b/scripts/npc/1052005.js
+similarity index 100%
+rename from scripts/npc/world0/1052005.js
+rename to scripts/npc/1052005.js
+diff --git a/scripts/npc/world0/1052006.js b/scripts/npc/1052006.js
+similarity index 100%
+rename from scripts/npc/world0/1052006.js
+rename to scripts/npc/1052006.js
+diff --git a/scripts/npc/world0/1052007.js b/scripts/npc/1052007.js
+similarity index 100%
+rename from scripts/npc/world0/1052007.js
+rename to scripts/npc/1052007.js
+diff --git a/scripts/npc/world0/1052008.js b/scripts/npc/1052008.js
+similarity index 100%
+rename from scripts/npc/world0/1052008.js
+rename to scripts/npc/1052008.js
+diff --git a/scripts/npc/world0/1052009.js b/scripts/npc/1052009.js
+similarity index 100%
+rename from scripts/npc/world0/1052009.js
+rename to scripts/npc/1052009.js
+diff --git a/scripts/npc/world0/1052010.js b/scripts/npc/1052010.js
+similarity index 100%
+rename from scripts/npc/world0/1052010.js
+rename to scripts/npc/1052010.js
+diff --git a/scripts/npc/world0/1052011.js b/scripts/npc/1052011.js
+similarity index 100%
+rename from scripts/npc/world0/1052011.js
+rename to scripts/npc/1052011.js
+diff --git a/scripts/npc/world0/1052016.js b/scripts/npc/1052016.js
+similarity index 100%
+rename from scripts/npc/world0/1052016.js
+rename to scripts/npc/1052016.js
+diff --git a/scripts/npc/world0/1052017.js b/scripts/npc/1052017.js
+similarity index 100%
+rename from scripts/npc/world0/1052017.js
+rename to scripts/npc/1052017.js
+diff --git a/scripts/npc/world0/1052100.js b/scripts/npc/1052100.js
+similarity index 100%
+rename from scripts/npc/world0/1052100.js
+rename to scripts/npc/1052100.js
+diff --git a/scripts/npc/world0/1052101.js b/scripts/npc/1052101.js
+similarity index 100%
+rename from scripts/npc/world0/1052101.js
+rename to scripts/npc/1052101.js
+diff --git a/scripts/npc/world0/1052115.js b/scripts/npc/1052115.js
+similarity index 100%
+rename from scripts/npc/world0/1052115.js
+rename to scripts/npc/1052115.js
+diff --git a/scripts/npc/world0/1052125.js b/scripts/npc/1052125.js
+similarity index 100%
+rename from scripts/npc/world0/1052125.js
+rename to scripts/npc/1052125.js
+diff --git a/scripts/npc/world0/1061000.js b/scripts/npc/1061000.js
+similarity index 100%
+rename from scripts/npc/world0/1061000.js
+rename to scripts/npc/1061000.js
+diff --git a/scripts/npc/world0/1061006.js b/scripts/npc/1061006.js
+similarity index 100%
+rename from scripts/npc/world0/1061006.js
+rename to scripts/npc/1061006.js
+diff --git a/scripts/npc/world0/1061007.js b/scripts/npc/1061007.js
+similarity index 100%
+rename from scripts/npc/world0/1061007.js
+rename to scripts/npc/1061007.js
+diff --git a/scripts/npc/world0/1061008.js b/scripts/npc/1061008.js
+similarity index 100%
+rename from scripts/npc/world0/1061008.js
+rename to scripts/npc/1061008.js
+diff --git a/scripts/npc/world0/1061009.js b/scripts/npc/1061009.js
+similarity index 100%
+rename from scripts/npc/world0/1061009.js
+rename to scripts/npc/1061009.js
+diff --git a/scripts/npc/world0/1061010.js b/scripts/npc/1061010.js
+similarity index 100%
+rename from scripts/npc/world0/1061010.js
+rename to scripts/npc/1061010.js
+diff --git a/scripts/npc/world0/1061012.js b/scripts/npc/1061012.js
+similarity index 100%
+rename from scripts/npc/world0/1061012.js
+rename to scripts/npc/1061012.js
+diff --git a/scripts/npc/world0/1061014.js b/scripts/npc/1061014.js
+similarity index 100%
+rename from scripts/npc/world0/1061014.js
+rename to scripts/npc/1061014.js
+diff --git a/scripts/npc/world0/1061016.js b/scripts/npc/1061016.js
+similarity index 100%
+rename from scripts/npc/world0/1061016.js
+rename to scripts/npc/1061016.js
+diff --git a/scripts/npc/world0/1061018.js b/scripts/npc/1061018.js
+similarity index 100%
+rename from scripts/npc/world0/1061018.js
+rename to scripts/npc/1061018.js
+diff --git a/scripts/npc/world0/1061100.js b/scripts/npc/1061100.js
+similarity index 100%
+rename from scripts/npc/world0/1061100.js
+rename to scripts/npc/1061100.js
+diff --git a/scripts/npc/world0/1063000.js b/scripts/npc/1063000.js
+similarity index 100%
+rename from scripts/npc/world0/1063000.js
+rename to scripts/npc/1063000.js
+diff --git a/scripts/npc/world0/1063001.js b/scripts/npc/1063001.js
+similarity index 100%
+rename from scripts/npc/world0/1063001.js
+rename to scripts/npc/1063001.js
+diff --git a/scripts/npc/world0/1063002.js b/scripts/npc/1063002.js
+similarity index 100%
+rename from scripts/npc/world0/1063002.js
+rename to scripts/npc/1063002.js
+diff --git a/scripts/npc/world0/1063012.js b/scripts/npc/1063012.js
+similarity index 100%
+rename from scripts/npc/world0/1063012.js
+rename to scripts/npc/1063012.js
+diff --git a/scripts/npc/world0/1063013.js b/scripts/npc/1063013.js
+similarity index 100%
+rename from scripts/npc/world0/1063013.js
+rename to scripts/npc/1063013.js
+diff --git a/scripts/npc/world0/1072000.js b/scripts/npc/1072000.js
+similarity index 100%
+rename from scripts/npc/world0/1072000.js
+rename to scripts/npc/1072000.js
+diff --git a/scripts/npc/world0/1072001.js b/scripts/npc/1072001.js
+similarity index 100%
+rename from scripts/npc/world0/1072001.js
+rename to scripts/npc/1072001.js
+diff --git a/scripts/npc/world0/1072002.js b/scripts/npc/1072002.js
+similarity index 100%
+rename from scripts/npc/world0/1072002.js
+rename to scripts/npc/1072002.js
+diff --git a/scripts/npc/world0/1072003.js b/scripts/npc/1072003.js
+similarity index 100%
+rename from scripts/npc/world0/1072003.js
+rename to scripts/npc/1072003.js
+diff --git a/scripts/npc/world0/1072004.js b/scripts/npc/1072004.js
+similarity index 100%
+rename from scripts/npc/world0/1072004.js
+rename to scripts/npc/1072004.js
+diff --git a/scripts/npc/world0/1072005.js b/scripts/npc/1072005.js
+similarity index 100%
+rename from scripts/npc/world0/1072005.js
+rename to scripts/npc/1072005.js
+diff --git a/scripts/npc/world0/1072006.js b/scripts/npc/1072006.js
+similarity index 100%
+rename from scripts/npc/world0/1072006.js
+rename to scripts/npc/1072006.js
+diff --git a/scripts/npc/world0/1072007.js b/scripts/npc/1072007.js
+similarity index 100%
+rename from scripts/npc/world0/1072007.js
+rename to scripts/npc/1072007.js
+diff --git a/scripts/npc/world0/1072008.js b/scripts/npc/1072008.js
+similarity index 100%
+rename from scripts/npc/world0/1072008.js
+rename to scripts/npc/1072008.js
+diff --git a/scripts/npc/world0/1081001.js b/scripts/npc/1081001.js
+similarity index 100%
+rename from scripts/npc/world0/1081001.js
+rename to scripts/npc/1081001.js
+diff --git a/scripts/npc/world0/1090000.js b/scripts/npc/1090000.js
+similarity index 100%
+rename from scripts/npc/world0/1090000.js
+rename to scripts/npc/1090000.js
+diff --git a/scripts/npc/world0/1091003.js b/scripts/npc/1091003.js
+similarity index 100%
+rename from scripts/npc/world0/1091003.js
+rename to scripts/npc/1091003.js
+diff --git a/scripts/npc/world0/1091004.js b/scripts/npc/1091004.js
+similarity index 100%
+rename from scripts/npc/world0/1091004.js
+rename to scripts/npc/1091004.js
+diff --git a/scripts/npc/world0/1092000.js b/scripts/npc/1092000.js
+similarity index 100%
+rename from scripts/npc/world0/1092000.js
+rename to scripts/npc/1092000.js
+diff --git a/scripts/npc/world0/1092007.js b/scripts/npc/1092007.js
+similarity index 100%
+rename from scripts/npc/world0/1092007.js
+rename to scripts/npc/1092007.js
+diff --git a/scripts/npc/world0/1092010.js b/scripts/npc/1092010.js
+similarity index 100%
+rename from scripts/npc/world0/1092010.js
+rename to scripts/npc/1092010.js
+diff --git a/scripts/npc/world0/1092014.js b/scripts/npc/1092014.js
+similarity index 100%
+rename from scripts/npc/world0/1092014.js
+rename to scripts/npc/1092014.js
+diff --git a/scripts/npc/world0/1092016.js b/scripts/npc/1092016.js
+similarity index 100%
+rename from scripts/npc/world0/1092016.js
+rename to scripts/npc/1092016.js
+diff --git a/scripts/npc/world0/1092019.js b/scripts/npc/1092019.js
+similarity index 100%
+rename from scripts/npc/world0/1092019.js
+rename to scripts/npc/1092019.js
+diff --git a/scripts/npc/world0/1092090.js b/scripts/npc/1092090.js
+similarity index 100%
+rename from scripts/npc/world0/1092090.js
+rename to scripts/npc/1092090.js
+diff --git a/scripts/npc/world0/1092091.js b/scripts/npc/1092091.js
+similarity index 100%
+rename from scripts/npc/world0/1092091.js
+rename to scripts/npc/1092091.js
+diff --git a/scripts/npc/world0/1092094.js b/scripts/npc/1092094.js
+similarity index 100%
+rename from scripts/npc/world0/1092094.js
+rename to scripts/npc/1092094.js
+diff --git a/scripts/npc/world0/1092095.js b/scripts/npc/1092095.js
+similarity index 100%
+rename from scripts/npc/world0/1092095.js
+rename to scripts/npc/1092095.js
+diff --git a/scripts/npc/world0/1094000.js b/scripts/npc/1094000.js
+similarity index 100%
+rename from scripts/npc/world0/1094000.js
+rename to scripts/npc/1094000.js
+diff --git a/scripts/npc/world0/1094002.js b/scripts/npc/1094002.js
+similarity index 100%
+rename from scripts/npc/world0/1094002.js
+rename to scripts/npc/1094002.js
+diff --git a/scripts/npc/world0/1094003.js b/scripts/npc/1094003.js
+similarity index 100%
+rename from scripts/npc/world0/1094003.js
+rename to scripts/npc/1094003.js
+diff --git a/scripts/npc/world0/1094004.js b/scripts/npc/1094004.js
+similarity index 100%
+rename from scripts/npc/world0/1094004.js
+rename to scripts/npc/1094004.js
+diff --git a/scripts/npc/world0/1094005.js b/scripts/npc/1094005.js
+similarity index 100%
+rename from scripts/npc/world0/1094005.js
+rename to scripts/npc/1094005.js
+diff --git a/scripts/npc/world0/1094006.js b/scripts/npc/1094006.js
+similarity index 100%
+rename from scripts/npc/world0/1094006.js
+rename to scripts/npc/1094006.js
+diff --git a/scripts/npc/world0/1095001.js b/scripts/npc/1095001.js
+similarity index 100%
+rename from scripts/npc/world0/1095001.js
+rename to scripts/npc/1095001.js
+diff --git a/scripts/npc/world0/1095002.js b/scripts/npc/1095002.js
+similarity index 100%
+rename from scripts/npc/world0/1095002.js
+rename to scripts/npc/1095002.js
+diff --git a/scripts/npc/world0/1096001.js b/scripts/npc/1096001.js
+similarity index 100%
+rename from scripts/npc/world0/1096001.js
+rename to scripts/npc/1096001.js
+diff --git a/scripts/npc/world0/1096003.js b/scripts/npc/1096003.js
+similarity index 100%
+rename from scripts/npc/world0/1096003.js
+rename to scripts/npc/1096003.js
+diff --git a/scripts/npc/world0/1096005.js b/scripts/npc/1096005.js
+similarity index 100%
+rename from scripts/npc/world0/1096005.js
+rename to scripts/npc/1096005.js
+diff --git a/scripts/npc/world0/1096010.js b/scripts/npc/1096010.js
+similarity index 100%
+rename from scripts/npc/world0/1096010.js
+rename to scripts/npc/1096010.js
+diff --git a/scripts/npc/world0/1100000.js b/scripts/npc/1100000.js
+similarity index 100%
+rename from scripts/npc/world0/1100000.js
+rename to scripts/npc/1100000.js
+diff --git a/scripts/npc/world0/1100003.js b/scripts/npc/1100003.js
+similarity index 100%
+rename from scripts/npc/world0/1100003.js
+rename to scripts/npc/1100003.js
+diff --git a/scripts/npc/world0/1100004.js b/scripts/npc/1100004.js
+similarity index 100%
+rename from scripts/npc/world0/1100004.js
+rename to scripts/npc/1100004.js
+diff --git a/scripts/npc/world0/1100005.js b/scripts/npc/1100005.js
+similarity index 100%
+rename from scripts/npc/world0/1100005.js
+rename to scripts/npc/1100005.js
+diff --git a/scripts/npc/world0/1100006.js b/scripts/npc/1100006.js
+similarity index 100%
+rename from scripts/npc/world0/1100006.js
+rename to scripts/npc/1100006.js
+diff --git a/scripts/npc/world0/1100007.js b/scripts/npc/1100007.js
+similarity index 100%
+rename from scripts/npc/world0/1100007.js
+rename to scripts/npc/1100007.js
+diff --git a/scripts/npc/world0/1100008.js b/scripts/npc/1100008.js
+similarity index 100%
+rename from scripts/npc/world0/1100008.js
+rename to scripts/npc/1100008.js
+diff --git a/scripts/npc/world0/1101001.js b/scripts/npc/1101001.js
+similarity index 100%
+rename from scripts/npc/world0/1101001.js
+rename to scripts/npc/1101001.js
+diff --git a/scripts/npc/world0/1101008.js b/scripts/npc/1101008.js
+similarity index 100%
+rename from scripts/npc/world0/1101008.js
+rename to scripts/npc/1101008.js
+diff --git a/scripts/npc/world0/1102001.js b/scripts/npc/1102001.js
+similarity index 100%
+rename from scripts/npc/world0/1102001.js
+rename to scripts/npc/1102001.js
+diff --git a/scripts/npc/world0/1102003.js b/scripts/npc/1102003.js
+similarity index 100%
+rename from scripts/npc/world0/1102003.js
+rename to scripts/npc/1102003.js
+diff --git a/scripts/npc/world0/1103005.js b/scripts/npc/1103005.js
+similarity index 100%
+rename from scripts/npc/world0/1103005.js
+rename to scripts/npc/1103005.js
+diff --git a/scripts/npc/world0/1200000.js b/scripts/npc/1200000.js
+similarity index 100%
+rename from scripts/npc/world0/1200000.js
+rename to scripts/npc/1200000.js
+diff --git a/scripts/npc/world0/1200003.js b/scripts/npc/1200003.js
+similarity index 100%
+rename from scripts/npc/world0/1200003.js
+rename to scripts/npc/1200003.js
+diff --git a/scripts/npc/world0/1200004.js b/scripts/npc/1200004.js
+similarity index 100%
+rename from scripts/npc/world0/1200004.js
+rename to scripts/npc/1200004.js
+diff --git a/scripts/npc/world0/1200005.js b/scripts/npc/1200005.js
+similarity index 100%
+rename from scripts/npc/world0/1200005.js
+rename to scripts/npc/1200005.js
+diff --git a/scripts/npc/world0/1200006.js b/scripts/npc/1200006.js
+similarity index 100%
+rename from scripts/npc/world0/1200006.js
+rename to scripts/npc/1200006.js
+diff --git a/scripts/npc/world0/1202000.js b/scripts/npc/1202000.js
+similarity index 100%
+rename from scripts/npc/world0/1202000.js
+rename to scripts/npc/1202000.js
+diff --git a/scripts/npc/world0/1204001.js b/scripts/npc/1204001.js
+similarity index 100%
+rename from scripts/npc/world0/1204001.js
+rename to scripts/npc/1204001.js
+diff --git a/scripts/npc/world0/1209000.js b/scripts/npc/1209000.js
+similarity index 100%
+rename from scripts/npc/world0/1209000.js
+rename to scripts/npc/1209000.js
+diff --git a/scripts/npc/world0/12101.js b/scripts/npc/12101.js
+similarity index 100%
+rename from scripts/npc/world0/12101.js
+rename to scripts/npc/12101.js
+diff --git a/scripts/npc/world0/2001000.js b/scripts/npc/2001000.js
+similarity index 100%
+rename from scripts/npc/world0/2001000.js
+rename to scripts/npc/2001000.js
+diff --git a/scripts/npc/world0/2001001.js b/scripts/npc/2001001.js
+similarity index 100%
+rename from scripts/npc/world0/2001001.js
+rename to scripts/npc/2001001.js
+diff --git a/scripts/npc/world0/2001002.js b/scripts/npc/2001002.js
+similarity index 100%
+rename from scripts/npc/world0/2001002.js
+rename to scripts/npc/2001002.js
+diff --git a/scripts/npc/world0/2001003.js b/scripts/npc/2001003.js
+similarity index 100%
+rename from scripts/npc/world0/2001003.js
+rename to scripts/npc/2001003.js
+diff --git a/scripts/npc/world0/2001004.js b/scripts/npc/2001004.js
+similarity index 100%
+rename from scripts/npc/world0/2001004.js
+rename to scripts/npc/2001004.js
+diff --git a/scripts/npc/world0/2002000.js b/scripts/npc/2002000.js
+similarity index 100%
+rename from scripts/npc/world0/2002000.js
+rename to scripts/npc/2002000.js
+diff --git a/scripts/npc/world0/2003.js b/scripts/npc/2003.js
+similarity index 100%
+rename from scripts/npc/world0/2003.js
+rename to scripts/npc/2003.js
+diff --git a/scripts/npc/world0/2007.js b/scripts/npc/2007.js
+similarity index 100%
+rename from scripts/npc/world0/2007.js
+rename to scripts/npc/2007.js
+diff --git a/scripts/npc/world0/2010000.js b/scripts/npc/2010000.js
+similarity index 100%
+rename from scripts/npc/world0/2010000.js
+rename to scripts/npc/2010000.js
+diff --git a/scripts/npc/world0/2010001.js b/scripts/npc/2010001.js
+similarity index 100%
+rename from scripts/npc/world0/2010001.js
+rename to scripts/npc/2010001.js
+diff --git a/scripts/npc/world0/2010002.js b/scripts/npc/2010002.js
+similarity index 100%
+rename from scripts/npc/world0/2010002.js
+rename to scripts/npc/2010002.js
+diff --git a/scripts/npc/world0/2010003.js b/scripts/npc/2010003.js
+similarity index 100%
+rename from scripts/npc/world0/2010003.js
+rename to scripts/npc/2010003.js
+diff --git a/scripts/npc/world0/2010005.js b/scripts/npc/2010005.js
+similarity index 100%
+rename from scripts/npc/world0/2010005.js
+rename to scripts/npc/2010005.js
+diff --git a/scripts/npc/world0/2010006.js b/scripts/npc/2010006.js
+similarity index 100%
+rename from scripts/npc/world0/2010006.js
+rename to scripts/npc/2010006.js
+diff --git a/scripts/npc/world0/2010007.js b/scripts/npc/2010007.js
+similarity index 100%
+rename from scripts/npc/world0/2010007.js
+rename to scripts/npc/2010007.js
+diff --git a/scripts/npc/world0/2010008.js b/scripts/npc/2010008.js
+similarity index 100%
+rename from scripts/npc/world0/2010008.js
+rename to scripts/npc/2010008.js
+diff --git a/scripts/npc/world0/2010009.js b/scripts/npc/2010009.js
+similarity index 100%
+rename from scripts/npc/world0/2010009.js
+rename to scripts/npc/2010009.js
+diff --git a/scripts/npc/world0/2012000.js b/scripts/npc/2012000.js
+similarity index 100%
+rename from scripts/npc/world0/2012000.js
+rename to scripts/npc/2012000.js
+diff --git a/scripts/npc/world0/2012001.js b/scripts/npc/2012001.js
+similarity index 100%
+rename from scripts/npc/world0/2012001.js
+rename to scripts/npc/2012001.js
+diff --git a/scripts/npc/world0/2012002.js b/scripts/npc/2012002.js
+similarity index 100%
+rename from scripts/npc/world0/2012002.js
+rename to scripts/npc/2012002.js
+diff --git a/scripts/npc/world0/2012006.js b/scripts/npc/2012006.js
+similarity index 100%
+rename from scripts/npc/world0/2012006.js
+rename to scripts/npc/2012006.js
+diff --git a/scripts/npc/world0/2012007.js b/scripts/npc/2012007.js
+similarity index 100%
+rename from scripts/npc/world0/2012007.js
+rename to scripts/npc/2012007.js
+diff --git a/scripts/npc/world0/2012008.js b/scripts/npc/2012008.js
+similarity index 100%
+rename from scripts/npc/world0/2012008.js
+rename to scripts/npc/2012008.js
+diff --git a/scripts/npc/world0/2012009.js b/scripts/npc/2012009.js
+similarity index 100%
+rename from scripts/npc/world0/2012009.js
+rename to scripts/npc/2012009.js
+diff --git a/scripts/npc/world0/2012013.js b/scripts/npc/2012013.js
+similarity index 100%
+rename from scripts/npc/world0/2012013.js
+rename to scripts/npc/2012013.js
+diff --git a/scripts/npc/world0/2012014.js b/scripts/npc/2012014.js
+similarity index 100%
+rename from scripts/npc/world0/2012014.js
+rename to scripts/npc/2012014.js
+diff --git a/scripts/npc/world0/2012015.js b/scripts/npc/2012015.js
+similarity index 100%
+rename from scripts/npc/world0/2012015.js
+rename to scripts/npc/2012015.js
+diff --git a/scripts/npc/world0/2012021.js b/scripts/npc/2012021.js
+similarity index 100%
+rename from scripts/npc/world0/2012021.js
+rename to scripts/npc/2012021.js
+diff --git a/scripts/npc/world0/2012022.js b/scripts/npc/2012022.js
+similarity index 100%
+rename from scripts/npc/world0/2012022.js
+rename to scripts/npc/2012022.js
+diff --git a/scripts/npc/world0/2012024.js b/scripts/npc/2012024.js
+similarity index 100%
+rename from scripts/npc/world0/2012024.js
+rename to scripts/npc/2012024.js
+diff --git a/scripts/npc/world0/2012025.js b/scripts/npc/2012025.js
+similarity index 100%
+rename from scripts/npc/world0/2012025.js
+rename to scripts/npc/2012025.js
+diff --git a/scripts/npc/world0/2013002.js b/scripts/npc/2013002.js
+similarity index 100%
+rename from scripts/npc/world0/2013002.js
+rename to scripts/npc/2013002.js
+diff --git a/scripts/npc/world0/2020000.js b/scripts/npc/2020000.js
+similarity index 100%
+rename from scripts/npc/world0/2020000.js
+rename to scripts/npc/2020000.js
+diff --git a/scripts/npc/world0/2020002.js b/scripts/npc/2020002.js
+similarity index 100%
+rename from scripts/npc/world0/2020002.js
+rename to scripts/npc/2020002.js
+diff --git a/scripts/npc/world0/2020004.js b/scripts/npc/2020004.js
+similarity index 100%
+rename from scripts/npc/world0/2020004.js
+rename to scripts/npc/2020004.js
+diff --git a/scripts/npc/world0/2020005.js b/scripts/npc/2020005.js
+similarity index 100%
+rename from scripts/npc/world0/2020005.js
+rename to scripts/npc/2020005.js
+diff --git a/scripts/npc/world0/2020008.js b/scripts/npc/2020008.js
+similarity index 100%
+rename from scripts/npc/world0/2020008.js
+rename to scripts/npc/2020008.js
+diff --git a/scripts/npc/world0/2020009.js b/scripts/npc/2020009.js
+similarity index 100%
+rename from scripts/npc/world0/2020009.js
+rename to scripts/npc/2020009.js
+diff --git a/scripts/npc/world0/2020010.js b/scripts/npc/2020010.js
+similarity index 100%
+rename from scripts/npc/world0/2020010.js
+rename to scripts/npc/2020010.js
+diff --git a/scripts/npc/world0/2020011.js b/scripts/npc/2020011.js
+similarity index 100%
+rename from scripts/npc/world0/2020011.js
+rename to scripts/npc/2020011.js
+diff --git a/scripts/npc/world0/2020013.js b/scripts/npc/2020013.js
+similarity index 100%
+rename from scripts/npc/world0/2020013.js
+rename to scripts/npc/2020013.js
+diff --git a/scripts/npc/world0/2022004.js b/scripts/npc/2022004.js
+similarity index 100%
+rename from scripts/npc/world0/2022004.js
+rename to scripts/npc/2022004.js
+diff --git a/scripts/npc/world0/2023000.js b/scripts/npc/2023000.js
+similarity index 100%
+rename from scripts/npc/world0/2023000.js
+rename to scripts/npc/2023000.js
+diff --git a/scripts/npc/world0/2030000.js b/scripts/npc/2030000.js
+similarity index 100%
+rename from scripts/npc/world0/2030000.js
+rename to scripts/npc/2030000.js
+diff --git a/scripts/npc/world0/2030006.js b/scripts/npc/2030006.js
+similarity index 100%
+rename from scripts/npc/world0/2030006.js
+rename to scripts/npc/2030006.js
+diff --git a/scripts/npc/world0/2030008.js b/scripts/npc/2030008.js
+similarity index 100%
+rename from scripts/npc/world0/2030008.js
+rename to scripts/npc/2030008.js
+diff --git a/scripts/npc/world0/2030010.js b/scripts/npc/2030010.js
+similarity index 100%
+rename from scripts/npc/world0/2030010.js
+rename to scripts/npc/2030010.js
+diff --git a/scripts/npc/world0/2030011.js b/scripts/npc/2030011.js
+similarity index 100%
+rename from scripts/npc/world0/2030011.js
+rename to scripts/npc/2030011.js
+diff --git a/scripts/npc/world0/2030013.js b/scripts/npc/2030013.js
+similarity index 100%
+rename from scripts/npc/world0/2030013.js
+rename to scripts/npc/2030013.js
+diff --git a/scripts/npc/world0/2030013_old.js b/scripts/npc/2030013_old.js
+similarity index 100%
+rename from scripts/npc/world0/2030013_old.js
+rename to scripts/npc/2030013_old.js
+diff --git a/scripts/npc/world0/2032001.js b/scripts/npc/2032001.js
+similarity index 100%
+rename from scripts/npc/world0/2032001.js
+rename to scripts/npc/2032001.js
+diff --git a/scripts/npc/world0/2032002.js b/scripts/npc/2032002.js
+similarity index 100%
+rename from scripts/npc/world0/2032002.js
+rename to scripts/npc/2032002.js
+diff --git a/scripts/npc/world0/2032003.js b/scripts/npc/2032003.js
+similarity index 100%
+rename from scripts/npc/world0/2032003.js
+rename to scripts/npc/2032003.js
+diff --git a/scripts/npc/world0/2040000.js b/scripts/npc/2040000.js
+similarity index 100%
+rename from scripts/npc/world0/2040000.js
+rename to scripts/npc/2040000.js
+diff --git a/scripts/npc/world0/2040002.js b/scripts/npc/2040002.js
+similarity index 100%
+rename from scripts/npc/world0/2040002.js
+rename to scripts/npc/2040002.js
+diff --git a/scripts/npc/world0/2040003.js b/scripts/npc/2040003.js
+similarity index 100%
+rename from scripts/npc/world0/2040003.js
+rename to scripts/npc/2040003.js
+diff --git a/scripts/npc/world0/2040014.js b/scripts/npc/2040014.js
+similarity index 100%
+rename from scripts/npc/world0/2040014.js
+rename to scripts/npc/2040014.js
+diff --git a/scripts/npc/world0/2040016.js b/scripts/npc/2040016.js
+similarity index 100%
+rename from scripts/npc/world0/2040016.js
+rename to scripts/npc/2040016.js
+diff --git a/scripts/npc/world0/2040019.js b/scripts/npc/2040019.js
+similarity index 100%
+rename from scripts/npc/world0/2040019.js
+rename to scripts/npc/2040019.js
+diff --git a/scripts/npc/world0/2040020.js b/scripts/npc/2040020.js
+similarity index 100%
+rename from scripts/npc/world0/2040020.js
+rename to scripts/npc/2040020.js
+diff --git a/scripts/npc/world0/2040021.js b/scripts/npc/2040021.js
+similarity index 100%
+rename from scripts/npc/world0/2040021.js
+rename to scripts/npc/2040021.js
+diff --git a/scripts/npc/world0/2040022.js b/scripts/npc/2040022.js
+similarity index 100%
+rename from scripts/npc/world0/2040022.js
+rename to scripts/npc/2040022.js
+diff --git a/scripts/npc/world0/2040024.js b/scripts/npc/2040024.js
+similarity index 100%
+rename from scripts/npc/world0/2040024.js
+rename to scripts/npc/2040024.js
+diff --git a/scripts/npc/world0/2040025.js b/scripts/npc/2040025.js
+similarity index 100%
+rename from scripts/npc/world0/2040025.js
+rename to scripts/npc/2040025.js
+diff --git a/scripts/npc/world0/2040026.js b/scripts/npc/2040026.js
+similarity index 100%
+rename from scripts/npc/world0/2040026.js
+rename to scripts/npc/2040026.js
+diff --git a/scripts/npc/world0/2040027.js b/scripts/npc/2040027.js
+similarity index 100%
+rename from scripts/npc/world0/2040027.js
+rename to scripts/npc/2040027.js
+diff --git a/scripts/npc/world0/2040028.js b/scripts/npc/2040028.js
+similarity index 100%
+rename from scripts/npc/world0/2040028.js
+rename to scripts/npc/2040028.js
+diff --git a/scripts/npc/world0/2040030.js b/scripts/npc/2040030.js
+similarity index 100%
+rename from scripts/npc/world0/2040030.js
+rename to scripts/npc/2040030.js
+diff --git a/scripts/npc/world0/2040032.js b/scripts/npc/2040032.js
+similarity index 100%
+rename from scripts/npc/world0/2040032.js
+rename to scripts/npc/2040032.js
+diff --git a/scripts/npc/world0/2040033.js b/scripts/npc/2040033.js
+similarity index 100%
+rename from scripts/npc/world0/2040033.js
+rename to scripts/npc/2040033.js
+diff --git a/scripts/npc/world0/2040034.js b/scripts/npc/2040034.js
+similarity index 100%
+rename from scripts/npc/world0/2040034.js
+rename to scripts/npc/2040034.js
+diff --git a/scripts/npc/world0/2040035.js b/scripts/npc/2040035.js
+similarity index 100%
+rename from scripts/npc/world0/2040035.js
+rename to scripts/npc/2040035.js
+diff --git a/scripts/npc/world0/2040036.js b/scripts/npc/2040036.js
+similarity index 100%
+rename from scripts/npc/world0/2040036.js
+rename to scripts/npc/2040036.js
+diff --git a/scripts/npc/world0/2040037.js b/scripts/npc/2040037.js
+similarity index 100%
+rename from scripts/npc/world0/2040037.js
+rename to scripts/npc/2040037.js
+diff --git a/scripts/npc/world0/2040038.js b/scripts/npc/2040038.js
+similarity index 100%
+rename from scripts/npc/world0/2040038.js
+rename to scripts/npc/2040038.js
+diff --git a/scripts/npc/world0/2040039.js b/scripts/npc/2040039.js
+similarity index 100%
+rename from scripts/npc/world0/2040039.js
+rename to scripts/npc/2040039.js
+diff --git a/scripts/npc/world0/2040040.js b/scripts/npc/2040040.js
+similarity index 100%
+rename from scripts/npc/world0/2040040.js
+rename to scripts/npc/2040040.js
+diff --git a/scripts/npc/world0/2040041.js b/scripts/npc/2040041.js
+similarity index 100%
+rename from scripts/npc/world0/2040041.js
+rename to scripts/npc/2040041.js
+diff --git a/scripts/npc/world0/2040042.js b/scripts/npc/2040042.js
+similarity index 100%
+rename from scripts/npc/world0/2040042.js
+rename to scripts/npc/2040042.js
+diff --git a/scripts/npc/world0/2040043.js b/scripts/npc/2040043.js
+similarity index 100%
+rename from scripts/npc/world0/2040043.js
+rename to scripts/npc/2040043.js
+diff --git a/scripts/npc/world0/2040044.js b/scripts/npc/2040044.js
+similarity index 100%
+rename from scripts/npc/world0/2040044.js
+rename to scripts/npc/2040044.js
+diff --git a/scripts/npc/world0/2040045.js b/scripts/npc/2040045.js
+similarity index 100%
+rename from scripts/npc/world0/2040045.js
+rename to scripts/npc/2040045.js
+diff --git a/scripts/npc/world0/2040046.js b/scripts/npc/2040046.js
+similarity index 100%
+rename from scripts/npc/world0/2040046.js
+rename to scripts/npc/2040046.js
+diff --git a/scripts/npc/world0/2040047.js b/scripts/npc/2040047.js
+similarity index 100%
+rename from scripts/npc/world0/2040047.js
+rename to scripts/npc/2040047.js
+diff --git a/scripts/npc/world0/2040047_old.js b/scripts/npc/2040047_old.js
+similarity index 100%
+rename from scripts/npc/world0/2040047_old.js
+rename to scripts/npc/2040047_old.js
+diff --git a/scripts/npc/world0/2040048.js b/scripts/npc/2040048.js
+similarity index 100%
+rename from scripts/npc/world0/2040048.js
+rename to scripts/npc/2040048.js
+diff --git a/scripts/npc/world0/2040050.js b/scripts/npc/2040050.js
+similarity index 100%
+rename from scripts/npc/world0/2040050.js
+rename to scripts/npc/2040050.js
+diff --git a/scripts/npc/world0/2040052.js b/scripts/npc/2040052.js
+similarity index 100%
+rename from scripts/npc/world0/2040052.js
+rename to scripts/npc/2040052.js
+diff --git a/scripts/npc/world0/2041000.js b/scripts/npc/2041000.js
+similarity index 100%
+rename from scripts/npc/world0/2041000.js
+rename to scripts/npc/2041000.js
+diff --git a/scripts/npc/world0/2041001.js b/scripts/npc/2041001.js
+similarity index 100%
+rename from scripts/npc/world0/2041001.js
+rename to scripts/npc/2041001.js
+diff --git a/scripts/npc/world0/2041007.js b/scripts/npc/2041007.js
+similarity index 100%
+rename from scripts/npc/world0/2041007.js
+rename to scripts/npc/2041007.js
+diff --git a/scripts/npc/world0/2041008.js b/scripts/npc/2041008.js
+similarity index 100%
+rename from scripts/npc/world0/2041008.js
+rename to scripts/npc/2041008.js
+diff --git a/scripts/npc/world0/2041009.js b/scripts/npc/2041009.js
+similarity index 100%
+rename from scripts/npc/world0/2041009.js
+rename to scripts/npc/2041009.js
+diff --git a/scripts/npc/world0/2041010.js b/scripts/npc/2041010.js
+similarity index 100%
+rename from scripts/npc/world0/2041010.js
+rename to scripts/npc/2041010.js
+diff --git a/scripts/npc/world0/2041013.js b/scripts/npc/2041013.js
+similarity index 100%
+rename from scripts/npc/world0/2041013.js
+rename to scripts/npc/2041013.js
+diff --git a/scripts/npc/world0/2041017.js b/scripts/npc/2041017.js
+similarity index 100%
+rename from scripts/npc/world0/2041017.js
+rename to scripts/npc/2041017.js
+diff --git a/scripts/npc/world0/2041023.js b/scripts/npc/2041023.js
+similarity index 100%
+rename from scripts/npc/world0/2041023.js
+rename to scripts/npc/2041023.js
+diff --git a/scripts/npc/world0/2041025.js b/scripts/npc/2041025.js
+similarity index 100%
+rename from scripts/npc/world0/2041025.js
+rename to scripts/npc/2041025.js
+diff --git a/scripts/npc/world0/2041029.js b/scripts/npc/2041029.js
+similarity index 100%
+rename from scripts/npc/world0/2041029.js
+rename to scripts/npc/2041029.js
+diff --git a/scripts/npc/world0/2042000.js b/scripts/npc/2042000.js
+similarity index 100%
+rename from scripts/npc/world0/2042000.js
+rename to scripts/npc/2042000.js
+diff --git a/scripts/npc/world0/2050004.js b/scripts/npc/2050004.js
+similarity index 100%
+rename from scripts/npc/world0/2050004.js
+rename to scripts/npc/2050004.js
+diff --git a/scripts/npc/world0/2060005.js b/scripts/npc/2060005.js
+similarity index 100%
+rename from scripts/npc/world0/2060005.js
+rename to scripts/npc/2060005.js
+diff --git a/scripts/npc/world0/2060008.js b/scripts/npc/2060008.js
+similarity index 100%
+rename from scripts/npc/world0/2060008.js
+rename to scripts/npc/2060008.js
+diff --git a/scripts/npc/world0/2060009.js b/scripts/npc/2060009.js
+similarity index 100%
+rename from scripts/npc/world0/2060009.js
+rename to scripts/npc/2060009.js
+diff --git a/scripts/npc/world0/2060100.js b/scripts/npc/2060100.js
+similarity index 100%
+rename from scripts/npc/world0/2060100.js
+rename to scripts/npc/2060100.js
+diff --git a/scripts/npc/world0/2070000.js b/scripts/npc/2070000.js
+similarity index 100%
+rename from scripts/npc/world0/2070000.js
+rename to scripts/npc/2070000.js
+diff --git a/scripts/npc/world0/2080000.js b/scripts/npc/2080000.js
+similarity index 100%
+rename from scripts/npc/world0/2080000.js
+rename to scripts/npc/2080000.js
+diff --git a/scripts/npc/world0/2080005.js b/scripts/npc/2080005.js
+similarity index 100%
+rename from scripts/npc/world0/2080005.js
+rename to scripts/npc/2080005.js
+diff --git a/scripts/npc/world0/2081000.js b/scripts/npc/2081000.js
+similarity index 100%
+rename from scripts/npc/world0/2081000.js
+rename to scripts/npc/2081000.js
+diff --git a/scripts/npc/world0/2081005.js b/scripts/npc/2081005.js
+similarity index 100%
+rename from scripts/npc/world0/2081005.js
+rename to scripts/npc/2081005.js
+diff --git a/scripts/npc/world0/2081009.js b/scripts/npc/2081009.js
+similarity index 100%
+rename from scripts/npc/world0/2081009.js
+rename to scripts/npc/2081009.js
+diff --git a/scripts/npc/world0/2081010.js b/scripts/npc/2081010.js
+similarity index 100%
+rename from scripts/npc/world0/2081010.js
+rename to scripts/npc/2081010.js
+diff --git a/scripts/npc/world0/2081100.js b/scripts/npc/2081100.js
+similarity index 100%
+rename from scripts/npc/world0/2081100.js
+rename to scripts/npc/2081100.js
+diff --git a/scripts/npc/world0/2081200.js b/scripts/npc/2081200.js
+similarity index 100%
+rename from scripts/npc/world0/2081200.js
+rename to scripts/npc/2081200.js
+diff --git a/scripts/npc/world0/2081300.js b/scripts/npc/2081300.js
+similarity index 100%
+rename from scripts/npc/world0/2081300.js
+rename to scripts/npc/2081300.js
+diff --git a/scripts/npc/world0/2081400.js b/scripts/npc/2081400.js
+similarity index 100%
+rename from scripts/npc/world0/2081400.js
+rename to scripts/npc/2081400.js
+diff --git a/scripts/npc/world0/2081500.js b/scripts/npc/2081500.js
+similarity index 100%
+rename from scripts/npc/world0/2081500.js
+rename to scripts/npc/2081500.js
+diff --git a/scripts/npc/world0/2082000.js b/scripts/npc/2082000.js
+similarity index 100%
+rename from scripts/npc/world0/2082000.js
+rename to scripts/npc/2082000.js
+diff --git a/scripts/npc/world0/2082001.js b/scripts/npc/2082001.js
+similarity index 100%
+rename from scripts/npc/world0/2082001.js
+rename to scripts/npc/2082001.js
+diff --git a/scripts/npc/world0/2082002.js b/scripts/npc/2082002.js
+similarity index 100%
+rename from scripts/npc/world0/2082002.js
+rename to scripts/npc/2082002.js
+diff --git a/scripts/npc/world0/2082003.js b/scripts/npc/2082003.js
+similarity index 100%
+rename from scripts/npc/world0/2082003.js
+rename to scripts/npc/2082003.js
+diff --git a/scripts/npc/world0/2083000.js b/scripts/npc/2083000.js
+similarity index 100%
+rename from scripts/npc/world0/2083000.js
+rename to scripts/npc/2083000.js
+diff --git a/scripts/npc/world0/2083001.js b/scripts/npc/2083001.js
+similarity index 100%
+rename from scripts/npc/world0/2083001.js
+rename to scripts/npc/2083001.js
+diff --git a/scripts/npc/world0/2083002.js b/scripts/npc/2083002.js
+similarity index 100%
+rename from scripts/npc/world0/2083002.js
+rename to scripts/npc/2083002.js
+diff --git a/scripts/npc/world0/2083004.js b/scripts/npc/2083004.js
+similarity index 100%
+rename from scripts/npc/world0/2083004.js
+rename to scripts/npc/2083004.js
+diff --git a/scripts/npc/world0/2083005.js b/scripts/npc/2083005.js
+similarity index 100%
+rename from scripts/npc/world0/2083005.js
+rename to scripts/npc/2083005.js
+diff --git a/scripts/npc/world0/2090000.js b/scripts/npc/2090000.js
+similarity index 100%
+rename from scripts/npc/world0/2090000.js
+rename to scripts/npc/2090000.js
+diff --git a/scripts/npc/world0/2090004.js b/scripts/npc/2090004.js
+similarity index 100%
+rename from scripts/npc/world0/2090004.js
+rename to scripts/npc/2090004.js
+diff --git a/scripts/npc/world0/2090005.js b/scripts/npc/2090005.js
+similarity index 100%
+rename from scripts/npc/world0/2090005.js
+rename to scripts/npc/2090005.js
+diff --git a/scripts/npc/world0/2090100.js b/scripts/npc/2090100.js
+similarity index 100%
+rename from scripts/npc/world0/2090100.js
+rename to scripts/npc/2090100.js
+diff --git a/scripts/npc/world0/2090101.js b/scripts/npc/2090101.js
+similarity index 100%
+rename from scripts/npc/world0/2090101.js
+rename to scripts/npc/2090101.js
+diff --git a/scripts/npc/world0/2090102.js b/scripts/npc/2090102.js
+similarity index 100%
+rename from scripts/npc/world0/2090102.js
+rename to scripts/npc/2090102.js
+diff --git a/scripts/npc/world0/2090103.js b/scripts/npc/2090103.js
+similarity index 100%
+rename from scripts/npc/world0/2090103.js
+rename to scripts/npc/2090103.js
+diff --git a/scripts/npc/world0/2090104.js b/scripts/npc/2090104.js
+similarity index 100%
+rename from scripts/npc/world0/2090104.js
+rename to scripts/npc/2090104.js
+diff --git a/scripts/npc/world0/2091005.js b/scripts/npc/2091005.js
+similarity index 100%
+rename from scripts/npc/world0/2091005.js
+rename to scripts/npc/2091005.js
+diff --git a/scripts/npc/world0/2091005_old.js b/scripts/npc/2091005_old.js
+similarity index 100%
+rename from scripts/npc/world0/2091005_old.js
+rename to scripts/npc/2091005_old.js
+diff --git a/scripts/npc/world0/2091006.js b/scripts/npc/2091006.js
+similarity index 100%
+rename from scripts/npc/world0/2091006.js
+rename to scripts/npc/2091006.js
+diff --git a/scripts/npc/world0/2093003.js b/scripts/npc/2093003.js
+similarity index 100%
+rename from scripts/npc/world0/2093003.js
+rename to scripts/npc/2093003.js
+diff --git a/scripts/npc/world0/2093004.js b/scripts/npc/2093004.js
+similarity index 100%
+rename from scripts/npc/world0/2093004.js
+rename to scripts/npc/2093004.js
+diff --git a/scripts/npc/world0/2094000.js b/scripts/npc/2094000.js
+similarity index 100%
+rename from scripts/npc/world0/2094000.js
+rename to scripts/npc/2094000.js
+diff --git a/scripts/npc/world0/2094001.js b/scripts/npc/2094001.js
+similarity index 100%
+rename from scripts/npc/world0/2094001.js
+rename to scripts/npc/2094001.js
+diff --git a/scripts/npc/world0/2094002.js b/scripts/npc/2094002.js
+similarity index 100%
+rename from scripts/npc/world0/2094002.js
+rename to scripts/npc/2094002.js
+diff --git a/scripts/npc/world0/2100.js b/scripts/npc/2100.js
+similarity index 100%
+rename from scripts/npc/world0/2100.js
+rename to scripts/npc/2100.js
+diff --git a/scripts/npc/world0/2100000.js b/scripts/npc/2100000.js
+similarity index 100%
+rename from scripts/npc/world0/2100000.js
+rename to scripts/npc/2100000.js
+diff --git a/scripts/npc/world0/2100001.js b/scripts/npc/2100001.js
+similarity index 100%
+rename from scripts/npc/world0/2100001.js
+rename to scripts/npc/2100001.js
+diff --git a/scripts/npc/world0/2100002.js b/scripts/npc/2100002.js
+similarity index 100%
+rename from scripts/npc/world0/2100002.js
+rename to scripts/npc/2100002.js
+diff --git a/scripts/npc/world0/2100003.js b/scripts/npc/2100003.js
+similarity index 100%
+rename from scripts/npc/world0/2100003.js
+rename to scripts/npc/2100003.js
+diff --git a/scripts/npc/world0/2100005.js b/scripts/npc/2100005.js
+similarity index 100%
+rename from scripts/npc/world0/2100005.js
+rename to scripts/npc/2100005.js
+diff --git a/scripts/npc/world0/2100006.js b/scripts/npc/2100006.js
+similarity index 100%
+rename from scripts/npc/world0/2100006.js
+rename to scripts/npc/2100006.js
+diff --git a/scripts/npc/world0/2100007.js b/scripts/npc/2100007.js
+similarity index 100%
+rename from scripts/npc/world0/2100007.js
+rename to scripts/npc/2100007.js
+diff --git a/scripts/npc/world0/2100008.js b/scripts/npc/2100008.js
+similarity index 100%
+rename from scripts/npc/world0/2100008.js
+rename to scripts/npc/2100008.js
+diff --git a/scripts/npc/world0/2100009.js b/scripts/npc/2100009.js
+similarity index 100%
+rename from scripts/npc/world0/2100009.js
+rename to scripts/npc/2100009.js
+diff --git a/scripts/npc/world0/2101.js b/scripts/npc/2101.js
+similarity index 100%
+rename from scripts/npc/world0/2101.js
+rename to scripts/npc/2101.js
+diff --git a/scripts/npc/world0/2101000.js b/scripts/npc/2101000.js
+similarity index 100%
+rename from scripts/npc/world0/2101000.js
+rename to scripts/npc/2101000.js
+diff --git a/scripts/npc/world0/2101001.js b/scripts/npc/2101001.js
+similarity index 100%
+rename from scripts/npc/world0/2101001.js
+rename to scripts/npc/2101001.js
+diff --git a/scripts/npc/world0/2101002.js b/scripts/npc/2101002.js
+similarity index 100%
+rename from scripts/npc/world0/2101002.js
+rename to scripts/npc/2101002.js
+diff --git a/scripts/npc/world0/2101003.js b/scripts/npc/2101003.js
+similarity index 100%
+rename from scripts/npc/world0/2101003.js
+rename to scripts/npc/2101003.js
+diff --git a/scripts/npc/world0/2101004.js b/scripts/npc/2101004.js
+similarity index 100%
+rename from scripts/npc/world0/2101004.js
+rename to scripts/npc/2101004.js
+diff --git a/scripts/npc/world0/2101005.js b/scripts/npc/2101005.js
+similarity index 100%
+rename from scripts/npc/world0/2101005.js
+rename to scripts/npc/2101005.js
+diff --git a/scripts/npc/world0/2101006.js b/scripts/npc/2101006.js
+similarity index 100%
+rename from scripts/npc/world0/2101006.js
+rename to scripts/npc/2101006.js
+diff --git a/scripts/npc/world0/2101007.js b/scripts/npc/2101007.js
+similarity index 100%
+rename from scripts/npc/world0/2101007.js
+rename to scripts/npc/2101007.js
+diff --git a/scripts/npc/world0/2101008.js b/scripts/npc/2101008.js
+similarity index 100%
+rename from scripts/npc/world0/2101008.js
+rename to scripts/npc/2101008.js
+diff --git a/scripts/npc/world0/2101009.js b/scripts/npc/2101009.js
+similarity index 100%
+rename from scripts/npc/world0/2101009.js
+rename to scripts/npc/2101009.js
+diff --git a/scripts/npc/world0/2101010.js b/scripts/npc/2101010.js
+similarity index 100%
+rename from scripts/npc/world0/2101010.js
+rename to scripts/npc/2101010.js
+diff --git a/scripts/npc/world0/2101011.js b/scripts/npc/2101011.js
+similarity index 100%
+rename from scripts/npc/world0/2101011.js
+rename to scripts/npc/2101011.js
+diff --git a/scripts/npc/world0/2101013.js b/scripts/npc/2101013.js
+similarity index 100%
+rename from scripts/npc/world0/2101013.js
+rename to scripts/npc/2101013.js
+diff --git a/scripts/npc/world0/2101014.js b/scripts/npc/2101014.js
+similarity index 100%
+rename from scripts/npc/world0/2101014.js
+rename to scripts/npc/2101014.js
+diff --git a/scripts/npc/world0/2101017.js b/scripts/npc/2101017.js
+similarity index 100%
+rename from scripts/npc/world0/2101017.js
+rename to scripts/npc/2101017.js
+diff --git a/scripts/npc/world0/2101018.js b/scripts/npc/2101018.js
+similarity index 100%
+rename from scripts/npc/world0/2101018.js
+rename to scripts/npc/2101018.js
+diff --git a/scripts/npc/world0/2102000.js b/scripts/npc/2102000.js
+similarity index 100%
+rename from scripts/npc/world0/2102000.js
+rename to scripts/npc/2102000.js
+diff --git a/scripts/npc/world0/2102001.js b/scripts/npc/2102001.js
+similarity index 100%
+rename from scripts/npc/world0/2102001.js
+rename to scripts/npc/2102001.js
+diff --git a/scripts/npc/world0/2102002.js b/scripts/npc/2102002.js
+similarity index 100%
+rename from scripts/npc/world0/2102002.js
+rename to scripts/npc/2102002.js
+diff --git a/scripts/npc/world0/2103000.js b/scripts/npc/2103000.js
+similarity index 100%
+rename from scripts/npc/world0/2103000.js
+rename to scripts/npc/2103000.js
+diff --git a/scripts/npc/world0/2103001.js b/scripts/npc/2103001.js
+similarity index 100%
+rename from scripts/npc/world0/2103001.js
+rename to scripts/npc/2103001.js
+diff --git a/scripts/npc/world0/2103013.js b/scripts/npc/2103013.js
+similarity index 100%
+rename from scripts/npc/world0/2103013.js
+rename to scripts/npc/2103013.js
+diff --git a/scripts/npc/world0/2110000.js b/scripts/npc/2110000.js
+similarity index 100%
+rename from scripts/npc/world0/2110000.js
+rename to scripts/npc/2110000.js
+diff --git a/scripts/npc/world0/2110002.js b/scripts/npc/2110002.js
+similarity index 100%
+rename from scripts/npc/world0/2110002.js
+rename to scripts/npc/2110002.js
+diff --git a/scripts/npc/world0/2110005.js b/scripts/npc/2110005.js
+similarity index 100%
+rename from scripts/npc/world0/2110005.js
+rename to scripts/npc/2110005.js
+diff --git a/scripts/npc/world0/2111000.js b/scripts/npc/2111000.js
+similarity index 100%
+rename from scripts/npc/world0/2111000.js
+rename to scripts/npc/2111000.js
+diff --git a/scripts/npc/world0/2111001.js b/scripts/npc/2111001.js
+similarity index 100%
+rename from scripts/npc/world0/2111001.js
+rename to scripts/npc/2111001.js
+diff --git a/scripts/npc/world0/2111003.js b/scripts/npc/2111003.js
+similarity index 100%
+rename from scripts/npc/world0/2111003.js
+rename to scripts/npc/2111003.js
+diff --git a/scripts/npc/world0/2111004.js b/scripts/npc/2111004.js
+similarity index 100%
+rename from scripts/npc/world0/2111004.js
+rename to scripts/npc/2111004.js
+diff --git a/scripts/npc/world0/2111005.js b/scripts/npc/2111005.js
+similarity index 100%
+rename from scripts/npc/world0/2111005.js
+rename to scripts/npc/2111005.js
+diff --git a/scripts/npc/world0/2111006.js b/scripts/npc/2111006.js
+similarity index 100%
+rename from scripts/npc/world0/2111006.js
+rename to scripts/npc/2111006.js
+diff --git a/scripts/npc/world0/2111007.js b/scripts/npc/2111007.js
+similarity index 100%
+rename from scripts/npc/world0/2111007.js
+rename to scripts/npc/2111007.js
+diff --git a/scripts/npc/world0/2111008.js b/scripts/npc/2111008.js
+similarity index 100%
+rename from scripts/npc/world0/2111008.js
+rename to scripts/npc/2111008.js
+diff --git a/scripts/npc/world0/2111009.js b/scripts/npc/2111009.js
+similarity index 100%
+rename from scripts/npc/world0/2111009.js
+rename to scripts/npc/2111009.js
+diff --git a/scripts/npc/world0/2120003.js b/scripts/npc/2120003.js
+similarity index 100%
+rename from scripts/npc/world0/2120003.js
+rename to scripts/npc/2120003.js
+diff --git a/scripts/npc/world0/2131000.js b/scripts/npc/2131000.js
+similarity index 100%
+rename from scripts/npc/world0/2131000.js
+rename to scripts/npc/2131000.js
+diff --git a/scripts/npc/world0/2131001.js b/scripts/npc/2131001.js
+similarity index 100%
+rename from scripts/npc/world0/2131001.js
+rename to scripts/npc/2131001.js
+diff --git a/scripts/npc/world0/2131002.js b/scripts/npc/2131002.js
+similarity index 100%
+rename from scripts/npc/world0/2131002.js
+rename to scripts/npc/2131002.js
+diff --git a/scripts/npc/world0/2131003.js b/scripts/npc/2131003.js
+similarity index 100%
+rename from scripts/npc/world0/2131003.js
+rename to scripts/npc/2131003.js
+diff --git a/scripts/npc/world0/2131004.js b/scripts/npc/2131004.js
+similarity index 100%
+rename from scripts/npc/world0/2131004.js
+rename to scripts/npc/2131004.js
+diff --git a/scripts/npc/world0/2131005.js b/scripts/npc/2131005.js
+similarity index 100%
+rename from scripts/npc/world0/2131005.js
+rename to scripts/npc/2131005.js
+diff --git a/scripts/npc/world0/2131006.js b/scripts/npc/2131006.js
+similarity index 100%
+rename from scripts/npc/world0/2131006.js
+rename to scripts/npc/2131006.js
+diff --git a/scripts/npc/world0/2131007.js b/scripts/npc/2131007.js
+similarity index 100%
+rename from scripts/npc/world0/2131007.js
+rename to scripts/npc/2131007.js
+diff --git a/scripts/npc/world0/2132000.js b/scripts/npc/2132000.js
+similarity index 100%
+rename from scripts/npc/world0/2132000.js
+rename to scripts/npc/2132000.js
+diff --git a/scripts/npc/world0/2132001.js b/scripts/npc/2132001.js
+similarity index 100%
+rename from scripts/npc/world0/2132001.js
+rename to scripts/npc/2132001.js
+diff --git a/scripts/npc/world0/2132002.js b/scripts/npc/2132002.js
+similarity index 100%
+rename from scripts/npc/world0/2132002.js
+rename to scripts/npc/2132002.js
+diff --git a/scripts/npc/world0/2132003.js b/scripts/npc/2132003.js
+similarity index 100%
+rename from scripts/npc/world0/2132003.js
+rename to scripts/npc/2132003.js
+diff --git a/scripts/npc/world0/2133000.js b/scripts/npc/2133000.js
+similarity index 100%
+rename from scripts/npc/world0/2133000.js
+rename to scripts/npc/2133000.js
+diff --git a/scripts/npc/world0/2133001.js b/scripts/npc/2133001.js
+similarity index 100%
+rename from scripts/npc/world0/2133001.js
+rename to scripts/npc/2133001.js
+diff --git a/scripts/npc/world0/2133002.js b/scripts/npc/2133002.js
+similarity index 100%
+rename from scripts/npc/world0/2133002.js
+rename to scripts/npc/2133002.js
+diff --git a/scripts/npc/world0/2133004.js b/scripts/npc/2133004.js
+similarity index 100%
+rename from scripts/npc/world0/2133004.js
+rename to scripts/npc/2133004.js
+diff --git a/scripts/npc/world0/2141000.js b/scripts/npc/2141000.js
+similarity index 100%
+rename from scripts/npc/world0/2141000.js
+rename to scripts/npc/2141000.js
+diff --git a/scripts/npc/world0/2141001.js b/scripts/npc/2141001.js
+similarity index 100%
+rename from scripts/npc/world0/2141001.js
+rename to scripts/npc/2141001.js
+diff --git a/scripts/npc/world0/2141002.js b/scripts/npc/2141002.js
+similarity index 100%
+rename from scripts/npc/world0/2141002.js
+rename to scripts/npc/2141002.js
+diff --git a/scripts/npc/world0/22000.js b/scripts/npc/22000.js
+similarity index 100%
+rename from scripts/npc/world0/22000.js
+rename to scripts/npc/22000.js
+diff --git a/scripts/npc/world0/9000000.js b/scripts/npc/9000000.js
+similarity index 100%
+rename from scripts/npc/world0/9000000.js
+rename to scripts/npc/9000000.js
+diff --git a/scripts/npc/world0/9000001.js b/scripts/npc/9000001.js
+similarity index 100%
+rename from scripts/npc/world0/9000001.js
+rename to scripts/npc/9000001.js
+diff --git a/scripts/npc/world0/9000002.js b/scripts/npc/9000002.js
+similarity index 100%
+rename from scripts/npc/world0/9000002.js
+rename to scripts/npc/9000002.js
+diff --git a/scripts/npc/world0/9000004.js b/scripts/npc/9000004.js
+similarity index 100%
+rename from scripts/npc/world0/9000004.js
+rename to scripts/npc/9000004.js
+diff --git a/scripts/npc/world0/9000008.js b/scripts/npc/9000008.js
+similarity index 100%
+rename from scripts/npc/world0/9000008.js
+rename to scripts/npc/9000008.js
+diff --git a/scripts/npc/world0/9000009.js b/scripts/npc/9000009.js
+similarity index 100%
+rename from scripts/npc/world0/9000009.js
+rename to scripts/npc/9000009.js
+diff --git a/scripts/npc/world0/9000010.js b/scripts/npc/9000010.js
+similarity index 100%
+rename from scripts/npc/world0/9000010.js
+rename to scripts/npc/9000010.js
+diff --git a/scripts/npc/world0/9000011.js b/scripts/npc/9000011.js
+similarity index 100%
+rename from scripts/npc/world0/9000011.js
+rename to scripts/npc/9000011.js
+diff --git a/scripts/npc/world0/9000012.js b/scripts/npc/9000012.js
+similarity index 100%
+rename from scripts/npc/world0/9000012.js
+rename to scripts/npc/9000012.js
+diff --git a/scripts/npc/world0/9000017.js b/scripts/npc/9000017.js
+similarity index 100%
+rename from scripts/npc/world0/9000017.js
+rename to scripts/npc/9000017.js
+diff --git a/scripts/npc/world0/9000020.js b/scripts/npc/9000020.js
+similarity index 100%
+rename from scripts/npc/world0/9000020.js
+rename to scripts/npc/9000020.js
+diff --git a/scripts/npc/world0/9000021.js b/scripts/npc/9000021.js
+similarity index 100%
+rename from scripts/npc/world0/9000021.js
+rename to scripts/npc/9000021.js
+diff --git a/scripts/npc/world0/9000021_old.js b/scripts/npc/9000021_old.js
+similarity index 100%
+rename from scripts/npc/world0/9000021_old.js
+rename to scripts/npc/9000021_old.js
+diff --git a/scripts/npc/world0/9000036.js b/scripts/npc/9000036.js
+similarity index 100%
+rename from scripts/npc/world0/9000036.js
+rename to scripts/npc/9000036.js
+diff --git a/scripts/npc/world0/9000037.js b/scripts/npc/9000037.js
+similarity index 100%
+rename from scripts/npc/world0/9000037.js
+rename to scripts/npc/9000037.js
+diff --git a/scripts/npc/world0/9000038.js b/scripts/npc/9000038.js
+similarity index 100%
+rename from scripts/npc/world0/9000038.js
+rename to scripts/npc/9000038.js
+diff --git a/scripts/npc/world0/9000041.js b/scripts/npc/9000041.js
+similarity index 100%
+rename from scripts/npc/world0/9000041.js
+rename to scripts/npc/9000041.js
+diff --git a/scripts/npc/world0/9000049.js b/scripts/npc/9000049.js
+similarity index 100%
+rename from scripts/npc/world0/9000049.js
+rename to scripts/npc/9000049.js
+diff --git a/scripts/npc/world0/9001108.js b/scripts/npc/9001108.js
+similarity index 100%
+rename from scripts/npc/world0/9001108.js
+rename to scripts/npc/9001108.js
+diff --git a/scripts/npc/world0/9010003.js b/scripts/npc/9010003.js
+similarity index 100%
+rename from scripts/npc/world0/9010003.js
+rename to scripts/npc/9010003.js
+diff --git a/scripts/npc/world0/9010021.js b/scripts/npc/9010021.js
+similarity index 100%
+rename from scripts/npc/world0/9010021.js
+rename to scripts/npc/9010021.js
+diff --git a/scripts/npc/world0/9010022.js b/scripts/npc/9010022.js
+similarity index 100%
+rename from scripts/npc/world0/9010022.js
+rename to scripts/npc/9010022.js
+diff --git a/scripts/npc/world0/9020000.js b/scripts/npc/9020000.js
+similarity index 100%
+rename from scripts/npc/world0/9020000.js
+rename to scripts/npc/9020000.js
+diff --git a/scripts/npc/world0/9020001.js b/scripts/npc/9020001.js
+similarity index 100%
+rename from scripts/npc/world0/9020001.js
+rename to scripts/npc/9020001.js
+diff --git a/scripts/npc/world0/9020002.js b/scripts/npc/9020002.js
+similarity index 100%
+rename from scripts/npc/world0/9020002.js
+rename to scripts/npc/9020002.js
+diff --git a/scripts/npc/world0/9030000.js b/scripts/npc/9030000.js
+similarity index 100%
+rename from scripts/npc/world0/9030000.js
+rename to scripts/npc/9030000.js
+diff --git a/scripts/npc/world0/9030100.js b/scripts/npc/9030100.js
+similarity index 100%
+rename from scripts/npc/world0/9030100.js
+rename to scripts/npc/9030100.js
+diff --git a/scripts/npc/world0/9040000.js b/scripts/npc/9040000.js
+similarity index 100%
+rename from scripts/npc/world0/9040000.js
+rename to scripts/npc/9040000.js
+diff --git a/scripts/npc/world0/9040001.js b/scripts/npc/9040001.js
+similarity index 100%
+rename from scripts/npc/world0/9040001.js
+rename to scripts/npc/9040001.js
+diff --git a/scripts/npc/world0/9040002.js b/scripts/npc/9040002.js
+similarity index 100%
+rename from scripts/npc/world0/9040002.js
+rename to scripts/npc/9040002.js
+diff --git a/scripts/npc/world0/9040003.js b/scripts/npc/9040003.js
+similarity index 100%
+rename from scripts/npc/world0/9040003.js
+rename to scripts/npc/9040003.js
+diff --git a/scripts/npc/world0/9040004.js b/scripts/npc/9040004.js
+similarity index 100%
+rename from scripts/npc/world0/9040004.js
+rename to scripts/npc/9040004.js
+diff --git a/scripts/npc/world0/9040005.js b/scripts/npc/9040005.js
+similarity index 100%
+rename from scripts/npc/world0/9040005.js
+rename to scripts/npc/9040005.js
+diff --git a/scripts/npc/world0/9040006.js b/scripts/npc/9040006.js
+similarity index 100%
+rename from scripts/npc/world0/9040006.js
+rename to scripts/npc/9040006.js
+diff --git a/scripts/npc/world0/9040007.js b/scripts/npc/9040007.js
+similarity index 100%
+rename from scripts/npc/world0/9040007.js
+rename to scripts/npc/9040007.js
+diff --git a/scripts/npc/world0/9040008.js b/scripts/npc/9040008.js
+similarity index 100%
+rename from scripts/npc/world0/9040008.js
+rename to scripts/npc/9040008.js
+diff --git a/scripts/npc/world0/9040009.js b/scripts/npc/9040009.js
+similarity index 100%
+rename from scripts/npc/world0/9040009.js
+rename to scripts/npc/9040009.js
+diff --git a/scripts/npc/world0/9040010.js b/scripts/npc/9040010.js
+similarity index 100%
+rename from scripts/npc/world0/9040010.js
+rename to scripts/npc/9040010.js
+diff --git a/scripts/npc/world0/9040011.js b/scripts/npc/9040011.js
+similarity index 100%
+rename from scripts/npc/world0/9040011.js
+rename to scripts/npc/9040011.js
+diff --git a/scripts/npc/world0/9040012.js b/scripts/npc/9040012.js
+similarity index 100%
+rename from scripts/npc/world0/9040012.js
+rename to scripts/npc/9040012.js
+diff --git a/scripts/npc/world0/9060000.js b/scripts/npc/9060000.js
+similarity index 100%
+rename from scripts/npc/world0/9060000.js
+rename to scripts/npc/9060000.js
+diff --git a/scripts/npc/world0/9101001.js b/scripts/npc/9101001.js
+similarity index 100%
+rename from scripts/npc/world0/9101001.js
+rename to scripts/npc/9101001.js
+diff --git a/scripts/npc/world0/9102101.js b/scripts/npc/9102101.js
+similarity index 100%
+rename from scripts/npc/world0/9102101.js
+rename to scripts/npc/9102101.js
+diff --git a/scripts/npc/world0/9103000.js b/scripts/npc/9103000.js
+similarity index 100%
+rename from scripts/npc/world0/9103000.js
+rename to scripts/npc/9103000.js
+diff --git a/scripts/npc/world0/9103001.js b/scripts/npc/9103001.js
+similarity index 100%
+rename from scripts/npc/world0/9103001.js
+rename to scripts/npc/9103001.js
+diff --git a/scripts/npc/world0/9103002.js b/scripts/npc/9103002.js
+similarity index 100%
+rename from scripts/npc/world0/9103002.js
+rename to scripts/npc/9103002.js
+diff --git a/scripts/npc/world0/9103003.js b/scripts/npc/9103003.js
+similarity index 100%
+rename from scripts/npc/world0/9103003.js
+rename to scripts/npc/9103003.js
+diff --git a/scripts/npc/world0/9120003.js b/scripts/npc/9120003.js
+similarity index 100%
+rename from scripts/npc/world0/9120003.js
+rename to scripts/npc/9120003.js
+diff --git a/scripts/npc/world0/9120009.js b/scripts/npc/9120009.js
+similarity index 100%
+rename from scripts/npc/world0/9120009.js
+rename to scripts/npc/9120009.js
+diff --git a/scripts/npc/world0/9120010.js b/scripts/npc/9120010.js
+similarity index 100%
+rename from scripts/npc/world0/9120010.js
+rename to scripts/npc/9120010.js
+diff --git a/scripts/npc/world0/9120013.js b/scripts/npc/9120013.js
+similarity index 100%
+rename from scripts/npc/world0/9120013.js
+rename to scripts/npc/9120013.js
+diff --git a/scripts/npc/world0/9120015.js b/scripts/npc/9120015.js
+similarity index 100%
+rename from scripts/npc/world0/9120015.js
+rename to scripts/npc/9120015.js
+diff --git a/scripts/npc/world0/9120023.js b/scripts/npc/9120023.js
+similarity index 100%
+rename from scripts/npc/world0/9120023.js
+rename to scripts/npc/9120023.js
+diff --git a/scripts/npc/world0/9120100.js b/scripts/npc/9120100.js
+similarity index 100%
+rename from scripts/npc/world0/9120100.js
+rename to scripts/npc/9120100.js
+diff --git a/scripts/npc/world0/9120101.js b/scripts/npc/9120101.js
+similarity index 100%
+rename from scripts/npc/world0/9120101.js
+rename to scripts/npc/9120101.js
+diff --git a/scripts/npc/world0/9120200.js b/scripts/npc/9120200.js
+similarity index 100%
+rename from scripts/npc/world0/9120200.js
+rename to scripts/npc/9120200.js
+diff --git a/scripts/npc/world0/9120201.js b/scripts/npc/9120201.js
+similarity index 100%
+rename from scripts/npc/world0/9120201.js
+rename to scripts/npc/9120201.js
+diff --git a/scripts/npc/world0/9120202.js b/scripts/npc/9120202.js
+similarity index 100%
+rename from scripts/npc/world0/9120202.js
+rename to scripts/npc/9120202.js
+diff --git a/scripts/npc/world0/9200100.js b/scripts/npc/9200100.js
+similarity index 100%
+rename from scripts/npc/world0/9200100.js
+rename to scripts/npc/9200100.js
+diff --git a/scripts/npc/world0/9200101.js b/scripts/npc/9200101.js
+similarity index 100%
+rename from scripts/npc/world0/9200101.js
+rename to scripts/npc/9200101.js
+diff --git a/scripts/npc/world0/9200102.js b/scripts/npc/9200102.js
+similarity index 100%
+rename from scripts/npc/world0/9200102.js
+rename to scripts/npc/9200102.js
+diff --git a/scripts/npc/world0/9201000.js b/scripts/npc/9201000.js
+similarity index 100%
+rename from scripts/npc/world0/9201000.js
+rename to scripts/npc/9201000.js
+diff --git a/scripts/npc/world0/9201001.js b/scripts/npc/9201001.js
+similarity index 100%
+rename from scripts/npc/world0/9201001.js
+rename to scripts/npc/9201001.js
+diff --git a/scripts/npc/world0/9201002.js b/scripts/npc/9201002.js
+similarity index 100%
+rename from scripts/npc/world0/9201002.js
+rename to scripts/npc/9201002.js
+diff --git a/scripts/npc/world0/9201003.js b/scripts/npc/9201003.js
+similarity index 100%
+rename from scripts/npc/world0/9201003.js
+rename to scripts/npc/9201003.js
+diff --git a/scripts/npc/world0/9201004.js b/scripts/npc/9201004.js
+similarity index 100%
+rename from scripts/npc/world0/9201004.js
+rename to scripts/npc/9201004.js
+diff --git a/scripts/npc/world0/9201005.js b/scripts/npc/9201005.js
+similarity index 100%
+rename from scripts/npc/world0/9201005.js
+rename to scripts/npc/9201005.js
+diff --git a/scripts/npc/world0/9201006.js b/scripts/npc/9201006.js
+similarity index 100%
+rename from scripts/npc/world0/9201006.js
+rename to scripts/npc/9201006.js
+diff --git a/scripts/npc/world0/9201007.js b/scripts/npc/9201007.js
+similarity index 100%
+rename from scripts/npc/world0/9201007.js
+rename to scripts/npc/9201007.js
+diff --git a/scripts/npc/world0/9201010.js b/scripts/npc/9201010.js
+similarity index 100%
+rename from scripts/npc/world0/9201010.js
+rename to scripts/npc/9201010.js
+diff --git a/scripts/npc/world0/9201013.js b/scripts/npc/9201013.js
+similarity index 100%
+rename from scripts/npc/world0/9201013.js
+rename to scripts/npc/9201013.js
+diff --git a/scripts/npc/world0/9201014.js b/scripts/npc/9201014.js
+similarity index 100%
+rename from scripts/npc/world0/9201014.js
+rename to scripts/npc/9201014.js
+diff --git a/scripts/npc/world0/9201015.js b/scripts/npc/9201015.js
+similarity index 100%
+rename from scripts/npc/world0/9201015.js
+rename to scripts/npc/9201015.js
+diff --git a/scripts/npc/world0/9201016.js b/scripts/npc/9201016.js
+similarity index 100%
+rename from scripts/npc/world0/9201016.js
+rename to scripts/npc/9201016.js
+diff --git a/scripts/npc/world0/9201017.js b/scripts/npc/9201017.js
+similarity index 100%
+rename from scripts/npc/world0/9201017.js
+rename to scripts/npc/9201017.js
+diff --git a/scripts/npc/world0/9201018.js b/scripts/npc/9201018.js
+similarity index 100%
+rename from scripts/npc/world0/9201018.js
+rename to scripts/npc/9201018.js
+diff --git a/scripts/npc/world0/9201019.js b/scripts/npc/9201019.js
+similarity index 100%
+rename from scripts/npc/world0/9201019.js
+rename to scripts/npc/9201019.js
+diff --git a/scripts/npc/world0/9201021.js b/scripts/npc/9201021.js
+similarity index 100%
+rename from scripts/npc/world0/9201021.js
+rename to scripts/npc/9201021.js
+diff --git a/scripts/npc/world0/9201022.js b/scripts/npc/9201022.js
+similarity index 100%
+rename from scripts/npc/world0/9201022.js
+rename to scripts/npc/9201022.js
+diff --git a/scripts/npc/world0/9201023.js b/scripts/npc/9201023.js
+similarity index 100%
+rename from scripts/npc/world0/9201023.js
+rename to scripts/npc/9201023.js
+diff --git a/scripts/npc/world0/9201024.js b/scripts/npc/9201024.js
+similarity index 100%
+rename from scripts/npc/world0/9201024.js
+rename to scripts/npc/9201024.js
+diff --git a/scripts/npc/world0/9201025.js b/scripts/npc/9201025.js
+similarity index 100%
+rename from scripts/npc/world0/9201025.js
+rename to scripts/npc/9201025.js
+diff --git a/scripts/npc/world0/9201026.js b/scripts/npc/9201026.js
+similarity index 100%
+rename from scripts/npc/world0/9201026.js
+rename to scripts/npc/9201026.js
+diff --git a/scripts/npc/world0/9201027.js b/scripts/npc/9201027.js
+similarity index 100%
+rename from scripts/npc/world0/9201027.js
+rename to scripts/npc/9201027.js
+diff --git a/scripts/npc/world0/9201033.js b/scripts/npc/9201033.js
+similarity index 100%
+rename from scripts/npc/world0/9201033.js
+rename to scripts/npc/9201033.js
+diff --git a/scripts/npc/world0/9201039.js b/scripts/npc/9201039.js
+similarity index 100%
+rename from scripts/npc/world0/9201039.js
+rename to scripts/npc/9201039.js
+diff --git a/scripts/npc/world0/9201042.js b/scripts/npc/9201042.js
+similarity index 100%
+rename from scripts/npc/world0/9201042.js
+rename to scripts/npc/9201042.js
+diff --git a/scripts/npc/world0/9201043.js b/scripts/npc/9201043.js
+similarity index 100%
+rename from scripts/npc/world0/9201043.js
+rename to scripts/npc/9201043.js
+diff --git a/scripts/npc/world0/9201048.js b/scripts/npc/9201048.js
+similarity index 100%
+rename from scripts/npc/world0/9201048.js
+rename to scripts/npc/9201048.js
+diff --git a/scripts/npc/world0/9201049.js b/scripts/npc/9201049.js
+similarity index 100%
+rename from scripts/npc/world0/9201049.js
+rename to scripts/npc/9201049.js
+diff --git a/scripts/npc/world0/9201050.js b/scripts/npc/9201050.js
+similarity index 100%
+rename from scripts/npc/world0/9201050.js
+rename to scripts/npc/9201050.js
+diff --git a/scripts/npc/world0/9201051.js b/scripts/npc/9201051.js
+similarity index 100%
+rename from scripts/npc/world0/9201051.js
+rename to scripts/npc/9201051.js
+diff --git a/scripts/npc/world0/9201052.js b/scripts/npc/9201052.js
+similarity index 100%
+rename from scripts/npc/world0/9201052.js
+rename to scripts/npc/9201052.js
+diff --git a/scripts/npc/world0/9201054.js b/scripts/npc/9201054.js
+similarity index 100%
+rename from scripts/npc/world0/9201054.js
+rename to scripts/npc/9201054.js
+diff --git a/scripts/npc/world0/9201056.js b/scripts/npc/9201056.js
+similarity index 100%
+rename from scripts/npc/world0/9201056.js
+rename to scripts/npc/9201056.js
+diff --git a/scripts/npc/world0/9201057.js b/scripts/npc/9201057.js
+similarity index 100%
+rename from scripts/npc/world0/9201057.js
+rename to scripts/npc/9201057.js
+diff --git a/scripts/npc/world0/9201061.js b/scripts/npc/9201061.js
+similarity index 100%
+rename from scripts/npc/world0/9201061.js
+rename to scripts/npc/9201061.js
+diff --git a/scripts/npc/world0/9201062.js b/scripts/npc/9201062.js
+similarity index 100%
+rename from scripts/npc/world0/9201062.js
+rename to scripts/npc/9201062.js
+diff --git a/scripts/npc/world0/9201063.js b/scripts/npc/9201063.js
+similarity index 100%
+rename from scripts/npc/world0/9201063.js
+rename to scripts/npc/9201063.js
+diff --git a/scripts/npc/world0/9201064.js b/scripts/npc/9201064.js
+similarity index 100%
+rename from scripts/npc/world0/9201064.js
+rename to scripts/npc/9201064.js
+diff --git a/scripts/npc/world0/9201065.js b/scripts/npc/9201065.js
+similarity index 100%
+rename from scripts/npc/world0/9201065.js
+rename to scripts/npc/9201065.js
+diff --git a/scripts/npc/world0/9201068.js b/scripts/npc/9201068.js
+similarity index 100%
+rename from scripts/npc/world0/9201068.js
+rename to scripts/npc/9201068.js
+diff --git a/scripts/npc/world0/9201069.js b/scripts/npc/9201069.js
+similarity index 100%
+rename from scripts/npc/world0/9201069.js
+rename to scripts/npc/9201069.js
+diff --git a/scripts/npc/world0/9201070.js b/scripts/npc/9201070.js
+similarity index 100%
+rename from scripts/npc/world0/9201070.js
+rename to scripts/npc/9201070.js
+diff --git a/scripts/npc/world0/9201071.js b/scripts/npc/9201071.js
+similarity index 100%
+rename from scripts/npc/world0/9201071.js
+rename to scripts/npc/9201071.js
+diff --git a/scripts/npc/world0/9201072.js b/scripts/npc/9201072.js
+similarity index 100%
+rename from scripts/npc/world0/9201072.js
+rename to scripts/npc/9201072.js
+diff --git a/scripts/npc/world0/9201073.js b/scripts/npc/9201073.js
+similarity index 100%
+rename from scripts/npc/world0/9201073.js
+rename to scripts/npc/9201073.js
+diff --git a/scripts/npc/world0/9201079.js b/scripts/npc/9201079.js
+similarity index 100%
+rename from scripts/npc/world0/9201079.js
+rename to scripts/npc/9201079.js
+diff --git a/scripts/npc/world0/9201081.js b/scripts/npc/9201081.js
+similarity index 100%
+rename from scripts/npc/world0/9201081.js
+rename to scripts/npc/9201081.js
+diff --git a/scripts/npc/world0/9201083.js b/scripts/npc/9201083.js
+similarity index 100%
+rename from scripts/npc/world0/9201083.js
+rename to scripts/npc/9201083.js
+diff --git a/scripts/npc/world0/9201093.js b/scripts/npc/9201093.js
+similarity index 100%
+rename from scripts/npc/world0/9201093.js
+rename to scripts/npc/9201093.js
+diff --git a/scripts/npc/world0/9201094.js b/scripts/npc/9201094.js
+similarity index 100%
+rename from scripts/npc/world0/9201094.js
+rename to scripts/npc/9201094.js
+diff --git a/scripts/npc/world0/9201097.js b/scripts/npc/9201097.js
+similarity index 100%
+rename from scripts/npc/world0/9201097.js
+rename to scripts/npc/9201097.js
+diff --git a/scripts/npc/world0/9201102.js b/scripts/npc/9201102.js
+similarity index 100%
+rename from scripts/npc/world0/9201102.js
+rename to scripts/npc/9201102.js
+diff --git a/scripts/npc/world0/9201113.js b/scripts/npc/9201113.js
+similarity index 100%
+rename from scripts/npc/world0/9201113.js
+rename to scripts/npc/9201113.js
+diff --git a/scripts/npc/world0/9201114.js b/scripts/npc/9201114.js
+similarity index 100%
+rename from scripts/npc/world0/9201114.js
+rename to scripts/npc/9201114.js
+diff --git a/scripts/npc/world0/9201123.js b/scripts/npc/9201123.js
+similarity index 95%
+rename from scripts/npc/world0/9201123.js
+rename to scripts/npc/9201123.js
+index 644a73c06..ace8789ed 100644
+--- a/scripts/npc/world0/9201123.js
++++ b/scripts/npc/9201123.js
+@@ -1,5 +1,7 @@
+ //Warrior Statue by Wodian
+ 
++importPackage(Packages.client);
++
+ var status = 0;  
+ 
+ function start() {  
+diff --git a/scripts/npc/world0/9201124.js b/scripts/npc/9201124.js
+similarity index 95%
+rename from scripts/npc/world0/9201124.js
+rename to scripts/npc/9201124.js
+index 0a053b678..a3d4df5ce 100644
+--- a/scripts/npc/world0/9201124.js
++++ b/scripts/npc/9201124.js
+@@ -1,5 +1,7 @@
+ //Bowman Statue by Wodian
+ 
++importPackage(Packages.client);
++
+ var status = 0;  
+ 
+ function start() {  
+diff --git a/scripts/npc/world0/9201125.js b/scripts/npc/9201125.js
+similarity index 95%
+rename from scripts/npc/world0/9201125.js
+rename to scripts/npc/9201125.js
+index 2f26262f8..cc30f3043 100644
+--- a/scripts/npc/world0/9201125.js
++++ b/scripts/npc/9201125.js
+@@ -1,5 +1,7 @@
+ //Magician Statue by Wodian
+ 
++importPackage(Packages.client);
++
+ var status = 0;  
+ 
+ function start() {  
+diff --git a/scripts/npc/world0/9201126.js b/scripts/npc/9201126.js
+similarity index 95%
+rename from scripts/npc/world0/9201126.js
+rename to scripts/npc/9201126.js
+index 607e9b889..a7f2478c8 100644
+--- a/scripts/npc/world0/9201126.js
++++ b/scripts/npc/9201126.js
+@@ -1,5 +1,7 @@
+ //Thief Statue by Wodian
+ 
++importPackage(Packages.client);
++
+ var status = 0;  
+ 
+ function start() {  
+diff --git a/scripts/npc/world0/9201127.js b/scripts/npc/9201127.js
+similarity index 95%
+rename from scripts/npc/world0/9201127.js
+rename to scripts/npc/9201127.js
+index 8e1b85a59..a5d2b5434 100644
+--- a/scripts/npc/world0/9201127.js
++++ b/scripts/npc/9201127.js
+@@ -1,5 +1,7 @@
+ //Pirate Statue by Wodian
+ 
++importPackage(Packages.client);
++
+ var status = 0;  
+ 
+ function start() {  
+diff --git a/scripts/npc/world0/9201130.js b/scripts/npc/9201130.js
+similarity index 100%
+rename from scripts/npc/world0/9201130.js
+rename to scripts/npc/9201130.js
+diff --git a/scripts/npc/world0/9201134.js b/scripts/npc/9201134.js
+similarity index 100%
+rename from scripts/npc/world0/9201134.js
+rename to scripts/npc/9201134.js
+diff --git a/scripts/npc/world0/9201135.js b/scripts/npc/9201135.js
+similarity index 100%
+rename from scripts/npc/world0/9201135.js
+rename to scripts/npc/9201135.js
+diff --git a/scripts/npc/world0/9201143.js b/scripts/npc/9201143.js
+similarity index 100%
+rename from scripts/npc/world0/9201143.js
+rename to scripts/npc/9201143.js
+diff --git a/scripts/npc/world0/9209000.js b/scripts/npc/9209000.js
+similarity index 100%
+rename from scripts/npc/world0/9209000.js
+rename to scripts/npc/9209000.js
+diff --git a/scripts/npc/world0/9209001.js b/scripts/npc/9209001.js
+similarity index 100%
+rename from scripts/npc/world0/9209001.js
+rename to scripts/npc/9209001.js
+diff --git a/scripts/npc/world0/9209100.js b/scripts/npc/9209100.js
+similarity index 100%
+rename from scripts/npc/world0/9209100.js
+rename to scripts/npc/9209100.js
+diff --git a/scripts/npc/world0/9220004.js b/scripts/npc/9220004.js
+similarity index 100%
+rename from scripts/npc/world0/9220004.js
+rename to scripts/npc/9220004.js
+diff --git a/scripts/npc/world0/9220005.js b/scripts/npc/9220005.js
+similarity index 100%
+rename from scripts/npc/world0/9220005.js
+rename to scripts/npc/9220005.js
+diff --git a/scripts/npc/world0/9220005_old.js b/scripts/npc/9220005_old.js
+similarity index 100%
+rename from scripts/npc/world0/9220005_old.js
+rename to scripts/npc/9220005_old.js
+diff --git a/scripts/npc/world0/9250045.js b/scripts/npc/9250045.js
+similarity index 100%
+rename from scripts/npc/world0/9250045.js
+rename to scripts/npc/9250045.js
+diff --git a/scripts/npc/world0/9270017.js b/scripts/npc/9270017.js
+similarity index 100%
+rename from scripts/npc/world0/9270017.js
+rename to scripts/npc/9270017.js
+diff --git a/scripts/npc/world0/9270018.js b/scripts/npc/9270018.js
+similarity index 100%
+rename from scripts/npc/world0/9270018.js
+rename to scripts/npc/9270018.js
+diff --git a/scripts/npc/world0/9270023.js b/scripts/npc/9270023.js
+similarity index 100%
+rename from scripts/npc/world0/9270023.js
+rename to scripts/npc/9270023.js
+diff --git a/scripts/npc/world0/9270024.js b/scripts/npc/9270024.js
+similarity index 100%
+rename from scripts/npc/world0/9270024.js
+rename to scripts/npc/9270024.js
+diff --git a/scripts/npc/world0/9270025.js b/scripts/npc/9270025.js
+similarity index 100%
+rename from scripts/npc/world0/9270025.js
+rename to scripts/npc/9270025.js
+diff --git a/scripts/npc/world0/9270026.js b/scripts/npc/9270026.js
+similarity index 100%
+rename from scripts/npc/world0/9270026.js
+rename to scripts/npc/9270026.js
+diff --git a/scripts/npc/world0/9270033.js b/scripts/npc/9270033.js
+similarity index 100%
+rename from scripts/npc/world0/9270033.js
+rename to scripts/npc/9270033.js
+diff --git a/scripts/npc/world0/9270036.js b/scripts/npc/9270036.js
+similarity index 100%
+rename from scripts/npc/world0/9270036.js
+rename to scripts/npc/9270036.js
+diff --git a/scripts/npc/world0/9270037.js b/scripts/npc/9270037.js
+similarity index 100%
+rename from scripts/npc/world0/9270037.js
+rename to scripts/npc/9270037.js
+diff --git a/scripts/npc/world0/9270038.js b/scripts/npc/9270038.js
+similarity index 100%
+rename from scripts/npc/world0/9270038.js
+rename to scripts/npc/9270038.js
+diff --git a/scripts/npc/world0/9270041.js b/scripts/npc/9270041.js
+similarity index 100%
+rename from scripts/npc/world0/9270041.js
+rename to scripts/npc/9270041.js
+diff --git a/scripts/npc/world0/9270042.js b/scripts/npc/9270042.js
+similarity index 100%
+rename from scripts/npc/world0/9270042.js
+rename to scripts/npc/9270042.js
+diff --git a/scripts/npc/world0/9270043.js b/scripts/npc/9270043.js
+similarity index 100%
+rename from scripts/npc/world0/9270043.js
+rename to scripts/npc/9270043.js
+diff --git a/scripts/npc/world0/9270047.js b/scripts/npc/9270047.js
+similarity index 100%
+rename from scripts/npc/world0/9270047.js
+rename to scripts/npc/9270047.js
+diff --git a/scripts/npc/world0/9270054.js b/scripts/npc/9270054.js
+similarity index 100%
+rename from scripts/npc/world0/9270054.js
+rename to scripts/npc/9270054.js
+diff --git a/scripts/npc/world0/9310058.js b/scripts/npc/9310058.js
+similarity index 100%
+rename from scripts/npc/world0/9310058.js
+rename to scripts/npc/9310058.js
+diff --git a/scripts/npc/world0/9900000.js b/scripts/npc/9900000.js
+similarity index 100%
+rename from scripts/npc/world0/9900000.js
+rename to scripts/npc/9900000.js
+diff --git a/scripts/npc/world0/9900001.js b/scripts/npc/9900001.js
+similarity index 100%
+rename from scripts/npc/world0/9900001.js
+rename to scripts/npc/9900001.js
+diff --git a/scripts/npc/world0/changeName.js b/scripts/npc/changeName.js
+similarity index 100%
+rename from scripts/npc/world0/changeName.js
+rename to scripts/npc/changeName.js
+diff --git a/scripts/npc/world0/gachapon.js b/scripts/npc/gachapon.js
+similarity index 100%
+rename from scripts/npc/world0/gachapon.js
+rename to scripts/npc/gachapon.js
+diff --git a/scripts/npc/world0/gachaponRemote.js b/scripts/npc/gachaponRemote.js
+similarity index 100%
+rename from scripts/npc/world0/gachaponRemote.js
+rename to scripts/npc/gachaponRemote.js
+diff --git a/scripts/npc/world0/gachaponold.js b/scripts/npc/gachaponold.js
+similarity index 100%
+rename from scripts/npc/world0/gachaponold.js
+rename to scripts/npc/gachaponold.js
+diff --git a/scripts/npc/world0/unidentifiedNpc.js b/scripts/npc/unidentifiedNpc.js
+similarity index 100%
+rename from scripts/npc/world0/unidentifiedNpc.js
+rename to scripts/npc/unidentifiedNpc.js
+diff --git a/sql/tools/test_mobcarddrop.sql b/sql/tools/test_mobcarddrop.sql
+index 00aed8651..635def111 100644
+--- a/sql/tools/test_mobcarddrop.sql
++++ b/sql/tools/test_mobcarddrop.sql
+@@ -23,4 +23,7 @@ CREATE TABLE `_mob_card_counter` (
+     `count` INTEGER(10)
+ );
+ 
+-CALL countMobCardsBySection();
+\ No newline at end of file
++CALL countMobCardsBySection();
++
++# the query below recovers all MAIN mobs that drops card.
++SELECT cardid, mobid FROM monstercarddata LEFT JOIN drop_data ON monstercarddata.cardid = drop_data.itemid WHERE mobid = dropperid;
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index e450efa4b..0e460e32f 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -70,6 +70,7 @@
+ import server.MapleItemInformationProvider;
+ import server.MapleMiniGame;
+ import server.MaplePlayerShop;
++import server.MaplePlayerShopItem;
+ import server.MaplePortal;
+ import server.MapleShop;
+ import server.MapleStatEffect;
+@@ -1206,9 +1207,8 @@ private boolean buffMapProtection() {
+     }
+     
+     private void changeMapInternal(final MapleMap to, final Point pos, final byte[] warpPacket) {
+-        if (this.getTrade() != null) {
+-            MapleTrade.cancelTrade(this);
+-	}
++        this.closePlayerInteractions();
++        
+         client.announce(warpPacket);
+         map.removePlayer(MapleCharacter.this);
+         if (client.getChannelServer().getPlayerStorage().getCharacterById(getId()) != null) {
+@@ -2558,8 +2558,8 @@ public int getPartyId() {
+     }
+     
+     public boolean isPartyMember(MapleCharacter chr) {
+-        for(MapleCharacter mpc: getPartyMembers()) {
+-            if(mpc.getId() == chr.getId()) {
++        for(MapleCharacter mpcu: getPartyMembers()) {
++            if(mpcu.getId() == chr.getId()) {
+                 return true;
+             }
+         }
+@@ -2570,6 +2570,93 @@ public boolean isPartyMember(MapleCharacter chr) {
+     public MaplePlayerShop getPlayerShop() {
+         return playerShop;
+     }
++    
++    public void closePlayerInteractions() {
++        closeNpcShop();
++        closeTrade();
++        closePlayerShop();
++        closeMiniGame();
++        closeHiredMerchant(false);
++        closePlayerMessenger();
++    }
++    
++    public void closeNpcShop() {
++        setShop(null);
++    }
++    
++    public void closeTrade() {
++        MapleTrade.cancelTrade(this);
++    }
++    
++    public void closePlayerShop() {
++        MaplePlayerShop mps = this.getPlayerShop();
++        if(mps == null) return;
++        
++        if (mps.isOwner(this)) {
++            for (MaplePlayerShopItem mpsi : mps.getItems()) {
++                if (mpsi.getBundles() >= 2) {
++                    Item iItem = mpsi.getItem().copy();
++                    iItem.setQuantity((short) (mpsi.getBundles() * iItem.getQuantity()));
++                    MapleInventoryManipulator.addFromDrop(this.getClient(), iItem, false);
++                } else if (mpsi.isExist()) {
++                    MapleInventoryManipulator.addFromDrop(this.getClient(), mpsi.getItem(), true);
++                }
++            }
++            this.getMap().broadcastMessage(MaplePacketCreator.removeCharBox(this));
++            mps.removeVisitors();
++        } else {
++            mps.removeVisitor(this);
++        }
++        this.setPlayerShop(null);
++    }
++    
++    public void closeMiniGame() {
++        MapleMiniGame game = this.getMiniGame();
++        if(game == null) return;
++        
++        this.setMiniGame(null);
++        if (game.isOwner(this)) {
++            this.getMap().broadcastMessage(MaplePacketCreator.removeCharBox(this));
++            game.broadcastToVisitor(MaplePacketCreator.getMiniGameClose());
++        } else {
++            game.removeVisitor(this);
++        }
++    }
++    
++    public void closeHiredMerchant(boolean closeMerchant) {
++        HiredMerchant merchant = this.getHiredMerchant();
++        if(merchant == null) return;
++        
++        if(closeMerchant) {
++            merchant.removeVisitor(this);
++            this.setHiredMerchant(null);
++        }
++        else {
++            if (merchant.isOwner(this)) {
++                merchant.setOpen(true);
++            } else {
++                merchant.removeVisitor(this);
++            }
++            try {
++                merchant.saveItems(false);
++            } catch (SQLException ex) {
++                ex.printStackTrace();
++                System.out.println("Error while saving Hired Merchant items.");
++            }
++        }
++    }
++    
++    public void closePlayerMessenger() {
++        MapleMessenger m = this.getMessenger();
++        if(m == null) return;
++        
++        World w = client.getWorldServer();
++        MapleMessengerCharacter messengerplayer = new MapleMessengerCharacter(this, this.getMessengerPosition());
++        
++        w.leaveMessenger(m.getId(), messengerplayer);
++        this.setMessenger(null);
++        this.setMessengerPosition(4);
++    }
+ 
+     public MaplePet[] getPets() {
+         return pets;
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index d8b783f05..4abf8998e 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -721,41 +721,12 @@ private void removePlayer() {
+ 		try {
+ 			player.cancelAllBuffs(true);
+ 			player.cancelAllDebuffs();
+-			final MaplePlayerShop mps = player.getPlayerShop();
+-			if (mps != null) {
+-				mps.removeVisitors();
+-				player.setPlayerShop(null);
+-			}
+-			final HiredMerchant merchant = player.getHiredMerchant();
+-			if (merchant != null) {
+-				if (merchant.isOwner(player)) {
+-					merchant.setOpen(true);
+-				} else {
+-					merchant.removeVisitor(player);
+-				}
+-				try {
+-					merchant.saveItems(false);
+-				} catch (SQLException ex) {
+-                                        ex.printStackTrace();
+-					System.out.println("Error while saving Hired Merchant items.");
+-				}
+-			}
+-			player.setMessenger(null);
+-			final MapleMiniGame game = player.getMiniGame();
+-			if (game != null) {
+-				player.setMiniGame(null);
+-				if (game.isOwner(player)) {
+-					player.getMap().broadcastMessage(MaplePacketCreator.removeCharBox(player));
+-					game.broadcastToVisitor(MaplePacketCreator.getMiniGameClose());
+-				} else {
+-					game.removeVisitor(player);
+-				}
+-			}
++                        
++                        player.closePlayerInteractions();
++                        
+ 			NPCScriptManager.getInstance().dispose(this);
+ 			QuestScriptManager.getInstance().dispose(this);
+-			if (player.getTrade() != null) {
+-				MapleTrade.cancelTrade(player);
+-			}
++			
+ 			if (player.getEventInstance() != null) {
+ 				player.getEventInstance().playerDisconnected(player);
+ 			}
+@@ -1236,7 +1207,7 @@ public void changeChannel(int channel) {
+ 			disconnect(false, false);
+ 			return;
+ 		}
+-		if (!player.isAlive() || FieldLimit.CHANGECHANNEL.check(player.getMap().getFieldLimit())) {
++		if (!player.isAlive() || FieldLimit.CANNOTMIGRATE.check(player.getMap().getFieldLimit())) {
+ 			announce(MaplePacketCreator.enableActions());
+ 			return;
+ 		}
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index cf68806c6..620b483e5 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -559,7 +559,7 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 			break;
+                 */
+ 		case "joinevent":
+-			if(!FieldLimit.CHANGECHANNEL.check(player.getMap().getFieldLimit())) {
++			if(!FieldLimit.CANNOTMIGRATE.check(player.getMap().getFieldLimit())) {
+ 				MapleEvent event = c.getChannelServer().getEvent();
+ 				if(event != null) {
+ 					if(event.getMapId() != player.getMapId()) {
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index d30ecb784..730809938 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -178,7 +178,9 @@ public void run() {
+ 		
+ 		
+         try {
+-            for (int i = 0; i < Integer.parseInt(p.getProperty("worlds")); i++) {
++            Integer worldCount = Math.min(ServerConstants.WORLD_NAMES.length, Integer.parseInt(p.getProperty("worlds")));
++            
++            for (int i = 0; i < worldCount; i++) {
+                 System.out.println("Starting world " + i);
+                 World world = new World(i,
+                         Integer.parseInt(p.getProperty("flag" + i)),
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index c91c82b86..2f16be579 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -25,6 +25,7 @@
+ import client.MapleClient;
+ import net.AbstractMaplePacketHandler;
+ import net.server.Server;
++import server.MapleTrade;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -41,6 +42,8 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         	if (mc.getCashShop().isOpened()) {
+                     return;
+                 }
++                
++                mc.closePlayerInteractions();
+         	
+ 		Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(mc.getId(), mc.getAllBuffs());
+ 	        mc.cancelBuffEffects();
+diff --git a/src/net/server/channel/handlers/ItemMoveHandler.java b/src/net/server/channel/handlers/ItemMoveHandler.java
+index 1c5048775..c8ba9db5c 100644
+--- a/src/net/server/channel/handlers/ItemMoveHandler.java
++++ b/src/net/server/channel/handlers/ItemMoveHandler.java
+@@ -33,12 +33,14 @@
+  * @author Matze
+  */
+ public final class ItemMoveHandler extends AbstractMaplePacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         slea.skip(4); 
+-		if(c.getPlayer().getAutobanManager().getLastSpam(6) + 300 > System.currentTimeMillis()) {
+-			c.announce(MaplePacketCreator.enableActions());
+-			return;
+-		}
++        if(c.getPlayer().getAutobanManager().getLastSpam(6) + 300 > System.currentTimeMillis()) {
++            c.announce(MaplePacketCreator.enableActions());
++            return;
++        }
++        
+         MapleInventoryType type = MapleInventoryType.getByType(slea.readByte());
+         byte src = (byte) slea.readShort();
+         byte action = (byte) slea.readShort();
+@@ -52,6 +54,6 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         } else {
+             MapleInventoryManipulator.move(c, type, src, action);
+         }
+-		c.getPlayer().getAutobanManager().spam(6);
++        c.getPlayer().getAutobanManager().spam(6);
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/MessengerHandler.java b/src/net/server/channel/handlers/MessengerHandler.java
+index 657266bb6..941b72f44 100644
+--- a/src/net/server/channel/handlers/MessengerHandler.java
++++ b/src/net/server/channel/handlers/MessengerHandler.java
+@@ -31,6 +31,7 @@
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class MessengerHandler extends AbstractMaplePacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         String input;
+         byte mode = slea.readByte();
+@@ -59,12 +60,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+                 break;
+             case 0x02:
+-                if (messenger != null) {
+-                    MapleMessengerCharacter messengerplayer = new MapleMessengerCharacter(player, player.getMessengerPosition());
+-                    world.leaveMessenger(messenger.getId(), messengerplayer);
+-                    player.setMessenger(null);
+-                    player.setMessengerPosition(4);
+-                }
++                player.closePlayerMessenger();
+                 break;
+             case 0x03:
+                 if (messenger.getMembers().size() < 3) {
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index f28090504..b663e1103 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -266,38 +266,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (chr.getTrade() != null) {
+                 MapleTrade.cancelTrade(c.getPlayer());
+             } else {
+-                MaplePlayerShop shop = chr.getPlayerShop();
+-                MapleMiniGame game = chr.getMiniGame();
+-                HiredMerchant merchant = chr.getHiredMerchant();
+-                if (shop != null) {
+-                    if (shop.isOwner(c.getPlayer())) {
+-                        for (MaplePlayerShopItem mpsi : shop.getItems()) {
+-                            if (mpsi.getBundles() > 2) {
+-                                Item iItem = mpsi.getItem().copy();
+-                                iItem.setQuantity((short) (mpsi.getBundles() * iItem.getQuantity()));
+-                                MapleInventoryManipulator.addFromDrop(c, iItem, false);
+-                            } else if (mpsi.isExist()) {
+-                                MapleInventoryManipulator.addFromDrop(c, mpsi.getItem(), true);
+-                            }
+-                        }
+-                        chr.getMap().broadcastMessage(MaplePacketCreator.removeCharBox(c.getPlayer()));
+-                        shop.removeVisitors();
+-                    } else {
+-                        shop.removeVisitor(c.getPlayer());
+-                    }
+-                    chr.setPlayerShop(null);
+-                } else if (game != null) {
+-                    chr.setMiniGame(null);
+-                    if (game.isOwner(c.getPlayer())) {
+-                        chr.getMap().broadcastMessage(MaplePacketCreator.removeCharBox(c.getPlayer()));
+-                        game.broadcastToVisitor(MaplePacketCreator.getMiniGameClose());
+-                    } else {
+-                        game.removeVisitor(c.getPlayer());
+-                    }
+-                } else if (merchant != null) {
+-                    merchant.removeVisitor(c.getPlayer());
+-                    chr.setHiredMerchant(null);
+-                }
++                chr.closePlayerShop();
++                chr.closeMiniGame();
++                chr.closeHiredMerchant(true);
+             }
+         } else if (mode == Action.OPEN.getCode()) {
+             MaplePlayerShop shop = chr.getPlayerShop();
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index e5fdaedef..9119bcafa 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -269,12 +269,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (player.getMap().getHPDec() > 0) {
+             final MapleCharacter mc = player;
+             
+-            TimerManager.getInstance().schedule(new Runnable() {
++            ScheduledFuture<?> hpDecreaseTask = TimerManager.getInstance().schedule(new Runnable() {
+                 @Override
+                 public void run() {
+                     mc.doHurtHp();
+                 }
+             }, 10000);
++            
++            mc.setHpDecreaseTask(hpDecreaseTask);
+         }
+     }
+ }
+diff --git a/src/scripting/npc/NPCScriptManager.java b/src/scripting/npc/NPCScriptManager.java
+index afc37735a..6fca867ff 100644
+--- a/src/scripting/npc/NPCScriptManager.java
++++ b/src/scripting/npc/NPCScriptManager.java
+@@ -64,10 +64,10 @@ public void start(MapleClient c, int npc, String fileName, MapleCharacter chr) {
+                 cms.put(c, cm);
+                 Invocable iv = null;
+                 if (fileName != null) {
+-                    iv = getInvocable("npc/world" + c.getWorld() + "/" + fileName + ".js", c);
++                    iv = getInvocable("npc/" + fileName + ".js", c);
+                 }
+                 if (iv == null) {
+-                    iv = getInvocable("npc/world" + c.getWorld() + "/" + npc + ".js", c);
++                    iv = getInvocable("npc/" + npc + ".js", c);
+                 }
+                 if (iv == null) {
+                     FilePrinter.printError(FilePrinter.NPC_UNCODED, "NPC " + MapleLifeFactory.getNPC(npc).getName() + "(" + npc + ") is not coded.\r\n");
+@@ -122,9 +122,9 @@ public void dispose(NPCConversationManager cm) {
+         scripts.remove(c);
+         
+         if(cm.getScriptName() != null) {
+-            resetContext("npc/world" + c.getWorld() + "/" + cm.getScriptName() + ".js", c);
++            resetContext("npc/" + cm.getScriptName() + ".js", c);
+         } else {
+-            resetContext("npc/world" + c.getWorld() + "/" + cm.getNpc() + ".js", c);
++            resetContext("npc/" + cm.getNpc() + ".js", c);
+         }
+     }
+ 
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index 41b908dc9..462e3c5c4 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -472,7 +472,7 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+         	return;
+         }
+         int itemId = source.getItemId();
+-        if (itemId >= 5000000 && itemId <= 5000100) {
++        if (itemId >= 5000000 && itemId <= 5000102) {
+             return;
+         }
+         if (type == MapleInventoryType.EQUIPPED && itemId == 1122017) {
+diff --git a/src/server/MapleTrade.java b/src/server/MapleTrade.java
+index e0b14e5a8..a346af8fe 100644
+--- a/src/server/MapleTrade.java
++++ b/src/server/MapleTrade.java
+@@ -254,10 +254,13 @@ else if (!partner.fitsInInventory()) {
+     }
+ 
+     public static void cancelTrade(MapleCharacter c) {
+-        c.getTrade().cancel();
+-        if (c.getTrade().getPartner() != null) {
+-            c.getTrade().getPartner().cancel();
+-            c.getTrade().getPartner().getChr().setTrade(null);
++        MapleTrade trade = c.getTrade();
++        if(trade == null) return;
++        
++        trade.cancel();
++        if (trade.getPartner() != null) {
++            trade.getPartner().cancel();
++            trade.getPartner().getChr().setTrade(null);
+         }
+         c.setTrade(null);
+     }
+diff --git a/src/server/maps/FieldLimit.java b/src/server/maps/FieldLimit.java
+index f8074c6e6..0fe31e9a5 100644
+--- a/src/server/maps/FieldLimit.java
++++ b/src/server/maps/FieldLimit.java
+@@ -29,7 +29,7 @@
+     MOVEMENTSKILLS(0x02),
+     SUMMON(0x04),
+     DOOR(0x08),
+-    CHANGECHANNEL(0x10),
++    CANNOTMIGRATE(0x10),    //change channel, town portal scroll, access cash shop, etc etc
+     //NO_NOTES(0x20),
+     CANNOTVIPROCK(0x40),
+     CANNOTMINIGAME(0x80),
+diff --git a/src/server/maps/HiredMerchant.java b/src/server/maps/HiredMerchant.java
+index 0849fc583..e0f3bc554 100644
+--- a/src/server/maps/HiredMerchant.java
++++ b/src/server/maps/HiredMerchant.java
+@@ -57,7 +57,7 @@
+     private String ownerName = "";
+     private String description = "";
+     private MapleCharacter[] visitors = new MapleCharacter[3];
+-    private List<MaplePlayerShopItem> items = new LinkedList<>();
++    private final List<MaplePlayerShopItem> items = new LinkedList<>();
+     private List<Pair<String, Byte>> messages = new LinkedList<>();
+     private List<SoldItem> sold = new LinkedList<>();
+     private boolean open;
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 66ebf72c6..b48d82349 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -36,6 +36,7 @@
+ import provider.MapleDataTool;
+ import server.quest.actions.*;
+ import server.quest.requirements.*;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ 
+ /**
+@@ -63,21 +64,25 @@
+ 	
+     private MapleQuest(int id) {
+         this.id = (short) id;
+-
+-        if(questInfo != null) {
+-            MapleData reqData = questInfo.getChildByPath(String.valueOf(id));
+-            
+-            timeLimit = MapleDataTool.getInt("timeLimit", reqData, 0);
+-            timeLimit = Math.max(timeLimit, MapleDataTool.getInt("timeLimit2", reqData, 0));  // alas, nexon made we deal with 2 timeLimits
+-            autoStart = MapleDataTool.getInt("autoStart", reqData, 0) == 1;
+-            autoPreComplete = MapleDataTool.getInt("autoPreComplete", reqData, 0) == 1;
+-            autoComplete = MapleDataTool.getInt("autoComplete", reqData, 0) == 1;
+-        }
+ 		
+         MapleData reqData = questReq.getChildByPath(String.valueOf(id));
+         if (reqData == null) {//most likely infoEx
+             return;
+         }
++        
++        if(questInfo != null) {
++            MapleData reqInfo = questInfo.getChildByPath(String.valueOf(id));
++            if(reqInfo != null) {
++                timeLimit = MapleDataTool.getInt("timeLimit", reqInfo, 0);
++                timeLimit = Math.max(timeLimit, MapleDataTool.getInt("timeLimit2", reqInfo, 0));  // alas, nexon made we deal with 2 timeLimits
++                autoStart = MapleDataTool.getInt("autoStart", reqInfo, 0) == 1;
++                autoPreComplete = MapleDataTool.getInt("autoPreComplete", reqInfo, 0) == 1;
++                autoComplete = MapleDataTool.getInt("autoComplete", reqInfo, 0) == 1;
++            } else {
++                System.out.println("no data " + id);
++            }
++        }
++        
+         MapleData startReqData = reqData.getChildByPath("0");
+         if (startReqData != null) {
+             for (MapleData startReq : startReqData.getChildren()) {
+diff --git a/world.ini b/world.ini
+index 72a16c463..efef67fb9 100644
+--- a/world.ini
++++ b/world.ini
+@@ -1,13 +1,153 @@
+-#Flag types: 0 = nothing, 1 = event, 2 = new, 3 = hot
+-
++#Author: Ronan, Vcoc
++#World Name: (0 "Scania", 1 "Bera", 2 "Broa", 3 "Windia", 4 "Khaini", 5 "Bellocan", 6 "Mardia", 7 "Kradia", 8 "Yellonde", 9 "Demethos", 10 "Galicia", 11 "El Nido", 12 "Zenith", 13 "Arcenia", 14 "Kastia", 15 "Judis", 16 "Plana", 17 "Kalluna", 18 "Stius", 19 "Croa", 20 "Medere")
++#Flag types: (0 = nothing, 1 = event, 2 = new, 3 = hot)
++#Recommended to use only up to 15 worlds
++gmserver=false
+ worlds=1
+ 
+-#Properties for world 0
++#Properties for Scania 0
+ flag0=3
+-servermessage0=Welcome to Solaxia!
+-eventmessage0=Solaxia!
+-whyamirecommended0=Welcome to Solaxia!
++servermessage0=Welcome to Scania!
++eventmessage0=Scania!
++whyamirecommended0=Welcome to Scania!
+ channels0=3
+ 
++#Properties for Bera 1
++flag1=3
++servermessage1=Welcome to Bera!
++eventmessage1=Bera!
++whyamirecommended1=Welcome to Bera!
++channels1=3
++
++#Properties for Broa 2
++flag2=3
++servermessage2=Welcome to Broa!
++eventmessage2=Broa!
++whyamirecommended2=Welcome to Broa!
++channels2=3
++
++#Properties for Windia 3
++flag3=3
++servermessage3=Welcome to Windia!
++eventmessage3=Windia!
++whyamirecommended3=Welcome to Windia!
++channels3=3
++
++#Properties for Khaini 4
++flag4=3
++servermessage4=Welcome to Khaini!
++eventmessage4=Khaini!
++whyamirecommended4=Welcome to Khaini!
++channels4=3
++
++#Properties for Bellocan 5
++flag5=3
++servermessage5=Welcome to Bellocan!
++eventmessage5=Bellocan!
++whyamirecommended5=Welcome to Bellocan!
++channels5=3
++
++#Properties for Mardia 6
++flag6=3
++servermessage6=Welcome to Mardia!
++eventmessage6=Mardia!
++whyamirecommended6=Welcome to Mardia!
++channels6=3
++
++#Properties for Kradia 7
++flag7=3
++servermessage7=Welcome to Kradia!
++eventmessage7=Kradia!
++whyamirecommended7=Welcome to Kradia!
++channels7=3
++
++#Properties for Yellonde 8
++flag8=3
++servermessage8=Welcome to Yellonde!
++eventmessage8=Yellonde!
++whyamirecommended8=Welcome to Yellonde!
++channels8=3
++
++#Properties for Demethos 9
++flag9=3
++servermessage9=Welcome to Demethos!
++eventmessage9=Demethos!
++whyamirecommended9=Welcome to Demethos!
++channels9=3
++
++#Properties for Galicia 10
++flag10=3
++servermessage10=Welcome to Galicia!
++eventmessage10=Galicia!
++whyamirecommended10=Welcome to Galicia!
++channels10=3
++
++#Properties for El Nido 11
++flag11=3
++servermessage11=Welcome to El Nido!
++eventmessage11=El Nido!
++whyamirecommended11=Welcome to El Nido!
++channels11=3
++
++#Properties for Zenith 12
++flag12=3
++servermessage12=Welcome to Zenith!
++eventmessage12=Zenith!
++whyamirecommended12=Welcome to Zenith!
++channels12=3
++
++#Properties for Arcenia 13
++flag13=3
++servermessage13=Welcome to Arcenia!
++eventmessage13=Arcenia!
++whyamirecommended13=Welcome to Arcenia!
++channels13=3
++
++#Properties for Kastia 14
++flag14=3
++servermessage14=Welcome to Kastia!
++eventmessage14=Kastia!
++whyamirecommended14=Welcome to Kastia!
++channels14=3
++
++#Properties for Judis 15
++flag15=3
++servermessage15=Welcome to Judis!
++eventmessage15=Judis!
++whyamirecommended15=Welcome to Judis!
++channels15=3
++
++#Properties for Plana 16
++flag16=3
++servermessage16=Welcome to Plana!
++eventmessage16=Plana!
++whyamirecommended16=Welcome to Plana!
++channels16=3
++
++#Properties for Kalluna 17
++flag17=3
++servermessage17=Welcome to Kalluna!
++eventmessage17=Kalluna!
++whyamirecommended17=Welcome to Kalluna!
++channels17=3
++
++#Properties for Stius 18
++flag18=3
++servermessage18=Welcome to Stius!
++eventmessage18=Stius!
++whyamirecommended18=Welcome to Stius!
++channels18=3
++
++#Properties for Croa 19
++flag19=3
++servermessage19=Welcome to Croa!
++eventmessage19=Croa!
++whyamirecommended19=Welcome to Croa!
++channels19=3
+ 
+-gmserver=false
+\ No newline at end of file
++#Properties for Medere 20
++flag20=3
++servermessage20=Welcome to Medere!
++eventmessage20=Medere!
++whyamirecommended20=Welcome to Medere!
++channels20=3
+diff --git a/wz/Map.wz/Map/Map9/910000001.img.xml b/wz/Map.wz/Map/Map9/910000001.img.xml
+index 83c455b8c..f5aa611b2 100644
+--- a/wz/Map.wz/Map/Map9/910000001.img.xml
++++ b/wz/Map.wz/Map/Map9/910000001.img.xml
+@@ -1853,7 +1853,7 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
++    <int name="fieldLimit" value="4202748"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
+diff --git a/wz/Map.wz/Map/Map9/910000002.img.xml b/wz/Map.wz/Map/Map9/910000002.img.xml
+index 4c1bd77e2..bd6441093 100644
+--- a/wz/Map.wz/Map/Map9/910000002.img.xml
++++ b/wz/Map.wz/Map/Map9/910000002.img.xml
+@@ -1853,10 +1853,10 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="2">
+diff --git a/wz/Map.wz/Map/Map9/910000003.img.xml b/wz/Map.wz/Map/Map9/910000003.img.xml
+index 00f3386d4..ee340ad91 100644
+--- a/wz/Map.wz/Map/Map9/910000003.img.xml
++++ b/wz/Map.wz/Map/Map9/910000003.img.xml
+@@ -1853,10 +1853,10 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="2">
+diff --git a/wz/Map.wz/Map/Map9/910000004.img.xml b/wz/Map.wz/Map/Map9/910000004.img.xml
+index 396373e65..dbc371d79 100644
+--- a/wz/Map.wz/Map/Map9/910000004.img.xml
++++ b/wz/Map.wz/Map/Map9/910000004.img.xml
+@@ -1853,10 +1853,10 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="2">
+diff --git a/wz/Map.wz/Map/Map9/910000005.img.xml b/wz/Map.wz/Map/Map9/910000005.img.xml
+index ac204a801..2d9270c04 100644
+--- a/wz/Map.wz/Map/Map9/910000005.img.xml
++++ b/wz/Map.wz/Map/Map9/910000005.img.xml
+@@ -1853,10 +1853,10 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="2">
+diff --git a/wz/Map.wz/Map/Map9/910000006.img.xml b/wz/Map.wz/Map/Map9/910000006.img.xml
+index 136ad29c4..383492a0b 100644
+--- a/wz/Map.wz/Map/Map9/910000006.img.xml
++++ b/wz/Map.wz/Map/Map9/910000006.img.xml
+@@ -1853,10 +1853,10 @@
+     <int name="hideMinimap" value="0"/>
+     <int name="personalShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="2">
+diff --git a/wz/Map.wz/Map/Map9/910000007.img.xml b/wz/Map.wz/Map/Map9/910000007.img.xml
+index a1ca8febb..ca81557f5 100644
+--- a/wz/Map.wz/Map/Map9/910000007.img.xml
++++ b/wz/Map.wz/Map/Map9/910000007.img.xml
+@@ -1946,10 +1946,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000008.img.xml b/wz/Map.wz/Map/Map9/910000008.img.xml
+index de84e9804..d1ad983b2 100644
+--- a/wz/Map.wz/Map/Map9/910000008.img.xml
++++ b/wz/Map.wz/Map/Map9/910000008.img.xml
+@@ -1957,10 +1957,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000009.img.xml b/wz/Map.wz/Map/Map9/910000009.img.xml
+index eee322c99..d29dbfcdd 100644
+--- a/wz/Map.wz/Map/Map9/910000009.img.xml
++++ b/wz/Map.wz/Map/Map9/910000009.img.xml
+@@ -1990,10 +1990,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000010.img.xml b/wz/Map.wz/Map/Map9/910000010.img.xml
+index 526e80aa3..0a24fe066 100644
+--- a/wz/Map.wz/Map/Map9/910000010.img.xml
++++ b/wz/Map.wz/Map/Map9/910000010.img.xml
+@@ -2034,10 +2034,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000011.img.xml b/wz/Map.wz/Map/Map9/910000011.img.xml
+index 3ca4d9435..4a2dddf8a 100644
+--- a/wz/Map.wz/Map/Map9/910000011.img.xml
++++ b/wz/Map.wz/Map/Map9/910000011.img.xml
+@@ -2012,10 +2012,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000012.img.xml b/wz/Map.wz/Map/Map9/910000012.img.xml
+index e7fb4b404..b2555ed25 100644
+--- a/wz/Map.wz/Map/Map9/910000012.img.xml
++++ b/wz/Map.wz/Map/Map9/910000012.img.xml
+@@ -1968,10 +1968,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000013.img.xml b/wz/Map.wz/Map/Map9/910000013.img.xml
+index a7635fbb0..d757a13c5 100644
+--- a/wz/Map.wz/Map/Map9/910000013.img.xml
++++ b/wz/Map.wz/Map/Map9/910000013.img.xml
+@@ -1777,10 +1777,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+diff --git a/wz/Map.wz/Map/Map9/910000014.img.xml b/wz/Map.wz/Map/Map9/910000014.img.xml
+index 93d0e70de..8860c7b2a 100644
+--- a/wz/Map.wz/Map/Map9/910000014.img.xml
++++ b/wz/Map.wz/Map/Map9/910000014.img.xml
+@@ -1777,10 +1777,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+diff --git a/wz/Map.wz/Map/Map9/910000015.img.xml b/wz/Map.wz/Map/Map9/910000015.img.xml
+index f780e3532..4a8f03d53 100644
+--- a/wz/Map.wz/Map/Map9/910000015.img.xml
++++ b/wz/Map.wz/Map/Map9/910000015.img.xml
+@@ -1777,10 +1777,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+diff --git a/wz/Map.wz/Map/Map9/910000016.img.xml b/wz/Map.wz/Map/Map9/910000016.img.xml
+index 7a74fc128..8ee242d13 100644
+--- a/wz/Map.wz/Map/Map9/910000016.img.xml
++++ b/wz/Map.wz/Map/Map9/910000016.img.xml
+@@ -1777,10 +1777,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+diff --git a/wz/Map.wz/Map/Map9/910000017.img.xml b/wz/Map.wz/Map/Map9/910000017.img.xml
+index 12e71b45d..f0fddf42f 100644
+--- a/wz/Map.wz/Map/Map9/910000017.img.xml
++++ b/wz/Map.wz/Map/Map9/910000017.img.xml
+@@ -1777,10 +1777,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+diff --git a/wz/Map.wz/Map/Map9/910000018.img.xml b/wz/Map.wz/Map/Map9/910000018.img.xml
+index 9603153f4..efc81aff6 100644
+--- a/wz/Map.wz/Map/Map9/910000018.img.xml
++++ b/wz/Map.wz/Map/Map9/910000018.img.xml
+@@ -1620,10 +1620,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000019.img.xml b/wz/Map.wz/Map/Map9/910000019.img.xml
+index 091821e9a..8528501dd 100644
+--- a/wz/Map.wz/Map/Map9/910000019.img.xml
++++ b/wz/Map.wz/Map/Map9/910000019.img.xml
+@@ -1620,10 +1620,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000020.img.xml b/wz/Map.wz/Map/Map9/910000020.img.xml
+index dfd3ba4a9..2918f4abc 100644
+--- a/wz/Map.wz/Map/Map9/910000020.img.xml
++++ b/wz/Map.wz/Map/Map9/910000020.img.xml
+@@ -1620,10 +1620,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000021.img.xml b/wz/Map.wz/Map/Map9/910000021.img.xml
+index 5ab85152c..d1d5fb650 100644
+--- a/wz/Map.wz/Map/Map9/910000021.img.xml
++++ b/wz/Map.wz/Map/Map9/910000021.img.xml
+@@ -1620,10 +1620,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">
+diff --git a/wz/Map.wz/Map/Map9/910000022.img.xml b/wz/Map.wz/Map/Map9/910000022.img.xml
+index 6042ce03d..c5d0ef194 100644
+--- a/wz/Map.wz/Map/Map9/910000022.img.xml
++++ b/wz/Map.wz/Map/Map9/910000022.img.xml
+@@ -1620,10 +1620,10 @@
+     <int name="personalShop" value="1"/>
+     <int name="entrustedShop" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="fieldLimit" value="4202732"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+     <string name="onUserEnter" value=""/>
++    <int name="fieldLimit" value="4202748"/>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="3">

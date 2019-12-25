@@ -1,0 +1,604 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index c1f115882..0c3f27b31 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -868,4 +868,8 @@ Adicionado feature de anúncio de mudança de classe.
+ Adicionado drops faltando da questline Puppeteer de Aran.
+ Movimentação de GM rank para alguns comandos.
+ Corrigido autoassigner inesperadamente desconectando jogadores, quando o autoassigner do cliente está sendo utilizado.
+-Adicionado scripts para a questline de Full Swing de Aran.
+\ No newline at end of file
++Adicionado scripts para a questline de Full Swing de Aran.
++
++19 Março 2018,
++Tentativa de correção em reactors desconectando jogadores que tentam ativá-los com ataque básico ao mesmo tempo.
++Adicionado feature de AutoJCE (créditos ao Kradi-a).
+\ No newline at end of file
+diff --git a/docs/todo.txt b/docs/todo.txt
+index 4f1516536..185df6d10 100644
+--- a/docs/todo.txt
++++ b/docs/todo.txt
+@@ -3,6 +3,12 @@ Credits:
+ Ronan - Freelance Developer
+ Vcoc - Freelance Developer
+ 
++---------------------------
++Known issues:
++- Everytime two people click on an npc at the same time, one of them dcs and the other needs to @dispose to talk to the npc.
++- If multiple people hit boxes/reactors at the same time, they both dc with invalid pointer error.
++---------------------------
++
+ ---------------------------
+ ToDo / Missing features list:
+ ---------------------------
+diff --git a/scripts/event/LudiMazePQ.js b/scripts/event/LudiMazePQ.js
+index 7dccd58df..66db27bb1 100644
+--- a/scripts/event/LudiMazePQ.js
++++ b/scripts/event/LudiMazePQ.js
+@@ -102,7 +102,9 @@ function afterSetup(eim) {}
+ function respawnStages(eim) {}
+ 
+ function playerEntry(eim, player) {
+-        var map = eim.getMapInstance(entryMap);
++        var rand = Math.floor(Math.random() * 15);
++    
++        var map = eim.getMapInstance(entryMap + rand);
+         player.changeMap(map, map.getPortal(0));
+ }
+ 
+diff --git a/scripts/quest/21735.js b/scripts/quest/21735.js
+new file mode 100644
+index 000000000..e423faa57
+--- /dev/null
++++ b/scripts/quest/21735.js
+@@ -0,0 +1,81 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Aran, ever since the Puppeteer's ambush on me, I've been thinking it is dangerous to have the #b#t4032323##k around here by myself. So, I need you to deliver the gem to #r#p1201000##k, in Rien, she will know what to do with it.");
++        } else if (status == 1) {
++            if(!qm.canHold(4032323, 1)) {
++                qm.sendNext("Please free a slot on your ETC inventory before receiving the item.");
++                qm.dispose();
++                return;
++            }
++            
++            if(!qm.haveItem(4032323, 1)) qm.gainItem(4032323, 1);
++            qm.forceStartQuest();
++            qm.dispose();
++        }
++    }
++}
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(qm.haveItem(4032323, 1)) {
++                qm.sendNext("#r#p1002104##k sent the #b#t4032323##k here for safety? Thank goodness, indeed here the gem will be safer than anywhere on Victoria Island. Thank you, #b#h0##k.");
++            } else {
++                qm.dispose();
++            }
++        } else if (status == 1) {
++            qm.gainItem(4032323, -1);
++            qm.gainExp(6037 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/21766.js b/scripts/quest/21766.js
+index 52a9bee1e..3aaebdeb4 100644
+--- a/scripts/quest/21766.js
++++ b/scripts/quest/21766.js
+@@ -9,7 +9,7 @@ function start(mode, type, selection) {
+ 	} else if (status == 2) {
+ 		qm.sendNext("I have a feeling there is a secret behind that wooden box. Could you stealthily look into the wooden box next to #p20000#?");
+ 	} else if (status == 3) {
+-		qm.sendNext("You know where #p20000# is, right? Hes to the right. Just keep going until you see where Vikin is, then head down past the hanging shark and octopus, and you''ll see John. The box should be right next to him.");
++		qm.sendNext("You know where #p20000# is, right? He's to the right. Just keep going until you see where Vikin is, then head down past the hanging shark and octopus, and you''ll see John. The box should be right next to him.");
+ 	} else {
+                 qm.forceStartQuest();
+ 		qm.dispose();
+diff --git a/scripts/quest/3314.js b/scripts/quest/3314.js
+index 306b95ab5..5fb8e21f2 100644
+--- a/scripts/quest/3314.js
++++ b/scripts/quest/3314.js
+@@ -58,7 +58,7 @@ function end(mode, type, selection) {
+             } else {
+                 qm.sendNext("You seem pretty normal, don't you? I can't detect any possible effect from my experiment on you. Go take the pill I asked you to take and show me the effects, will you?");
+             }
+-            
++        } else {
+             qm.dispose();
+         }
+     }
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 2237a67dc..c21b09722 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19767,7 +19767,7 @@ USE `heavenms`;
+ (2230110, 4032146, 1, 1, 20722, 40000),
+ (2230111, 4032147, 1, 1, 20723, 40000),
+ (9300347, 4001272, 1, 1, 0, 400000),
+-(9300347, 4032324, 1, 1, 21736, 40000),
++(9300347, 4032324, 1, 1, 21737, 40000),
+ (9300344, 4032322, 1, 1, 21731, 999999),
+ (3400008, 1302008, 1, 1, 0, 4200),
+ (3400008, 1412004, 1, 1, 0, 4200),
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index c9b1082f6..6774c043f 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -73,9 +73,9 @@
+     public static final boolean USE_QUEST_RATE = false;             //Exp/Meso gained by quests uses fixed server exp/meso rate times quest rate as multiplier, instead of player rates.
+     public static final boolean USE_MULTIPLE_SAME_EQUIP_DROP = true;//Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
+     
+-    
+     //Announcement Configuration
+-    public static final boolean USE_ANNOUNCE_CHANGEJOB = true;     //Automatic message sent to acquantainces when changing jobs.
++    public static final boolean USE_ANNOUNCE_SHOPITEMSOLD = false;  //Automatic message sent to owner when an item from the Player Shop or Hired Merchant is sold.
++    public static final boolean USE_ANNOUNCE_CHANGEJOB = false;     //Automatic message sent to acquantainces when changing jobs.
+     
+     //Server Rates And Experience
+     public static final int EXP_RATE = 10;
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 5c9518228..94d4b6d1f 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -112,13 +112,12 @@ public void sessionOpened(IoSession session) {
+             FilePrinter.print(FilePrinter.SESSION, "IoSession with " + session.getRemoteAddress() + " opened on " + sdf.format(Calendar.getInstance().getTime()), false);
+         }
+ 
+-        byte key[] = {0x13, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, (byte) 0xB4, 0x00, 0x00, 0x00, 0x1B, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00, 0x52, 0x00, 0x00, 0x00};
+         byte ivRecv[] = {70, 114, 122, 82};
+         byte ivSend[] = {82, 48, 120, 115};
+         ivRecv[3] = (byte) (Math.random() * 255);
+         ivSend[3] = (byte) (Math.random() * 255);
+-        MapleAESOFB sendCypher = new MapleAESOFB(key, ivSend, (short) (0xFFFF - ServerConstants.VERSION));
+-        MapleAESOFB recvCypher = new MapleAESOFB(key, ivRecv, (short) ServerConstants.VERSION);
++        MapleAESOFB sendCypher = new MapleAESOFB(ivSend, (short) (0xFFFF - ServerConstants.VERSION));
++        MapleAESOFB recvCypher = new MapleAESOFB(ivRecv, (short) ServerConstants.VERSION);
+         MapleClient client = new MapleClient(sendCypher, recvCypher, session);
+         client.setWorld(world);
+         client.setChannel(channel);
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 79969d344..25ed9b47d 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -71,10 +71,12 @@
+ import client.newyear.NewYearCardRecord;
+ import constants.ItemConstants;
+ import constants.ServerConstants;
++import java.security.Security;
+ import java.util.Calendar;
+ import net.server.audit.ThreadTracker;
+ import server.quest.MapleQuest;
+ import tools.locks.MonitoredLockType;
++import tools.AutoJCE;
+ 
+ public class Server implements Runnable {
+     private static final Set<Integer> activeFly = new HashSet<>();
+@@ -382,6 +384,8 @@ public void shutdown() {
+ 
+     public static void main(String args[]) {
+         System.setProperty("wzpath", "wz");
++        Security.setProperty("crypto.policy", "unlimited");
++        AutoJCE.removeCryptographyRestrictions();
+         Server.getInstance().run();
+     }
+ 
+diff --git a/src/net/server/channel/handlers/ReactorHitHandler.java b/src/net/server/channel/handlers/ReactorHitHandler.java
+index ccf97e8f4..33ceb3e3b 100644
+--- a/src/net/server/channel/handlers/ReactorHitHandler.java
++++ b/src/net/server/channel/handlers/ReactorHitHandler.java
+@@ -41,7 +41,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         slea.skip(4);
+         int skillid = slea.readInt();
+         MapleReactor reactor = c.getPlayer().getMap().getReactorByOid(oid);
+-        if (reactor != null && reactor.isAlive()) {
++        if (reactor != null) {
+             reactor.hitReactor(true, charPos, stance, skillid, c);
+         }
+     }
+diff --git a/src/net/server/handlers/login/CharSelectedHandler.java b/src/net/server/handlers/login/CharSelectedHandler.java
+index 1ed5cfaa2..851b777b1 100644
+--- a/src/net/server/handlers/login/CharSelectedHandler.java
++++ b/src/net/server/handlers/login/CharSelectedHandler.java
+@@ -43,6 +43,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 
+         Server.getInstance().unregisterLoginState(c);
+         c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++        
+         String[] socket = Server.getInstance().getIP(c.getWorld(), c.getChannel()).split(":");
+         try {
+             c.announce(MaplePacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
+diff --git a/src/net/server/handlers/login/CharSelectedWithPicHandler.java b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+index 1863f6049..df5b8b07b 100644
+--- a/src/net/server/handlers/login/CharSelectedWithPicHandler.java
++++ b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+@@ -17,9 +17,9 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         String pic = slea.readMapleAsciiString();
+         int charId = slea.readInt();
+         String macs = slea.readMapleAsciiString();
+-		String hwid = slea.readMapleAsciiString();
++        String hwid = slea.readMapleAsciiString();
+         c.updateMacs(macs);
+-		c.updateHWID(hwid);
++        c.updateHWID(hwid);
+ 
+         if (c.hasBannedMac() || c.hasBannedHWID()) {
+             c.getSession().close(true);
+diff --git a/src/scripting/npc/NPCScriptManager.java b/src/scripting/npc/NPCScriptManager.java
+index 084109a2f..20b841027 100644
+--- a/src/scripting/npc/NPCScriptManager.java
++++ b/src/scripting/npc/NPCScriptManager.java
+@@ -45,7 +45,7 @@
+     private Map<MapleClient, Invocable> scripts = new HashMap<>();
+     private static NPCScriptManager instance = new NPCScriptManager();
+ 
+-    public synchronized static NPCScriptManager getInstance() {
++    public static NPCScriptManager getInstance() {
+         return instance;
+     }
+ 
+@@ -140,8 +140,9 @@ public void dispose(NPCConversationManager cm) {
+     }
+ 
+     public void dispose(MapleClient c) {
+-        if (cms.get(c) != null) {
+-            dispose(cms.get(c));
++        NPCConversationManager cm = cms.get(c);
++        if (cm != null) {
++            dispose(cm);
+         }
+     }
+ 
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index b792014a7..2a5e93534 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -29,6 +29,7 @@
+ import client.inventory.MapleInventoryType;
+ import com.mysql.jdbc.Statement;
+ import constants.ItemConstants;
++import constants.ServerConstants;
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+ import java.sql.SQLException;
+@@ -192,7 +193,7 @@ public void buy(MapleClient c, int item, short quantity) {
+             if (c.getPlayer().getMeso() >= price) {
+                 if (canBuy(c, newItem)) {
+                     c.getPlayer().gainMeso(-price, false);
+-                    announceItemSold(newItem, price);   // idea thanks to vcoc
++                    if(ServerConstants.USE_ANNOUNCE_SHOPITEMSOLD) announceItemSold(newItem, price);   // idea thanks to vcoc
+                     
+                     synchronized (sold) {
+                         sold.add(new SoldItem(c.getPlayer().getName(), pItem.getItem().getItemId(), quantity, price));
+diff --git a/src/server/maps/MaplePlayerShop.java b/src/server/maps/MaplePlayerShop.java
+index e1310b41c..b65d5e6a7 100644
+--- a/src/server/maps/MaplePlayerShop.java
++++ b/src/server/maps/MaplePlayerShop.java
+@@ -25,6 +25,7 @@
+ import client.MapleClient;
+ import client.inventory.Item;
+ import client.inventory.MapleInventoryType;
++import constants.ServerConstants;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.LinkedList;
+@@ -35,7 +36,6 @@
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
+ import net.SendOpcode;
+-import net.server.Server;
+ import server.MapleInventoryManipulator;
+ import server.MapleItemInformationProvider;
+ import tools.MaplePacketCreator;
+@@ -216,7 +216,7 @@ public void buy(MapleClient c, int item, short quantity) {
+                         if (canBuy(c, newItem)) {
+                             c.getPlayer().gainMeso(-price, false);
+                             
+-                            announceItemSold(newItem, price);   // idea thanks to vcoc
++                            if(ServerConstants.USE_ANNOUNCE_SHOPITEMSOLD) announceItemSold(newItem, price);   // idea thanks to vcoc
+                             owner.gainMeso(price, true);
+                             
+                             pItem.setBundles((short) (pItem.getBundles() - quantity));
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 183089a5a..56fd2cd22 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -55,6 +55,7 @@
+     private boolean attackHit;
+     private ScheduledFuture<?> timeoutTask = null;
+     private Lock reactorLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR, true);
++    private Lock hitLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR, true);
+ 
+     public MapleReactor(MapleReactorStats stats, int rid) {
+         this.evstate = (byte)0;
+@@ -139,6 +140,10 @@ public MapleMap getMap() {
+     public boolean isAlive() {
+         return alive;
+     }
++    
++    public boolean isActive() {
++        return alive && stats.getType(state) != -1;
++    }
+ 
+     public void setAlive(boolean alive) {
+         this.alive = alive;
+@@ -227,69 +232,73 @@ public void hitReactor(MapleClient c) {
+         hitReactor(false, 0, (short) 0, 0, c);
+     }
+     
+-    public synchronized void hitReactor(boolean wHit, int charPos, short stance, int skillid, MapleClient c) {
++    public void hitReactor(boolean wHit, int charPos, short stance, int skillid, MapleClient c) {
+         try {
+-            if(!this.isAlive()) {
++            if(!this.isActive()) {
+                 return;
+             }
+             
+-            this.lockReactor();
+-            try {
+-                cancelReactorTimeout();
+-                attackHit = wHit;
+-
+-                if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid + " , STATE " + stats.getType(state) + " STATESIZE " + stats.getStateSize(state));
+-                ReactorScriptManager.getInstance().onHit(c, this);
+-
+-                int reactorType = stats.getType(state);
+-                if (reactorType < 999 && reactorType != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
+-                    if (!(reactorType == 2 && (stance == 0 || stance == 2))) { //get next state
+-                        for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
+-                            List<Integer> activeSkills = stats.getActiveSkills(state, b);
+-                            if (activeSkills != null) {
+-                                if (!activeSkills.contains(skillid)) continue;
+-                            }
+-                            state = stats.getNextState(state, b);
+-                            if (stats.getNextState(state, b) == -1) {//end of reactor
+-                                if (reactorType < 100) {//reactor broken
+-                                    if (delay > 0) {
+-                                        map.destroyReactor(getObjectId());
+-                                    } else {//trigger as normal
++            if(hitLock.tryLock()) {
++                this.lockReactor();
++                try {
++                    cancelReactorTimeout();
++                    attackHit = wHit;
++
++                    if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid + " , STATE " + stats.getType(state) + " STATESIZE " + stats.getStateSize(state));
++                    ReactorScriptManager.getInstance().onHit(c, this);
++
++                    int reactorType = stats.getType(state);
++                    if (reactorType < 999 && reactorType != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
++                        if (!(reactorType == 2 && (stance == 0 || stance == 2))) { //get next state
++                            for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
++                                List<Integer> activeSkills = stats.getActiveSkills(state, b);
++                                if (activeSkills != null) {
++                                    if (!activeSkills.contains(skillid)) continue;
++                                }
++                                state = stats.getNextState(state, b);
++                                if (stats.getNextState(state, b) == -1) {//end of reactor
++                                    if (reactorType < 100) {//reactor broken
++                                        if (delay > 0) {
++                                            map.destroyReactor(getObjectId());
++                                        } else {//trigger as normal
++                                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                        }
++                                    } else {//item-triggered on final step
+                                         map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+                                     }
+-                                } else {//item-triggered on final step
+-                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                                }
+ 
+-                                ReactorScriptManager.getInstance().act(c, this);
+-                            } else { //reactor not broken yet
+-                                map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                                if (state == stats.getNextState(state, b)) {//current state = next state, looping reactor
+                                     ReactorScriptManager.getInstance().act(c, this);
+-                                }
++                                } else { //reactor not broken yet
++                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                    if (state == stats.getNextState(state, b)) {//current state = next state, looping reactor
++                                        ReactorScriptManager.getInstance().act(c, this);
++                                    }
+ 
+-                                setShouldCollect(true);     // refresh collectability on item drop-based reactors
+-                                refreshReactorTimeout();
+-                                if(stats.getType(state) == 100) {
+-                                    map.searchItemReactors(this);
++                                    setShouldCollect(true);     // refresh collectability on item drop-based reactors
++                                    refreshReactorTimeout();
++                                    if(stats.getType(state) == 100) {
++                                        map.searchItemReactors(this);
++                                    }
+                                 }
++                                break;
+                             }
+-                            break;
++                        }
++                    } else {
++                        state++;
++                        map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                        ReactorScriptManager.getInstance().act(c, this);
++
++                        setShouldCollect(true);
++                        refreshReactorTimeout();
++                        if(stats.getType(state) == 100) {
++                            map.searchItemReactors(this);
+                         }
+                     }
+-                } else {
+-                    state++;
+-                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                    ReactorScriptManager.getInstance().act(c, this);
+-
+-                    setShouldCollect(true);
+-                    refreshReactorTimeout();
+-                    if(stats.getType(state) == 100) {
+-                        map.searchItemReactors(this);
+-                    }
++                } finally {
++                    this.unlockReactor();
+                 }
+-            } finally {
+-                this.unlockReactor();
++                
++                hitLock.unlock();
+             }
+         } catch(Exception e) {
+             e.printStackTrace();
+diff --git a/src/tools/AutoJCE.java b/src/tools/AutoJCE.java
+new file mode 100644
+index 000000000..d84b0e6fe
+--- /dev/null
++++ b/src/tools/AutoJCE.java
+@@ -0,0 +1,61 @@
++package tools;
++
++import java.lang.reflect.Field;
++import java.lang.reflect.Modifier;
++import java.security.Permission;
++import java.security.PermissionCollection;
++import java.util.Map;
++
++public class AutoJCE{   // AutoJCE into server source thanks to Kradi-a
++
++	/**
++	 * Credits: ntoskrnl of StackOverflow
++	 * http://stackoverflow.com/questions/1179672/
++	 */
++	public static byte removeCryptographyRestrictions(){
++		if(!isRestrictedCryptography()){
++			//System.out.println("Cryptography restrictions removal not needed");
++			return 0;
++		}
++		try{
++			/*
++			 * Do the following, but with reflection to bypass access checks:
++			 *
++			 * JceSecurity.isRestricted = false;
++			 * JceSecurity.defaultPolicy.perms.clear();
++			 * JceSecurity.defaultPolicy.add(CryptoAllPermission.INSTANCE);
++			 */
++			final Class<?> jceSecurity = Class.forName("javax.crypto.JceSecurity");
++			final Class<?> cryptoPermissions = Class.forName("javax.crypto.CryptoPermissions");
++			final Class<?> cryptoAllPermission = Class.forName("javax.crypto.CryptoAllPermission");
++			final Field isRestrictedField = jceSecurity.getDeclaredField("isRestricted");// was set to final in Java 8 Update 112. Requires you to remove the final modifier.
++			Field modifiersField = Field.class.getDeclaredField("modifiers");
++			modifiersField.setAccessible(true);
++			modifiersField.setInt(isRestrictedField, isRestrictedField.getModifiers() & ~Modifier.FINAL);
++			isRestrictedField.setAccessible(true);
++			isRestrictedField.set(null, false);
++			final Field defaultPolicyField = jceSecurity.getDeclaredField("defaultPolicy");
++			defaultPolicyField.setAccessible(true);
++			final PermissionCollection defaultPolicy = (PermissionCollection) defaultPolicyField.get(null);
++			final Field perms = cryptoPermissions.getDeclaredField("perms");
++			perms.setAccessible(true);
++			((Map<?, ?>) perms.get(defaultPolicy)).clear();
++			final Field instance = cryptoAllPermission.getDeclaredField("INSTANCE");
++			instance.setAccessible(true);
++			defaultPolicy.add((Permission) instance.get(null));
++                        
++			//System.out.println("Successfully removed cryptography restrictions");
++                        return 1;
++		}catch(final Exception e){
++			e.printStackTrace();
++                        
++                        System.err.println("Failed to remove cryptography restrictions");
++                        return -1;
++		}
++	}
++
++	private static boolean isRestrictedCryptography(){
++		// This simply matches the Oracle JRE, but not OpenJDK.
++		return "Java(TM) SE Runtime Environment".equals(System.getProperty("java.runtime.name"));
++	}
++}
+\ No newline at end of file
+diff --git a/src/tools/MapleAESOFB.java b/src/tools/MapleAESOFB.java
+index 7e80eb542..28ccbe537 100644
+--- a/src/tools/MapleAESOFB.java
++++ b/src/tools/MapleAESOFB.java
+@@ -33,6 +33,9 @@
+     private byte iv[];
+     private Cipher cipher;
+     private short mapleVersion;
++    private final static SecretKeySpec skey = new SecretKeySpec(
++        new byte[]{0x13, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, (byte) 0xB4, 0x00, 0x00, 0x00, 0x1B, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00, 0x52, 0x00, 0x00, 0x00}, "AES");
++
+     private static final byte[] funnyBytes = new byte[]{(byte) 0xEC, (byte) 0x3F, (byte) 0x77, (byte) 0xA4, (byte) 0x45, (byte) 0xD0, (byte) 0x71, (byte) 0xBF, (byte) 0xB7, (byte) 0x98, (byte) 0x20, (byte) 0xFC,
+         (byte) 0x4B, (byte) 0xE9, (byte) 0xB3, (byte) 0xE1, (byte) 0x5C, (byte) 0x22, (byte) 0xF7, (byte) 0x0C, (byte) 0x44, (byte) 0x1B, (byte) 0x81, (byte) 0xBD, (byte) 0x63, (byte) 0x8D, (byte) 0xD4, (byte) 0xC3,
+         (byte) 0xF2, (byte) 0x10, (byte) 0x19, (byte) 0xE0, (byte) 0xFB, (byte) 0xA1, (byte) 0x6E, (byte) 0x66, (byte) 0xEA, (byte) 0xAE, (byte) 0xD6, (byte) 0xCE, (byte) 0x06, (byte) 0x18, (byte) 0x4E, (byte) 0xEB,
+@@ -51,19 +54,16 @@
+         (byte) 0xD3, (byte) 0xAB, (byte) 0x91, (byte) 0xB9, (byte) 0x84, (byte) 0x7F, (byte) 0x61, (byte) 0x1E, (byte) 0xCF, (byte) 0xC5, (byte) 0xD1, (byte) 0x56, (byte) 0x3D, (byte) 0xCA, (byte) 0xF4, (byte) 0x05,
+         (byte) 0xC6, (byte) 0xE5, (byte) 0x08, (byte) 0x49};
+ 
+-    public MapleAESOFB(byte key[], byte iv[], short mapleVersion) {
+-        SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
++    public MapleAESOFB(byte iv[], short mapleVersion) {
+         try {
+             cipher = Cipher.getInstance("AES");
++            cipher.init(Cipher.ENCRYPT_MODE, skey);
+         } catch (NoSuchAlgorithmException e) {
+             System.out.println("ERROR " + e);
+         } catch (NoSuchPaddingException e) {
+             System.out.println("ERROR " + e);
+-        }
+-        try {
+-            cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
+         } catch (InvalidKeyException e) {
+-            e.printStackTrace();
++            System.out.println("Error initalizing the encryption cipher.  Make sure you're using the Unlimited Strength cryptography jar files.");
+         }
+         this.setIv(iv);
+         this.mapleVersion = (short) (((mapleVersion >> 8) & 0xFF) | ((mapleVersion << 8) & 0xFF00));

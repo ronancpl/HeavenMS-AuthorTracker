@@ -1,0 +1,2677 @@
+diff --git a/.gitignore b/.gitignore
+index 1d6755d92..fc5173fbb 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -2,28 +2,39 @@
+ .idea/
+ 
+ # build files
+-*build.xml
+-/build/**
+-/tools/MapleArrowFetcher/build/**
+-/tools/MapleCouponInstaller/build/**
+-/tools/MapleIdRetriever/build/**
+-/tools/MapleMesoFetcher/build/**
+-/tools/MapleQuestItemFetcher/build/**
+-/tools/MobBookIndexer/build/**
+-/tools/MobBookUpdate/build/**
++
++/build/
+ /dist/
+-/tools/MobBookUpdate - Copia/build/
+-/tools/MobBookUpdate - Copia/dist/
+-/tools/MobBookUpdate - Copia/nbproject/private/
+-/tools/ItemMakerUpdate/build/
+-/tools/ItemMakerUpdate/dist/
+-/tools/ItemMakerUpdate/nbproject/private/
+-/tools/MapleMakerUpdate/build/
+-/tools/MapleMakerUpdate/dist/
+-/tools/MapleMakerUpdate/nbproject/private/
+-/tools/MapleMakerFetcher/build/
+-/tools/MapleMakerFetcher/dist/
+-/tools/MapleMakerFetcher/nbproject/private/
+-/tools/MapleSkillMakerFetcher/nbproject/private/
++/nbproject/private/
++
++/tools/MapleArrowFetcher/build/
++/tools/MapleArrowFetcher/dist/
++/tools/MapleArrowFetcher/nbproject/private/
++
++/tools/MapleCouponInstaller/build/
++/tools/MapleCouponInstaller/dist/
++/tools/MapleCouponInstaller/nbproject/private/
++
++/tools/MapleIdRetriever/build/
++/tools/MapleIdRetriever/dist/
++/tools/MapleIdRetriever/nbproject/private/
++
++/tools/MapleMesoFetcher/build/
++/tools/MapleMesoFetcher/dist/
++/tools/MapleMesoFetcher/nbproject/private/
++
++/tools/MapleQuestItemFetcher/build/
++/tools/MapleQuestItemFetcher/dist/
++/tools/MapleQuestItemFetcher/nbproject/private/
++
+ /tools/MapleSkillMakerFetcher/build/
+-/tools/MapleSkillMakerFetcher/dist/
+\ No newline at end of file
++/tools/MapleSkillMakerFetcher/dist/
++/tools/MapleSkillMakerFetcher/nbproject/private/
++
++/tools/MobBookIndexer/build/
++/tools/MobBookIndexer/dist/
++/tools/MobBookIndexer/nbproject/private/
++
++/tools/MobBookUpdate/build/
++/tools/MobBookUpdate/dist/
++/tools/MobBookUpdate/nbproject/private/
+diff --git a/dist/MapleSolaxia.jar b/dist/MapleSolaxia.jar
+index 192a00441..98fdf4c35 100644
+Binary files a/dist/MapleSolaxia.jar and b/dist/MapleSolaxia.jar differ
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 1a5d0290c..9faaac6c8 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -674,4 +674,10 @@ Corrigida questline de mounts e skills de Aran.
+ 15 Novembro 2017,
+ Implementado sistema de auditoria de deadlocks: ThreadTracker.
+ Corrigido bug onde jogadores recebem dano de mobs de mapas anteriores (que acarretavam em problemas com OID e natureza dos objetos).
+-Corrigido alguns problemas com exceção sendo lançada ao tentar desligar o server.
+\ No newline at end of file
++Corrigido alguns problemas com exceção sendo lançada ao tentar desligar o server.
++
++16 - 17 Novembro 2017,
++Rearranjado ID de jogador agora começando de 1 mais uma vez. Espera-se que não haja mais de 1bil de jogadores registrados.
++Corrigido timer de quest não saindo do cliente quando dado o termino bem-sucedido da quest.
++Corrigido MapleArrowFetcher atribuindo valores iguais para min e max ranges. Max deve sempre ser maior que min.
++Corrigido bug no ThreadTracker não mostrando os últimos locks capturados pelas threads corretamente.
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 11ac3455f..3287222d2 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -2,9 +2,6 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="2"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/ServerConstants.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index d65bd0c1d..3ad186ce8 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
+   KEY `ranking2` (`gm`,`job`),
+   INDEX (id, accountid, world),
+   INDEX (id, accountid, name)
+-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PACK_KEYS=0 AUTO_INCREMENT=20000000 ; # map oid issues, start from 20mil
++) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PACK_KEYS=0 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `cooldowns` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 7a5cfa5f0..516f64d68 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -21782,6 +21782,7 @@ USE `maplesolaxia`;
+   DELETE FROM drop_data WHERE dropperid >= 9300184 AND dropperid <= 9300215 AND itemid = 0;
+ 
+   # MapleArrowFetcher! Set proper arrow quantity drop for the mobs.
++
+ UPDATE drop_data
+ SET minimum_quantity = CASE
+                        WHEN dropperid = 100100 AND itemid = 2060000 THEN 1
+@@ -22164,280 +22165,280 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9500369 AND itemid = 2060000 THEN 19
+   ELSE minimum_quantity END,
+     maximum_quantity = CASE
+-                       WHEN dropperid = 100100 AND itemid = 2060000 THEN 1
+-                       WHEN dropperid = 100100 AND itemid = 2061000 THEN 1
+-                       WHEN dropperid = 100101 AND itemid = 2060000 THEN 2
+-                       WHEN dropperid = 100101 AND itemid = 2061000 THEN 2
+-                       WHEN dropperid = 100120 AND itemid = 2060000 THEN 1
+-                       WHEN dropperid = 100120 AND itemid = 2061000 THEN 1
++                       WHEN dropperid = 100100 AND itemid = 2060000 THEN 2
++                       WHEN dropperid = 100100 AND itemid = 2061000 THEN 2
++                       WHEN dropperid = 100101 AND itemid = 2060000 THEN 3
++                       WHEN dropperid = 100101 AND itemid = 2061000 THEN 3
++                       WHEN dropperid = 100120 AND itemid = 2060000 THEN 2
++                       WHEN dropperid = 100120 AND itemid = 2061000 THEN 2
+                        WHEN dropperid = 100121 AND itemid = 2060000 THEN 5
+-                       WHEN dropperid = 100123 AND itemid = 2061000 THEN 11
+-                       WHEN dropperid = 100124 AND itemid = 2060000 THEN 13
+-                       WHEN dropperid = 100124 AND itemid = 2061000 THEN 13
+-                       WHEN dropperid = 120100 AND itemid = 2060000 THEN 2
+-                       WHEN dropperid = 120100 AND itemid = 2061000 THEN 2
+-                       WHEN dropperid = 130100 AND itemid = 2060000 THEN 6
+-                       WHEN dropperid = 130100 AND itemid = 2061000 THEN 6
+-                       WHEN dropperid = 130101 AND itemid = 2060000 THEN 6
+-                       WHEN dropperid = 130101 AND itemid = 2061000 THEN 6
+-                       WHEN dropperid = 210100 AND itemid = 2060000 THEN 8
+-                       WHEN dropperid = 210100 AND itemid = 2061000 THEN 8
+-                       WHEN dropperid = 1110100 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1110100 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 1110101 AND itemid = 2060000 THEN 16
+-                       WHEN dropperid = 1110101 AND itemid = 2061000 THEN 16
+-                       WHEN dropperid = 1110130 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1110130 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 1120100 AND itemid = 2060000 THEN 18
+-                       WHEN dropperid = 1120100 AND itemid = 2061000 THEN 18
+-                       WHEN dropperid = 1130100 AND itemid = 2060000 THEN 27
+-                       WHEN dropperid = 1130100 AND itemid = 2061000 THEN 27
++                       WHEN dropperid = 100123 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 100124 AND itemid = 2060000 THEN 14
++                       WHEN dropperid = 100124 AND itemid = 2061000 THEN 14
++                       WHEN dropperid = 120100 AND itemid = 2060000 THEN 3
++                       WHEN dropperid = 120100 AND itemid = 2061000 THEN 3
++                       WHEN dropperid = 130100 AND itemid = 2060000 THEN 7
++                       WHEN dropperid = 130100 AND itemid = 2061000 THEN 7
++                       WHEN dropperid = 130101 AND itemid = 2060000 THEN 7
++                       WHEN dropperid = 130101 AND itemid = 2061000 THEN 7
++                       WHEN dropperid = 210100 AND itemid = 2060000 THEN 9
++                       WHEN dropperid = 210100 AND itemid = 2061000 THEN 9
++                       WHEN dropperid = 1110100 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1110100 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 1110101 AND itemid = 2060000 THEN 17
++                       WHEN dropperid = 1110101 AND itemid = 2061000 THEN 17
++                       WHEN dropperid = 1110130 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1110130 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 1120100 AND itemid = 2060000 THEN 19
++                       WHEN dropperid = 1120100 AND itemid = 2061000 THEN 19
++                       WHEN dropperid = 1130100 AND itemid = 2060000 THEN 28
++                       WHEN dropperid = 1130100 AND itemid = 2061000 THEN 28
+                        WHEN dropperid = 1140100 AND itemid = 2060000 THEN 30
+                        WHEN dropperid = 1140100 AND itemid = 2061000 THEN 30
+                        WHEN dropperid = 1140130 AND itemid = 2060000 THEN 30
+                        WHEN dropperid = 1140130 AND itemid = 2061000 THEN 30
+-                       WHEN dropperid = 1210100 AND itemid = 2060000 THEN 11
+-                       WHEN dropperid = 1210100 AND itemid = 2061000 THEN 11
+-                       WHEN dropperid = 1210101 AND itemid = 2060000 THEN 16
+-                       WHEN dropperid = 1210101 AND itemid = 2061000 THEN 16
+-                       WHEN dropperid = 1210102 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 1210102 AND itemid = 2061000 THEN 12
+-                       WHEN dropperid = 1210103 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1210103 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 2100100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2100100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 2100101 AND itemid = 2060000 THEN 33
+-                       WHEN dropperid = 2100101 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 1210100 AND itemid = 2060000 THEN 12
++                       WHEN dropperid = 1210100 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 1210101 AND itemid = 2060000 THEN 17
++                       WHEN dropperid = 1210101 AND itemid = 2061000 THEN 17
++                       WHEN dropperid = 1210102 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 1210102 AND itemid = 2061000 THEN 13
++                       WHEN dropperid = 1210103 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1210103 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 2100100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2100100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 2100101 AND itemid = 2060000 THEN 34
++                       WHEN dropperid = 2100101 AND itemid = 2061000 THEN 34
+                        WHEN dropperid = 2100102 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2100102 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2100103 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2100103 AND itemid = 2061000 THEN 40
+                        WHEN dropperid = 2100104 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2100104 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2100105 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2100105 AND itemid = 2061000 THEN 37
+-                       WHEN dropperid = 2100106 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2100106 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2100107 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 2100107 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 2100108 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2100108 AND itemid = 2061000 THEN 46
++                       WHEN dropperid = 2100105 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2100105 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2100106 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2100106 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2100107 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 2100107 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 2100108 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2100108 AND itemid = 2061000 THEN 47
+                        WHEN dropperid = 2110200 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2110200 AND itemid = 2061000 THEN 35
+-                       WHEN dropperid = 2110300 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2110300 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2110301 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2110301 AND itemid = 2061000 THEN 46
++                       WHEN dropperid = 2110300 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2110300 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2110301 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2110301 AND itemid = 2061000 THEN 47
+                        WHEN dropperid = 2130100 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2130100 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2220000 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2220000 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2220100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2220100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 2230100 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 2230100 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 2230101 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230101 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2220100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2220100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 2230100 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 2230100 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 2230101 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230101 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 2230102 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2230102 AND itemid = 2061000 THEN 40
+-                       WHEN dropperid = 2230103 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230103 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 2230103 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230103 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 2230104 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2230104 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2230105 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230105 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 2230105 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230105 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 2230106 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2230106 AND itemid = 2061000 THEN 40
+-                       WHEN dropperid = 2230107 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230107 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2230107 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230107 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 2230108 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2230108 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2230109 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2230109 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2230110 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230110 AND itemid = 2061000 THEN 37
+-                       WHEN dropperid = 2230111 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230111 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2230131 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230131 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2230200 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2230200 AND itemid = 2061000 THEN 46
+-                       WHEN dropperid = 2300100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2300100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 3000000 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000000 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3000005 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000005 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3000006 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000006 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3100101 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3100101 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3100102 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3100102 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3110101 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110101 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110102 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110102 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110300 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110300 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110301 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110301 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110302 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3110302 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3110303 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3110303 AND itemid = 2061000 THEN 61
++                       WHEN dropperid = 2230110 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230110 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2230111 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230111 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2230131 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230131 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2230200 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2230200 AND itemid = 2061000 THEN 47
++                       WHEN dropperid = 2300100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2300100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 3000000 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000000 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3000005 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000005 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3000006 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000006 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3100101 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3100101 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3100102 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3100102 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3110101 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110101 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110102 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110102 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110300 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110300 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110301 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110301 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110302 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3110302 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3110303 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3110303 AND itemid = 2061000 THEN 62
+                        WHEN dropperid = 3210100 AND itemid = 2060005 THEN 8
+-                       WHEN dropperid = 3210203 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210203 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210203 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210203 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210204 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210204 AND itemid = 2061000 THEN 55
+                        WHEN dropperid = 3210205 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210205 AND itemid = 2061000 THEN 55
+-                       WHEN dropperid = 3210206 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210206 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210206 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210206 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210207 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210207 AND itemid = 2060005 THEN 9
+                        WHEN dropperid = 3210207 AND itemid = 2061000 THEN 55
+-                       WHEN dropperid = 3210208 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210208 AND itemid = 2061000 THEN 58
+-                       WHEN dropperid = 3210450 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210450 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210208 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210208 AND itemid = 2061000 THEN 59
++                       WHEN dropperid = 3210450 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210450 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210800 AND itemid = 2060005 THEN 10
+-                       WHEN dropperid = 3220000 AND itemid = 2060000 THEN 78
+-                       WHEN dropperid = 3220000 AND itemid = 2061000 THEN 78
+-                       WHEN dropperid = 3230100 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230100 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3230103 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230103 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3230200 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230200 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3230302 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230302 AND itemid = 2061000 THEN 56
++                       WHEN dropperid = 3220000 AND itemid = 2060000 THEN 79
++                       WHEN dropperid = 3220000 AND itemid = 2061000 THEN 79
++                       WHEN dropperid = 3230100 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230100 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3230103 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230103 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3230200 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230200 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3230302 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230302 AND itemid = 2061000 THEN 57
+                        WHEN dropperid = 3230303 AND itemid = 2060000 THEN 60
+                        WHEN dropperid = 3230303 AND itemid = 2061000 THEN 60
+-                       WHEN dropperid = 3230304 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230304 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3230305 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 3230305 AND itemid = 2061000 THEN 63
++                       WHEN dropperid = 3230304 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230304 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3230305 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 3230305 AND itemid = 2061000 THEN 64
+                        WHEN dropperid = 3230306 AND itemid = 2060000 THEN 60
+                        WHEN dropperid = 3230306 AND itemid = 2061000 THEN 60
+                        WHEN dropperid = 3230307 AND itemid = 2060000 THEN 50
+                        WHEN dropperid = 3230307 AND itemid = 2061000 THEN 50
+-                       WHEN dropperid = 3230308 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 3230308 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 3230400 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3230400 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3230405 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230405 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3300000 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3300000 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3300001 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3300001 AND itemid = 2061000 THEN 48
++                       WHEN dropperid = 3230308 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 3230308 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 3230400 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3230400 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3230405 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230405 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3300000 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3300000 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3300001 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3300001 AND itemid = 2061000 THEN 49
+                        WHEN dropperid = 3300002 AND itemid = 2060000 THEN 50
+                        WHEN dropperid = 3300002 AND itemid = 2061000 THEN 50
+-                       WHEN dropperid = 3300003 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3300003 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3300004 AND itemid = 2060000 THEN 53
+-                       WHEN dropperid = 3300004 AND itemid = 2061000 THEN 53
+-                       WHEN dropperid = 3300006 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3300006 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3300007 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3300007 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3300008 AND itemid = 2060000 THEN 86
+-                       WHEN dropperid = 3300008 AND itemid = 2061000 THEN 86
+-                       WHEN dropperid = 4110300 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4110300 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4110301 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4110301 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4130103 AND itemid = 2060000 THEN 106
+-                       WHEN dropperid = 4130103 AND itemid = 2061000 THEN 106
+-                       WHEN dropperid = 4230103 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230103 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230106 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230106 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 3300003 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3300003 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3300004 AND itemid = 2060000 THEN 54
++                       WHEN dropperid = 3300004 AND itemid = 2061000 THEN 54
++                       WHEN dropperid = 3300006 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3300006 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3300007 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3300007 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3300008 AND itemid = 2060000 THEN 87
++                       WHEN dropperid = 3300008 AND itemid = 2061000 THEN 87
++                       WHEN dropperid = 4110300 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4110300 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4110301 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4110301 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4130103 AND itemid = 2060000 THEN 107
++                       WHEN dropperid = 4130103 AND itemid = 2061000 THEN 107
++                       WHEN dropperid = 4230103 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230103 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230106 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230106 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230108 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230108 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230109 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230109 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230110 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230110 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230111 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230111 AND itemid = 2061000 THEN 66
+-                       WHEN dropperid = 4230112 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230112 AND itemid = 2061000 THEN 71
++                       WHEN dropperid = 4230109 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230109 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230110 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230110 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230111 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230111 AND itemid = 2061000 THEN 67
++                       WHEN dropperid = 4230112 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230112 AND itemid = 2061000 THEN 72
+                        WHEN dropperid = 4230113 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230113 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230114 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230114 AND itemid = 2061000 THEN 66
++                       WHEN dropperid = 4230114 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230114 AND itemid = 2061000 THEN 67
+                        WHEN dropperid = 4230115 AND itemid = 2060000 THEN 75
+                        WHEN dropperid = 4230115 AND itemid = 2061000 THEN 75
+                        WHEN dropperid = 4230116 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230116 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230117 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230117 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230118 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230118 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230119 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230119 AND itemid = 2061000 THEN 66
+-                       WHEN dropperid = 4230120 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230120 AND itemid = 2061000 THEN 71
++                       WHEN dropperid = 4230117 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230117 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230118 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230118 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230119 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230119 AND itemid = 2061000 THEN 67
++                       WHEN dropperid = 4230120 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230120 AND itemid = 2061000 THEN 72
+                        WHEN dropperid = 4230121 AND itemid = 2060000 THEN 75
+                        WHEN dropperid = 4230121 AND itemid = 2061000 THEN 75
+                        WHEN dropperid = 4230123 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230123 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230124 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230124 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230125 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230125 AND itemid = 2061000 THEN 71
+-                       WHEN dropperid = 4230126 AND itemid = 2060000 THEN 76
+-                       WHEN dropperid = 4230126 AND itemid = 2061000 THEN 76
++                       WHEN dropperid = 4230124 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230124 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230125 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230125 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230126 AND itemid = 2060000 THEN 77
++                       WHEN dropperid = 4230126 AND itemid = 2061000 THEN 77
+                        WHEN dropperid = 4230201 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230201 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230300 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230300 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230400 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230400 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230300 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230300 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230400 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230400 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230500 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230500 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230501 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230501 AND itemid = 2061000 THEN 66
++                       WHEN dropperid = 4230501 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230501 AND itemid = 2061000 THEN 67
+                        WHEN dropperid = 4230502 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230502 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230503 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230503 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230504 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230504 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230503 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230503 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230504 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230504 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230600 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230600 AND itemid = 2061000 THEN 65
+                        WHEN dropperid = 4240000 AND itemid = 2060000 THEN 80
+                        WHEN dropperid = 4240000 AND itemid = 2061000 THEN 80
+-                       WHEN dropperid = 5120100 AND itemid = 2060000 THEN 122
+-                       WHEN dropperid = 5120100 AND itemid = 2061000 THEN 122
+-                       WHEN dropperid = 5130104 AND itemid = 2060000 THEN 88
+-                       WHEN dropperid = 5130104 AND itemid = 2061000 THEN 88
+-                       WHEN dropperid = 5140000 AND itemid = 2060000 THEN 93
+-                       WHEN dropperid = 5140000 AND itemid = 2061000 THEN 93
+-                       WHEN dropperid = 5150000 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 5150000 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 5200000 AND itemid = 2060001 THEN 18
+-                       WHEN dropperid = 5200000 AND itemid = 2061001 THEN 18
++                       WHEN dropperid = 5120100 AND itemid = 2060000 THEN 123
++                       WHEN dropperid = 5120100 AND itemid = 2061000 THEN 123
++                       WHEN dropperid = 5130104 AND itemid = 2060000 THEN 89
++                       WHEN dropperid = 5130104 AND itemid = 2061000 THEN 89
++                       WHEN dropperid = 5140000 AND itemid = 2060000 THEN 94
++                       WHEN dropperid = 5140000 AND itemid = 2061000 THEN 94
++                       WHEN dropperid = 5150000 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 5150000 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 5200000 AND itemid = 2060001 THEN 19
++                       WHEN dropperid = 5200000 AND itemid = 2061001 THEN 19
+                        WHEN dropperid = 5200001 AND itemid = 2060001 THEN 24
+                        WHEN dropperid = 5200001 AND itemid = 2061001 THEN 24
+                        WHEN dropperid = 5200002 AND itemid = 2060001 THEN 24
+                        WHEN dropperid = 5200002 AND itemid = 2061001 THEN 24
+                        WHEN dropperid = 5220000 AND itemid = 2060000 THEN 125
+                        WHEN dropperid = 5220000 AND itemid = 2061000 THEN 125
+-                       WHEN dropperid = 5220002 AND itemid = 2060000 THEN 113
+-                       WHEN dropperid = 5220002 AND itemid = 2061000 THEN 113
+-                       WHEN dropperid = 5220003 AND itemid = 2060000 THEN 133
+-                       WHEN dropperid = 5220003 AND itemid = 2061000 THEN 133
++                       WHEN dropperid = 5220002 AND itemid = 2060000 THEN 114
++                       WHEN dropperid = 5220002 AND itemid = 2061000 THEN 114
++                       WHEN dropperid = 5220003 AND itemid = 2060000 THEN 134
++                       WHEN dropperid = 5220003 AND itemid = 2061000 THEN 134
+                        WHEN dropperid = 5400000 AND itemid = 2060001 THEN 28
+                        WHEN dropperid = 5400000 AND itemid = 2061001 THEN 28
+-                       WHEN dropperid = 6220000 AND itemid = 2060000 THEN 147
+-                       WHEN dropperid = 6220000 AND itemid = 2061000 THEN 147
++                       WHEN dropperid = 6220000 AND itemid = 2060000 THEN 148
++                       WHEN dropperid = 6220000 AND itemid = 2061000 THEN 148
+                        WHEN dropperid = 7120103 AND itemid = 2060003 THEN 28
+-                       WHEN dropperid = 7220000 AND itemid = 2060001 THEN 80
+-                       WHEN dropperid = 7220000 AND itemid = 2061001 THEN 80
++                       WHEN dropperid = 7220000 AND itemid = 2060001 THEN 81
++                       WHEN dropperid = 7220000 AND itemid = 2061001 THEN 81
+                        WHEN dropperid = 7220001 AND itemid = 2060001 THEN 79
+                        WHEN dropperid = 7220001 AND itemid = 2061001 THEN 79
+                        WHEN dropperid = 7220002 AND itemid = 2060001 THEN 87
+@@ -22446,29 +22447,29 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 8220000 AND itemid = 2061001 THEN 94
+                        WHEN dropperid = 8220001 AND itemid = 2060001 THEN 102
+                        WHEN dropperid = 8220001 AND itemid = 2061001 THEN 102
+-                       WHEN dropperid = 9300011 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9300011 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9300060 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 9300060 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 9300131 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9300131 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9300132 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9300132 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9300133 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9300160 AND itemid = 2060000 THEN 102
+-                       WHEN dropperid = 9300160 AND itemid = 2061000 THEN 102
+-                       WHEN dropperid = 9300161 AND itemid = 2060000 THEN 102
+-                       WHEN dropperid = 9300161 AND itemid = 2061000 THEN 102
+-                       WHEN dropperid = 9300274 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 9300274 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 9300011 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9300011 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9300060 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 9300060 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 9300131 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9300131 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9300132 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9300132 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9300133 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9300160 AND itemid = 2060000 THEN 103
++                       WHEN dropperid = 9300160 AND itemid = 2061000 THEN 103
++                       WHEN dropperid = 9300161 AND itemid = 2060000 THEN 103
++                       WHEN dropperid = 9300161 AND itemid = 2061000 THEN 103
++                       WHEN dropperid = 9300274 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 9300274 AND itemid = 2061000 THEN 13
+                        WHEN dropperid = 9300332 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 9300334 AND itemid = 2060000 THEN 80
+-                       WHEN dropperid = 9300341 AND itemid = 2060000 THEN 8
+-                       WHEN dropperid = 9300341 AND itemid = 2061000 THEN 8
+-                       WHEN dropperid = 9300342 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 9300342 AND itemid = 2061000 THEN 12
+-                       WHEN dropperid = 9300343 AND itemid = 2060000 THEN 11
+-                       WHEN dropperid = 9300343 AND itemid = 2061000 THEN 11
++                       WHEN dropperid = 9300341 AND itemid = 2060000 THEN 9
++                       WHEN dropperid = 9300341 AND itemid = 2061000 THEN 9
++                       WHEN dropperid = 9300342 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 9300342 AND itemid = 2061000 THEN 13
++                       WHEN dropperid = 9300343 AND itemid = 2060000 THEN 12
++                       WHEN dropperid = 9300343 AND itemid = 2061000 THEN 12
+                        WHEN dropperid = 9303005 AND itemid = 2060001 THEN 21
+                        WHEN dropperid = 9303005 AND itemid = 2061001 THEN 21
+                        WHEN dropperid = 9303008 AND itemid = 2060001 THEN 21
+@@ -22481,12 +22482,12 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9400100 AND itemid = 2060003 THEN 18
+                        WHEN dropperid = 9400101 AND itemid = 2061003 THEN 19
+                        WHEN dropperid = 9400204 AND itemid = 2060003 THEN 22
+-                       WHEN dropperid = 9400239 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 9400239 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 9400244 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 9400244 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 9400248 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 9400248 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 9400239 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 9400239 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 9400244 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 9400244 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 9400248 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 9400248 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 9400540 AND itemid = 2060004 THEN 8
+                        WHEN dropperid = 9400540 AND itemid = 2061004 THEN 8
+                        WHEN dropperid = 9400541 AND itemid = 2060004 THEN 8
+@@ -22495,24 +22496,24 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9400542 AND itemid = 2061004 THEN 11
+                        WHEN dropperid = 9400543 AND itemid = 2060004 THEN 13
+                        WHEN dropperid = 9400543 AND itemid = 2061004 THEN 13
+-                       WHEN dropperid = 9400547 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 9400547 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 9400548 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9400548 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9400550 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 9400550 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 9400558 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9400558 AND itemid = 2061000 THEN 48
++                       WHEN dropperid = 9400547 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 9400547 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 9400548 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9400548 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9400550 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 9400550 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 9400558 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9400558 AND itemid = 2061000 THEN 49
+                        WHEN dropperid = 9400563 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 9400563 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 9400638 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 9400638 AND itemid = 2061000 THEN 32
++                       WHEN dropperid = 9400638 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 9400638 AND itemid = 2061000 THEN 33
+                        WHEN dropperid = 9420500 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 9420500 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 9420502 AND itemid = 2060000 THEN 28
+-                       WHEN dropperid = 9420502 AND itemid = 2061000 THEN 28
+-                       WHEN dropperid = 9420506 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 9420506 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 9420502 AND itemid = 2060000 THEN 29
++                       WHEN dropperid = 9420502 AND itemid = 2061000 THEN 29
++                       WHEN dropperid = 9420506 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 9420506 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 9420508 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 9420508 AND itemid = 2061000 THEN 70
+                        WHEN dropperid = 9420527 AND itemid = 2060001 THEN 36
+@@ -22521,26 +22522,26 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9420531 AND itemid = 2061001 THEN 48
+                        WHEN dropperid = 9500112 AND itemid = 2060001 THEN 28
+                        WHEN dropperid = 9500112 AND itemid = 2061001 THEN 28
+-                       WHEN dropperid = 9500119 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9500119 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9500120 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 9500120 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 9500119 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9500119 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9500120 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 9500120 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 9500122 AND itemid = 2060000 THEN 80
+-                       WHEN dropperid = 9500123 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 9500123 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 9500308 AND itemid = 2060000 THEN 113
+-                       WHEN dropperid = 9500308 AND itemid = 2061000 THEN 113
+-                       WHEN dropperid = 9500310 AND itemid = 2060000 THEN 133
+-                       WHEN dropperid = 9500310 AND itemid = 2061000 THEN 133
++                       WHEN dropperid = 9500123 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 9500123 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 9500308 AND itemid = 2060000 THEN 114
++                       WHEN dropperid = 9500308 AND itemid = 2061000 THEN 114
++                       WHEN dropperid = 9500310 AND itemid = 2060000 THEN 134
++                       WHEN dropperid = 9500310 AND itemid = 2061000 THEN 134
+                        WHEN dropperid = 9500312 AND itemid = 2060001 THEN 79
+                        WHEN dropperid = 9500312 AND itemid = 2061001 THEN 79
+-                       WHEN dropperid = 9500313 AND itemid = 2060001 THEN 80
+-                       WHEN dropperid = 9500313 AND itemid = 2061001 THEN 80
++                       WHEN dropperid = 9500313 AND itemid = 2060001 THEN 81
++                       WHEN dropperid = 9500313 AND itemid = 2061001 THEN 81
+                        WHEN dropperid = 9500314 AND itemid = 2060001 THEN 87
+                        WHEN dropperid = 9500314 AND itemid = 2061001 THEN 87
+                        WHEN dropperid = 9500321 AND itemid = 2060001 THEN 8
+                        WHEN dropperid = 9500321 AND itemid = 2061001 THEN 8
+-                       WHEN dropperid = 9500366 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 9500369 AND itemid = 2060000 THEN 23
++                       WHEN dropperid = 9500366 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 9500369 AND itemid = 2060000 THEN 24
+   ELSE maximum_quantity END
+ ;
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 6acef3a1b..64570937a 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -154,7 +154,7 @@
+ import net.server.channel.handlers.PartyOperationHandler;
+ import scripting.item.ItemScriptManager;
+ import server.maps.MapleMapItem;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
+     private static NumberFormat nf = new DecimalFormat("#,###,###,###");
+@@ -271,10 +271,10 @@
+     private ScheduledFuture<?> extraRecoveryTask = null;
+     private ScheduledFuture<?> chairRecoveryTask = null;
+     private ScheduledFuture<?> pendantOfSpirit = null; //1122017
+-    private Lock chrLock = new MonitoredReentrantLock(MonitoredEnums.CHR, true);
+-    private Lock effLock = new MonitoredReentrantLock(MonitoredEnums.EFF, true);
+-    private Lock petLock = new MonitoredReentrantLock(MonitoredEnums.PET, true); // for quest tasks as well
+-    private Lock prtLock = new MonitoredReentrantLock(MonitoredEnums.PRT);
++    private Lock chrLock = new MonitoredReentrantLock(MonitoredLockType.CHR, true);
++    private Lock effLock = new MonitoredReentrantLock(MonitoredLockType.EFF, true);
++    private Lock petLock = new MonitoredReentrantLock(MonitoredLockType.PET, true); // for quest tasks as well
++    private Lock prtLock = new MonitoredReentrantLock(MonitoredLockType.PRT);
+     private Map<Integer, Set<Integer>> excluded = new LinkedHashMap<>();
+     private Set<Integer> excludedItems = new LinkedHashSet<>();
+     private List<MapleRing> crushRings = new ArrayList<>();
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 2880cb178..f41c9cbee 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -77,7 +77,7 @@
+ import tools.HexTool;
+ import tools.MapleAESOFB;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleClient {
+ 
+@@ -109,7 +109,7 @@
+ 	private int picattempt = 0;
+ 	private byte gender = -1;
+ 	private boolean disconnecting = false;
+-	private final Lock lock = new MonitoredReentrantLock(MonitoredEnums.CLIENT, true);
++	private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
+ 	private int votePoints;
+ 	private int voteTime = -1;
+ 	private long lastNpcClick;
+diff --git a/src/client/MonsterBook.java b/src/client/MonsterBook.java
+index 7dc541bdb..98bebe040 100644
+--- a/src/client/MonsterBook.java
++++ b/src/client/MonsterBook.java
+@@ -34,14 +34,14 @@
+ import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public final class MonsterBook {
+     private int specialCard = 0;
+     private int normalCard = 0;
+     private int bookLevel = 1;
+     private Map<Integer, Integer> cards = new LinkedHashMap<>();
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.BOOK);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.BOOK);
+ 
+     private Set<Entry<Integer, Integer>> getCardSet() {
+         lock.lock();
+diff --git a/src/client/inventory/ItemFactory.java b/src/client/inventory/ItemFactory.java
+index 74bf99554..d3409a71c 100644
+--- a/src/client/inventory/ItemFactory.java
++++ b/src/client/inventory/ItemFactory.java
+@@ -31,7 +31,7 @@
+ import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.Pair;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -47,7 +47,7 @@
+     MERCHANT(6, false);
+     private final int value;
+     private final boolean account;
+-    private static final Lock lock = new MonitoredReentrantLock(MonitoredEnums.ITEM, true);
++    private static final Lock lock = new MonitoredReentrantLock(MonitoredLockType.ITEM, true);
+ 
+     private ItemFactory(int value, boolean account) {
+         this.value = value;
+diff --git a/src/client/inventory/MapleInventory.java b/src/client/inventory/MapleInventory.java
+index f9a02fa14..6dd041801 100644
+--- a/src/client/inventory/MapleInventory.java
++++ b/src/client/inventory/MapleInventory.java
+@@ -39,7 +39,7 @@
+ import server.MapleItemInformationProvider;
+ import server.MapleInventoryManipulator;
+ import tools.FilePrinter;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -51,7 +51,7 @@
+     private byte slotLimit;
+     private MapleInventoryType type;
+     private boolean checked = false;
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.INVENTORY, true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.INVENTORY, true);
+     
+     public MapleInventory(MapleCharacter mc, MapleInventoryType type, byte slotLimit) {
+         this.owner = mc;
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 776921eb9..6aecc676b 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -4,13 +4,15 @@
+ import java.util.Properties;
+ 
+ public class ServerConstants {
++    //Thread Tracker Configuration
++    public static final boolean USE_THREAD_TRACKER = true;      //[SEVERE] This deadlock auditing thing will bloat the memory as fast as the time frame one takes to lose track of a raindrop on a tempesting day. Only for debugging purposes.
++    
+     //Database Configuration
+     public static String DB_URL = "";
+     public static String DB_USER = "";
+     public static String DB_PASS = "";
+     public static final boolean DB_EXPERIMENTAL_POOL = true;    //[EXPERIMENTAL] Installs a connection pool to hub DB connections. Set false to default.
+-    public static final boolean USE_THREAD_TRACKER = true;      //[WARNING] This deadlock auditing thing will bloat the memory as fast as the time frame one takes to lose track of a raindrop on a tempesting day. Only for debug purposes.
+-	
++    
+     //World And Version
+     public static short VERSION = 83;
+     public static String TIMEZONE = "-GMT3";
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index af55d9a69..17d57310c 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -50,7 +50,7 @@
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import server.TimerManager;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleServerHandler extends IoHandlerAdapter {
+ 
+@@ -59,8 +59,8 @@
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+     private static AtomicLong sessionId = new AtomicLong(7777);
+     
+-    private Lock idleLock = new MonitoredReentrantLock(MonitoredEnums.SHANDLER_IDLE, true);
+-    private Lock tempLock = new MonitoredReentrantLock(MonitoredEnums.SHANDLER_TEMP, true);
++    private Lock idleLock = new MonitoredReentrantLock(MonitoredLockType.SRVHANDLER_IDLE, true);
++    private Lock tempLock = new MonitoredReentrantLock(MonitoredLockType.SRVHANDLER_TEMP, true);
+     private Map<MapleClient, Long> idleSessions = new HashMap<>(100);
+     private Map<MapleClient, Long> tempIdleSessions = new HashMap<>();
+     private ScheduledFuture<?> idleManager = null;
+diff --git a/src/net/server/PlayerBuffStorage.java b/src/net/server/PlayerBuffStorage.java
+index d1b8d3bca..b33a38cea 100644
+--- a/src/net/server/PlayerBuffStorage.java
++++ b/src/net/server/PlayerBuffStorage.java
+@@ -25,7 +25,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ import tools.locks.MonitoredReentrantLock;
+ 
+ /**
+@@ -34,7 +34,7 @@
+  */
+ public class PlayerBuffStorage {
+     private int id = (int) (Math.random() * 100);
+-    private final Lock lock = new MonitoredReentrantLock(MonitoredEnums.BUFF_STORAGE, true);    
++    private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.BUFF_STORAGE, true);    
+     private Map<Integer, List<PlayerBuffValueHolder>> buffs = new HashMap<>();
+ 
+     public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index 59093ea8e..460fc2c04 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -30,10 +30,10 @@
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class PlayerStorage {
+-    private final ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredEnums.PLAYER_STORAGE, true);
++    private final ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredLockType.PLAYER_STORAGE, true);
+     private final ReadLock rlock = locks.readLock();
+     private final WriteLock wlock = locks.writeLock();
+     private final Map<Integer, MapleCharacter> storage = new LinkedHashMap<>();
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index d33d7a241..d741da641 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -73,7 +73,7 @@
+ import java.util.Calendar;
+ import net.server.audit.ThreadTracker;
+ import server.quest.MapleQuest;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class Server implements Runnable {
+     private static final Set<Integer> activeFly = new HashSet<>();
+@@ -88,7 +88,7 @@
+     private List<Pair<Integer, String>> worldRecommendedList = new LinkedList<>();
+     private final Map<Integer, MapleGuild> guilds = new HashMap<>(100);
+     private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
+-    private final Lock srvLock = new MonitoredReentrantLock(MonitoredEnums.SERVER);
++    private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
+     
+diff --git a/src/net/server/audit/ThreadTracker.java b/src/net/server/audit/ThreadTracker.java
+index d79b3d3f7..2ce19412d 100644
+--- a/src/net/server/audit/ThreadTracker.java
++++ b/src/net/server/audit/ThreadTracker.java
+@@ -35,7 +35,7 @@
+ import java.util.concurrent.locks.ReentrantLock;
+ import server.TimerManager;
+ import tools.FilePrinter;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ import constants.ServerConstants;
+ 
+ /**
+@@ -48,28 +48,28 @@
+     private static ThreadTracker instance = null;
+     private final Lock ttLock = new ReentrantLock(true);
+     
+-    private final Map<Long, List<MonitoredEnums>> threadTracker = new HashMap<>();
++    private final Map<Long, List<MonitoredLockType>> threadTracker = new HashMap<>();
+     private final Map<Long, Integer> threadUpdate = new HashMap<>();
+     private final Map<Long, Thread> threads = new HashMap<>();
+     
+     private final Map<Long, AtomicInteger> lockCount = new HashMap<>();
+-    private final Map<Long, MonitoredEnums> lockIds = new HashMap<>();
++    private final Map<Long, MonitoredLockType> lockIds = new HashMap<>();
+     private final Map<Long, Long> lockThreads = new HashMap<>();
+     private final Map<Long, Byte> lockUpdate = new HashMap<>();
+     
+-    private final Map<MonitoredEnums, Map<Long, Integer>> locks = new HashMap<>();
++    private final Map<MonitoredLockType, Map<Long, Integer>> locks = new HashMap<>();
+     ScheduledFuture<?> threadTrackerSchedule;
+     
+     private String printThreadTrackerState(String dateFormat) {
+         
+-        Map<MonitoredEnums, List<Integer>> lockValues = new HashMap<>();
++        Map<MonitoredLockType, List<Integer>> lockValues = new HashMap<>();
+         Set<Long> executingThreads = new HashSet<>();
+         
+         for(Map.Entry<Long, AtomicInteger> lock : lockCount.entrySet()) {
+             if(lock.getValue().get() != 0) {
+                 executingThreads.add(lockThreads.get(lock.getKey()));
+                 
+-                MonitoredEnums lockId = lockIds.get(lock.getKey());
++                MonitoredLockType lockId = lockIds.get(lock.getKey());
+                 List<Integer> list = lockValues.get(lockId);
+                 
+                 if(list == null) {
+@@ -84,7 +84,7 @@ private String printThreadTrackerState(String dateFormat) {
+         
+         String s = "----------------------------\r\n" + dateFormat + "\r\n    ";
+         s += "Lock-thread usage count:";
+-        for(Map.Entry<MonitoredEnums, List<Integer>> lock : lockValues.entrySet()) {
++        for(Map.Entry<MonitoredLockType, List<Integer>> lock : lockValues.entrySet()) {
+             s += ("\r\n  " + lock.getKey().name() + ": ");
+             
+             for(Integer i : lock.getValue()) {
+@@ -95,7 +95,7 @@ private String printThreadTrackerState(String dateFormat) {
+         
+         for(Long tid : executingThreads) {
+             s += "\r\n";
+-            for(MonitoredEnums lockid : threadTracker.get(tid)) {
++            for(MonitoredLockType lockid : threadTracker.get(tid)) {
+                 s += (lockid.name() + " ");
+             }
+             s += "|";
+@@ -106,9 +106,9 @@ private String printThreadTrackerState(String dateFormat) {
+         return s;
+     }
+     
+-    private static String printThreadLog(List<MonitoredEnums> stillLockedPath, String dateFormat) {
++    private static String printThreadLog(List<MonitoredLockType> stillLockedPath, String dateFormat) {
+         String s = "----------------------------\r\n" + dateFormat + "\r\n    ";
+-        for(MonitoredEnums lock : stillLockedPath) {
++        for(MonitoredLockType lock : stillLockedPath) {
+             s += (lock.name() + " ");
+         }
+         s += "\r\n\r\n";
+@@ -125,7 +125,7 @@ private static String printThreadStack(StackTraceElement[] list, String dateForm
+         return s;
+     }
+     
+-    public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums lockId, long lockOid) {
++    public void accessThreadTracker(boolean update, boolean lock, MonitoredLockType lockId, long lockOid) {
+         ttLock.lock();
+         try {
+             if(update) {
+@@ -135,7 +135,7 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums loc
+                     for(Long l : threadUpdate.keySet()) {
+                         int next = threadUpdate.get(l) + 1;
+                         if(next == 4) {
+-                            List<MonitoredEnums> tt = threadTracker.get(l);
++                            List<MonitoredLockType> tt = threadTracker.get(l);
+ 
+                             if(tt.isEmpty()) {
+                                 toRemove.add(l);
+@@ -167,10 +167,10 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums loc
+                     for(Entry<Long, Byte> it : lockUpdate.entrySet()) {
+                         byte val = (byte)(it.getValue() + 1);
+ 
+-                        if(val < 60) {  // free the structure after 60 silent updates
++                        if(val < 60) {
+                             lockUpdate.put(it.getKey(), val);
+                         } else {
+-                            toRemove.add(it.getKey());
++                            toRemove.add(it.getKey());  // free the structure after 60 silent updates
+                         }
+                     }
+ 
+@@ -201,12 +201,14 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums loc
+                     }
+                     c.incrementAndGet();
+ 
+-                    List<MonitoredEnums> list = threadTracker.get(tid);
++                    List<MonitoredLockType> list = threadTracker.get(tid);
+                     if(list == null) {
+-                        list = new ArrayList<>(20);
++                        list = new ArrayList<>(5);
+                         threadTracker.put(tid, list);
+                         threadUpdate.put(tid, 0);
+                         threads.put(tid, Thread.currentThread());
++                    } else if(list.isEmpty()) {
++                        threadUpdate.put(tid, 0);
+                     }
+                     list.add(lockId);
+ 
+@@ -228,7 +230,7 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums loc
+                     c.decrementAndGet();
+                     lockUpdate.put(lockOid, (byte) 0);
+ 
+-                    List<MonitoredEnums> list = threadTracker.get(tid);
++                    List<MonitoredLockType> list = threadTracker.get(tid);
+                     for(int i = list.size() - 1; i >= 0; i--) {
+                         if(lockId.getValue() == list.get(i).getValue()) {
+                             list.remove(i);
+@@ -245,11 +247,11 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums loc
+         }
+     }
+     
+-    private String printLockStatus(MonitoredEnums lockId) {
++    private String printLockStatus(MonitoredLockType lockId) {
+         String s = "";
+         
+         for(Long threadid : locks.get(lockId).keySet()) {
+-            for(MonitoredEnums lockid : threadTracker.get(threadid)) {
++            for(MonitoredLockType lockid : threadTracker.get(threadid)) {
+                 s += ("  " + lockid.name());
+             }
+             
+@@ -263,7 +265,7 @@ public void registerThreadTrackerTask() {
+         threadTrackerSchedule = TimerManager.getInstance().register(new Runnable() {
+             @Override
+             public void run() {
+-                accessThreadTracker(true, false, MonitoredEnums.UNDEFINED, -1);
++                accessThreadTracker(true, false, MonitoredLockType.UNDEFINED, -1);
+             }
+         }, 10000, 10000);
+     }
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index e2cad9d0e..0aea6fb72 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -68,7 +68,7 @@
+ import client.MapleCharacter;
+ import constants.ServerConstants;
+ import server.maps.MapleMiniDungeonInfo;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public final class Channel {
+ 
+@@ -92,11 +92,11 @@
+     private Map<Integer, Integer> dojoParty = new HashMap<>();
+     private Map<Integer, MapleMiniDungeon> dungeons = new HashMap<>();
+     
+-    private ReentrantReadWriteLock merchantLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MERCHANT, true);
++    private ReentrantReadWriteLock merchantLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MERCHANT, true);
+     private ReadLock merchRlock = merchantLock.readLock();
+     private WriteLock merchWlock = merchantLock.writeLock();
+     
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.CHANNEL, true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL, true);
+     
+     public Channel(final int world, final int channel) {
+         this.world = world;
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index 9af59bc7f..129e3e7da 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -42,7 +42,7 @@
+ import net.server.channel.Channel;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleGuild {
+     public final static int CREATE_GUILD_COST = 1500000;
+@@ -53,7 +53,7 @@
+     }
+     
+     private final List<MapleGuildCharacter> members;
+-    private final Lock membersLock = new MonitoredReentrantLock(MonitoredEnums.GUILD, true);
++    private final Lock membersLock = new MonitoredReentrantLock(MonitoredLockType.GUILD, true);
+     
+     private String rankTitles[] = new String[5]; // 1 = master, 2 = jr, 5 = lowest member
+     private String name, notice;
+diff --git a/src/net/server/world/MapleParty.java b/src/net/server/world/MapleParty.java
+index 4aa24d2ec..e274eb238 100644
+--- a/src/net/server/world/MapleParty.java
++++ b/src/net/server/world/MapleParty.java
+@@ -32,7 +32,7 @@
+ import java.util.Comparator;
+ import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.locks.Lock;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleParty {
+     private int id;
+@@ -44,7 +44,7 @@
+     private Map<Integer, Integer> histMembers = new HashMap<>();
+     private int nextEntry = 0;
+     
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.PARTY, true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.PARTY, true);
+     
+     public MapleParty(int id, MaplePartyCharacter chrfor) {
+         this.leaderId = chrfor.getId();
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 9b38d60c0..048533371 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -68,7 +68,7 @@
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -90,25 +90,25 @@
+     
+     private Map<Integer, MapleParty> parties = new HashMap<>();
+     private AtomicInteger runningPartyId = new AtomicInteger();
+-    private Lock partyLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PARTY, true);
++    private Lock partyLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PARTY, true);
+     
+     private Map<Integer, Integer> owlSearched = new LinkedHashMap<>();
+-    private Lock owlLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_OWL);
++    private Lock owlLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_OWL);
+     
+-    private Lock activePetsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PETS, true);
++    private Lock activePetsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PETS, true);
+     private Map<Integer, Byte> activePets = new LinkedHashMap<>();
+     private ScheduledFuture<?> petsSchedule;
+     private long petUpdate;
+     
+-    private Lock activeMountsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_MOUNTS, true);
++    private Lock activeMountsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MOUNTS, true);
+     private Map<Integer, Byte> activeMounts = new LinkedHashMap<>();
+     private ScheduledFuture<?> mountsSchedule;
+     private long mountUpdate;
+     
+-    private Lock activePlayerShopsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PSHOPS, true);
++    private Lock activePlayerShopsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_PSHOPS, true);
+     private Map<Integer, MaplePlayerShop> activePlayerShops = new LinkedHashMap<>();
+     
+-    private Lock activeMerchantsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_MERCHS, true);
++    private Lock activeMerchantsLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MERCHS, true);
+     private Map<Integer, Pair<MapleHiredMerchant, Byte>> activeMerchants = new LinkedHashMap<>();
+     private long merchantUpdate;
+     
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index c01bb7f3c..e42450823 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -70,7 +70,7 @@
+ import server.life.MapleLifeFactory;
+ import server.life.MapleNPC;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -90,14 +90,13 @@
+ 	private long eventTime = 0;
+ 	private MapleExpedition expedition = null;
+         private List<Integer> mapIds = new LinkedList<>();
+-        private List<Boolean> isInstanced = new LinkedList<>();
+         
+-        private final ReentrantReadWriteLock lock = new MonitoredReentrantReadWriteLock(MonitoredEnums.EIM, true);
++        private final ReentrantReadWriteLock lock = new MonitoredReentrantReadWriteLock(MonitoredLockType.EIM, true);
+         private final ReadLock rL = lock.readLock();
+         private final WriteLock wL = lock.writeLock();
+         
+-        private final Lock pL = new MonitoredReentrantLock(MonitoredEnums.EIM_PARTY, true);
+-        private final Lock sL = new MonitoredReentrantLock(MonitoredEnums.EIM_SCRIPT, true);
++        private final Lock pL = new MonitoredReentrantLock(MonitoredLockType.EIM_PARTY, true);
++        private final Lock sL = new MonitoredReentrantLock(MonitoredLockType.EIM_SCRIPT, true);
+         
+         private ScheduledFuture<?> event_schedule = null;
+         private boolean disposed = false;
+@@ -252,7 +251,7 @@ public void registerPlayer(MapleCharacter chr) {
+ 		}
+ 	}  
+         
+-        public void exitPlayer(MapleCharacter chr) {
++        public void exitPlayer(MapleCharacter chr) {    //unused
+ 		if (chr == null || !chr.isLoggedin()){
+ 			return;
+ 		}
+@@ -317,6 +316,7 @@ public void addEventTimer(long time) {
+                                 eventTime += time;
+ 
+                                 event_schedule = TimerManager.getInstance().schedule(new Runnable() {
++                                        @Override
+                                         public void run() {
+                                                 try {
+                                                         dismissEventTimer();
+@@ -503,30 +503,27 @@ public void changedLeader(MapleCharacter ldr) {
+ 	}
+ 	
+ 	public void monsterKilled(MapleMonster mob) {
+-		mobs.remove(mob);
++		sL.lock();
+                 try {
+-                        sL.lock();
++                        mobs.remove(mob);
++                        
+                         try {
+                                 em.getIv().invokeFunction("monsterKilled", mob, this);
+-                        } finally {
+-                                sL.unlock();
++                        } catch (ScriptException | NoSuchMethodException ex) {
++                                ex.printStackTrace();
+                         }
+-                } catch (ScriptException | NoSuchMethodException ex) {
+-                        ex.printStackTrace();
+-                }
+-		if (mobs.isEmpty()) {
+-			try {
+-                                sL.lock();
++                        
++                        if (mobs.isEmpty()) {
+                                 try {
+                                         em.getIv().invokeFunction("allMonstersDead", this);
+-                                } finally {
+-                                        sL.unlock();
++                                } catch (ScriptException | NoSuchMethodException ex) {
++                                        ex.printStackTrace();
+                                 }
+-			} catch (ScriptException | NoSuchMethodException ex) {
+-				ex.printStackTrace();
+-			}
+-		}
+-	}
++                        }
++                } finally {
++                        sL.unlock();
++                }
++        }
+         
+         public void friendlyKilled(MapleMonster mob) {
+ 		try {
+@@ -850,7 +847,6 @@ public final MapleMap getInstanceMap(final int mapid) { //gets instance map from
+                         return getMapFactory().getMap(mapid);
+                 }
+                 mapIds.add(mapid);
+-                isInstanced.add(false);
+                 return getMapFactory().getMap(mapid);
+         }
+         
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 060482e8c..3971ca3d2 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -53,7 +53,7 @@
+ import java.util.LinkedList;
+ import java.util.Queue;
+ import java.util.concurrent.locks.Lock;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ import tools.locks.MonitoredReentrantLock;
+ 
+ /**
+@@ -75,8 +75,8 @@
+     private Integer readyId = 0;
+     private Properties props = new Properties();
+     private String name;
+-    private Lock lobbyLock = new MonitoredReentrantLock(MonitoredEnums.EM_LOBBY);
+-    private Lock queueLock = new MonitoredReentrantLock(MonitoredEnums.EM_QUEUE);
++    private Lock lobbyLock = new MonitoredReentrantLock(MonitoredLockType.EM_LOBBY);
++    private Lock queueLock = new MonitoredReentrantLock(MonitoredLockType.EM_QUEUE);
+ 
+     private static final int maxLobbys = 8;     // an event manager holds up to this amount of concurrent lobbys
+     
+diff --git a/src/server/CashShop.java b/src/server/CashShop.java
+index 5417ffb4f..f21a14cae 100644
+--- a/src/server/CashShop.java
++++ b/src/server/CashShop.java
+@@ -46,7 +46,7 @@
+ import client.inventory.MaplePet;
+ import constants.ItemConstants;
+ import java.util.Collections;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /*
+  * @author Flav
+@@ -242,7 +242,7 @@ public static void reloadSpecialCashItems() {//Yay?
+     private List<Item> inventory = new ArrayList<>();
+     private List<Integer> wishList = new ArrayList<>();
+     private int notes = 0;
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.CASHSHOP);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.CASHSHOP);
+ 
+     public CashShop(int accountId, int characterId, int jobType) throws SQLException {
+         this.accountId = accountId;
+diff --git a/src/server/MaplePlayerShop.java b/src/server/MaplePlayerShop.java
+index 2828c43ef..48edc3913 100644
+--- a/src/server/MaplePlayerShop.java
++++ b/src/server/MaplePlayerShop.java
+@@ -39,7 +39,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.data.output.MaplePacketLittleEndianWriter;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -56,7 +56,7 @@
+     private List<String> bannedList = new ArrayList<>();
+     private List<Pair<MapleCharacter, String>> chatLog = new LinkedList<>();
+     private Map<Integer, Byte> chatSlot = new LinkedHashMap<>();
+-    private Lock visitorLock = new MonitoredReentrantLock(MonitoredEnums.VISITOR_PSHOP, true);
++    private Lock visitorLock = new MonitoredReentrantLock(MonitoredLockType.VISITOR_PSHOP, true);
+ 
+     public MaplePlayerShop(MapleCharacter owner, String description) {
+         this.setPosition(owner.getPosition());
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index a082ab124..d72133186 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -38,7 +38,7 @@
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -51,7 +51,7 @@
+     private byte slots;
+     private Map<MapleInventoryType, List<Item>> typeItems = new HashMap<>();
+     private List<Item> items;
+-    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.STORAGE, true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredLockType.STORAGE, true);
+ 
+     private MapleStorage(int id, byte slots, int meso) {
+         this.id = id;
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 7de4519fa..78f3c97cd 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -63,7 +63,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleMonster extends AbstractLoadedMapleLife {
+     private ChangeableStats ostats = null;  //unused, v83 WZs offers no support for changeable stats.
+@@ -86,9 +86,9 @@
+     private int team;
+     private final HashMap<Integer, AtomicInteger> takenDamage = new HashMap<>();
+ 
+-    private Lock externalLock = new MonitoredReentrantLock(MonitoredEnums.MOB_EXT);
+-    private Lock monsterLock = new MonitoredReentrantLock(MonitoredEnums.MOB, true);
+-    private Lock statiLock = new MonitoredReentrantLock(MonitoredEnums.MOB_STATI);
++    private Lock externalLock = new MonitoredReentrantLock(MonitoredLockType.MOB_EXT);
++    private Lock monsterLock = new MonitoredReentrantLock(MonitoredLockType.MOB, true);
++    private Lock statiLock = new MonitoredReentrantLock(MonitoredLockType.MOB_STATI);
+ 
+     public MapleMonster(int id, MapleMonsterStats stats) {
+         super(id);
+diff --git a/src/server/life/MobSkillFactory.java b/src/server/life/MobSkillFactory.java
+index 8874b4e95..59cbae32d 100644
+--- a/src/server/life/MobSkillFactory.java
++++ b/src/server/life/MobSkillFactory.java
+@@ -35,7 +35,7 @@
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+ import provider.MapleDataTool;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -46,7 +46,7 @@
+     private static Map<String, MobSkill> mobSkills = new HashMap<String, MobSkill>();
+     private final static MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Skill.wz"));
+     private static MapleData skillRoot = dataSource.getData("MobSkill.img");
+-    private final static ReentrantReadWriteLock dataLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MOBSKILL_FACTORY);
++    private final static ReentrantReadWriteLock dataLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MOBSKILL_FACTORY);
+     private final static ReadLock rL = dataLock.readLock();
+     private final static WriteLock wL = dataLock.writeLock();
+ 
+diff --git a/src/server/maps/MapleGenericPortal.java b/src/server/maps/MapleGenericPortal.java
+index 3b454f681..b5a9febcc 100644
+--- a/src/server/maps/MapleGenericPortal.java
++++ b/src/server/maps/MapleGenericPortal.java
+@@ -27,7 +27,7 @@
+ import server.MaplePortal;
+ import tools.MaplePacketCreator;
+ import java.util.concurrent.locks.Lock;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ import tools.locks.MonitoredReentrantLock;
+ 
+ public class MapleGenericPortal implements MaplePortal {
+@@ -118,7 +118,7 @@ public void setScriptName(String scriptName) {
+         
+         if(scriptName != null) {
+             if(scriptLock == null) {
+-                scriptLock = new MonitoredReentrantLock(MonitoredEnums.PORTAL, false);
++                scriptLock = new MonitoredReentrantLock(MonitoredLockType.PORTAL, true);
+             }
+         } else {
+             scriptLock = null;
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index 2bcd3a752..4159d328e 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -45,7 +45,7 @@
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -64,7 +64,7 @@
+     private List<SoldItem> sold = new LinkedList<>();
+     private AtomicBoolean open = new AtomicBoolean();
+     private MapleMap map;
+-    private Lock visitorLock = new MonitoredReentrantLock(MonitoredEnums.VISITOR_MERCH, true);
++    private Lock visitorLock = new MonitoredReentrantLock(MonitoredLockType.VISITOR_MERCH, true);
+ 
+     public MapleHiredMerchant(final MapleCharacter owner, int itemId, String desc) {
+         this.setPosition(owner.getPosition());
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 92c945647..dd9de7369 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -86,7 +86,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleMap {
+     private static final List<MapleMapObjectType> rangedMapobjectTypes = Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.ITEM, MapleMapObjectType.NPC, MapleMapObjectType.MONSTER, MapleMapObjectType.DOOR, MapleMapObjectType.SUMMON, MapleMapObjectType.REACTOR);
+@@ -106,7 +106,7 @@
+     private MapleFootholdTree footholds = null;
+     private Rectangle mapArea = new Rectangle();
+     private int mapid;
+-    private AtomicInteger runningOid = new AtomicInteger(100);
++    private AtomicInteger runningOid = new AtomicInteger(1000000001);
+     private int returnMapId;
+     private int channel, world;
+     private byte monsterRate;
+@@ -163,11 +163,11 @@ public MapleMap(int mapid, int world, int channel, int returnMapId, float monste
+         if (this.monsterRate == 0) {
+             this.monsterRate = 1;
+         }
+-        final ReentrantReadWriteLock chrLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_CHRS, true);
++        final ReentrantReadWriteLock chrLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_CHRS, true);
+         chrRLock = chrLock.readLock();
+         chrWLock = chrLock.writeLock();
+ 
+-        final ReentrantReadWriteLock objectLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_OBJS, true);
++        final ReentrantReadWriteLock objectLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_OBJS, true);
+         objectRLock = objectLock.readLock();
+         objectWLock = objectLock.writeLock();
+     }
+@@ -389,19 +389,20 @@ private void spawnRangedMapObject(MapleMapObject mapobject, DelayedPacketCreatio
+     }
+ 
+     private int getUsableOID() {
+-        if (runningOid.incrementAndGet() >= 20000000) {
+-            runningOid.set(1000);
+-        }
+         objectRLock.lock();
+         try {
+-            if (mapobjects.containsKey(runningOid.get())) {
+-                while (mapobjects.containsKey(runningOid.incrementAndGet()));
+-            }
++            Integer curOid;
++            
++            do {
++                if ((curOid = runningOid.incrementAndGet()) < 0) {
++                    runningOid.set(curOid = 1000000001);
++                }
++            } while (mapobjects.containsKey(curOid));
++            
++            return curOid;
+         } finally {
+             objectRLock.unlock();
+         }
+-
+-        return runningOid.get();
+     }
+ 
+     public void removeMapObject(int num) {
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index f692af109..956ade98e 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -47,7 +47,7 @@
+ import scripting.event.EventInstanceManager;
+ import tools.DatabaseConnection;
+ import tools.StringUtil;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleMapFactory {
+ 
+@@ -66,7 +66,7 @@ public MapleMapFactory(EventInstanceManager eim, MapleDataProvider source, Maple
+         this.channel = channel;
+         this.event = eim;
+         
+-        ReentrantReadWriteLock rrwl = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_FACTORY);
++        ReentrantReadWriteLock rrwl = new MonitoredReentrantReadWriteLock(MonitoredLockType.MAP_FACTORY);
+         this.mapsRLock = rrwl.readLock();
+         this.mapsWLock = rrwl.writeLock();
+     }
+diff --git a/src/server/maps/MapleMapItem.java b/src/server/maps/MapleMapItem.java
+index 0a389b779..88f48efa5 100644
+--- a/src/server/maps/MapleMapItem.java
++++ b/src/server/maps/MapleMapItem.java
+@@ -27,7 +27,7 @@
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ public class MapleMapItem extends AbstractMapleMapObject {
+ 
+@@ -37,7 +37,7 @@
+     protected byte type;
+     protected boolean pickedUp = false, playerDrop;
+     protected long dropTime;
+-    private Lock itemLock = new MonitoredReentrantLock(MonitoredEnums.MAP_ITEM);
++    private Lock itemLock = new MonitoredReentrantLock(MonitoredLockType.MAP_ITEM);
+ 
+     public MapleMapItem(Item item, Point position, MapleMapObject dropper, MapleCharacter owner, byte type, boolean playerDrop) {
+ 	setPosition(position);
+diff --git a/src/server/maps/MapleMiniDungeon.java b/src/server/maps/MapleMiniDungeon.java
+index 8349a9286..8ba8dc7b8 100644
+--- a/src/server/maps/MapleMiniDungeon.java
++++ b/src/server/maps/MapleMiniDungeon.java
+@@ -27,7 +27,7 @@
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
+ import tools.MaplePacketCreator;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -36,7 +36,7 @@
+ public class MapleMiniDungeon {
+     List<MapleCharacter> players = new ArrayList<>();
+     ScheduledFuture<?> timeoutTask = null;
+-    Lock lock = new MonitoredReentrantLock(MonitoredEnums.MINIDUNGEON, true);
++    Lock lock = new MonitoredReentrantLock(MonitoredLockType.MINIDUNGEON, true);
+     
+     int baseMap;
+     long expireTime;
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 73baba289..b24e9d355 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -35,7 +35,7 @@
+ import server.TimerManager;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+-import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredLockType;
+ 
+ /**
+  *
+@@ -54,7 +54,7 @@
+     private boolean shouldCollect;
+     private boolean attackHit;
+     private ScheduledFuture<?> timeoutTask = null;
+-    private Lock reactorLock = new MonitoredReentrantLock(MonitoredEnums.REACTOR, true);
++    private Lock reactorLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR, true);
+ 
+     public MapleReactor(MapleReactorStats stats, int rid) {
+         this.evstate = (byte)0;
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index fd5c88416..2d3fe9812 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -257,11 +257,16 @@ public void complete(MapleCharacter c, int npc) {
+ 
+     public void complete(MapleCharacter c, int npc, Integer selection) {
+         if (autoPreComplete || canComplete(c, npc)) {
+-           for (MapleQuestAction a : completeActs.values()) {
+-                  if (!a.check(c, selection)) {
+-                         return;
+-                  }
++            for (MapleQuestAction a : completeActs.values()) {
++                if (!a.check(c, selection)) {
++                    return;
++                }
+             }
++
++            if (timeLimit > 0) {
++                c.announce(MaplePacketCreator.removeQuestTimeLimit(id));
++            }
++            
+             forceComplete(c, npc);
+             for (MapleQuestAction a : completeActs.values()) {
+                 a.run(c, selection);
+diff --git a/src/tools/locks/MonitoredEnums.java b/src/tools/locks/MonitoredLockType.java
+similarity index 93%
+rename from src/tools/locks/MonitoredEnums.java
+rename to src/tools/locks/MonitoredLockType.java
+index aaa0b4dc2..25f80c8d4 100644
+--- a/src/tools/locks/MonitoredEnums.java
++++ b/src/tools/locks/MonitoredLockType.java
+@@ -23,7 +23,7 @@
+  * @author RonanLana
+  */
+ 
+-public enum MonitoredEnums {
++public enum MonitoredLockType {
+     UNDEFINED(-1),
+     CHR(0),
+     EFF(1),
+@@ -33,8 +33,8 @@
+     BOOK(5),
+     ITEM(6),
+     INVENTORY(7),
+-    SHANDLER_IDLE(8),
+-    SHANDLER_TEMP(9),
++    SRVHANDLER_IDLE(8),
++    SRVHANDLER_TEMP(9),
+     BUFF_STORAGE(10),
+     PLAYER_STORAGE(11),
+     SERVER(12),
+@@ -71,7 +71,7 @@
+     
+     private final int i;
+     
+-    private MonitoredEnums(int val) {
++    private MonitoredLockType(int val) {
+         this.i = val;
+     }
+ 
+diff --git a/src/tools/locks/MonitoredReadLock.java b/src/tools/locks/MonitoredReadLock.java
+index 7c5c1be51..e13a13317 100644
+--- a/src/tools/locks/MonitoredReadLock.java
++++ b/src/tools/locks/MonitoredReadLock.java
+@@ -41,7 +41,7 @@
+ public class MonitoredReadLock extends ReentrantReadWriteLock.ReadLock {
+     private ScheduledFuture<?> timeoutSchedule = null;
+     private StackTraceElement[] deadlockedState = null;
+-    private final MonitoredEnums id;
++    private final MonitoredLockType id;
+     private final int hashcode;
+     private final Lock state = new ReentrantLock(true);
+     private final AtomicInteger reentrantCount = new AtomicInteger(0);
+@@ -54,8 +54,6 @@ public MonitoredReadLock(MonitoredReentrantReadWriteLock lock) {
+     
+     @Override
+     public void lock() {
+-        super.lock();
+-        
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             if(deadlockedState != null) {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+@@ -68,6 +66,8 @@ public void lock() {
+ 
+             registerLocking();
+         }
++        
++        super.lock();
+     }
+     
+     @Override
+@@ -75,6 +75,7 @@ public void unlock() {
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             unregisterLocking();
+         }
++        
+         super.unlock();
+     }
+     
+diff --git a/src/tools/locks/MonitoredReentrantLock.java b/src/tools/locks/MonitoredReentrantLock.java
+index 6934b92ae..d6c74dd0e 100644
+--- a/src/tools/locks/MonitoredReentrantLock.java
++++ b/src/tools/locks/MonitoredReentrantLock.java
+@@ -39,18 +39,18 @@
+ public class MonitoredReentrantLock extends ReentrantLock {
+     private ScheduledFuture<?> timeoutSchedule = null;
+     private StackTraceElement[] deadlockedState = null;
+-    private final MonitoredEnums id;
++    private final MonitoredLockType id;
+     private final int hashcode;
+     private final Lock state = new ReentrantLock(true);
+     private final AtomicInteger reentrantCount = new AtomicInteger(0);
+    
+-    public MonitoredReentrantLock(MonitoredEnums id) {
++    public MonitoredReentrantLock(MonitoredLockType id) {
+         super();
+         this.id = id;
+         hashcode = this.hashCode();
+     }
+             
+-    public MonitoredReentrantLock(MonitoredEnums id, boolean fair) {
++    public MonitoredReentrantLock(MonitoredLockType id, boolean fair) {
+         super(fair);
+         this.id = id;
+         hashcode = this.hashCode();
+@@ -58,7 +58,6 @@ public MonitoredReentrantLock(MonitoredEnums id, boolean fair) {
+     
+     @Override
+     public void lock() {
+-        super.lock();
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             if(deadlockedState != null) {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+@@ -71,6 +70,8 @@ public void lock() {
+ 
+             registerLocking();
+         }
++        
++        super.lock();
+     }
+     
+     @Override
+@@ -78,6 +79,7 @@ public void unlock() {
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             unregisterLocking();
+         }
++        
+         super.unlock();
+     }
+     
+diff --git a/src/tools/locks/MonitoredReentrantReadWriteLock.java b/src/tools/locks/MonitoredReentrantReadWriteLock.java
+index 30203327a..12c9223ab 100644
+--- a/src/tools/locks/MonitoredReentrantReadWriteLock.java
++++ b/src/tools/locks/MonitoredReentrantReadWriteLock.java
+@@ -25,14 +25,14 @@
+  * @author RonanLana
+  */
+ public class MonitoredReentrantReadWriteLock extends ReentrantReadWriteLock {
+-    public final MonitoredEnums id;
++    public final MonitoredLockType id;
+     
+-    public MonitoredReentrantReadWriteLock(MonitoredEnums id) {
++    public MonitoredReentrantReadWriteLock(MonitoredLockType id) {
+         super();
+         this.id = id;
+     }
+             
+-    public MonitoredReentrantReadWriteLock(MonitoredEnums id, boolean fair) {
++    public MonitoredReentrantReadWriteLock(MonitoredLockType id, boolean fair) {
+         super(fair);
+         this.id = id;
+     }
+diff --git a/src/tools/locks/MonitoredWriteLock.java b/src/tools/locks/MonitoredWriteLock.java
+index 5c9344ce9..10600d489 100644
+--- a/src/tools/locks/MonitoredWriteLock.java
++++ b/src/tools/locks/MonitoredWriteLock.java
+@@ -40,7 +40,7 @@
+ public class MonitoredWriteLock extends ReentrantReadWriteLock.WriteLock {
+     private ScheduledFuture<?> timeoutSchedule = null;
+     private StackTraceElement[] deadlockedState = null;
+-    private final MonitoredEnums id;
++    private final MonitoredLockType id;
+     private final int hashcode;
+     private final Lock state = new ReentrantLock(true);
+     private final AtomicInteger reentrantCount = new AtomicInteger(0);
+@@ -53,7 +53,6 @@ public MonitoredWriteLock(MonitoredReentrantReadWriteLock lock) {
+     
+     @Override
+     public void lock() {
+-        super.lock();
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             if(deadlockedState != null) {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+@@ -66,6 +65,8 @@ public void lock() {
+ 
+             registerLocking();
+         }
++        
++        super.lock();
+     }
+     
+     @Override
+@@ -73,6 +74,7 @@ public void unlock() {
+         if(ServerConstants.USE_THREAD_TRACKER) {
+             unregisterLocking();
+         }
++        
+         super.unlock();
+     }
+     
+diff --git a/tools/MapleArrowFetcher/dist/MapleArrowFetcher.jar b/tools/MapleArrowFetcher/dist/MapleArrowFetcher.jar
+index dc0eb39f5..9b7ca9433 100644
+Binary files a/tools/MapleArrowFetcher/dist/MapleArrowFetcher.jar and b/tools/MapleArrowFetcher/dist/MapleArrowFetcher.jar differ
+diff --git a/tools/MapleArrowFetcher/lib/arrow_drop_data.sql b/tools/MapleArrowFetcher/lib/arrow_drop_data.sql
+index 5ff7ae308..55f00340e 100644
+--- a/tools/MapleArrowFetcher/lib/arrow_drop_data.sql
++++ b/tools/MapleArrowFetcher/lib/arrow_drop_data.sql
+@@ -384,280 +384,280 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9500369 AND itemid = 2060000 THEN 19
+   ELSE minimum_quantity END,
+     maximum_quantity = CASE
+-                       WHEN dropperid = 100100 AND itemid = 2060000 THEN 1
+-                       WHEN dropperid = 100100 AND itemid = 2061000 THEN 1
+-                       WHEN dropperid = 100101 AND itemid = 2060000 THEN 2
+-                       WHEN dropperid = 100101 AND itemid = 2061000 THEN 2
+-                       WHEN dropperid = 100120 AND itemid = 2060000 THEN 1
+-                       WHEN dropperid = 100120 AND itemid = 2061000 THEN 1
++                       WHEN dropperid = 100100 AND itemid = 2060000 THEN 2
++                       WHEN dropperid = 100100 AND itemid = 2061000 THEN 2
++                       WHEN dropperid = 100101 AND itemid = 2060000 THEN 3
++                       WHEN dropperid = 100101 AND itemid = 2061000 THEN 3
++                       WHEN dropperid = 100120 AND itemid = 2060000 THEN 2
++                       WHEN dropperid = 100120 AND itemid = 2061000 THEN 2
+                        WHEN dropperid = 100121 AND itemid = 2060000 THEN 5
+-                       WHEN dropperid = 100123 AND itemid = 2061000 THEN 11
+-                       WHEN dropperid = 100124 AND itemid = 2060000 THEN 13
+-                       WHEN dropperid = 100124 AND itemid = 2061000 THEN 13
+-                       WHEN dropperid = 120100 AND itemid = 2060000 THEN 2
+-                       WHEN dropperid = 120100 AND itemid = 2061000 THEN 2
+-                       WHEN dropperid = 130100 AND itemid = 2060000 THEN 6
+-                       WHEN dropperid = 130100 AND itemid = 2061000 THEN 6
+-                       WHEN dropperid = 130101 AND itemid = 2060000 THEN 6
+-                       WHEN dropperid = 130101 AND itemid = 2061000 THEN 6
+-                       WHEN dropperid = 210100 AND itemid = 2060000 THEN 8
+-                       WHEN dropperid = 210100 AND itemid = 2061000 THEN 8
+-                       WHEN dropperid = 1110100 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1110100 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 1110101 AND itemid = 2060000 THEN 16
+-                       WHEN dropperid = 1110101 AND itemid = 2061000 THEN 16
+-                       WHEN dropperid = 1110130 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1110130 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 1120100 AND itemid = 2060000 THEN 18
+-                       WHEN dropperid = 1120100 AND itemid = 2061000 THEN 18
+-                       WHEN dropperid = 1130100 AND itemid = 2060000 THEN 27
+-                       WHEN dropperid = 1130100 AND itemid = 2061000 THEN 27
++                       WHEN dropperid = 100123 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 100124 AND itemid = 2060000 THEN 14
++                       WHEN dropperid = 100124 AND itemid = 2061000 THEN 14
++                       WHEN dropperid = 120100 AND itemid = 2060000 THEN 3
++                       WHEN dropperid = 120100 AND itemid = 2061000 THEN 3
++                       WHEN dropperid = 130100 AND itemid = 2060000 THEN 7
++                       WHEN dropperid = 130100 AND itemid = 2061000 THEN 7
++                       WHEN dropperid = 130101 AND itemid = 2060000 THEN 7
++                       WHEN dropperid = 130101 AND itemid = 2061000 THEN 7
++                       WHEN dropperid = 210100 AND itemid = 2060000 THEN 9
++                       WHEN dropperid = 210100 AND itemid = 2061000 THEN 9
++                       WHEN dropperid = 1110100 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1110100 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 1110101 AND itemid = 2060000 THEN 17
++                       WHEN dropperid = 1110101 AND itemid = 2061000 THEN 17
++                       WHEN dropperid = 1110130 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1110130 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 1120100 AND itemid = 2060000 THEN 19
++                       WHEN dropperid = 1120100 AND itemid = 2061000 THEN 19
++                       WHEN dropperid = 1130100 AND itemid = 2060000 THEN 28
++                       WHEN dropperid = 1130100 AND itemid = 2061000 THEN 28
+                        WHEN dropperid = 1140100 AND itemid = 2060000 THEN 30
+                        WHEN dropperid = 1140100 AND itemid = 2061000 THEN 30
+                        WHEN dropperid = 1140130 AND itemid = 2060000 THEN 30
+                        WHEN dropperid = 1140130 AND itemid = 2061000 THEN 30
+-                       WHEN dropperid = 1210100 AND itemid = 2060000 THEN 11
+-                       WHEN dropperid = 1210100 AND itemid = 2061000 THEN 11
+-                       WHEN dropperid = 1210101 AND itemid = 2060000 THEN 16
+-                       WHEN dropperid = 1210101 AND itemid = 2061000 THEN 16
+-                       WHEN dropperid = 1210102 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 1210102 AND itemid = 2061000 THEN 12
+-                       WHEN dropperid = 1210103 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 1210103 AND itemid = 2061000 THEN 23
+-                       WHEN dropperid = 2100100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2100100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 2100101 AND itemid = 2060000 THEN 33
+-                       WHEN dropperid = 2100101 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 1210100 AND itemid = 2060000 THEN 12
++                       WHEN dropperid = 1210100 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 1210101 AND itemid = 2060000 THEN 17
++                       WHEN dropperid = 1210101 AND itemid = 2061000 THEN 17
++                       WHEN dropperid = 1210102 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 1210102 AND itemid = 2061000 THEN 13
++                       WHEN dropperid = 1210103 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 1210103 AND itemid = 2061000 THEN 24
++                       WHEN dropperid = 2100100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2100100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 2100101 AND itemid = 2060000 THEN 34
++                       WHEN dropperid = 2100101 AND itemid = 2061000 THEN 34
+                        WHEN dropperid = 2100102 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2100102 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2100103 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2100103 AND itemid = 2061000 THEN 40
+                        WHEN dropperid = 2100104 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2100104 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2100105 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2100105 AND itemid = 2061000 THEN 37
+-                       WHEN dropperid = 2100106 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2100106 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2100107 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 2100107 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 2100108 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2100108 AND itemid = 2061000 THEN 46
++                       WHEN dropperid = 2100105 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2100105 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2100106 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2100106 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2100107 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 2100107 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 2100108 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2100108 AND itemid = 2061000 THEN 47
+                        WHEN dropperid = 2110200 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2110200 AND itemid = 2061000 THEN 35
+-                       WHEN dropperid = 2110300 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2110300 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2110301 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2110301 AND itemid = 2061000 THEN 46
++                       WHEN dropperid = 2110300 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2110300 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2110301 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2110301 AND itemid = 2061000 THEN 47
+                        WHEN dropperid = 2130100 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2130100 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2220000 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2220000 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2220100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2220100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 2230100 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 2230100 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 2230101 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230101 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2220100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2220100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 2230100 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 2230100 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 2230101 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230101 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 2230102 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2230102 AND itemid = 2061000 THEN 40
+-                       WHEN dropperid = 2230103 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230103 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 2230103 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230103 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 2230104 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2230104 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2230105 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230105 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 2230105 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230105 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 2230106 AND itemid = 2060000 THEN 40
+                        WHEN dropperid = 2230106 AND itemid = 2061000 THEN 40
+-                       WHEN dropperid = 2230107 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230107 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2230107 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230107 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 2230108 AND itemid = 2060000 THEN 35
+                        WHEN dropperid = 2230108 AND itemid = 2061000 THEN 35
+                        WHEN dropperid = 2230109 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 2230109 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 2230110 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 2230110 AND itemid = 2061000 THEN 37
+-                       WHEN dropperid = 2230111 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230111 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2230131 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 2230131 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 2230200 AND itemid = 2060000 THEN 46
+-                       WHEN dropperid = 2230200 AND itemid = 2061000 THEN 46
+-                       WHEN dropperid = 2300100 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 2300100 AND itemid = 2061000 THEN 32
+-                       WHEN dropperid = 3000000 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000000 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3000005 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000005 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3000006 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3000006 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3100101 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3100101 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3100102 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3100102 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3110101 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110101 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110102 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110102 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110300 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110300 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110301 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3110301 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3110302 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3110302 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3110303 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3110303 AND itemid = 2061000 THEN 61
++                       WHEN dropperid = 2230110 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 2230110 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 2230111 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230111 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2230131 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 2230131 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 2230200 AND itemid = 2060000 THEN 47
++                       WHEN dropperid = 2230200 AND itemid = 2061000 THEN 47
++                       WHEN dropperid = 2300100 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 2300100 AND itemid = 2061000 THEN 33
++                       WHEN dropperid = 3000000 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000000 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3000005 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000005 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3000006 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3000006 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3100101 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3100101 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3100102 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3100102 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3110101 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110101 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110102 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110102 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110300 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110300 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110301 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3110301 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3110302 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3110302 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3110303 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3110303 AND itemid = 2061000 THEN 62
+                        WHEN dropperid = 3210100 AND itemid = 2060005 THEN 8
+-                       WHEN dropperid = 3210203 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210203 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210203 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210203 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210204 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210204 AND itemid = 2061000 THEN 55
+                        WHEN dropperid = 3210205 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210205 AND itemid = 2061000 THEN 55
+-                       WHEN dropperid = 3210206 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210206 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210206 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210206 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210207 AND itemid = 2060000 THEN 55
+                        WHEN dropperid = 3210207 AND itemid = 2060005 THEN 9
+                        WHEN dropperid = 3210207 AND itemid = 2061000 THEN 55
+-                       WHEN dropperid = 3210208 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210208 AND itemid = 2061000 THEN 58
+-                       WHEN dropperid = 3210450 AND itemid = 2060000 THEN 58
+-                       WHEN dropperid = 3210450 AND itemid = 2061000 THEN 58
++                       WHEN dropperid = 3210208 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210208 AND itemid = 2061000 THEN 59
++                       WHEN dropperid = 3210450 AND itemid = 2060000 THEN 59
++                       WHEN dropperid = 3210450 AND itemid = 2061000 THEN 59
+                        WHEN dropperid = 3210800 AND itemid = 2060005 THEN 10
+-                       WHEN dropperid = 3220000 AND itemid = 2060000 THEN 78
+-                       WHEN dropperid = 3220000 AND itemid = 2061000 THEN 78
+-                       WHEN dropperid = 3230100 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230100 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3230103 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230103 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3230200 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230200 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3230302 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3230302 AND itemid = 2061000 THEN 56
++                       WHEN dropperid = 3220000 AND itemid = 2060000 THEN 79
++                       WHEN dropperid = 3220000 AND itemid = 2061000 THEN 79
++                       WHEN dropperid = 3230100 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230100 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3230103 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230103 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3230200 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230200 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3230302 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3230302 AND itemid = 2061000 THEN 57
+                        WHEN dropperid = 3230303 AND itemid = 2060000 THEN 60
+                        WHEN dropperid = 3230303 AND itemid = 2061000 THEN 60
+-                       WHEN dropperid = 3230304 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230304 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3230305 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 3230305 AND itemid = 2061000 THEN 63
++                       WHEN dropperid = 3230304 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230304 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3230305 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 3230305 AND itemid = 2061000 THEN 64
+                        WHEN dropperid = 3230306 AND itemid = 2060000 THEN 60
+                        WHEN dropperid = 3230306 AND itemid = 2061000 THEN 60
+                        WHEN dropperid = 3230307 AND itemid = 2060000 THEN 50
+                        WHEN dropperid = 3230307 AND itemid = 2061000 THEN 50
+-                       WHEN dropperid = 3230308 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 3230308 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 3230400 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3230400 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3230405 AND itemid = 2060000 THEN 61
+-                       WHEN dropperid = 3230405 AND itemid = 2061000 THEN 61
+-                       WHEN dropperid = 3300000 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3300000 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 3300001 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 3300001 AND itemid = 2061000 THEN 48
++                       WHEN dropperid = 3230308 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 3230308 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 3230400 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3230400 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3230405 AND itemid = 2060000 THEN 62
++                       WHEN dropperid = 3230405 AND itemid = 2061000 THEN 62
++                       WHEN dropperid = 3300000 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3300000 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 3300001 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 3300001 AND itemid = 2061000 THEN 49
+                        WHEN dropperid = 3300002 AND itemid = 2060000 THEN 50
+                        WHEN dropperid = 3300002 AND itemid = 2061000 THEN 50
+-                       WHEN dropperid = 3300003 AND itemid = 2060000 THEN 51
+-                       WHEN dropperid = 3300003 AND itemid = 2061000 THEN 51
+-                       WHEN dropperid = 3300004 AND itemid = 2060000 THEN 53
+-                       WHEN dropperid = 3300004 AND itemid = 2061000 THEN 53
+-                       WHEN dropperid = 3300006 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3300006 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3300007 AND itemid = 2060000 THEN 56
+-                       WHEN dropperid = 3300007 AND itemid = 2061000 THEN 56
+-                       WHEN dropperid = 3300008 AND itemid = 2060000 THEN 86
+-                       WHEN dropperid = 3300008 AND itemid = 2061000 THEN 86
+-                       WHEN dropperid = 4110300 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4110300 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4110301 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4110301 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4130103 AND itemid = 2060000 THEN 106
+-                       WHEN dropperid = 4130103 AND itemid = 2061000 THEN 106
+-                       WHEN dropperid = 4230103 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230103 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230106 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230106 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 3300003 AND itemid = 2060000 THEN 52
++                       WHEN dropperid = 3300003 AND itemid = 2061000 THEN 52
++                       WHEN dropperid = 3300004 AND itemid = 2060000 THEN 54
++                       WHEN dropperid = 3300004 AND itemid = 2061000 THEN 54
++                       WHEN dropperid = 3300006 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3300006 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3300007 AND itemid = 2060000 THEN 57
++                       WHEN dropperid = 3300007 AND itemid = 2061000 THEN 57
++                       WHEN dropperid = 3300008 AND itemid = 2060000 THEN 87
++                       WHEN dropperid = 3300008 AND itemid = 2061000 THEN 87
++                       WHEN dropperid = 4110300 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4110300 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4110301 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4110301 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4130103 AND itemid = 2060000 THEN 107
++                       WHEN dropperid = 4130103 AND itemid = 2061000 THEN 107
++                       WHEN dropperid = 4230103 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230103 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230106 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230106 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230108 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230108 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230109 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230109 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230110 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230110 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230111 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230111 AND itemid = 2061000 THEN 66
+-                       WHEN dropperid = 4230112 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230112 AND itemid = 2061000 THEN 71
++                       WHEN dropperid = 4230109 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230109 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230110 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230110 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230111 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230111 AND itemid = 2061000 THEN 67
++                       WHEN dropperid = 4230112 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230112 AND itemid = 2061000 THEN 72
+                        WHEN dropperid = 4230113 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230113 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230114 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230114 AND itemid = 2061000 THEN 66
++                       WHEN dropperid = 4230114 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230114 AND itemid = 2061000 THEN 67
+                        WHEN dropperid = 4230115 AND itemid = 2060000 THEN 75
+                        WHEN dropperid = 4230115 AND itemid = 2061000 THEN 75
+                        WHEN dropperid = 4230116 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230116 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230117 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230117 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230118 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230118 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230119 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230119 AND itemid = 2061000 THEN 66
+-                       WHEN dropperid = 4230120 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230120 AND itemid = 2061000 THEN 71
++                       WHEN dropperid = 4230117 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230117 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230118 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230118 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230119 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230119 AND itemid = 2061000 THEN 67
++                       WHEN dropperid = 4230120 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230120 AND itemid = 2061000 THEN 72
+                        WHEN dropperid = 4230121 AND itemid = 2060000 THEN 75
+                        WHEN dropperid = 4230121 AND itemid = 2061000 THEN 75
+                        WHEN dropperid = 4230123 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230123 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230124 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 4230124 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 4230125 AND itemid = 2060000 THEN 71
+-                       WHEN dropperid = 4230125 AND itemid = 2061000 THEN 71
+-                       WHEN dropperid = 4230126 AND itemid = 2060000 THEN 76
+-                       WHEN dropperid = 4230126 AND itemid = 2061000 THEN 76
++                       WHEN dropperid = 4230124 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 4230124 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 4230125 AND itemid = 2060000 THEN 72
++                       WHEN dropperid = 4230125 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230126 AND itemid = 2060000 THEN 77
++                       WHEN dropperid = 4230126 AND itemid = 2061000 THEN 77
+                        WHEN dropperid = 4230201 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230201 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230300 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230300 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230400 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230400 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230300 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230300 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230400 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230400 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230500 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230500 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 4230501 AND itemid = 2060000 THEN 66
+-                       WHEN dropperid = 4230501 AND itemid = 2061000 THEN 66
++                       WHEN dropperid = 4230501 AND itemid = 2060000 THEN 67
++                       WHEN dropperid = 4230501 AND itemid = 2061000 THEN 67
+                        WHEN dropperid = 4230502 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 4230502 AND itemid = 2061000 THEN 70
+-                       WHEN dropperid = 4230503 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230503 AND itemid = 2061000 THEN 72
+-                       WHEN dropperid = 4230504 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 4230504 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 4230503 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230503 AND itemid = 2061000 THEN 73
++                       WHEN dropperid = 4230504 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 4230504 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 4230600 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 4230600 AND itemid = 2061000 THEN 65
+                        WHEN dropperid = 4240000 AND itemid = 2060000 THEN 80
+                        WHEN dropperid = 4240000 AND itemid = 2061000 THEN 80
+-                       WHEN dropperid = 5120100 AND itemid = 2060000 THEN 122
+-                       WHEN dropperid = 5120100 AND itemid = 2061000 THEN 122
+-                       WHEN dropperid = 5130104 AND itemid = 2060000 THEN 88
+-                       WHEN dropperid = 5130104 AND itemid = 2061000 THEN 88
+-                       WHEN dropperid = 5140000 AND itemid = 2060000 THEN 93
+-                       WHEN dropperid = 5140000 AND itemid = 2061000 THEN 93
+-                       WHEN dropperid = 5150000 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 5150000 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 5200000 AND itemid = 2060001 THEN 18
+-                       WHEN dropperid = 5200000 AND itemid = 2061001 THEN 18
++                       WHEN dropperid = 5120100 AND itemid = 2060000 THEN 123
++                       WHEN dropperid = 5120100 AND itemid = 2061000 THEN 123
++                       WHEN dropperid = 5130104 AND itemid = 2060000 THEN 89
++                       WHEN dropperid = 5130104 AND itemid = 2061000 THEN 89
++                       WHEN dropperid = 5140000 AND itemid = 2060000 THEN 94
++                       WHEN dropperid = 5140000 AND itemid = 2061000 THEN 94
++                       WHEN dropperid = 5150000 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 5150000 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 5200000 AND itemid = 2060001 THEN 19
++                       WHEN dropperid = 5200000 AND itemid = 2061001 THEN 19
+                        WHEN dropperid = 5200001 AND itemid = 2060001 THEN 24
+                        WHEN dropperid = 5200001 AND itemid = 2061001 THEN 24
+                        WHEN dropperid = 5200002 AND itemid = 2060001 THEN 24
+                        WHEN dropperid = 5200002 AND itemid = 2061001 THEN 24
+                        WHEN dropperid = 5220000 AND itemid = 2060000 THEN 125
+                        WHEN dropperid = 5220000 AND itemid = 2061000 THEN 125
+-                       WHEN dropperid = 5220002 AND itemid = 2060000 THEN 113
+-                       WHEN dropperid = 5220002 AND itemid = 2061000 THEN 113
+-                       WHEN dropperid = 5220003 AND itemid = 2060000 THEN 133
+-                       WHEN dropperid = 5220003 AND itemid = 2061000 THEN 133
++                       WHEN dropperid = 5220002 AND itemid = 2060000 THEN 114
++                       WHEN dropperid = 5220002 AND itemid = 2061000 THEN 114
++                       WHEN dropperid = 5220003 AND itemid = 2060000 THEN 134
++                       WHEN dropperid = 5220003 AND itemid = 2061000 THEN 134
+                        WHEN dropperid = 5400000 AND itemid = 2060001 THEN 28
+                        WHEN dropperid = 5400000 AND itemid = 2061001 THEN 28
+-                       WHEN dropperid = 6220000 AND itemid = 2060000 THEN 147
+-                       WHEN dropperid = 6220000 AND itemid = 2061000 THEN 147
++                       WHEN dropperid = 6220000 AND itemid = 2060000 THEN 148
++                       WHEN dropperid = 6220000 AND itemid = 2061000 THEN 148
+                        WHEN dropperid = 7120103 AND itemid = 2060003 THEN 28
+-                       WHEN dropperid = 7220000 AND itemid = 2060001 THEN 80
+-                       WHEN dropperid = 7220000 AND itemid = 2061001 THEN 80
++                       WHEN dropperid = 7220000 AND itemid = 2060001 THEN 81
++                       WHEN dropperid = 7220000 AND itemid = 2061001 THEN 81
+                        WHEN dropperid = 7220001 AND itemid = 2060001 THEN 79
+                        WHEN dropperid = 7220001 AND itemid = 2061001 THEN 79
+                        WHEN dropperid = 7220002 AND itemid = 2060001 THEN 87
+@@ -666,29 +666,29 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 8220000 AND itemid = 2061001 THEN 94
+                        WHEN dropperid = 8220001 AND itemid = 2060001 THEN 102
+                        WHEN dropperid = 8220001 AND itemid = 2061001 THEN 102
+-                       WHEN dropperid = 9300011 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9300011 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9300060 AND itemid = 2060000 THEN 67
+-                       WHEN dropperid = 9300060 AND itemid = 2061000 THEN 67
+-                       WHEN dropperid = 9300131 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9300131 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9300132 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9300132 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9300133 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9300160 AND itemid = 2060000 THEN 102
+-                       WHEN dropperid = 9300160 AND itemid = 2061000 THEN 102
+-                       WHEN dropperid = 9300161 AND itemid = 2060000 THEN 102
+-                       WHEN dropperid = 9300161 AND itemid = 2061000 THEN 102
+-                       WHEN dropperid = 9300274 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 9300274 AND itemid = 2061000 THEN 12
++                       WHEN dropperid = 9300011 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9300011 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9300060 AND itemid = 2060000 THEN 68
++                       WHEN dropperid = 9300060 AND itemid = 2061000 THEN 68
++                       WHEN dropperid = 9300131 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9300131 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9300132 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9300132 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9300133 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9300160 AND itemid = 2060000 THEN 103
++                       WHEN dropperid = 9300160 AND itemid = 2061000 THEN 103
++                       WHEN dropperid = 9300161 AND itemid = 2060000 THEN 103
++                       WHEN dropperid = 9300161 AND itemid = 2061000 THEN 103
++                       WHEN dropperid = 9300274 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 9300274 AND itemid = 2061000 THEN 13
+                        WHEN dropperid = 9300332 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 9300334 AND itemid = 2060000 THEN 80
+-                       WHEN dropperid = 9300341 AND itemid = 2060000 THEN 8
+-                       WHEN dropperid = 9300341 AND itemid = 2061000 THEN 8
+-                       WHEN dropperid = 9300342 AND itemid = 2060000 THEN 12
+-                       WHEN dropperid = 9300342 AND itemid = 2061000 THEN 12
+-                       WHEN dropperid = 9300343 AND itemid = 2060000 THEN 11
+-                       WHEN dropperid = 9300343 AND itemid = 2061000 THEN 11
++                       WHEN dropperid = 9300341 AND itemid = 2060000 THEN 9
++                       WHEN dropperid = 9300341 AND itemid = 2061000 THEN 9
++                       WHEN dropperid = 9300342 AND itemid = 2060000 THEN 13
++                       WHEN dropperid = 9300342 AND itemid = 2061000 THEN 13
++                       WHEN dropperid = 9300343 AND itemid = 2060000 THEN 12
++                       WHEN dropperid = 9300343 AND itemid = 2061000 THEN 12
+                        WHEN dropperid = 9303005 AND itemid = 2060001 THEN 21
+                        WHEN dropperid = 9303005 AND itemid = 2061001 THEN 21
+                        WHEN dropperid = 9303008 AND itemid = 2060001 THEN 21
+@@ -701,12 +701,12 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9400100 AND itemid = 2060003 THEN 18
+                        WHEN dropperid = 9400101 AND itemid = 2061003 THEN 19
+                        WHEN dropperid = 9400204 AND itemid = 2060003 THEN 22
+-                       WHEN dropperid = 9400239 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 9400239 AND itemid = 2061000 THEN 38
+-                       WHEN dropperid = 9400244 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 9400244 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 9400248 AND itemid = 2060000 THEN 38
+-                       WHEN dropperid = 9400248 AND itemid = 2061000 THEN 38
++                       WHEN dropperid = 9400239 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 9400239 AND itemid = 2061000 THEN 39
++                       WHEN dropperid = 9400244 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 9400244 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 9400248 AND itemid = 2060000 THEN 39
++                       WHEN dropperid = 9400248 AND itemid = 2061000 THEN 39
+                        WHEN dropperid = 9400540 AND itemid = 2060004 THEN 8
+                        WHEN dropperid = 9400540 AND itemid = 2061004 THEN 8
+                        WHEN dropperid = 9400541 AND itemid = 2060004 THEN 8
+@@ -715,24 +715,24 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9400542 AND itemid = 2061004 THEN 11
+                        WHEN dropperid = 9400543 AND itemid = 2060004 THEN 13
+                        WHEN dropperid = 9400543 AND itemid = 2061004 THEN 13
+-                       WHEN dropperid = 9400547 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 9400547 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 9400548 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9400548 AND itemid = 2061000 THEN 48
+-                       WHEN dropperid = 9400550 AND itemid = 2060000 THEN 43
+-                       WHEN dropperid = 9400550 AND itemid = 2061000 THEN 43
+-                       WHEN dropperid = 9400558 AND itemid = 2060000 THEN 48
+-                       WHEN dropperid = 9400558 AND itemid = 2061000 THEN 48
++                       WHEN dropperid = 9400547 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 9400547 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 9400548 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9400548 AND itemid = 2061000 THEN 49
++                       WHEN dropperid = 9400550 AND itemid = 2060000 THEN 44
++                       WHEN dropperid = 9400550 AND itemid = 2061000 THEN 44
++                       WHEN dropperid = 9400558 AND itemid = 2060000 THEN 49
++                       WHEN dropperid = 9400558 AND itemid = 2061000 THEN 49
+                        WHEN dropperid = 9400563 AND itemid = 2060000 THEN 65
+                        WHEN dropperid = 9400563 AND itemid = 2061000 THEN 65
+-                       WHEN dropperid = 9400638 AND itemid = 2060000 THEN 32
+-                       WHEN dropperid = 9400638 AND itemid = 2061000 THEN 32
++                       WHEN dropperid = 9400638 AND itemid = 2060000 THEN 33
++                       WHEN dropperid = 9400638 AND itemid = 2061000 THEN 33
+                        WHEN dropperid = 9420500 AND itemid = 2060000 THEN 45
+                        WHEN dropperid = 9420500 AND itemid = 2061000 THEN 45
+-                       WHEN dropperid = 9420502 AND itemid = 2060000 THEN 28
+-                       WHEN dropperid = 9420502 AND itemid = 2061000 THEN 28
+-                       WHEN dropperid = 9420506 AND itemid = 2060000 THEN 37
+-                       WHEN dropperid = 9420506 AND itemid = 2061000 THEN 37
++                       WHEN dropperid = 9420502 AND itemid = 2060000 THEN 29
++                       WHEN dropperid = 9420502 AND itemid = 2061000 THEN 29
++                       WHEN dropperid = 9420506 AND itemid = 2060000 THEN 38
++                       WHEN dropperid = 9420506 AND itemid = 2061000 THEN 38
+                        WHEN dropperid = 9420508 AND itemid = 2060000 THEN 70
+                        WHEN dropperid = 9420508 AND itemid = 2061000 THEN 70
+                        WHEN dropperid = 9420527 AND itemid = 2060001 THEN 36
+@@ -741,26 +741,26 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9420531 AND itemid = 2061001 THEN 48
+                        WHEN dropperid = 9500112 AND itemid = 2060001 THEN 28
+                        WHEN dropperid = 9500112 AND itemid = 2061001 THEN 28
+-                       WHEN dropperid = 9500119 AND itemid = 2060000 THEN 63
+-                       WHEN dropperid = 9500119 AND itemid = 2061000 THEN 63
+-                       WHEN dropperid = 9500120 AND itemid = 2060000 THEN 72
+-                       WHEN dropperid = 9500120 AND itemid = 2061000 THEN 72
++                       WHEN dropperid = 9500119 AND itemid = 2060000 THEN 64
++                       WHEN dropperid = 9500119 AND itemid = 2061000 THEN 64
++                       WHEN dropperid = 9500120 AND itemid = 2060000 THEN 73
++                       WHEN dropperid = 9500120 AND itemid = 2061000 THEN 73
+                        WHEN dropperid = 9500122 AND itemid = 2060000 THEN 80
+-                       WHEN dropperid = 9500123 AND itemid = 2060000 THEN 96
+-                       WHEN dropperid = 9500123 AND itemid = 2061000 THEN 96
+-                       WHEN dropperid = 9500308 AND itemid = 2060000 THEN 113
+-                       WHEN dropperid = 9500308 AND itemid = 2061000 THEN 113
+-                       WHEN dropperid = 9500310 AND itemid = 2060000 THEN 133
+-                       WHEN dropperid = 9500310 AND itemid = 2061000 THEN 133
++                       WHEN dropperid = 9500123 AND itemid = 2060000 THEN 97
++                       WHEN dropperid = 9500123 AND itemid = 2061000 THEN 97
++                       WHEN dropperid = 9500308 AND itemid = 2060000 THEN 114
++                       WHEN dropperid = 9500308 AND itemid = 2061000 THEN 114
++                       WHEN dropperid = 9500310 AND itemid = 2060000 THEN 134
++                       WHEN dropperid = 9500310 AND itemid = 2061000 THEN 134
+                        WHEN dropperid = 9500312 AND itemid = 2060001 THEN 79
+                        WHEN dropperid = 9500312 AND itemid = 2061001 THEN 79
+-                       WHEN dropperid = 9500313 AND itemid = 2060001 THEN 80
+-                       WHEN dropperid = 9500313 AND itemid = 2061001 THEN 80
++                       WHEN dropperid = 9500313 AND itemid = 2060001 THEN 81
++                       WHEN dropperid = 9500313 AND itemid = 2061001 THEN 81
+                        WHEN dropperid = 9500314 AND itemid = 2060001 THEN 87
+                        WHEN dropperid = 9500314 AND itemid = 2061001 THEN 87
+                        WHEN dropperid = 9500321 AND itemid = 2060001 THEN 8
+                        WHEN dropperid = 9500321 AND itemid = 2061001 THEN 8
+-                       WHEN dropperid = 9500366 AND itemid = 2060000 THEN 23
+-                       WHEN dropperid = 9500369 AND itemid = 2060000 THEN 23
++                       WHEN dropperid = 9500366 AND itemid = 2060000 THEN 24
++                       WHEN dropperid = 9500369 AND itemid = 2060000 THEN 24
+   ELSE maximum_quantity END
+ ;
+diff --git a/tools/MapleArrowFetcher/nbproject/private/private.properties b/tools/MapleArrowFetcher/nbproject/private/private.properties
+index adc8a8f46..67c9c2796 100644
+--- a/tools/MapleArrowFetcher/nbproject/private/private.properties
++++ b/tools/MapleArrowFetcher/nbproject/private/private.properties
+@@ -3,4 +3,4 @@ do.depend=false
+ do.jar=true
+ javac.debug=true
+ javadoc.preview=true
+-user.properties.file=C:\\Users\\USER\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
++user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
+diff --git a/tools/MapleArrowFetcher/nbproject/private/private.xml b/tools/MapleArrowFetcher/nbproject/private/private.xml
+index 6807a2ba1..6d8069dba 100644
+--- a/tools/MapleArrowFetcher/nbproject/private/private.xml
++++ b/tools/MapleArrowFetcher/nbproject/private/private.xml
+@@ -2,6 +2,8 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/tools/MapleArrowFetcher/src/maplearrowfetcher/MapleArrowFetcher.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/tools/MapleArrowFetcher/src/maplearrowfetcher/MapleArrowFetcher.java b/tools/MapleArrowFetcher/src/maplearrowfetcher/MapleArrowFetcher.java
+index 8ba12b7ba..bf846288c 100644
+--- a/tools/MapleArrowFetcher/src/maplearrowfetcher/MapleArrowFetcher.java
++++ b/tools/MapleArrowFetcher/src/maplearrowfetcher/MapleArrowFetcher.java
+@@ -70,7 +70,7 @@
+         minRange = (int)Math.ceil(((2.870503597 * level) - 1.870503597) * (boss ? 1.4 : 1.0) / correctionFactor);
+         
+         // MAX range
+-        maxRange = (int)(1.25 * minRange);
++        maxRange = (int)Math.ceil(1.25 * minRange);
+         
+         return new Pair<>(minRange, maxRange);
+     }
+diff --git a/tools/MapleMesoFetcher/nbproject/private/private.properties b/tools/MapleMesoFetcher/nbproject/private/private.properties
+index adc8a8f46..67c9c2796 100644
+--- a/tools/MapleMesoFetcher/nbproject/private/private.properties
++++ b/tools/MapleMesoFetcher/nbproject/private/private.properties
+@@ -3,4 +3,4 @@ do.depend=false
+ do.jar=true
+ javac.debug=true
+ javadoc.preview=true
+-user.properties.file=C:\\Users\\USER\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
++user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
+diff --git a/tools/MapleMesoFetcher/nbproject/private/private.xml b/tools/MapleMesoFetcher/nbproject/private/private.xml
+index 6807a2ba1..f02aee062 100644
+--- a/tools/MapleMesoFetcher/nbproject/private/private.xml
++++ b/tools/MapleMesoFetcher/nbproject/private/private.xml
+@@ -2,6 +2,8 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/tools/MapleMesoFetcher/src/maplemesofetcher/MapleMesoFetcher.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/tools/MapleSkillMakerFetcher/build.xml b/tools/MapleSkillMakerFetcher/build.xml
+new file mode 100644
+index 000000000..ac06f1c18
+--- /dev/null
++++ b/tools/MapleSkillMakerFetcher/build.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!-- You may freely edit this file. See commented blocks below for -->
++<!-- some examples of how to customize the build. -->
++<!-- (If you delete it and reopen the project it will be recreated.) -->
++<!-- By default, only the Clean and Build commands use this build script. -->
++<!-- Commands such as Run, Debug, and Test only use this build script if -->
++<!-- the Compile on Save feature is turned off for the project. -->
++<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
++<!-- in the project's Project Properties dialog box.-->
++<project name="MapleSkillMakerFetcher" default="default" basedir=".">
++    <description>Builds, tests, and runs the project MapleSkillMakerFetcher.</description>
++    <import file="nbproject/build-impl.xml"/>
++    <!--
++
++    There exist several targets which are by default empty and which can be 
++    used for execution of your tasks. These targets are usually executed 
++    before and after some main targets. They are: 
++
++      -pre-init:                 called before initialization of project properties
++      -post-init:                called after initialization of project properties
++      -pre-compile:              called before javac compilation
++      -post-compile:             called after javac compilation
++      -pre-compile-single:       called before javac compilation of single file
++      -post-compile-single:      called after javac compilation of single file
++      -pre-compile-test:         called before javac compilation of JUnit tests
++      -post-compile-test:        called after javac compilation of JUnit tests
++      -pre-compile-test-single:  called before javac compilation of single JUnit test
++      -post-compile-test-single: called after javac compilation of single JUunit test
++      -pre-jar:                  called before JAR building
++      -post-jar:                 called after JAR building
++      -post-clean:               called after cleaning build products
++
++    (Targets beginning with '-' are not intended to be called on their own.)
++
++    Example of inserting an obfuscator after compilation could look like this:
++
++        <target name="-post-compile">
++            <obfuscate>
++                <fileset dir="${build.classes.dir}"/>
++            </obfuscate>
++        </target>
++
++    For list of available properties check the imported 
++    nbproject/build-impl.xml file. 
++
++
++    Another way to customize the build is by overriding existing main targets.
++    The targets of interest are: 
++
++      -init-macrodef-javac:     defines macro for javac compilation
++      -init-macrodef-junit:     defines macro for junit execution
++      -init-macrodef-debug:     defines macro for class debugging
++      -init-macrodef-java:      defines macro for class execution
++      -do-jar:                  JAR building
++      run:                      execution of project 
++      -javadoc-build:           Javadoc generation
++      test-report:              JUnit report generation
++
++    An example of overriding the target for project execution could look like this:
++
++        <target name="run" depends="MapleSkillMakerFetcher-impl.jar">
++            <exec dir="bin" executable="launcher.exe">
++                <arg file="${dist.jar}"/>
++            </exec>
++        </target>
++
++    Notice that the overridden target depends on the jar target and not only on 
++    the compile target as the regular run target does. Again, for a list of available 
++    properties which you can use, check the target you are overriding in the
++    nbproject/build-impl.xml file. 
++
++    -->
++</project>

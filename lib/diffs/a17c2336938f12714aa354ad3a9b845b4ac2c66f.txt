@@ -1,0 +1,2079 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 7589dbdfe..be3bc589a 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1482,4 +1482,26 @@ Implementado script para questline de skill Aerial Strike.
+ Corrigido limite do Cash Shop storage não atualizando corretamente quando jogador compra expansão de 8.
+ Atualizado guild rank de jogadores ao resetar guildid dos mesmos, agora evitando jogadores com rank acima de 5 mesmo sem guild.
+ Adicionado restrição no sistema de partilha de EXP. Jogadores que possuem uma diferença de nível com o last hitter satisfatoriamente grande não recebe este ganho.
+-Modificado nome de skill Maple Hero destacados em quest e itens para Maple Warrior.
+\ No newline at end of file
++Modificado nome de skill Maple Hero destacados em quest e itens para Maple Warrior.
++
++24 Novembro 2018,
++Modificado pontos no código com RNG especificado incorretamente (pool atuante com mais elementos que o esperado).
++Corrigido problema de overflow de inteiro com mesos, causando perda total dos mesos do mesmo.
++
++27 - 29 Novembro 2018,
++Modificado code coupons, agora utilizando a coluna de "quantity" para definição de ganhos dos pontos de cash.
++Removido múltiplos Bobs no mapa onde ele aparece. Bob's agora aparecem a cada 4 horas, e caracteristicamente liberam drops de Snails comuns com maiores chances.
++Removido comando duplicado "warpto". Agora sua funcionalidade é a mesma do comando "reach".
++Expedições agora não finaliza expedições inapropriadamente por falta de pessoal quando flag que permite expedições solo é ativada.
++Corrigido skill de mobs de "refletir dano" não atualizando devidamente o ícone de status assim que a habilidade se ativa.
++Corrigido clean slate scroll não atuando devidamente.
++Adicionado diversas novas recompensas ao bonus da GPQ.
++Corrigido sistema de detecção de loots não atuando corretamente ao lidar com itens one-of-a-kind.
++Adicionado checagens de quest itens necessários para começar quests.
++Corrigido sistema de server messages/boss HP bar não atuando de forma esperada ao mudar de canais/entrar no Cash Shop.
++
++01 Dezembro 2018,
++Corrigido um problema com o gerador de code coupons, que levava em consideração hifens ("-") no código do cupom, além de um problema de overflow na data de expiração.
++
++03 Dezembro 2018,
++Melhorado desenho do worldmap de Victoria, na região do metro de Kerning.
+\ No newline at end of file
+diff --git a/handbook/Equip/Accessory.txt b/handbook/Equip/Accessory.txt
+index f8ec0478f..304abf01c 100644
+--- a/handbook/Equip/Accessory.txt
++++ b/handbook/Equip/Accessory.txt
+@@ -1,16 +1,16 @@
+-1122040 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
++1122040 - Bronze Maple Necklace - A light-weight bronze Maple Necklace.
+ 1122041 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
+ 1122042 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
+ 1122043 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
+ 1122044 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
+ 1122045 - Sealed Mind of Maple Necklace - A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored.
+-1122046 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
++1122046 - Silver Maple Necklace - A shiny silver Maple Necklace.
+ 1122047 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122048 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122049 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122050 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122051 - Restoring Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+-1122052 - Awakening Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
++1122052 - Golden Maple Necklace - A Maple Necklace of 21 karats.
+ 1122053 - Awakening Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122054 - Awakening Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+ 1122055 - Awakening Mind of Maple Necklace - A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level.
+diff --git a/scripts/event/CWKPQ.js b/scripts/event/CWKPQ.js
+index f1fc7fc43..93b71f145 100644
+--- a/scripts/event/CWKPQ.js
++++ b/scripts/event/CWKPQ.js
+@@ -241,7 +241,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -297,7 +297,7 @@ function changedLeader(eim, leader) {}
+ function playerDead(eim, player) {}
+ 
+ function playerRevive(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+@@ -309,7 +309,7 @@ function playerRevive(eim, player) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/event/HorntailBattle.js b/scripts/event/HorntailBattle.js
+index 6ed3a6df0..9f4881257 100644
+--- a/scripts/event/HorntailBattle.js
++++ b/scripts/event/HorntailBattle.js
+@@ -126,7 +126,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -143,7 +143,7 @@ function changedLeader(eim, leader) {}
+ function playerDead(eim, player) {}
+ 
+ function playerRevive(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+@@ -155,7 +155,7 @@ function playerRevive(eim, player) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/event/PinkBeanBattle.js b/scripts/event/PinkBeanBattle.js
+index a147b862f..b29e63137 100644
+--- a/scripts/event/PinkBeanBattle.js
++++ b/scripts/event/PinkBeanBattle.js
+@@ -128,7 +128,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -169,7 +169,7 @@ function monsterRevive(eim, mob) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/event/ScargaBattle.js b/scripts/event/ScargaBattle.js
+index 60089d57a..d7d4b9ff1 100644
+--- a/scripts/event/ScargaBattle.js
++++ b/scripts/event/ScargaBattle.js
+@@ -112,7 +112,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -129,7 +129,7 @@ function changedLeader(eim, leader) {}
+ function playerDead(eim, player) {}
+ 
+ function playerRevive(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+@@ -141,7 +141,7 @@ function playerRevive(eim, player) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/event/ShowaBattle.js b/scripts/event/ShowaBattle.js
+index 1a637d67a..f3504671a 100644
+--- a/scripts/event/ShowaBattle.js
++++ b/scripts/event/ShowaBattle.js
+@@ -119,7 +119,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -138,7 +138,7 @@ function playerDead(eim, player) {
+ }
+ 
+ function playerRevive(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+@@ -150,7 +150,7 @@ function playerRevive(eim, player) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/event/ZakumBattle.js b/scripts/event/ZakumBattle.js
+index a91296c18..47b979b56 100644
+--- a/scripts/event/ZakumBattle.js
++++ b/scripts/event/ZakumBattle.js
+@@ -114,7 +114,7 @@ function scheduledTimeout(eim) {
+ 
+ function changedMap(eim, player, mapid) {
+     if (mapid < minMapId || mapid > maxMapId) {
+-	if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++	if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+             eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+             eim.unregisterPlayer(player);
+             end(eim);
+@@ -131,7 +131,7 @@ function changedLeader(eim, leader) {}
+ function playerDead(eim, player) {}
+ 
+ function playerRevive(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.unregisterPlayer(player);
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         end(eim);
+@@ -143,7 +143,7 @@ function playerRevive(eim, player) {
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++    if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+         eim.dropMessage(5, "[Expedition] Either the leader has quit the expedition or there is no longer the minimum number of members required to continue it.");
+         eim.unregisterPlayer(player);
+         end(eim);
+diff --git a/scripts/npc/2041026.js b/scripts/npc/2041026.js
+index b28b51b1d..ac4d47922 100644
+--- a/scripts/npc/2041026.js
++++ b/scripts/npc/2041026.js
+@@ -42,15 +42,12 @@ function action(mode, type, selection) {
+     
+                 if(status == 0) {
+                         if(cm.haveItem(4220046, 1)) {
+-                            if(cm.isQuestStarted(3250)) {
+-                                cm.completeQuest(3250);
+-                                cm.gainFame(11);
+-                            }
+-                            
+-                            cm.gainItem(4220046, -1);
+-                            cm.sendOk("You want to hand the #r#t4220046##k to me, right? Alright, I'll take it for you.");
++                                // quest completing here when "forfeiting Timer's Egg", as well as reporting missing quests on M. Shrine are thanks to drmdsr & Thora
++                                
++                                cm.gainItem(4220046, -1);
++                                cm.sendOk("You want to hand the #r#t4220046##k to me, right? Alright, I'll take it for you.");
+                         } else {
+-                            cm.sendOk("Hello there! I'm #b#p2041026##k, in charge of watching and reporting any paranormal activities in this area.");
++                                cm.sendOk("Hello there! I'm #b#p2041026##k, in charge of watching and reporting any paranormal activities in this area.");
+                         }
+                         
+                         cm.dispose();
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index 691effb7e..ac3158a2d 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -60,6 +60,7 @@ function writeFeatureTab_Skills() {
+ 
+ function writeFeatureTab_Quests() {
+         addFeature("Doll house quest functional.");
++        addFeature("Q. items required to start quests shows up properly.");
+         addFeature("Quests are now rewarding items properly.");
+         addFeature("Selection of rewards works properly.");
+         addFeature("Loads of quests have been patched.");
+@@ -122,6 +123,7 @@ function writeFeatureTab_MonstersMapsReactors() {
+         addFeature("Implemented banish mob skill move.");
+         addFeature("Redesigned HT mechanics: assemble & dmg taken.");
+         addFeature("Implemented Zombify disease status.");
++        addFeature("Dmg Reflect mobskill icons no longer lags to display.");
+         addFeature("Added Boss HP Bar for dozens of bosses.");
+         addFeature("Game will favor showing the targeted boss HPbar.");
+         addFeature("Boss HPBar & Srv Message toggle - GabrielSin's idea.");
+diff --git a/scripts/npc/credits.js b/scripts/npc/credits.js
+index 04da15ab8..edfb3d3aa 100644
+--- a/scripts/npc/credits.js
++++ b/scripts/npc/credits.js
+@@ -38,6 +38,7 @@ function writeServerStaff_HeavenMS() {
+         addPerson("Vcoc", "Freelance Developer");
+         addPerson("Thora", "Contributor");
+         addPerson("GabrielSin", "Contributor");
++        addPerson("Masterrulax", "Contributor");
+         
+         setHistory(2015, 2018);
+ }
+@@ -90,15 +91,16 @@ function writeServerStaff_OdinMS() {
+ function writeServerStaff_Contributors() {
+         addPerson("Jvlaple", "Contributor");
+         addPerson("Stereo", "Contributor");
++        addPerson("AngelSL", "Contributor");
+         addPerson("Lerk", "Contributor");
+         addPerson("Leifde", "Contributor");
+         addPerson("ThreeStep", "Contributor");
+         addPerson("RMZero213", "Contributor");
++        addPerson("ExtremeDevilz", "Contributor");
+         addPerson("aaroncsn", "Contributor");
+         addPerson("xQuasar", "Contributor");
+         addPerson("Xterminator", "Contributor");
+         addPerson("XoticStory", "Contributor");
+-        addPerson("Masterrulax", "Contributor");
+ }
+ 
+ function writeAllServerStaffs() {
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index f5dd1bcb4..a3635fa57 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -10259,7 +10259,6 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (10038, 8140101, 0, 500, 800, 0, 400000),
+ (10039, 8140700, 0, 500, 800, 0, 400000),
+ (10040, 8140701, 0, 600, 900, 0, 400000),
+-(10041, 9400551, 0, 1000, 5000, 0, 400000),
+ (10042, 8190003, 0, 697, 1020, 0, 400000),
+ (10043, 8190004, 0, 750, 1150, 0, 400000),
+ (10044, 8190005, 0, 800, 1200, 0, 400000),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index afdd3df64..6b906b2ba 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -2268,8 +2268,8 @@ USE `heavenms`;
+ (2230104, 1082043, 1, 1, 0, 700), 
+ (2230104, 1332010, 1, 1, 0, 700), 
+ (2230104, 1052104, 1, 1, 0, 700), 
+-(2230109, 4031209, 1, 1, 3072, 7000), 
+-(9410016, 4031209, 1, 1, 3072, 7000), 
++(2230109, 4031209, 1, 1, 3072, 500000), 
++(9410016, 4031209, 1, 1, 3072, 500000), 
+ (2230109, 4131010, 1, 1, 0, 3000), 
+ (9410016, 4131010, 1, 1, 0, 3000), 
+ (2230109, 2000002, 1, 1, 0, 40000), 
+@@ -2315,7 +2315,7 @@ USE `heavenms`;
+ (2230109, 1002619, 1, 1, 0, 700), 
+ (9410016, 1002619, 1, 1, 0, 700), 
+ (2230200, 4000165, 1, 1, 0, 200000), 
+-(2230200, 4031209, 1, 1, 3072, 7000), 
++(2230200, 4031209, 1, 1, 3072, 500000), 
+ (2230200, 4006000, 1, 1, 0, 7000), 
+ (2230200, 2000001, 1, 1, 0, 40000), 
+ (2230200, 2040501, 1, 1, 0, 750), 
+@@ -2649,7 +2649,7 @@ USE `heavenms`;
+ (9400247, 1492004, 1, 1, 0, 700), 
+ (9500107, 1492004, 1, 1, 0, 700),
+ (3000006, 4000166, 1, 1, 0, 200000), 
+-(3000006, 4031209, 1, 1, 3072, 7000),
++(3000006, 4031209, 1, 1, 3072, 500000),
+ (3000006, 4131003, 1, 1, 0, 3000), 
+ (3000006, 2000002, 1, 1, 0, 40000), 
+ (3000006, 2000003, 1, 1, 0, 40000), 
+@@ -2964,7 +2964,7 @@ USE `heavenms`;
+ (3210100, 1002178, 1, 1, 0, 700), 
+ (3210100, 1052107, 1, 1, 0, 700), 
+ (3230104, 4000167, 1, 1, 0, 200000),
+-(3230104, 4031209, 1, 1, 3072, 7000), 
++(3230104, 4031209, 1, 1, 3072, 500000), 
+ (3230104, 4030012, 1, 1, 0, 125000), 
+ (3230104, 2000002, 1, 1, 0, 40000), 
+ (3230104, 2022040, 1, 1, 0, 3000), 
+@@ -4475,8 +4475,8 @@ USE `heavenms`;
+ (3230303, 1482005, 1, 1, 0, 700), 
+ (3230405, 4000154, 1, 1, 0, 200000),
+ (9410020, 4000154, 1, 1, 0, 200000), 
+-(3230405, 4031209, 1, 1, 3072, 7000), 
+-(9410020, 4031209, 1, 1, 3072, 7000), 
++(3230405, 4031209, 1, 1, 3072, 500000), 
++(9410020, 4031209, 1, 1, 3072, 500000), 
+ (3230405, 2002005, 1, 1, 0, 10000), 
+ (9410020, 2002005, 1, 1, 0, 10000), 
+ (3230405, 2022040, 1, 1, 0, 3000), 
+@@ -5137,8 +5137,8 @@ USE `heavenms`;
+ (9300233, 1052113, 1, 1, 0, 700), 
+ (4230200, 4000158, 1, 1, 0, 200000), 
+ (9410018, 4000158, 1, 1, 0, 200000), 
+-(4230200, 4031209, 1, 1, 3072, 7000), 
+-(9410018, 4031209, 1, 1, 3072, 7000), 
++(4230200, 4031209, 1, 1, 3072, 500000), 
++(9410018, 4031209, 1, 1, 3072, 500000), 
+ (4230200, 2022040, 1, 1, 0, 3000), 
+ (9410018, 2022040, 1, 1, 0, 3000), 
+ (4230200, 2040707, 1, 1, 0, 750), 
+@@ -5169,8 +5169,8 @@ USE `heavenms`;
+ (9410018, 1072110, 1, 1, 0, 700), 
+ (4230200, 1472014, 1, 1, 0, 700), 
+ (9410018, 1472014, 1, 1, 0, 700), 
+-(4230201, 4031209, 1, 1, 3072, 7000), 
+-(4230201, 2022040, 1, 1, 3072, 3000), 
++(4230201, 4031209, 1, 1, 3072, 500000), 
++(4230201, 2022040, 1, 1, 0, 3000), 
+ (4230201, 2000002, 1, 1, 0, 40000), 
+ (4230201, 2000003, 1, 1, 0, 40000), 
+ (4230201, 2002004, 1, 1, 0, 10000), 
+@@ -5817,9 +5817,9 @@ USE `heavenms`;
+ (4230124, 4000157, 1, 1, 0, 200000), 
+ (9300090, 4000157, 1, 1, 0, 200000), 
+ (9420501, 4000157, 1, 1, 0, 200000), 
+-(4230124, 4031209, 1, 1, 3072, 7000), 
+-(9300090, 4031209, 1, 1, 3072, 7000), 
+-(9420501, 4031209, 1, 1, 3072, 7000), 
++(4230124, 4031209, 1, 1, 3072, 500000), 
++(9300090, 4031209, 1, 1, 3072, 500000), 
++(9420501, 4031209, 1, 1, 3072, 500000), 
+ (4230124, 4030012, 1, 1, 0, 125000), 
+ (9300090, 4030012, 1, 1, 0, 125000), 
+ (9420501, 4030012, 1, 1, 0, 125000), 
+@@ -6049,7 +6049,7 @@ USE `heavenms`;
+ (4230108, 1472018, 1, 1, 0, 700), 
+ (4230123, 4000156, 1, 1, 0, 200000), 
+ (4230123, 4000157, 1, 1, 0, 200000), 
+-(4230123, 4031209, 1, 1, 3072, 7000), 
++(4230123, 4031209, 1, 1, 3072, 500000), 
+ (4230123, 4030012, 1, 1, 0, 125000), 
+ (4230123, 4003004, 1, 1, 0, 7000), 
+ (4230123, 4130015, 1, 1, 0, 3000), 
+@@ -20167,7 +20167,7 @@ USE `heavenms`;
+ (9400748, 1002858, 1, 1, 0, 40000),
+ (9400748, 1002859, 1, 1, 0, 40000),
+ (9400748, 1002860, 1, 1, 0, 40000),
+-(9400748, 1002861, 1, 1, 0, 80000),
++(9400748, 1002861, 1, 1, 0, 40000),
+ (9400001, 0, 56, 84, 0, 400000),
+ (9400001, 4000065, 1, 1, 0, 400000),
+ (9400001, 4130013, 1, 1, 0, 7000),
+@@ -20301,7 +20301,8 @@ USE `heavenms`;
+ (6130103, 2022001, 1, 1, 0, 20000),
+ (6130200, 2022001, 1, 1, 0, 20000),
+ (6130201, 2022001, 1, 1, 0, 20000),
+-(2220000, 1322001, 1, 1, 0, 8000);
++(2220000, 1322001, 1, 1, 0, 8000),
++(9400551, 4031447, 1, 1, 0, 999999);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+@@ -20357,12 +20358,12 @@ USE `heavenms`;
+ (8150000, 2290091, 1, 1, 0, 40000),
+ (9300028, 2290093, 1, 1, 0, 100000),
+ (9400514, 2290095, 1, 1, 0, 40000),
+-(9300028, 2290096, 1, 1, 0, 100000),
++(9300028, 2290111, 1, 1, 0, 100000),
+ (9400121, 2290101, 1, 1, 0, 40000),
+ (9400580, 2290103, 1, 1, 0, 1000),
+ (9400575, 2290107, 1, 1, 0, 1000),
+ (8220007, 2290108, 1, 1, 0, 40000),
+-(9400300, 2290111, 1, 1, 0, 100000),
++(9400300, 2290096, 1, 1, 0, 100000),
+ (9400014, 2290112, 1, 1, 0, 40000),
+ (8150302, 2290113, 1, 1, 0, 1000),
+ (8200011, 2290114, 1, 1, 0, 1000),
+@@ -20502,6 +20503,16 @@ USE `heavenms`;
+   DELETE FROM temp_data WHERE dropperid=9300090;
+   DELETE FROM temp_data WHERE dropperid=9420501;
+ 
++  -- missing content for Bob found thanks to drmdsr & Thora
++  # normalize item drops for Bob the Snail
++  INSERT INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`)
++  SELECT  9400551, temp_data.itemid, temp_data.minimum_quantity, temp_data.maximum_quantity, temp_data.questid, LEAST(temp_data.chance * 80, 999999)
++  FROM    temp_data
++  WHERE   temp_data.dropperid = 100100;
++
++  DELETE FROM temp_data WHERE dropperid=9400551 AND itemid=4000019;
++  UPDATE IGNORE temp_data SET minimum_quantity=1000, maximum_quantity=5000 WHERE dropperid=9400551 AND itemid=0;
++
+   # normalize item drops for left-side Pianus
+   DELETE FROM temp_data WHERE dropperid=8520000;
+ 
+@@ -20578,7 +20589,6 @@ USE `heavenms`;
+   UPDATE IGNORE temp_data SET chance=700 WHERE itemid=1302056;
+ 
+   UPDATE IGNORE temp_data SET dropperid=9000002 WHERE dropperid=9000000;
+-  UPDATE IGNORE temp_data SET questid=0 WHERE dropperid=2022354;
+   UPDATE IGNORE temp_data SET chance=600000 WHERE itemid=4000058;
+ 
+   # update USE drops that were supposed to be ETC
+@@ -20797,7 +20807,7 @@ USE `heavenms`;
+   UPDATE drop_data SET questid=20707 WHERE itemid=4032130;
+   UPDATE drop_data SET questid=28170 WHERE itemid=4001345;
+   UPDATE drop_data SET questid=7301 WHERE itemid=4001077;
+-  UPDATE drop_data SET chance=40000, questid=3250 WHERE itemid=4031992;
++  UPDATE drop_data SET chance=100000, questid=3250 WHERE itemid=4031992;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4001107;
+   UPDATE drop_data SET questid=28344 WHERE itemid=4032475;
+   UPDATE drop_data SET questid=28248 WHERE itemid=4001358;
+@@ -22239,6 +22249,34 @@ USE `heavenms`;
+     (2112010, 2022441, 15, -1),
+     (2112015, 2022441, 15, -1);
+ 
++  -- thanks donny (Croosade forums) for showing a lack on GPQ rewards
++  # adding more rewards into GPQ bonus boxes
++  INSERT INTO `reactordrops` (`reactorid`, `itemid`, `chance`, `questid`) VALUES
++    (9202012, 1002379, 45, -1),
++    (9202012, 1002383, 45, -1),
++    (9202012, 1002401, 45, -1),
++    (9202012, 1002408, 45, -1),
++    (9202012, 1002646, 45, -1),
++    (9202012, 1002739, 35, -1),
++    (9202012, 1002740, 35, -1),
++    (9202012, 1002856, 20, -1),
++    (9202012, 1002857, 25, -1),
++    (9202012, 1032046, 30, -1),
++    (9202012, 1050127, 20, -1),
++    (9202012, 1051140, 20, -1),
++    (9202012, 1052148, 35, -1),
++    (9202012, 1052149, 35, -1),
++    (9202012, 1072342, 35, -1),
++    (9202012, 1072343, 35, -1),
++    (9202012, 1122040, 15, -1),
++    (9202012, 1122046, 30, -1),
++    (9202012, 1122052, 40, -1),
++    (9202012, 1142153, 25, -1),
++    (9202012, 1302049, 25, -1),
++    (9202012, 1332053, 25, -1),
++    (9202012, 1372011, 25, -1),
++    (9202012, 1442046, 25, -1);
++
+   # updates info for all cards on monster book
+   DROP TABLE `monstercarddata`;
+   CREATE TABLE IF NOT EXISTS `monstercarddata` (
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index b1ec0630d..47fe80b03 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1583,7 +1583,6 @@ private void changeMapInternal(final MapleMap to, final Point pos, final byte[]
+         this.unregisterChairBuff();
+         this.clearBanishPlayerData();
+         this.closePlayerInteractions();
+-        this.resetPlayerAggro();
+         
+         client.announce(warpPacket);
+         map.removePlayer(this);
+@@ -2001,7 +2000,7 @@ public void deleteBuddy(int otherCid) {
+     
+     public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+             int cid = player.getId();
+-            if(!Server.getInstance().haveCharacterEntry(senderAccId, cid)) {
++            if(!Server.getInstance().haveCharacterEntry(senderAccId, cid)) {    // thanks zera (EpiphanyMS) for pointing a critical exploit with non-authored character deletion request
+                     return false;
+             }
+             
+@@ -2979,7 +2978,7 @@ public void gainMeso(int gain, boolean show, boolean enableActions, boolean inCh
+         long nextMeso;
+         petLock.lock();
+         try {
+-            nextMeso = meso.get() + gain;
++            nextMeso = (long) meso.get() + gain;  // thanks Thora for pointing integer overflow here
+             if (nextMeso > Integer.MAX_VALUE) {
+                 gain -= (nextMeso - Integer.MAX_VALUE);
+             } else if (nextMeso < 0) {
+@@ -4933,6 +4932,7 @@ public void closePlayerInteractions() {
+         closePlayerMessenger();
+         
+         client.closePlayerScriptInteractions();
++        resetPlayerAggro();
+     }
+     
+     public void closeNpcShop() {
+@@ -5140,10 +5140,17 @@ public final MapleQuestStatus getQuestRemove(final MapleQuest quest) {
+     
+     public boolean needQuestItem(int questid, int itemid) {
+         if (questid <= 0) return true; //For non quest items :3
+-        if (this.getQuestStatus(questid) != 1) return false;
+         
+-        MapleQuest quest = MapleQuest.getInstance(questid);
+-        return getInventory(ItemConstants.getInventoryType(itemid)).countById(itemid) < quest.getItemAmountNeeded(itemid);
++        int amountNeeded, questStatus = this.getQuestStatus(questid);
++        if (questStatus == 0) {
++            amountNeeded = MapleQuest.getInstance(questid).getStartItemAmountNeeded(itemid);
++        } else if (questStatus != 1) {
++            return false;
++        } else {
++            amountNeeded = MapleQuest.getInstance(questid).getCompleteItemAmountNeeded(itemid);
++        }
++        
++        return amountNeeded > 0 && getInventory(ItemConstants.getInventoryType(itemid)).countById(itemid) < amountNeeded;
+     }
+ 
+     public int getRank() {
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index 5b167d65f..5cf01fe66 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -217,9 +217,8 @@ private void registerLv2Commands(){
+         addCommand("cleardrops", 2, ClearDropsCommand.class);
+         addCommand("clearslot", 2, ClearSlotCommand.class);
+         addCommand("warp", 2, WarpCommand.class);
+-        addCommand("warpto", 2, WarpToCommand.class);
+         addCommand(new String[]{"warphere", "summon"}, 2, SummonCommand.class);
+-        addCommand(new String[]{"reach", "follow"}, 2, ReachCommand.class);
++        addCommand(new String[]{"warpto", "reach", "follow"}, 2, ReachCommand.class);
+         addCommand("gmshop", 2, GmShopCommand.class);
+         addCommand("heal", 2, HealCommand.class);
+         addCommand("item", 2, ItemCommand.class);
+diff --git a/src/client/command/commands/gm2/WarpToCommand.java b/src/client/command/commands/gm2/WarpToCommand.java
+deleted file mode 100644
+index a51007046..000000000
+--- a/src/client/command/commands/gm2/WarpToCommand.java
++++ /dev/null
+@@ -1,78 +0,0 @@
+-/*
+-    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
+-    Copyleft (L) 2016 - 2018 RonanLana
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-/*
+-   @Author: Arthur L - Refactored command content into modules
+-*/
+-package client.command.commands.gm2;
+-
+-import client.command.Command;
+-import client.MapleClient;
+-import client.MapleCharacter;
+-import net.server.Server;
+-import net.server.channel.Channel;
+-
+-public class WarpToCommand extends Command {
+-    {
+-        setDescription("");
+-    }
+-
+-    @Override
+-    public void execute(MapleClient c, String[] params) {
+-        MapleCharacter player = c.getPlayer();
+-        if (params.length < 2) {
+-            player.yellowMessage("Syntax: !warpto <playername> <mapid>");
+-            return;
+-        }
+-
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
+-        if (victim == null) {//If victim isn't on current channel or isnt a character try and find him by loop all channels on current world.
+-            for (Channel ch : Server.getInstance().getChannelsFromWorld(c.getWorld())) {
+-                victim = ch.getPlayerStorage().getCharacterByName(params[0]);
+-                if (victim != null) {
+-                    break;//We found the person, no need to continue the loop.
+-                }
+-            }
+-        }
+-        if (victim != null) {//If target isn't null attempt to warp.
+-            //Remove warper from current event instance.
+-            if (player.getEventInstance() != null) {
+-                player.getEventInstance().unregisterPlayer(player);
+-            }
+-            //Attempt to join the victims warp instance.
+-            if (victim.getEventInstance() != null) {
+-                if (victim.getClient().getChannel() == player.getClient().getChannel()) {//just in case.. you never know...
+-                    //victim.getEventInstance().registerPlayer(player);
+-                    player.changeMap(victim.getEventInstance().getMapInstance(victim.getMapId()), victim.getMap().findClosestPortal(victim.getPosition()));
+-                } else {
+-                    player.dropMessage(6, "Please change to channel " + victim.getClient().getChannel());
+-                }
+-            } else {//If victim isn't in an event instance, just warp them.
+-                player.changeMap(victim.getMapId(), victim.getMap().findClosestPortal(victim.getPosition()));
+-            }
+-            if (player.getClient().getChannel() != victim.getClient().getChannel()) {//And then change channel if needed.
+-                player.dropMessage("Changing channel, please wait a moment.");
+-                player.getClient().changeChannel(victim.getClient().getChannel());
+-            }
+-        } else {
+-            player.dropMessage(6, "Unknown player.");
+-        }
+-    }
+-}
+diff --git a/src/client/command/commands/gm3/GiveMesosCommand.java b/src/client/command/commands/gm3/GiveMesosCommand.java
+index e66dc3b0e..09f58a4cd 100644
+--- a/src/client/command/commands/gm3/GiveMesosCommand.java
++++ b/src/client/command/commands/gm3/GiveMesosCommand.java
+@@ -40,18 +40,35 @@ public void execute(MapleClient c, String[] params) {
+             return;
+         }
+ 
+-        String recv_;
+-        int value_;
++        String recv_, value_;
++        long mesos_ = 0;
++        
+         if (params.length == 2) {
+             recv_ = params[0];
+-            value_ = Integer.parseInt(params[1]);
++            value_ = params[1];
+         } else {
+             recv_ = c.getPlayer().getName();
+-            value_ = Integer.parseInt(params[0]);
++            value_ = params[0];
+         }
++        
++        try {
++            mesos_ = Long.parseLong(value_);
++            if (mesos_ > Integer.MAX_VALUE) {
++                mesos_ = Integer.MAX_VALUE;
++            } else if (mesos_ < Integer.MIN_VALUE) {
++                mesos_ = Integer.MIN_VALUE;
++            }
++        } catch (NumberFormatException nfe) {
++            if (value_.contentEquals("max")) {  // "max" descriptor suggestion thanks to Vcoc
++                mesos_ = Integer.MAX_VALUE;
++            } else if (value_.contentEquals("min")) {
++                mesos_ = Integer.MIN_VALUE;
++            }
++        }
++        
+         MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(recv_);
+         if (victim != null) {
+-            victim.gainMeso(value_, true);
++            victim.gainMeso((int) mesos_, true);
+             player.message("MESO given.");
+         } else {
+             player.message("Player '" + recv_ + "' could not be found on this channel.");
+diff --git a/src/constants/CharsetConstants.java b/src/constants/CharsetConstants.java
+index a9a3cd697..adc928f9e 100644
+--- a/src/constants/CharsetConstants.java
++++ b/src/constants/CharsetConstants.java
+@@ -7,7 +7,7 @@
+ package constants;
+  
+ /*
+- * Courtesy of GabrielSin (gabrielsin@playellin.net)
++ * Thanks to GabrielSin (EllinMS) - gabrielsin@playellin.net
+  * Ellin
+  * MapleStory Server
+  * CharsetConstants
+diff --git a/src/constants/GameConstants.java b/src/constants/GameConstants.java
+index 01a485bd0..8ca837828 100644
+--- a/src/constants/GameConstants.java
++++ b/src/constants/GameConstants.java
+@@ -71,8 +71,6 @@ public static int getPlayerBonusExpRate(int slot) {
+         put("ellin", 300000000);
+         put("nlc", 600000000);
+         put("excavation", 990000000);
+-        put("pianus", 230040420);
+-        put("horntail", 240060200);
+         put("mushmom", 100000005);
+         put("griffey", 240020101);
+         put("manon", 240020401);
+@@ -85,7 +83,9 @@ public static int getPlayerBonusExpRate(int slot) {
+         put("shrine", 800000000);
+         put("skelegon", 240040511);
+         put("hpq", 100000200);
+-        put("ht", 240050400);
++        put("pianus", 230040420);
++        put("horntail", 240050400);
++        put("pinkbean", 270050000);
+         put("ariant", 260000000);
+         put("magatia", 261000000);
+         put("singapore", 540000000);
+diff --git a/src/net/PacketProcessor.java b/src/net/PacketProcessor.java
+index 01fb6993d..3e2815dbd 100644
+--- a/src/net/PacketProcessor.java
++++ b/src/net/PacketProcessor.java
+@@ -261,6 +261,7 @@ public void reset(int channel) {
+             registerHandler(RecvOpcode.WATER_OF_LIFE, new UseWaterOfLifeHandler());
+             registerHandler(RecvOpcode.ADMIN_CHAT, new AdminChatHandler());
+             registerHandler(RecvOpcode.MOVE_DRAGON, new MoveDragonHandler());
++            registerHandler(RecvOpcode.USE_ITEMUI, new UseItemCanvasHandler());
+         }
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/opcodes/RecvOpcode.java b/src/net/opcodes/RecvOpcode.java
+index 6040f9fb0..3759e2be3 100644
+--- a/src/net/opcodes/RecvOpcode.java
++++ b/src/net/opcodes/RecvOpcode.java
+@@ -188,9 +188,9 @@
+     CHECK_CASH(0xE4),
+     CASHSHOP_OPERATION(0xE5),
+     COUPON_CODE(0xE6),
+-    OPEN_ITEMUI(0xEB),
+-    CLOSE_ITEMUI(0xEC),
+-    USE_ITEMUI(0xED),
++    OPEN_ITEMUI(0xEC),
++    CLOSE_ITEMUI(0xED),
++    USE_ITEMUI(0xEE),
+     MTS_OPERATION(0xFD),
+     USE_MAPLELIFE(0x100),
+     USE_HAMMER(0x104);
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 4f7ee9261..f177f0a03 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -569,7 +569,7 @@ private void loadCouponRates(Connection c) throws SQLException {
+     }
+     
+     public List<Integer> getActiveCoupons() {
+-        synchronized(activeCoupons) {
++        synchronized (activeCoupons) {
+             return activeCoupons;
+         }
+     }
+@@ -586,7 +586,7 @@ public void commitActiveCoupons() {
+     
+     public void toggleCoupon(Integer couponId) {
+         if(ItemConstants.isRateCoupon(couponId)) {
+-            synchronized(activeCoupons) {
++            synchronized (activeCoupons) {
+                 if(activeCoupons.contains(couponId)) {
+                     activeCoupons.remove(couponId);
+                 }
+@@ -600,7 +600,7 @@ public void toggleCoupon(Integer couponId) {
+     }
+     
+     public void updateActiveCoupons() throws SQLException {
+-        synchronized(activeCoupons) {
++        synchronized (activeCoupons) {
+             activeCoupons.clear();
+             Calendar c = Calendar.getInstance();
+ 
+@@ -1669,9 +1669,10 @@ public void unregisterLoginState(MapleClient c) {
+     }
+     
+     private void disconnectIdlesOnLoginState() {
++        List<MapleClient> toDisconnect = new LinkedList<>();
++        
+         srvLock.lock();
+         try {
+-            List<MapleClient> toDisconnect = new LinkedList<>();
+             long timeNow = System.currentTimeMillis();
+             
+             for(Entry<MapleClient, Long> mc : inLoginState.entrySet()) {
+@@ -1681,17 +1682,19 @@ private void disconnectIdlesOnLoginState() {
+             }
+             
+             for(MapleClient c : toDisconnect) {
+-                if(c.isLoggedIn()) {
+-                    c.disconnect(false, false);
+-                } else {
+-                    c.getSession().close(true);
+-                }
+-                
+                 inLoginState.remove(c);
+             }
+         } finally {
+             srvLock.unlock();
+         }
++        
++        for (MapleClient c : toDisconnect) {    // thanks Lei for pointing a deadlock issue with srvLock
++            if(c.isLoggedIn()) {
++                c.disconnect(false, false);
++            } else {
++                c.getSession().close(true);
++            }
++        }
+     }
+     
+     private void disconnectIdlesOnLoginTask() {
+@@ -1707,75 +1710,73 @@ public final Runnable shutdown(final boolean restart) {//no player should be onl
+         return new Runnable() {
+             @Override
+             public void run() {
+-                srvLock.lock();
+-                
++                shutdownInternal(restart);
++            }
++        };
++    }
++    
++    private synchronized void shutdownInternal(boolean restart) {
++        System.out.println((restart ? "Restarting" : "Shutting down") + " the server!\r\n");
++        if (getWorlds() == null) return;//already shutdown
++        for (World w : getWorlds()) {
++            w.shutdown();
++        }
++
++        /*for (World w : getWorlds()) {
++            while (w.getPlayerStorage().getAllCharacters().size() > 0) {
+                 try {
+-                    System.out.println((restart ? "Restarting" : "Shutting down") + " the server!\r\n");
+-                    if (getWorlds() == null) return;//already shutdown
+-                    for (World w : getWorlds()) {
+-                        w.shutdown();
+-                    }
+-                    
+-                    /*for (World w : getWorlds()) {
+-                        while (w.getPlayerStorage().getAllCharacters().size() > 0) {
+-                            try {
+-                                Thread.sleep(1000);
+-                            } catch (InterruptedException ie) {
+-                                System.err.println("FUCK MY LIFE");
+-                            }
+-                        }
+-                    }
+-                    for (Channel ch : getAllChannels()) {
+-                        while (ch.getConnectedClients() > 0) {
+-                            try {
+-                                Thread.sleep(1000);
+-                            } catch (InterruptedException ie) {
+-                                System.err.println("FUCK MY LIFE");
+-                            }
+-                        }
+-                    }*/
+-                    
+-                    List<Channel> allChannels = getAllChannels();
+-                    
+-                    if(ServerConstants.USE_THREAD_TRACKER) ThreadTracker.getInstance().cancelThreadTrackerTask();
+-                    
+-                    for (Channel ch : allChannels) {
+-                        while (!ch.finishedShutdown()) {
+-                            try {
+-                                Thread.sleep(1000);
+-                            } catch (InterruptedException ie) {
+-                                ie.printStackTrace();
+-                                System.err.println("FUCK MY LIFE");
+-                            }
+-                        }
+-                    }
+-                    
+-                    resetServerWorlds();
+-                    
+-                    ThreadManager.getInstance().stop();
+-                    TimerManager.getInstance().purge();
+-                    TimerManager.getInstance().stop();
+-
+-                    System.out.println("Worlds + Channels are offline.");
+-                    acceptor.unbind();
+-                    acceptor = null;
+-                    if (!restart) {
+-                        System.exit(0);
+-                    } else {
+-                        System.out.println("\r\nRestarting the server....\r\n");
+-                        try {
+-                            instance.finalize();//FUU I CAN AND IT'S FREE
+-                        } catch (Throwable ex) {
+-                            ex.printStackTrace();
+-                        }
+-                        instance = null;
+-                        System.gc();
+-                        getInstance().init();//DID I DO EVERYTHING?! D:
+-                    }
+-                } finally {
+-                    srvLock.unlock();
++                    Thread.sleep(1000);
++                } catch (InterruptedException ie) {
++                    System.err.println("FUCK MY LIFE");
+                 }
+             }
+-        };
++        }
++        for (Channel ch : getAllChannels()) {
++            while (ch.getConnectedClients() > 0) {
++                try {
++                    Thread.sleep(1000);
++                } catch (InterruptedException ie) {
++                    System.err.println("FUCK MY LIFE");
++                }
++            }
++        }*/
++
++        List<Channel> allChannels = getAllChannels();
++
++        if(ServerConstants.USE_THREAD_TRACKER) ThreadTracker.getInstance().cancelThreadTrackerTask();
++
++        for (Channel ch : allChannels) {
++            while (!ch.finishedShutdown()) {
++                try {
++                    Thread.sleep(1000);
++                } catch (InterruptedException ie) {
++                    ie.printStackTrace();
++                    System.err.println("FUCK MY LIFE");
++                }
++            }
++        }
++
++        resetServerWorlds();
++
++        ThreadManager.getInstance().stop();
++        TimerManager.getInstance().purge();
++        TimerManager.getInstance().stop();
++
++        System.out.println("Worlds + Channels are offline.");
++        acceptor.unbind();
++        acceptor = null;
++        if (!restart) {
++            System.exit(0);
++        } else {
++            System.out.println("\r\nRestarting the server....\r\n");
++            try {
++                instance.finalize();//FUU I CAN AND IT'S FREE
++            } catch (Throwable ex) {
++                ex.printStackTrace();
++            }
++            instance = null;
++            System.gc();
++            getInstance().init();//DID I DO EVERYTHING?! D:
++        }
+     }
+ }
+diff --git a/src/net/server/channel/handlers/AdminCommandHandler.java b/src/net/server/channel/handlers/AdminCommandHandler.java
+index 01de5ce5f..2da805ecb 100644
+--- a/src/net/server/channel/handlers/AdminCommandHandler.java
++++ b/src/net/server/channel/handlers/AdminCommandHandler.java
+@@ -55,7 +55,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 int[][] toSpawn = MapleItemInformationProvider.getInstance().getSummonMobs(slea.readInt());
+                 for (int z = 0; z < toSpawn.length; z++) {
+                     int[] toSpawnChild = toSpawn[z];
+-                    if (Randomizer.nextInt(101) <= toSpawnChild[1]) {
++                    if (Randomizer.nextInt(100) < toSpawnChild[1]) {
+                         c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(toSpawnChild[0]), c.getPlayer().getPosition());
+                     }
+                 }
+diff --git a/src/net/server/channel/handlers/CouponCodeHandler.java b/src/net/server/channel/handlers/CouponCodeHandler.java
+index f9c9ae03e..32c53365a 100644
+--- a/src/net/server/channel/handlers/CouponCodeHandler.java
++++ b/src/net/server/channel/handlers/CouponCodeHandler.java
+@@ -62,17 +62,17 @@
+ 
+         ResultSet rs = ps.executeQuery();
+         while (rs.next()) {
+-            int type = rs.getInt("type"), item = rs.getInt("item");
++            int type = rs.getInt("type"), quantity = rs.getInt("quantity");
+             
+             if (type < 5) {
+                 Integer i = couponPoints.get(type);
+                 if (i != null) {
+-                    couponPoints.put(type, i + item);
++                    couponPoints.put(type, i + quantity);
+                 } else {
+-                    couponPoints.put(type, item);
++                    couponPoints.put(type, quantity);
+                 }
+             } else {
+-                int quantity = rs.getInt("quantity");
++                int item = rs.getInt("item");
+                 
+                 Integer i = couponItems.get(item);
+                 if (i != null) {
+@@ -108,7 +108,7 @@
+         
+         if (!couponPoints.isEmpty()) {
+             for (Entry<Integer, Integer> e : couponPoints.entrySet()) {
+-                ret.add(new Pair<>(e.getKey(), new Pair<>(e.getValue(), 777)));
++                ret.add(new Pair<>(e.getKey(), new Pair<>(777, e.getValue())));
+             }
+         }
+         
+@@ -199,27 +199,37 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 
+                     for (Pair<Integer, Pair<Integer, Integer>> p : codeRes.getRight()) {
+                         type = p.getLeft();
+-                        int item = p.getRight().getLeft();
++                        int quantity = p.getRight().getRight();
+ 
+                         CashShop cs = c.getPlayer().getCashShop();
+                         switch (type) {
+                             case 0:
+                             case 4:
+-                                cs.gainCash(1, item);   //nxCredit
++                                cs.gainCash(1, quantity);    //nxCredit
+                                 break;
+                             case 1:
+-                                cs.gainCash(2, item);   //maplePoint
++                                cs.gainCash(2, quantity);    //maplePoint
+                                 break;
+                             case 2:
+-                                cs.gainCash(4, item);   //nxPrepaid
++                                cs.gainCash(4, quantity);    //nxPrepaid
+                                 break;
+                             case 3:
+-                                cs.gainCash(1, item);
+-                                cs.gainCash(4, (item / 5000));
++                                cs.gainCash(1, quantity);
++                                cs.gainCash(4, (quantity / 5000));
+                                 break;
+ 
+                             default:
+-                                short qty = p.getRight().getRight().shortValue();
++                                int item = p.getRight().getLeft();
++                                
++                                short qty;
++                                if (quantity > Short.MAX_VALUE) {
++                                    qty = Short.MAX_VALUE;
++                                } else if (quantity < Short.MIN_VALUE) {
++                                    qty = Short.MIN_VALUE;
++                                } else {
++                                    qty = (short) quantity;
++                                }
++                                
+                                 if (MapleItemInformationProvider.getInstance().isCash(item)) {
+                                     Item it = CashShop.generateCouponItem(item, qty);
+ 
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index 116530e22..56a2cbeff 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -86,6 +86,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 return;
+             }
+ 
++            chr.closePlayerInteractions();
++            
+             chr.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(chr.getId(), chr.getAllBuffs());
+             Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(chr.getId(), chr.getAllDiseases());
+diff --git a/src/net/server/channel/handlers/HealOvertimeHandler.java b/src/net/server/channel/handlers/HealOvertimeHandler.java
+index 44204ddf7..70c5157c4 100644
+--- a/src/net/server/channel/handlers/HealOvertimeHandler.java
++++ b/src/net/server/channel/handlers/HealOvertimeHandler.java
+@@ -43,7 +43,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         
+         short healHP = slea.readShort();
+         if (healHP != 0) {
+-            abm.setTimestamp(8, timestamp, 4);  // thanks Vcoc for pointing out d/c happening here
++            abm.setTimestamp(8, timestamp, 28);  // thanks Vcoc & Thora for pointing out d/c happening here
+             if ((abm.getLastSpam(0) + 1500) > timestamp) AutobanFactory.FAST_HP_HEALING.addPoint(abm, "Fast hp healing");
+             
+             int abHeal = 120 + (int)(20 * MapleMapFactory.getMapRecoveryRate(chr.getMapId())); // Sleepywood sauna and showa spa...
+@@ -58,7 +58,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         }
+         short healMP = slea.readShort();
+         if (healMP != 0 && healMP < 1000) {
+-            abm.setTimestamp(9, timestamp, 4);
++            abm.setTimestamp(9, timestamp, 28);
+             if ((abm.getLastSpam(1) + 1500) > timestamp) AutobanFactory.FAST_MP_HEALING.addPoint(abm, "Fast mp healing");
+             chr.addMP(healMP);
+             abm.spam(1, timestamp);
+diff --git a/src/net/server/channel/handlers/NewYearCardHandler.java b/src/net/server/channel/handlers/NewYearCardHandler.java
+index ac25447d5..12ee733f7 100644
+--- a/src/net/server/channel/handlers/NewYearCardHandler.java
++++ b/src/net/server/channel/handlers/NewYearCardHandler.java
+@@ -37,7 +37,9 @@
+ 
+ /**
+  *
+- * @author Ronan - header layout courtesy of Eric 
++ * @author Ronan
++ * 
++ * Header layout thanks to Eric 
+  */
+ public final class NewYearCardHandler extends AbstractMaplePacketHandler {
+ 
+diff --git a/src/net/server/channel/handlers/PetCommandHandler.java b/src/net/server/channel/handlers/PetCommandHandler.java
+index cc7517926..40f559b41 100644
+--- a/src/net/server/channel/handlers/PetCommandHandler.java
++++ b/src/net/server/channel/handlers/PetCommandHandler.java
+@@ -52,7 +52,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             return;
+         }
+         
+-        if (Randomizer.nextInt(101) <= petCommand.getProbability()) {
++        if (Randomizer.nextInt(100) < petCommand.getProbability()) {
+             pet.gainClosenessFullness(chr, petCommand.getIncrease(), 0, command);
+             chr.getMap().broadcastMessage(MaplePacketCreator.commandResponse(chr.getId(), petIndex, false, command, false));
+         } else {
+diff --git a/src/net/server/channel/handlers/QuestActionHandler.java b/src/net/server/channel/handlers/QuestActionHandler.java
+index e1a912060..cd318e042 100644
+--- a/src/net/server/channel/handlers/QuestActionHandler.java
++++ b/src/net/server/channel/handlers/QuestActionHandler.java
+@@ -36,7 +36,7 @@
+  */
+ public final class QuestActionHandler extends AbstractMaplePacketHandler {
+     
+-    // isNpcNearby credits to gabriel.sin
++    // isNpcNearby credits to GabrielSin
+     private static boolean isNpcNearby(SeekableLittleEndianAccessor slea, MapleCharacter player, MapleQuest quest, int npcId) {
+         Point playerP = null;
+         
+diff --git a/src/net/server/channel/handlers/ScrollHandler.java b/src/net/server/channel/handlers/ScrollHandler.java
+index ee5db198b..f600d032e 100644
+--- a/src/net/server/channel/handlers/ScrollHandler.java
++++ b/src/net/server/channel/handlers/ScrollHandler.java
+@@ -74,7 +74,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         Item wscroll = null;
+ 
+         if (ItemConstants.isCleanSlate(scroll.getItemId())) {
+-            Map<String, Integer> eqStats = ii.getEquipStats(scroll.getItemId());
++            Map<String, Integer> eqStats = ii.getEquipStats(toScroll.getItemId());  // clean slate issue found thanks to Masterrulax
+             if (eqStats == null || eqStats.get("tuc") == 0) {
+                 c.announce(MaplePacketCreator.getInventoryFull());
+                 return;
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 09fbea6d4..b38e04a22 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -106,7 +106,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                                 for (loseItem loseItem : loseItems) {
+                                     type = ItemConstants.getInventoryType(loseItem.getId());
+                                     for (byte b = 0; b < loseItem.getX(); b++) {//LOL?
+-                                        if (Randomizer.nextInt(101) >= loseItem.getChance()) {
++                                        if (Randomizer.nextInt(100) < loseItem.getChance()) {
+                                             if (chr.haveItem(loseItem.getId())) {
+                                                 pos.x = (int) (playerpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
+                                                 MapleInventoryManipulator.removeById(c, type, loseItem.getId(), 1, false, false);
+diff --git a/src/net/server/channel/handlers/UseItemCanvasHandler.java b/src/net/server/channel/handlers/UseItemCanvasHandler.java
+new file mode 100644
+index 000000000..c266d97b4
+--- /dev/null
++++ b/src/net/server/channel/handlers/UseItemCanvasHandler.java
+@@ -0,0 +1,14 @@
++package net.server.channel.handlers;
++
++import client.MapleClient;
++import net.AbstractMaplePacketHandler;
++import tools.data.input.SeekableLittleEndianAccessor;
++import tools.MaplePacketCreator;
++
++public final class UseItemCanvasHandler extends AbstractMaplePacketHandler {
++
++    @Override
++    public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        c.announce(MaplePacketCreator.enableActions());
++    }
++}
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/UseSummonBagHandler.java b/src/net/server/channel/handlers/UseSummonBagHandler.java
+index 704588172..17d6f236f 100644
+--- a/src/net/server/channel/handlers/UseSummonBagHandler.java
++++ b/src/net/server/channel/handlers/UseSummonBagHandler.java
+@@ -54,7 +54,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             int[][] toSpawn = MapleItemInformationProvider.getInstance().getSummonMobs(itemId);
+             for (int z = 0; z < toSpawn.length; z++) {
+                 int[] toSpawnChild = toSpawn[z];
+-                if (Randomizer.nextInt(101) <= toSpawnChild[1]) {
++                if (Randomizer.nextInt(100) < toSpawnChild[1]) {
+                     c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(toSpawnChild[0]), c.getPlayer().getPosition());
+                 }
+             }
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index e04da8060..4ccb8e7d4 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -1111,6 +1111,17 @@ public final boolean checkEventTeamLacking(boolean leavingEventMap, int minPlaye
+                 return false;
+         }
+         
++        public final boolean isExpeditionTeamLackingNow(boolean leavingEventMap, int minPlayers, MapleCharacter quitter) {
++                if(eventCleared) {
++                        if(leavingEventMap && getPlayerCount() <= 1) return true;
++                } else {
++                        if(leavingEventMap && getLeaderId() == quitter.getId()) return true;
++                        if(getPlayerCount() <= (ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS ? 1 : minPlayers)) return true;
++                }
++                
++                return false;
++        }
++        
+         public final boolean isEventTeamLackingNow(boolean leavingEventMap, int minPlayers, MapleCharacter quitter) {
+                 if(eventCleared) {
+                         if(leavingEventMap && getPlayerCount() <= 1) return true;
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index a80e791c8..2c5d838a9 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -1001,7 +1001,7 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+                     if (!ServerConstants.USE_PERFECT_SCROLLING && !usingWhiteScroll && !ItemConstants.isCleanSlate(scrollId) && !assertGM) {
+                         nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() - 1));
+                     }
+-                    if (Randomizer.nextInt(101) < stats.get("cursed")) {
++                    if (Randomizer.nextInt(100) < stats.get("cursed")) {
+                         return null;
+                     }
+                 }
+@@ -1258,8 +1258,15 @@ public boolean isPickupRestricted(int itemId) {
+         if (pickupRestrictionCache.containsKey(itemId)) {
+             return pickupRestrictionCache.get(itemId);
+         }
+-        MapleData data = getItemData(itemId);
+-        boolean bRestricted = MapleDataTool.getIntConvert("info/only", data, 0) == 1;
++        
++        boolean bRestricted = false;
++        if(itemId != 0) {
++            MapleData data = getItemData(itemId);
++            if (data != null) {
++                bRestricted = MapleDataTool.getIntConvert("info/only", data, 0) == 1;
++            }
++        }
++        
+         pickupRestrictionCache.put(itemId, bRestricted);
+         return bRestricted;
+     }
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index ce83d1134..1e62e6f41 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -1303,7 +1303,8 @@ public boolean canUseSkill(MobSkill toUse) {
+         }
+         
+         int useLimit = toUse.getLimit();
+-        if (toUse.getSkillId() == 200) {
++        int useSkillid = toUse.getSkillId();
++        if (useSkillid == 200) {
+             int i = 0;
+             for (MapleMapObject mo : getMap().getMapObjects()) {
+                 if (mo.getType() == MapleMapObjectType.MONSTER) {
+@@ -1316,12 +1317,16 @@ public boolean canUseSkill(MobSkill toUse) {
+             if (map.isDojoMap()) {  // spawns in dojo should be unlimited
+                 useLimit = 0;
+             }
++        } else if (useSkillid >= 143 && useSkillid <= 145) {
++            if (this.isBuffed(MonsterStatus.WEAPON_REFLECT) || this.isBuffed(MonsterStatus.MAGIC_REFLECT)) {
++                return false;
++            }
+         }
+         
+         if (useLimit > 0) {
+             monsterLock.lock();
+             try {
+-                Integer times = this.skillsUsed.get(new Pair<>(toUse.getSkillId(), toUse.getSkillLevel()));
++                Integer times = this.skillsUsed.get(new Pair<>(useSkillid, toUse.getSkillLevel()));
+                 if (times != null && times >= useLimit) {
+                     return false;
+                 }
+@@ -1334,7 +1339,7 @@ public boolean canUseSkill(MobSkill toUse) {
+         try {
+             /*
+             for (Pair<Integer, Integer> skill : usedSkills) {
+-                if (skill.getLeft() == toUse.getSkillId() && skill.getRight() == toUse.getSkillLevel()) {
++                if (skill.getLeft() == useSkillid && skill.getRight() == toUse.getSkillLevel()) {
+                     return false;
+                 }
+             }
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 768e1589b..70242a96a 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -214,20 +214,20 @@ public void applyEffect(MapleCharacter player, MapleMonster monster, boolean ski
+                 }
+                 break;
+ 	    case 143: // Weapon Reflect
+-                    stats.put(MonsterStatus.WEAPON_REFLECT, Integer.valueOf(x));
+-                    stats.put(MonsterStatus.WEAPON_IMMUNITY, Integer.valueOf(x));
++                    stats.put(MonsterStatus.WEAPON_REFLECT, 10);
++                    stats.put(MonsterStatus.WEAPON_IMMUNITY, 10);
+                     reflection.add(x);
+ 		break;
+ 	    case 144: // Magic Reflect
+-                    stats.put(MonsterStatus.MAGIC_REFLECT, Integer.valueOf(x));
+-                    stats.put(MonsterStatus.MAGIC_IMMUNITY, Integer.valueOf(x));
++                    stats.put(MonsterStatus.MAGIC_REFLECT, 10);
++                    stats.put(MonsterStatus.MAGIC_IMMUNITY, 10);
+                     reflection.add(x);
+ 		break;
+ 	    case 145: // Weapon / Magic reflect
+-                    stats.put(MonsterStatus.WEAPON_REFLECT, Integer.valueOf(x));
+-                    stats.put(MonsterStatus.WEAPON_IMMUNITY, Integer.valueOf(x));
+-                    stats.put(MonsterStatus.MAGIC_REFLECT, Integer.valueOf(x));
+-                    stats.put(MonsterStatus.MAGIC_IMMUNITY, Integer.valueOf(x));
++                    stats.put(MonsterStatus.WEAPON_REFLECT, 10);
++                    stats.put(MonsterStatus.WEAPON_IMMUNITY, 10);
++                    stats.put(MonsterStatus.MAGIC_REFLECT, 10);
++                    stats.put(MonsterStatus.MAGIC_IMMUNITY, 10);
+                     reflection.add(x);
+                 break;
+             case 154: // accuracy up
+diff --git a/src/server/loot/MapleLootManager.java b/src/server/loot/MapleLootManager.java
+index f8686dedd..2b2ae1156 100644
+--- a/src/server/loot/MapleLootManager.java
++++ b/src/server/loot/MapleLootManager.java
+@@ -35,15 +35,28 @@
+ public class MapleLootManager {
+     
+     private static boolean isRelevantDrop(MonsterDropEntry dropEntry, List<MapleCharacter> partyMembers, List<MapleLootInventory> partyInv) {
++        int qStartAmount = 0, qCompleteAmount = 0;
+         MapleQuest quest = MapleQuest.getInstance(dropEntry.questid);
+-        int qItemAmount = quest != null ? quest.getItemAmountNeeded(dropEntry.itemId) : 0;
++        if (quest != null) {
++            qStartAmount = quest.getStartItemAmountNeeded(dropEntry.itemId);
++            qCompleteAmount = quest.getCompleteItemAmountNeeded(dropEntry.itemId);
++        }
+         
+-        boolean restricted = MapleItemInformationProvider.getInstance().isLootRestricted(dropEntry.itemId);
++        boolean restricted = MapleItemInformationProvider.getInstance().isPickupRestricted(dropEntry.itemId);
+         for (int i = 0; i < partyMembers.size(); i++) {
+             MapleLootInventory chrInv = partyInv.get(i);
+             
+             if (dropEntry.questid > 0) {
+-                if (partyMembers.get(i).getQuestStatus(dropEntry.questid) != 1) {
++                int qItemAmount, chrQuestStatus = partyMembers.get(i).getQuestStatus(dropEntry.questid);
++                if (chrQuestStatus == 0) {
++                    qItemAmount = qStartAmount;
++                } else if (chrQuestStatus != 1) {
++                    continue;
++                } else {
++                    qItemAmount = qCompleteAmount;
++                }
++                
++                if (qItemAmount <= 0) {
+                     continue;
+                 }
+                 
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 65f7c4c4b..58a1706c4 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -371,7 +371,16 @@ public short getId() {
+         return relevantMobs;
+     }
+ 
+-    public int getItemAmountNeeded(int itemid) {
++    public int getStartItemAmountNeeded(int itemid) {
++        MapleQuestRequirement req = startReqs.get(MapleQuestRequirementType.ITEM);
++        if(req == null)
++                return 0;
++		
++        ItemRequirement ireq = (ItemRequirement) req;
++        return ireq.getItemAmountNeeded(itemid);
++    }
++    
++    public int getCompleteItemAmountNeeded(int itemid) {
+         MapleQuestRequirement req = completeReqs.get(MapleQuestRequirementType.ITEM);
+         if(req == null)
+                 return 0;
+diff --git a/src/server/quest/requirements/ItemRequirement.java b/src/server/quest/requirements/ItemRequirement.java
+index 665965e09..7481a2056 100644
+--- a/src/server/quest/requirements/ItemRequirement.java
++++ b/src/server/quest/requirements/ItemRequirement.java
+@@ -97,7 +97,7 @@ public boolean check(MapleCharacter chr, Integer npcid) {
+ 	}
+ 	
+ 	public int getItemAmountNeeded(int itemid) {
+-		if(items.containsKey(itemid)) {
++                if(items.containsKey(itemid)) {
+ 			return items.get(itemid);
+ 		}
+ 		
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 1d4955637..ecca589eb 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1065,7 +1065,7 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.writeShort(chr.getHp());
+                 mplew.writeBool(false);
+                 mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(5);
++                mplew.skip(8);
+                 return mplew.getPacket();
+         }
+         
+@@ -1082,7 +1082,7 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.writeInt(spawnPosition.x);    // spawn position placement thanks to Arnah (Vertisy)
+                 mplew.writeInt(spawnPosition.y);
+                 mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(5);
++                mplew.skip(8);
+                 return mplew.getPacket();
+         }
+         
+diff --git a/tools/MapleCodeCouponGenerator/src/maplecodecoupongenerator/MapleCodeCouponGenerator.java b/tools/MapleCodeCouponGenerator/src/maplecodecoupongenerator/MapleCodeCouponGenerator.java
+index 0a6302969..77afd116a 100644
+--- a/tools/MapleCodeCouponGenerator/src/maplecodecoupongenerator/MapleCodeCouponGenerator.java
++++ b/tools/MapleCodeCouponGenerator/src/maplecodecoupongenerator/MapleCodeCouponGenerator.java
+@@ -239,10 +239,7 @@ protected CodeCouponDescriptor(String name, int quantity, int duration, int mapl
+     }
+     
+     private static String randomizeCouponCode() {
+-        StringBuilder rnd = new StringBuilder(Long.toHexString(Double.doubleToLongBits(Math.random())));
+-        rnd.setCharAt(5, '-');
+-        rnd.insert(11, '-');
+-        return rnd.toString();
++        return Long.toHexString(Double.doubleToLongBits(Math.random())).substring(0, 15);
+     }
+     
+     private static String generateCouponCode() {
+@@ -276,7 +273,7 @@ private static void commitCodeCouponDescription(CodeCouponDescriptor recipe) thr
+         generatedKeys = null;
+         
+         PreparedStatement ps = con.prepareStatement("INSERT IGNORE INTO `nxcode` (`code`, `expiration`) VALUES (?, ?)", Statement.RETURN_GENERATED_KEYS);
+-        ps.setLong(2, currentTime + (recipe.duration * 60 * 60 * 1000));
++        ps.setLong(2, currentTime + ((long) recipe.duration * 60 * 60 * 1000));
+         
+         for(int i = 0; i < recipe.quantity; i++) {
+             ps.setString(1, generateCouponCode());
+@@ -300,10 +297,10 @@ private static void commitCodeCouponDescription(CodeCouponDescriptor recipe) thr
+             }
+         }
+         
+-        ps2.setInt(4, 0);
++        ps2.setInt(3, 0);
+         if (recipe.nxCredit > 0) {
+             ps2.setInt(2, 0);
+-            ps2.setInt(3, recipe.nxCredit);
++            ps2.setInt(4, recipe.nxCredit);
+             List<Integer> keys = getGeneratedKeys(ps);
+             
+             for(Integer codeid : keys) {
+@@ -314,7 +311,7 @@ private static void commitCodeCouponDescription(CodeCouponDescriptor recipe) thr
+         
+         if (recipe.maplePoint > 0) {
+             ps2.setInt(2, 1);
+-            ps2.setInt(3, recipe.maplePoint);
++            ps2.setInt(4, recipe.maplePoint);
+             List<Integer> keys = getGeneratedKeys(ps);
+             
+             for(Integer codeid : keys) {
+@@ -325,7 +322,7 @@ private static void commitCodeCouponDescription(CodeCouponDescriptor recipe) thr
+         
+         if (recipe.nxPrepaid > 0) {
+             ps2.setInt(2, 2);
+-            ps2.setInt(3, recipe.nxPrepaid);
++            ps2.setInt(4, recipe.nxPrepaid);
+             List<Integer> keys = getGeneratedKeys(ps);
+             
+             for(Integer codeid : keys) {
+diff --git a/wz/Character.wz/Accessory/01142153.img.xml b/wz/Character.wz/Accessory/01142153.img.xml
+new file mode 100644
+index 000000000..d41beb3bc
+--- /dev/null
++++ b/wz/Character.wz/Accessory/01142153.img.xml
+@@ -0,0 +1,122 @@
++<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++<imgdir name="01142153.img">
++  <imgdir name="info">
++    <canvas name="icon" width="33" height="31">
++      <vector name="origin" x="-1" y="31"/>
++    </canvas>
++    <canvas name="iconRaw" width="33" height="30">
++      <vector name="origin" x="-1" y="31"/>
++    </canvas>
++    <string name="islot" value="Me"/>
++    <string name="vslot" value="Me"/>
++    <int name="reqJob" value="0"/>
++    <int name="reqLevel" value="21"/>
++    <int name="reqSTR" value="0"/>
++    <int name="reqDEX" value="0"/>
++    <int name="reqINT" value="0"/>
++    <int name="reqLUK" value="0"/>
++    <int name="incMHP" value="80"/>
++    <int name="incMMP" value="80"/>
++    <int name="tuc" value="0"/>
++    <int name="price" value="0"/>
++    <int name="tradeBlock" value="1"/>
++    <int name="notSale" value="1"/>
++    <int name="only" value="1"/>
++    <int name="cash" value="0"/>
++    <int name="medalTag" value="82"/>
++    <imgdir name="level">
++      <imgdir name="info">
++        <imgdir name="1">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="2">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="3">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="4">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="5">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="6">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="7">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="8">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="9">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="10">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="12">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="13">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="14">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="15">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="16">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="17">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="18">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="19">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="20">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="21">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="22">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="23">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="24">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="25">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="26">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="27">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="28">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="29">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="30">
++          <int name="exp" value="10000"/>
++        </imgdir>
++      </imgdir>
++    </imgdir>
++  </imgdir>
++</imgdir>
+diff --git a/wz/Character.wz/Accessory/01142154.img.xml b/wz/Character.wz/Accessory/01142154.img.xml
+new file mode 100644
+index 000000000..9a880a0e4
+--- /dev/null
++++ b/wz/Character.wz/Accessory/01142154.img.xml
+@@ -0,0 +1,122 @@
++<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++<imgdir name="01142154.img">
++  <imgdir name="info">
++    <canvas name="icon" width="26" height="33">
++      <vector name="origin" x="-4" y="32"/>
++    </canvas>
++    <canvas name="iconRaw" width="25" height="33">
++      <vector name="origin" x="-4" y="32"/>
++    </canvas>
++    <string name="islot" value="Me"/>
++    <string name="vslot" value="Me"/>
++    <int name="reqJob" value="0"/>
++    <int name="reqLevel" value="32"/>
++    <int name="reqSTR" value="0"/>
++    <int name="reqDEX" value="0"/>
++    <int name="reqINT" value="0"/>
++    <int name="reqLUK" value="0"/>
++    <int name="incMHP" value="100"/>
++    <int name="incMMP" value="100"/>
++    <int name="tuc" value="0"/>
++    <int name="price" value="0"/>
++    <int name="tradeBlock" value="1"/>
++    <int name="notSale" value="1"/>
++    <int name="only" value="1"/>
++    <int name="cash" value="0"/>
++    <int name="medalTag" value="83"/>
++    <imgdir name="level">
++      <imgdir name="info">
++        <imgdir name="1">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="2">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="3">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="4">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="5">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="6">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="7">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="8">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="9">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="10">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="12">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="13">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="14">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="15">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="16">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="17">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="18">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="19">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="20">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="21">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="22">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="23">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="24">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="25">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="26">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="27">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="28">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="29">
++          <int name="exp" value="10000"/>
++        </imgdir>
++        <imgdir name="30">
++          <int name="exp" value="10000"/>
++        </imgdir>
++      </imgdir>
++    </imgdir>
++  </imgdir>
++</imgdir>
+diff --git a/wz/Character.wz/Cap/01002739.img.xml b/wz/Character.wz/Cap/01002739.img.xml
+index 91b0a1e44..b4ef41648 100644
+--- a/wz/Character.wz/Cap/01002739.img.xml
++++ b/wz/Character.wz/Cap/01002739.img.xml
+@@ -9,7 +9,7 @@
+     </canvas>
+     <string name="islot" value="Cp"/>
+     <string name="vslot" value="CpH1H5"/>
+-    <int name="reqJob" value="5"/>
++    <int name="reqJob" value="21"/>
+     <int name="reqLevel" value="70"/>
+     <int name="reqSTR" value="0"/>
+     <int name="reqDEX" value="0"/>
+diff --git a/wz/Character.wz/Longcoat/01051140.img.xml b/wz/Character.wz/Longcoat/01051140.img.xml
+index 6a113846c..d3c52a705 100644
+--- a/wz/Character.wz/Longcoat/01051140.img.xml
++++ b/wz/Character.wz/Longcoat/01051140.img.xml
+@@ -21,7 +21,7 @@
+     <int name="incPDD" value="20"/>
+     <int name="incSpeed" value="5"/>
+     <int name="price" value="500"/>
+-    <int name="incACC" value="3"/>
++    <int name="incDEX" value="3"/>
+     <imgdir name="level">
+       <imgdir name="info">
+         <imgdir name="1">
+diff --git a/wz/Character.wz/Longcoat/01052148.img.xml b/wz/Character.wz/Longcoat/01052148.img.xml
+index ed0f51154..22107e94e 100644
+--- a/wz/Character.wz/Longcoat/01052148.img.xml
++++ b/wz/Character.wz/Longcoat/01052148.img.xml
+@@ -9,7 +9,7 @@
+     </canvas>
+     <string name="islot" value="MaPn"/>
+     <string name="vslot" value="MaPn"/>
+-    <int name="reqJob" value="5"/>
++    <int name="reqJob" value="21"/>
+     <int name="reqLevel" value="70"/>
+     <int name="reqSTR" value="0"/>
+     <int name="reqDEX" value="0"/>
+diff --git a/wz/Character.wz/Shoes/01072342.img.xml b/wz/Character.wz/Shoes/01072342.img.xml
+index e096217fd..c40cd29b8 100644
+--- a/wz/Character.wz/Shoes/01072342.img.xml
++++ b/wz/Character.wz/Shoes/01072342.img.xml
+@@ -9,7 +9,7 @@
+     </canvas>
+     <string name="islot" value="So"/>
+     <string name="vslot" value="So"/>
+-    <int name="reqJob" value="5"/>
++    <int name="reqJob" value="21"/>
+     <int name="reqLevel" value="70"/>
+     <int name="reqSTR" value="0"/>
+     <int name="reqDEX" value="0"/>
+diff --git a/wz/Item.wz/Etc/0403.img.xml b/wz/Item.wz/Etc/0403.img.xml
+index bb6ea59e8..a21014f5f 100644
+--- a/wz/Item.wz/Etc/0403.img.xml
++++ b/wz/Item.wz/Etc/0403.img.xml
+@@ -10450,8 +10450,6 @@
+       </canvas>
+       <int name="exp" value="100"/>
+       <int name="price" value="100"/>
+-      <string name="tradeBlock" value="1"/>
+-      <int name="notSale" value="1"/>
+       <imgdir name="message">
+         <string name="0" value="A full grown Timer doesn&apos;t eat Springy Worms."/>
+         <string name="1" value="Timer has been fed one Springy Worm."/>
+diff --git a/wz/Map.wz/Map/Map1/105090300.img.xml b/wz/Map.wz/Map/Map1/105090300.img.xml
+index 935ae79e3..83c8d2a45 100644
+--- a/wz/Map.wz/Map/Map1/105090300.img.xml
++++ b/wz/Map.wz/Map/Map1/105090300.img.xml
+@@ -10547,7 +10547,7 @@
+       <string name="id" value="9400551"/>
+       <int name="x" value="1562"/>
+       <int name="y" value="-1239"/>
+-      <int name="mobTime" value="0"/>
++      <int name="mobTime" value="14400"/>
+       <int name="f" value="0"/>
+       <int name="hide" value="0"/>
+       <int name="fh" value="641"/>
+@@ -10555,32 +10555,6 @@
+       <int name="rx0" value="-383"/>
+       <int name="rx1" value="1823"/>
+     </imgdir>
+-    <imgdir name="35">
+-      <string name="type" value="m"/>
+-      <string name="id" value="9400551"/>
+-      <int name="x" value="48"/>
+-      <int name="y" value="-1106"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="837"/>
+-      <int name="cy" value="-1083"/>
+-      <int name="rx0" value="-117"/>
+-      <int name="rx1" value="989"/>
+-    </imgdir>
+-    <imgdir name="36">
+-      <string name="type" value="m"/>
+-      <string name="id" value="9400551"/>
+-      <int name="x" value="48"/>
+-      <int name="y" value="-1666"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="892"/>
+-      <int name="cy" value="-1644"/>
+-      <int name="rx0" value="-117"/>
+-      <int name="rx1" value="961"/>
+-    </imgdir>
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="0">
+diff --git a/wz/Map.wz/WorldMap/WorldMap010.img.xml b/wz/Map.wz/WorldMap/WorldMap010.img.xml
+index 4e7575c78..3fc7819f2 100644
+--- a/wz/Map.wz/WorldMap/WorldMap010.img.xml
++++ b/wz/Map.wz/WorldMap/WorldMap010.img.xml
+@@ -810,59 +810,59 @@
+       <imgdir name="mapNo">
+         <int name="0" value="103000200"/>
+       </imgdir>
+-      <vector name="spot" x="-266" y="-77"/>
++      <vector name="spot" x="-268" y="-84"/>
+     </imgdir>
+     <imgdir name="98">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000105"/>
+       </imgdir>
+-      <vector name="spot" x="-277" y="-95"/>
++      <vector name="spot" x="-290" y="-94"/>
+     </imgdir>
+     <imgdir name="97">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000104"/>
+       </imgdir>
+-      <vector name="spot" x="-272" y="-91"/>
++      <vector name="spot" x="-297" y="-88"/>
+     </imgdir>
+     <imgdir name="96">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000103"/>
+       </imgdir>
+-      <vector name="spot" x="-268" y="-87"/>
++      <vector name="spot" x="-290" y="-82"/>
+     </imgdir>
+     <imgdir name="95">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000102"/>
+       </imgdir>
+-      <vector name="spot" x="-264" y="-82"/>
++      <vector name="spot" x="-279" y="-79"/>
+     </imgdir>
+     <imgdir name="94">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000101"/>
+       </imgdir>
+-      <vector name="spot" x="-258" y="-78"/>
++      <vector name="spot" x="-267" y="-73"/>
+     </imgdir>
+     <imgdir name="93">
+       <int name="type" value="3"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000100"/>
+       </imgdir>
+-      <vector name="spot" x="-250" y="-72"/>
++      <vector name="spot" x="-249" y="-65"/>
+     </imgdir>
+     <imgdir name="100">
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000201"/>
+       </imgdir>
+-      <vector name="spot" x="-273" y="-75"/>
++      <vector name="spot" x="-261" y="-95"/>
+     </imgdir>
+     <imgdir name="101">
+-      <vector name="spot" x="-283" y="-76"/>
++      <vector name="spot" x="-270" y="-98"/>
+       <int name="type" value="1"/>
+       <imgdir name="mapNo">
+         <int name="0" value="103000202"/>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 747256410..ebc2afd88 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -38100,6 +38100,7 @@
+       <imgdir name="item">
+         <imgdir name="0">
+           <int name="id" value="1102061"/>
++          <int name="count" value="1"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+@@ -40711,6 +40712,10 @@
+           <int name="id" value="4220046"/>
+           <int name="count" value="1"/>
+         </imgdir>
++        <imgdir name="1">
++          <int name="id" value="4031992"/>
++          <int name="count" value="30"/>
++        </imgdir>
+       </imgdir>
+     </imgdir>
+   </imgdir>
+@@ -49928,8 +49933,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9110002"/>
+       <int name="lvmin" value="20"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="9110002"/>
+@@ -49945,8 +49948,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9110002"/>
+       <int name="lvmin" value="25"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="9110002"/>
+@@ -49962,8 +49963,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120001"/>
+       <int name="lvmin" value="25"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="9120001"/>
+@@ -49979,8 +49978,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120001"/>
+       <int name="lvmin" value="25"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+       <imgdir name="quest">
+         <imgdir name="0">
+           <int name="id" value="4302"/>
+@@ -50002,8 +49999,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120001"/>
+       <int name="lvmin" value="25"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+       <imgdir name="quest">
+         <imgdir name="0">
+           <int name="id" value="4303"/>
+@@ -50025,8 +50020,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120001"/>
+       <int name="lvmin" value="40"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+       <imgdir name="quest">
+         <imgdir name="0">
+           <int name="id" value="4304"/>
+@@ -50069,8 +50062,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120003"/>
+       <int name="lvmin" value="55"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="9120003"/>
+@@ -50086,8 +50077,6 @@
+     <imgdir name="0">
+       <int name="npc" value="9120003"/>
+       <int name="lvmin" value="55"/>
+-      <string name="start" value="2000010100"/>
+-      <string name="end" value="2000010200"/>
+       <imgdir name="quest">
+         <imgdir name="0">
+           <int name="id" value="4307"/>
+diff --git a/wz/String.wz/Eqp.img.xml b/wz/String.wz/Eqp.img.xml
+index 72038930e..4d6bcc478 100644
+--- a/wz/String.wz/Eqp.img.xml
++++ b/wz/String.wz/Eqp.img.xml
+@@ -3,8 +3,8 @@
+   <imgdir name="Eqp">
+     <imgdir name="Accessory">
+       <imgdir name="1122040">
+-        <string name="name" value="Sealed Mind of Maple Necklace"/>
+-        <string name="desc" value="A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored."/>
++        <string name="name" value="Bronze Maple Necklace"/>
++        <string name="desc" value="A light-weight bronze Maple Necklace."/>
+       </imgdir>
+       <imgdir name="1122041">
+         <string name="name" value="Sealed Mind of Maple Necklace"/>
+@@ -27,8 +27,8 @@
+         <string name="desc" value="A Mind of Maple Necklace that has been sealed up. One more gem, and its mystical powers will begin to be restored."/>
+       </imgdir>
+       <imgdir name="1122046">
+-        <string name="name" value="Restoring Mind of Maple Necklace"/>
+-        <string name="desc" value="A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level."/>
++        <string name="name" value="Silver Maple Necklace"/>
++        <string name="desc" value="A shiny silver Maple Necklace."/>
+       </imgdir>
+       <imgdir name="1122047">
+         <string name="name" value="Restoring Mind of Maple Necklace"/>
+@@ -51,8 +51,8 @@
+         <string name="desc" value="A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level."/>
+       </imgdir>
+       <imgdir name="1122052">
+-        <string name="name" value="Awakening Mind of Maple Necklace"/>
+-        <string name="desc" value="A Mind of Maple Necklace that is beginning to be restored. One more gem, and its mystical powers will be amplified and awakened into a power on another level."/>
++        <string name="name" value="Golden Maple Necklace"/>
++        <string name="desc" value="A Maple Necklace of 21 karats."/>
+       </imgdir>
+       <imgdir name="1122053">
+         <string name="name" value="Awakening Mind of Maple Necklace"/>

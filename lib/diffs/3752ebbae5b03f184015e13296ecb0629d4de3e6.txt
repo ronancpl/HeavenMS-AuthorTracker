@@ -1,0 +1,143 @@
+diff --git a/README.md b/README.md
+index 8c249a1c7..0177a2595 100644
+--- a/README.md
++++ b/README.md
+@@ -59,6 +59,8 @@ Although development is halted, support for fixing features that were implemente
+ 
+ If you liked this project, please don't forget to __star__ the repo ;) .
+ 
++It's never too much to tell this, even still thanks to everyone that have been contributing something for the continuous improvement of the server! Be it through bug reports, donation, code snippets and/or pull requests.
++
+ Our Discord channel is still available on: https://discord.gg/Q7wKxHX
+ 
+ ### Donation
+diff --git a/nbproject/private/private.properties b/nbproject/private/private.properties
+index cf20add7e..82074e7fa 100644
+--- a/nbproject/private/private.properties
++++ b/nbproject/private/private.properties
+@@ -7,4 +7,4 @@ file.reference.slf4j-api-1.6.6.jar=C:\\Nexon\\MapleSolaxia\\HeavenMS\\cores\\slf
+ file.reference.slf4j-jdk14-1.7.5.jar=C:\\Nexon\\MapleSolaxia\\HeavenMS\\cores\\slf4j-jdk14-1.7.5.jar
+ javac.debug=true
+ javadoc.preview=true
+-user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
++user.properties.file=C:\\Users\\USER\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
+diff --git a/scripts/event/elevator.js b/scripts/event/elevator.js
+deleted file mode 100644
+index 5ef9bca5b..000000000
+--- a/scripts/event/elevator.js
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+-This file is part of the OdinMS Maple Story Server
+-Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
+-				   Matthias Butz <matze@odinms.de>
+-				   Jan Christian Meyer <vimes@odinms.de>
+-
+-This program is free software: you can redistribute it and/or modify
+-it under the terms of the GNU Affero General Public License as
+-published by the Free Software Foundation version 3 as published by
+-the Free Software Foundation. You may not use, modify or distribute
+-this program under any other version of the GNU Affero General Public
+-License.
+-
+-This program is distributed in the hope that it will be useful,
+-but WITHOUT ANY WARRANTY; without even the implied warranty of
+-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-GNU Affero General Public License for more details.
+-
+-You should have received a copy of the GNU Affero General Public License
+-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-//Time Setting is in millisecond
+-var beginTime = 60 * 1000; //The time to begin the ride
+-var  rideTime = 60 * 1000; //The time that require move to destination
+-
+-function init() {
+-    beginTime = em.getTransportationTime(beginTime);
+-     rideTime = em.getTransportationTime(rideTime);
+-    
+-    em.getChannelServer().getMapFactory().getMap(222020100).resetReactors();
+-    em.getChannelServer().getMapFactory().getMap(222020200).resetReactors();
+-    
+-    scheduleNew();
+-}
+-
+-function scheduleNew() {
+-    em.setProperty("goingUp", "false");
+-    em.setProperty("goingDown", "true");
+-    
+-    em.getChannelServer().getMapFactory().getMap(222020100).resetReactors();
+-    em.getChannelServer().getMapFactory().getMap(222020200).setReactorState();
+-    em.schedule("goingUpNow", beginTime);
+-}
+-
+-function goUp() {
+-    em.schedule("goingUpNow", beginTime);
+-}
+-
+-function goDown() {
+-    em.schedule("goingDownNow", beginTime);
+-}
+-
+-function goingUpNow() {
+-    em.getChannelServer().getMapFactory().getMap(222020110).warpEveryone(222020111);
+-    em.setProperty("goingUp", "true");
+-    em.schedule("isUpNow", rideTime);
+-    
+-    em.getChannelServer().getMapFactory().getMap(222020100).setReactorState();
+-}
+-
+-function goingDownNow() {
+-    em.getChannelServer().getMapFactory().getMap(222020210).warpEveryone(222020211);
+-    em.setProperty("goingDown", "true");
+-    em.schedule("isDownNow", rideTime);
+-    
+-    em.getChannelServer().getMapFactory().getMap(222020200).setReactorState();
+-}
+-
+-function isUpNow() {
+-    em.setProperty("goingDown", "false"); // clear
+-    em.getChannelServer().getMapFactory().getMap(222020200).resetReactors();
+-    em.getChannelServer().getMapFactory().getMap(222020111).warpEveryone(222020200, 0);
+-
+-    goDown();
+-}
+-
+-function isDownNow() {
+-    em.setProperty("goingUp", "false"); // clear
+-    em.getChannelServer().getMapFactory().getMap(222020100).resetReactors();
+-    em.getChannelServer().getMapFactory().getMap(222020211).warpEveryone(222020100, 4);
+-    
+-    goUp();
+-}
+-
+-function cancelSchedule() {
+-    
+-}
+\ No newline at end of file
+diff --git a/scripts/portal/elevator.js b/scripts/portal/elevator.js
+index d793d9b1b..0c0564601 100644
+--- a/scripts/portal/elevator.js
++++ b/scripts/portal/elevator.js
+@@ -1,6 +1,6 @@
+ function enter(pi) {
+     try {
+-        var elevator = pi.getEventManager("elevator");
++        var elevator = pi.getEventManager("Elevator");
+         if (elevator == null) {
+             pi.getPlayer().dropMessage(5, "The elevator is under maintenance.");
+         } else if (elevator.getProperty(pi.getMapId() == 222020100 ? ("goingUp") : ("goingDown")).equals("false")) {
+diff --git a/src/net/server/handlers/login/ViewAllCharHandler.java b/src/net/server/handlers/login/ViewAllCharHandler.java
+index 6e7ea0c85..63a432f27 100644
+--- a/src/net/server/handlers/login/ViewAllCharHandler.java
++++ b/src/net/server/handlers/login/ViewAllCharHandler.java
+@@ -35,7 +35,7 @@
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         try {
+-            if(!c.canRequestCharlist()) {
++            if(!c.canRequestCharlist()) {   // client breaks if the charlist request pops too soon
+                 c.announce(MaplePacketCreator.showAllCharacter(0, 0));
+                 return;
+             }

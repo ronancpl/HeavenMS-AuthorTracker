@@ -1,0 +1,2716 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 2b919ee0d..7c03a05e2 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -885,4 +885,13 @@ Modificado sistema do chaos scroll, agora utilizando uma flag nova ao invés de
+ Otimizado PlayerStorage, agora utilizando um mapa próprio de nomes, ao invés de realizar busca exaustiva no mapa de inteiros.
+ Corrigido alguns aspectos do BalrogPQ, tais como a cabeça sendo atingível antes das mãos serem derrotadas e contador de kills do boss não subindo ao derrotr o chefe.
+ Corrigido barras da tela de seleção de canais na etapa de login não atuando corretamente.
+-Adicionado checks de world server lotado de diversos pontos das etapas de login.
+\ No newline at end of file
++Adicionado checks de world server lotado de diversos pontos das etapas de login.
++
++26 Março 2018,
++Corrigido sistema de levelup ainda desbalanceado para o cenário EXTREMAMENTE low-level.
++Adicionado suporte para quests de Kerning Square e Mushroom Castle.
++Adicionado script para várias quests ainda não-scriptadas.
++Refatorado medal quests, agora adotando um sistema de script default para aquelas não-scriptadas.
++Adicionado comando "debuff", debuffando em área próximo ao character que ativou o comando.
++Corrigido vazamento de dados na DB referente às informações de quest status e medal maps dos jogadores.
++Adicionado checagem de proximidade aos NPCs para começar e terminar quests sem lightbulb.
+\ No newline at end of file
+diff --git a/docs/todo.txt b/docs/todo.txt
+index 087ff5a20..0430301e7 100644
+--- a/docs/todo.txt
++++ b/docs/todo.txt
+@@ -41,6 +41,7 @@ ToDo / Missing features list:
+ 
+ ---------------------------
+ ** Skills **
++Check autoban system
+ ---------------------------
+ 
+ 
+diff --git a/scripts/QUEST Base.js b/scripts/QUEST Base.js
+index fd2717cd7..b92a1c10d 100644
+--- a/scripts/QUEST Base.js	
++++ b/scripts/QUEST Base.js	
+@@ -40,8 +40,8 @@ function start(mode, type, selection) {
+         
+         if (status == 0) {
+             qm.sendNext("Sample Text.");
++        } else if (status == 1) {
+             qm.forceStartQuest();
+-            
+             qm.dispose();
+         }
+     }
+@@ -63,8 +63,8 @@ function end(mode, type, selection) {
+         
+         if (status == 0) {
+             qm.sendNext("Sample Text.");
++        } else if (status == 1) {
+             qm.forceCompleteQuest();
+-            
+             qm.dispose();
+         }
+     }
+diff --git a/scripts/event/VIPRockSpirit.js b/scripts/event/RockSpiritVIP.js
+similarity index 98%
+rename from scripts/event/VIPRockSpirit.js
+rename to scripts/event/RockSpiritVIP.js
+index 057acf1d4..e6636ee87 100644
+--- a/scripts/event/VIPRockSpirit.js
++++ b/scripts/event/RockSpiritVIP.js
+@@ -35,7 +35,7 @@ function init() {
+ }
+ 
+ function setup() {
+-    var eim = em.newInstance("VIPRockSpirit_" + em.getProperty("player"));
++    var eim = em.newInstance("RockSpiritVIP_" + em.getProperty("player"));
+     respawn(eim);
+     eim.startEventTimer(timer);    
+ 	return eim;
+diff --git a/scripts/npc/1052125.js b/scripts/npc/1052125.js
+index 28a7b3b39..edd17e6b7 100644
+--- a/scripts/npc/1052125.js
++++ b/scripts/npc/1052125.js
+@@ -57,13 +57,12 @@ function action(mode, type, selection) {
+     			cm.sendOk("I did not hear anything from Blake that you are assisting him.");  
+        		}
+     	} else {
+-    		if (cm.isQuestCompleted(2291)) {
+-        		var rock = cm.getEventManager("VIPRockSpirit");
+-        		rock.newInstance("VIPRockSpirit");
+-        		rock.setProperty("player", cm.getPlayer().getName());
+-        		rock.startInstance(cm.getPlayer());
+-    			cm.dispose();
+-    			return;
++    		if (cm.isQuestCompleted(2290)) {
++                        if(cm.getPlayer().getLevel() > 50) {
++                                cm.sendOk("The VIP area is available only for players #rlevel 50 or below#k.");
++                        } else {
++                                cm.sendOk("The VIP area is available via completing the #r'Admission to the VIP Zone'#k quest.");
++                        }
+                 } else {
+                         cm.sendOk("#rVIP#k? Yeah that is funny #rMr. VIP#k, now get lost before I call security."); 
+                 }
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index 44e168326..31459e9c9 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -102,6 +102,7 @@ function writeSolaxiaCommandsLv3() {    //GM
+         comm_cursor = comm_lv3;
+         desc_cursor = desc_lv3;
+ 
++        addCommand("debuff", "");
+         addCommand("fly", "");
+         addCommand("spawn", "");
+         addCommand("mutemap", "");
+diff --git a/scripts/npc/credits.js b/scripts/npc/credits.js
+index 67ebfb6fb..001f9994b 100644
+--- a/scripts/npc/credits.js
++++ b/scripts/npc/credits.js
+@@ -27,7 +27,7 @@ function writeServerStaff_HeavenMS() {
+         addPerson("Ronan", "Developer");
+         addPerson("Vcoc", "Freelance Developer");
+         
+-        setHistory(2015, 2017);
++        setHistory(2015, 2018);
+ }
+ 
+ function writeServerStaff_MapleSolaxia() {
+diff --git a/scripts/portal/TD_MC_first.js b/scripts/portal/TD_MC_first.js
+index 591741cd0..c663d1542 100644
+--- a/scripts/portal/TD_MC_first.js
++++ b/scripts/portal/TD_MC_first.js
+@@ -1,5 +1,6 @@
+ function enter(pi) {
+-	if (pi.isQuestStarted(2300) || pi.isQuestCompleted(2300) ||
++	if (pi.isQuestCompleted(2260) ||
++                        pi.isQuestStarted(2300) || pi.isQuestCompleted(2300) ||
+                         pi.isQuestStarted(2301) || pi.isQuestCompleted(2301) || 
+ 			pi.isQuestStarted(2302) || pi.isQuestCompleted(2302) || 
+ 			pi.isQuestStarted(2303) || pi.isQuestCompleted(2303) ||
+diff --git a/scripts/portal/curseforest.js b/scripts/portal/curseforest.js
+index 93cd66818..9db67dba5 100644
+--- a/scripts/portal/curseforest.js
++++ b/scripts/portal/curseforest.js
+@@ -1,5 +1,3 @@
+-importPackage(java.util);
+-
+ function enter(pi) {
+     if(pi.isQuestStarted(2224) || pi.isQuestStarted(2226) || pi.isQuestCompleted(2227)) {
+         var hourDay = pi.getHourOfDay();
+diff --git a/scripts/portal/dragonNest.js b/scripts/portal/dragonNest.js
+index f2be6f767..98c0285d2 100644
+--- a/scripts/portal/dragonNest.js
++++ b/scripts/portal/dragonNest.js
+@@ -20,6 +20,11 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ function enter(pi) {
+-	pi.playPortalSound(); pi.warp(240040611, "out00");
++        if(!pi.isQuestCompleted(3706)) {
++            pi.playPortalSound(); pi.warp(240040611, "out00");
++        } else {
++            pi.playPortalSound(); pi.warp(240040612, "out00");
++        }
++    
+ 	return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/tristanEnter.js b/scripts/portal/tristanEnter.js
+index 451b39241..2d5d1836e 100644
+--- a/scripts/portal/tristanEnter.js
++++ b/scripts/portal/tristanEnter.js
+@@ -1,4 +1,9 @@
+ function enter(pi) {
+-    pi.playPortalSound(); pi.warp(105100101, "in00");
+-    return true;
++    if(pi.isQuestCompleted(2238)) {
++        pi.playPortalSound(); pi.warp(105100101, "in00");
++        return true;
++    } else {
++        pi.message("A mysterious force won't let you in.");
++        return false;
++    }
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2238.js b/scripts/quest/2238.js
+index 8288c8ec5..c0e328a18 100644
+--- a/scripts/quest/2238.js
++++ b/scripts/quest/2238.js
+@@ -35,25 +35,8 @@ function start(mode, type, selection) {
+             status--;
+         
+         if (status == 0) {
+-            em = qm.getEventManager("BalrogQuest");
+-            if (em == null) {
+-                qm.sendOk("Sorry, but the BalrogQuest is closed.");
+-                qm.dispose();
+-                return;
+-            }
+-            
+-            if (em.getProperty("noEntry") == "false") {
+-                var eim = em.newInstance("BalrogQuest");
+-                eim.registerPlayer(qm.getPlayer());
+-                eim.startEvent();
+-
+-                qm.forceStartQuest();
+-                qm.dispose();
+-            }
+-            else {
+-                qm.sendOk("There is currently someone in this map, come back later.");
+-                qm.dispose();
+-            }
++            qm.forceStartQuest();
++            qm.dispose();
+         }
+     }
+ }
+diff --git a/scripts/quest/2245.js b/scripts/quest/2245.js
+new file mode 100644
+index 000000000..a84500cf3
+--- /dev/null
++++ b/scripts/quest/2245.js
+@@ -0,0 +1,58 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            em = qm.getEventManager("BalrogQuest");
++            if (em == null) {
++                qm.sendOk("Sorry, but the BalrogQuest is closed.");
++                qm.dispose();
++                return;
++            }
++            
++            if (em.getProperty("noEntry") == "false") {
++                var eim = em.newInstance("BalrogQuest");
++                eim.registerPlayer(qm.getPlayer());
++                eim.startEvent();
++
++                qm.dispose();
++            }
++            else {
++                qm.sendOk("There is currently someone in this map, come back later.");
++                qm.dispose();
++            }
++        }
++    }
++}
+diff --git a/scripts/quest/29911.js b/scripts/quest/2257.js
+similarity index 58%
+rename from scripts/quest/29911.js
+rename to scripts/quest/2257.js
+index 76e264cd8..4fd5bc1ae 100644
+--- a/scripts/quest/29911.js
++++ b/scripts/quest/2257.js
+@@ -1,8 +1,6 @@
+ /*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -19,21 +17,28 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+ 
+ var status = -1;
+ 
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+ function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Hey there, do you want a ride to #r#m261000000##k? Oh a request from #b#p2101013##k?");
++        } else {
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2258.js b/scripts/quest/2258.js
+new file mode 100644
+index 000000000..976533567
+--- /dev/null
++++ b/scripts/quest/2258.js
+@@ -0,0 +1,69 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendAcceptDecline("Meerkats spreads rumors like wildfire... By blackmailing me and my cab service, they are taking costumers away from me day after day... Hey, tell no one about this, if you clean some #rMeerkats#k from my way, I'll tell you an info about the #rMushroom Castle#k. What do you say?");
++        } else if (status == 1) {
++            qm.sendNext("Great, they you have #r5 minutes#k to kill #b40 Meerkats#k within this time. Good luck!");
++        } else {
++            qm.forceStartQuest();
++            qm.dispose();
++        }
++    }
++}
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("You did it! ... Hey, #rMeerkats#k around here may listen to our conversation. I'm not going to talk about THAT right now.");
++        } else {
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2259.js b/scripts/quest/2259.js
+new file mode 100644
+index 000000000..a3bba3acb
+--- /dev/null
++++ b/scripts/quest/2259.js
+@@ -0,0 +1,73 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Ok, meet me at #b#m260020700##k for your information. To reach there, follow #reast#k from here until you reach #rMagatia#k, I will be there. Now go.");
++        } else {
++            qm.forceStartQuest();
++            qm.dispose();
++        }
++    }
++}
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(qm.getMapId() == 260020000) {
++                qm.sendNext("Eh you're still here? To reach #b#m260020700##k, follow #reast#k from here until you reach #rMagatia#k, I will be there. Now go.");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("Oh there you are. There're no Meerkat's nearby, so there probably is no eavesdropping around here. Very well, you must be fit to go to the #rMushroom Castle#k. Talk to me once you've got #blevel 30#k.");
++        } else {
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2260.js b/scripts/quest/2260.js
+new file mode 100644
+index 000000000..0b6ad48d9
+--- /dev/null
++++ b/scripts/quest/2260.js
+@@ -0,0 +1,75 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++importPackage(Packages.constants);
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Once you've got #b2nd job advancement#k, I'll tell you about the #bMushroom Castle#k.");
++        } else {
++            qm.forceStartQuest();
++            qm.dispose();
++        }
++    }
++}
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(GameConstants.getJobBranch(qm.getPlayer().getJob()) == 1) {
++                qm.sendNext("Eh, didn't you get the #r2nd job advancement#k yet?");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("Okay you seem ready to go to the #bMushroom Castle#k. In #rHenesys#k, climb at the tree fort at #bwest#k then enter a portal over there. On the other area, #rgo west#k. From there, a portal will be readily available to access the #bMushroom Castle#k area.");
++        } else {
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2291.js b/scripts/quest/2291.js
+new file mode 100644
+index 000000000..33c5d4f35
+--- /dev/null
++++ b/scripts/quest/2291.js
+@@ -0,0 +1,57 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(!qm.haveItem(4032521, 10)) {
++                qm.sendNext("Hey, you didn't get #b10 #t4032521##k yet, did you?");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("You got the #b#i4032521##k with you, great. Let me show you the way.");
++        } else if (status == 1) {
++            qm.gainItem(4032521, -10);
++            
++            var rock = qm.getEventManager("RockSpiritVIP");
++            rock.newInstance("RockSpiritVIP");
++            rock.setProperty("player", qm.getPlayer().getName());
++            rock.startInstance(qm.getPlayer());
++            
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2338.js b/scripts/quest/2338.js
+new file mode 100644
+index 000000000..e267b20ff
+--- /dev/null
++++ b/scripts/quest/2338.js
+@@ -0,0 +1,56 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(qm.haveItem(2430014, 1)) {
++                qm.sendNext("It looks like you already have one #b#t2430014##k on your inventory.");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("You've used the #b#t2430014##k? Oh well, good thing I have a spare one right here.");
++        } else if (status == 1) {
++            if(!qm.canHold(2430014, 1)) {
++                qm.sendNext("Please make a USE slot available to get it, alright?");
++            } else {
++                qm.gainItem(2430014, 1);
++                qm.forceCompleteQuest();
++            }
++            
++            qm.dispose();
++        }
++    }
++}
+diff --git a/scripts/quest/29905.js b/scripts/quest/29905.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29905.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29910.js b/scripts/quest/29910.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29910.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29912.js b/scripts/quest/29912.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29912.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29913.js b/scripts/quest/29913.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29913.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29914.js b/scripts/quest/29914.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29914.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29915.js b/scripts/quest/29915.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29915.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29916.js b/scripts/quest/29916.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29916.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29917.js b/scripts/quest/29917.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29917.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29918.js b/scripts/quest/29918.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29918.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29919.js b/scripts/quest/29919.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29919.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29920.js b/scripts/quest/29920.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29920.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29921.js b/scripts/quest/29921.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29921.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29922.js b/scripts/quest/29922.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29922.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29923.js b/scripts/quest/29923.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29923.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29927.js b/scripts/quest/29927.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29927.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29929.js b/scripts/quest/29929.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29929.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29930.js b/scripts/quest/29930.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29930.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29931.js b/scripts/quest/29931.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29931.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29932.js b/scripts/quest/29932.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29932.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/29933.js b/scripts/quest/29933.js
+deleted file mode 100644
+index 76e264cd8..000000000
+--- a/scripts/quest/29933.js
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+-
+-var status = -1;
+-
+-function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+\ No newline at end of file
+diff --git a/scripts/quest/3507.js b/scripts/quest/3507.js
+index 5aee0c2b0..41dab043e 100644
+--- a/scripts/quest/3507.js
++++ b/scripts/quest/3507.js
+@@ -1,5 +1,5 @@
+ function end(mode, type, selection) {
+-        if(qm.isQuestCompleted(3523) || qm.isQuestCompleted(3524) || qm.isQuestCompleted(3525) || qm.isQuestCompleted(3526) || qm.isQuestCompleted(3527) || qm.isQuestCompleted(3539)) {
++        if(qm.isQuestCompleted(3523) || qm.isQuestCompleted(3524) || qm.isQuestCompleted(3525) || qm.isQuestCompleted(3526) || qm.isQuestCompleted(3527) || qm.isQuestCompleted(3529) || qm.isQuestCompleted(3539)) {
+             qm.completeQuest();
+             qm.sendOk("You are now filled with all of your memories again.. You are now allowed to go to #m270020000#.");
+         } else {
+diff --git a/scripts/quest/29904.js b/scripts/quest/3529.js
+similarity index 58%
+rename from scripts/quest/29904.js
+rename to scripts/quest/3529.js
+index 76e264cd8..ab1d00ab5 100644
+--- a/scripts/quest/29904.js
++++ b/scripts/quest/3529.js
+@@ -1,8 +1,6 @@
+ /*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -19,21 +17,28 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/*	
+-	Author : 		Ronan Lana
+-	Description: 		Wildcard medals
+-	Quest ID : 		-----
+-*/
+ 
+ var status = -1;
+ 
+ function start(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
+-}
+-
+-
+-function end(mode, type, selection) {
+-	qm.forceCompleteQuest();
+-	qm.dispose();
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendOk("You have regained your memories, talk to #b#p2140001##k to get the pass.");
++        } else if (status == 1) {
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/3714.js b/scripts/quest/3714.js
+new file mode 100644
+index 000000000..c0fb077e5
+--- /dev/null
++++ b/scripts/quest/3714.js
+@@ -0,0 +1,53 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(!qm.haveItem(4001094, 1)) {
++                qm.sendNext("You don't have a #b#t4001094##k...");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("You have brought a #b#t4001094##k, thank you for the effort!");
++        } else if (status == 1) {
++            qm.gainItem(4001094, -1);
++            qm.gainExp(42000 * qm.getPlayer().getExpRate());
++            
++            qm.forceCompleteQuest();
++            qm.dispose();
++        }
++    }
++}
+diff --git a/scripts/quest/medalQuest.js b/scripts/quest/medalQuest.js
+new file mode 100644
+index 000000000..9c696935e
+--- /dev/null
++++ b/scripts/quest/medalQuest.js
+@@ -0,0 +1,23 @@
++/**
++ *
++ * @author Arnah, Ronan
++ */
++
++function start(mode, type, selection) {
++    qm.forceStartQuest();
++    qm.forceCompleteQuest();
++
++    var medalname = qm.getMedalName();
++    qm.message("<" + medalname + "> has been awarded.");
++    qm.earnTitle("<" + medalname + "> has been awarded.");
++    qm.dispose();
++}
++
++function complete(mode, type, selection) {
++    qm.forceCompleteQuest();
++
++    var medalname = qm.getMedalName();
++    qm.message("<" + medalname + "> has been awarded.");
++    qm.earnTitle("<" + medalname + "> has been awarded.");
++    qm.dispose();
++}
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 162322500..1f99e0786 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19100,7 +19100,7 @@ USE `heavenms`;
+ (4300011,4000536,1,1,0,600000),
+ (4300011,4004000,1,1,0,10000),
+ (4300011,4020008,1,1,0,9000),
+-(4300011,4032509,1,1,2286,999999),
++(4300011,4032509,1,1,2286,70000),
+ (4300012,1302009,1,1,0,700),
+ (4300012,1312007,1,1,0,700),
+ (4300012,1322016,1,1,0,700),
+@@ -19176,7 +19176,7 @@ USE `heavenms`;
+ (4300013,2049207,1,1,0,3000),
+ (4300013,4004000,1,1,0,100000),
+ (4300013,4020008,1,1,0,90000),
+-(4300015,4032509,1,1,2286,999999),
++(4300015,4032509,1,1,2286,70000),
+ (4300016,4000537,1,1,0,400000),
+ (3400000,0,50,90,0,400000),
+ (3400001,0,60,90,0,400000),
+@@ -20188,7 +20188,27 @@ USE `heavenms`;
+ (2230131, 4032321, 1, 1, 21727, 20000),
+ (5250002, 4032326, 1, 1, 21752, 100000),
+ (2110301, 4032401, 1, 1, 2261, 100000),
+-(2110300, 4032402, 1, 1, 2263, 100000);
++(2110300, 4032402, 1, 1, 2263, 100000),
++(3400000, 4032521, 1, 1, 2291, 120000),
++(3400001, 4032521, 1, 1, 2291, 120000),
++(3400002, 4032521, 1, 1, 2291, 120000),
++(3400003, 4032521, 1, 1, 2291, 120000),
++(3400004, 4032521, 1, 1, 2291, 120000),
++(3400005, 4032521, 1, 1, 2291, 120000),
++(3400006, 4032521, 1, 1, 2291, 120000),
++(3400007, 4032521, 1, 1, 2291, 120000),
++(3400008, 4032521, 1, 1, 2291, 120000),
++(4300000, 4032521, 1, 1, 2291, 120000),
++(4300001, 4032521, 1, 1, 2291, 120000),
++(4300002, 4032521, 1, 1, 2291, 120000),
++(4300003, 4032521, 1, 1, 2291, 120000),
++(4300004, 4032521, 1, 1, 2291, 120000),
++(4300005, 4032521, 1, 1, 2291, 120000),
++(4300006, 4032521, 1, 1, 2291, 120000),
++(4300007, 4032521, 1, 1, 2291, 120000),
++(4300008, 4032521, 1, 1, 2291, 120000),
++(4300009, 4032521, 1, 1, 2291, 120000),
++(4300010, 4032521, 1, 1, 2291, 120000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+diff --git a/src/client/DiseaseValueHolder.java b/src/client/DiseaseValueHolder.java
+deleted file mode 100644
+index 180c1cf76..000000000
+--- a/src/client/DiseaseValueHolder.java
++++ /dev/null
+@@ -1,34 +0,0 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+-                       Matthias Butz <matze@odinms.de>
+-                       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License version 3
+-    as published by the Free Software Foundation. You may not use, modify
+-    or distribute this program under any other version of the
+-    GNU Affero General Public License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package client;
+-
+-/**
+- *
+- * @author anybody can do this
+- */
+-public class DiseaseValueHolder {
+-    public long startTime, length;
+-    
+-    public DiseaseValueHolder(long start, long length) {
+-        this.startTime = start;
+-        this.length = length;
+-    }
+-}
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index f0add8452..6d240f7d8 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1850,25 +1850,7 @@ public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+                             }
+                     }
+                     
+-                    try (PreparedStatement ps = con.prepareStatement("SELECT queststatusid FROM queststatus WHERE characterid = ?")) {
+-                            ps.setInt(1, cid);
+-                            
+-                            try (ResultSet rs = ps.executeQuery()) {
+-                                    while (rs.next()) {
+-                                            int queststatusid = rs.getInt("queststatusid");
+-                                        
+-                                            try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM medalmaps WHERE queststatusid = ?")) {
+-                                                    ps2.setInt(1, queststatusid);
+-                                                    ps2.executeUpdate();
+-                                            }
+-                                            
+-                                            try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM questprogress WHERE queststatusid = ?")) {
+-                                                    ps2.setInt(1, queststatusid);
+-                                                    ps2.executeUpdate();
+-                                            }
+-                                    }
+-                            }
+-                    }
++                    deleteQuestProgressWhereCharacterId(con, cid);
+                     
+                     try (PreparedStatement ps = con.prepareStatement("SELECT id FROM mts_cart WHERE cid = ?")) {
+                             ps.setInt(1, cid);
+@@ -1902,6 +1884,28 @@ public static boolean deleteCharFromDB(MapleCharacter player, int senderAccId) {
+                     return false;
+             }
+     }
++    
++    private static void deleteQuestProgressWhereCharacterId(Connection con, int cid) throws SQLException {
++        try (PreparedStatement ps = con.prepareStatement("SELECT queststatusid FROM queststatus WHERE characterid = ?")) {
++            ps.setInt(1, cid);
++
++            try (ResultSet rs = ps.executeQuery()) {
++                while (rs.next()) {
++                    int queststatusid = rs.getInt("queststatusid");
++
++                    try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM medalmaps WHERE queststatusid = ?")) {
++                        ps2.setInt(1, queststatusid);
++                        ps2.executeUpdate();
++                    }
++
++                    try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM questprogress WHERE queststatusid = ?")) {
++                        ps2.setInt(1, queststatusid);
++                        ps2.executeUpdate();
++                    }
++                }
++            }
++        }
++    }
+ 
+     private void deleteWhereCharacterId(Connection con, String sql) throws SQLException {
+         try (PreparedStatement ps = con.prepareStatement(sql)) {
+@@ -2744,6 +2748,17 @@ public MapleStatEffect getBuffEffect(MapleBuffStat stat) {
+         }
+     }
+     
++    public boolean hasBuffFromSourceid(int sourceid) {
++        effLock.lock();
++        chrLock.lock();
++        try {
++            return buffEffects.containsKey(sourceid);
++        } finally {
++            chrLock.unlock();
++            effLock.unlock();
++        }
++    }
++    
+     private List<Pair<MapleBuffStat, Integer>> getActiveStatupsFromSourceid(int sourceid) { // already under effLock & chrLock
+         List<Pair<MapleBuffStat, Integer>> ret = new ArrayList<>();
+         
+@@ -5084,7 +5099,7 @@ private void levelUpMessages() {
+         } else if (level == 25) {
+             yellowMessage("You seem to be improving, but you are still not ready to move on to the next step.");
+         } else if (level == 30) {
+-            yellowMessage("You have finally reached level 30! Try job advancing, after that try the Mushroom Kingdom!");
++            yellowMessage("You have finally reached level 30! Try job advancing, after that try the Mushroom Castle!");
+         } else if (level == 35) {
+             yellowMessage("Hey did you hear about this mall that opened in Kerning? Try visiting the Kerning Mall.");
+         } else if (level == 40) {
+@@ -6644,7 +6659,8 @@ public synchronized void saveToDB(boolean notAutosave) {
+             }
+             ps.executeBatch();
+             deleteWhereCharacterId(con, "DELETE FROM eventstats WHERE characterid = ?");
+-            deleteWhereCharacterId(con, "DELETE FROM queststatus WHERE characterid = ?");
++            
++            deleteQuestProgressWhereCharacterId(con, id);
+             ps = con.prepareStatement("INSERT INTO queststatus (`queststatusid`, `characterid`, `quest`, `status`, `time`, `expires`, `forfeited`) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement psf;
+             try (PreparedStatement pse = con.prepareStatement("INSERT INTO questprogress VALUES (DEFAULT, ?, ?, ?)")) {
+@@ -7556,7 +7572,7 @@ public void updateQuest(MapleQuestStatus quest) {
+             announce(MaplePacketCreator.updateQuestInfo((short) quest.getQuest().getId(), quest.getNpc()));
+         } else if (quest.getStatus().equals(MapleQuestStatus.Status.COMPLETED)) {
+             short questid = quest.getQuest().getId();
+-            if(questid != 3637) {
++            if(!MapleQuest.isExploitableQuest(questid)) {
+                 quest_fame += 1;
+                 if(ServerConstants.FAME_GAIN_BY_QUEST > 0)
+                     fameGainByQuest();
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index c208d2afd..5ffa6687d 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -68,6 +68,8 @@
+ import server.life.MapleMonster;
+ import server.life.MapleMonsterInformationProvider;
+ import server.life.MapleNPC;
++import server.life.MobSkill;
++import server.life.MobSkillFactory;
+ import server.life.MonsterDropEntry;
+ import server.maps.MapleMap;
+ import server.maps.MapleMapItem;
+@@ -89,6 +91,7 @@
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleDisease;
+ import client.MapleJob;
+ import client.MapleStat;
+ import client.Skill;
+@@ -743,14 +746,9 @@ public static boolean executeHeavenMsCommandLv1(Channel cserv, Server srv, Maple
+                         break;
+ 			}
+ 			c.announce(MaplePacketCreator.getNPCTalk(9010000, (byte) 0, output, "00 00", (byte) 0));
+-			break;
++                                break;
+                     
+                 case "buffme":
+-                        if(!player.isGM()) {
+-                                player.dropMessage(5, "You are already dead.");
+-				break;
+-                        }
+-                    
+                         //GM Skills : Haste(Super) - Holy Symbol - Bless - Hyper Body - Echo of Hero
+                         SkillFactory.getSkill(4101004).getEffect(SkillFactory.getSkill(4101004).getMaxLevel()).applyTo(player);
+                         SkillFactory.getSkill(2311003).getEffect(SkillFactory.getSkill(2311003).getMaxLevel()).applyTo(player);
+@@ -1572,6 +1570,81 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                 MapleCharacter victim;
+             
+                 switch(sub[0]) {
++                case "debuff":
++                        if (sub.length < 2) {
++				player.yellowMessage("Syntax: !debuff SLOW|SEDUCE|ZOMBIFY|CONFUSE|STUN|POISON|SEAL|DARKNESS|WEAKEN|CURSE");
++				break;
++			}
++                    
++                        MapleDisease disease = null;
++                        MobSkill skill = null;
++                        
++                        switch(sub[1].toUpperCase()) {
++                                case "SLOW":
++                                        disease = MapleDisease.SLOW;
++                                        skill = MobSkillFactory.getMobSkill(126, 7);
++                                        break;
++                                    
++                                case "SEDUCE":
++                                        disease = MapleDisease.SEDUCE;
++                                        skill = MobSkillFactory.getMobSkill(128, 7);
++                                        break;
++                                    
++                                case "ZOMBIFY":
++                                        disease = MapleDisease.ZOMBIFY;
++                                        skill = MobSkillFactory.getMobSkill(133, 1);
++                                        break;
++                                        
++                                case "CONFUSE":
++                                        disease = MapleDisease.CONFUSE;
++                                        skill = MobSkillFactory.getMobSkill(132, 2);
++                                        break;
++                                            
++                                case "STUN":
++                                        disease = MapleDisease.STUN;
++                                        skill = MobSkillFactory.getMobSkill(123, 7);
++                                        break;
++                                                
++                                case "POISON":
++                                        disease = MapleDisease.POISON;
++                                        skill = MobSkillFactory.getMobSkill(125, 5);
++                                        break;
++                                                    
++                                case "SEAL":
++                                        disease = MapleDisease.SEAL;
++                                        skill = MobSkillFactory.getMobSkill(120, 1);
++                                        break;
++                                                        
++                                case "DARKNESS":
++                                        disease = MapleDisease.DARKNESS;
++                                        skill = MobSkillFactory.getMobSkill(121, 1);
++                                        break;
++                                                            
++                                case "WEAKEN":
++                                        disease = MapleDisease.WEAKEN;
++                                        skill = MobSkillFactory.getMobSkill(122, 1);
++                                        break;
++                                
++                                case "CURSE":
++                                        disease = MapleDisease.CURSE;
++                                        skill = MobSkillFactory.getMobSkill(124, 1);
++                                        break;
++                        }
++                        
++                        if(disease == null) {
++                                player.yellowMessage("Syntax: !debuff SLOW|SEDUCE|ZOMBIFY|CONFUSE|STUN|POISON|SEAL|DARKNESS|WEAKEN|CURSE");
++				break;
++                        }
++                    
++                        for (MapleMapObject mmo : player.getMap().getMapObjectsInRange(player.getPosition(), 1000.0, Arrays.asList(MapleMapObjectType.PLAYER))) {
++                                MapleCharacter chr = (MapleCharacter) mmo;
++                                
++                                if(chr.getId() != player.getId()) {
++                                        chr.giveDebuff(disease, skill);
++                                }
++                        }
++                break;
++                    
+                 case "fly":
+                         if (sub.length < 2) {
+ 				player.yellowMessage("Syntax: !fly <on/off>");
+diff --git a/src/client/inventory/Equip.java b/src/client/inventory/Equip.java
+index 58bb1b7a2..0e90836fe 100644
+--- a/src/client/inventory/Equip.java
++++ b/src/client/inventory/Equip.java
+@@ -486,7 +486,9 @@ private static double normalizedMasteryExp(int reqLevel) {
+         // Conversion factor between mob exp and equip exp gain. Through many calculations, the expected for equipment levelup
+         // from level 1 to 2 is killing about 100~200 mobs of the same level range, on a 1x EXP rate scenario.
+         
+-        if(reqLevel >= 78) {
++        if(reqLevel < 5) {
++            return 42;
++        } else if(reqLevel >= 78) {
+             return Math.max((10413.648 * Math.exp(reqLevel * 0.03275)), 15);
+         } else if(reqLevel >= 38) {
+             return Math.max(( 4985.818 * Math.exp(reqLevel * 0.02007)), 15);
+diff --git a/src/constants/GameConstants.java b/src/constants/GameConstants.java
+index 5899106a3..fcb394d77 100644
+--- a/src/constants/GameConstants.java
++++ b/src/constants/GameConstants.java
+@@ -210,6 +210,10 @@ public static boolean isFinisherSkill(int skillId) {
+         return skillId > 1111002 && skillId < 1111007 || skillId == 11111002 || skillId == 11111003;
+     }
+     
++    public static boolean isMedalQuest(short questid) {
++        return questid / 100 == 299;
++    }
++    
+     public static boolean hasSPTable(MapleJob job) {
+         switch (job) {
+             case EVAN:
+diff --git a/src/net/server/channel/handlers/QuestActionHandler.java b/src/net/server/channel/handlers/QuestActionHandler.java
+index f57490edb..6a00281f3 100644
+--- a/src/net/server/channel/handlers/QuestActionHandler.java
++++ b/src/net/server/channel/handlers/QuestActionHandler.java
+@@ -21,11 +21,13 @@
+ */
+ package net.server.channel.handlers;
+ 
++import java.awt.Point;
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import net.AbstractMaplePacketHandler;
+ import scripting.quest.QuestScriptManager;
+ import server.quest.MapleQuest;
++import server.life.MapleNPC;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+@@ -33,6 +35,31 @@
+  * @author Matze
+  */
+ public final class QuestActionHandler extends AbstractMaplePacketHandler {
++    
++    // credits to gabriel.sin
++    private static boolean isNpcNearby(SeekableLittleEndianAccessor slea, MapleCharacter player, MapleQuest quest, int npcId) {
++        Point playerP = null;
++        
++        if(slea.available() >= 4) {
++            playerP = new Point(slea.readShort(), slea.readShort());
++        }
++        
++        if (playerP != null && !quest.isAutoStart() && !quest.isAutoComplete()) {
++            MapleNPC npc = player.getMap().getNPCById(npcId);
++            if(npc == null) {
++                return false;
++            }
++            
++            Point npcP = npc.getPosition();
++            if (Math.abs(npcP.getX() - playerP.getX()) > 1200 || Math.abs(npcP.getY() - playerP.getY()) > 800) {
++                player.dropMessage(5, "Approach the NPC to fulfill this quest operation.");
++                return false;
++            }
++        }
++        
++        return true;
++    }
++    
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         byte action = slea.readByte();
+@@ -41,8 +68,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         MapleQuest quest = MapleQuest.getInstance(questid);
+         if (action == 1) { //Start Quest
+             int npc = slea.readInt();
+-            if (slea.available() >= 4) {
+-                slea.readInt();
++            if(!isNpcNearby(slea, player, quest, npc)) {
++                return;
+             }
+             
+             if(quest.canStart(player, npc)) {
+@@ -50,7 +77,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             }
+         } else if (action == 2) { // Complete Quest
+             int npc = slea.readInt();
+-            slea.readInt();
++            if(!isNpcNearby(slea, player, quest, npc)) {
++                return;
++            }
+             
+             if(quest.canComplete(player, npc)) {
+                 if (slea.available() >= 2) {
+@@ -64,14 +93,18 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             quest.forfeit(player);
+         } else if (action == 4) { // scripted start quest
+             int npc = slea.readInt();
+-            slea.readInt();
++            if(!isNpcNearby(slea, player, quest, npc)) {
++                return;
++            }
++            
+             if(quest.canStart(player, npc)) {
+                 QuestScriptManager.getInstance().start(c, questid, npc);
+             }
+         } else if (action == 5) { // scripted end quests
+-            //System.out.println(slea.toString());
+             int npc = slea.readInt();
+-            slea.readInt();
++            if(!isNpcNearby(slea, player, quest, npc)) {
++                return;
++            }
+             
+             if(quest.canComplete(player, npc)) {
+                 QuestScriptManager.getInstance().end(c, questid, npc);
+diff --git a/src/scripting/quest/QuestActionManager.java b/src/scripting/quest/QuestActionManager.java
+index e1f63063b..9c8001f8b 100644
+--- a/src/scripting/quest/QuestActionManager.java
++++ b/src/scripting/quest/QuestActionManager.java
+@@ -23,6 +23,7 @@
+ 
+ import client.MapleClient;
+ import scripting.npc.NPCConversationManager;
++import server.MapleItemInformationProvider;
+ import server.quest.MapleQuest;
+ 
+ /**
+@@ -69,4 +70,9 @@ public void startQuest() {
+     public void completeQuest() {
+         forceCompleteQuest();
+     }
++    
++    public String getMedalName() {  // usable only for medal quests (id 299XX)
++        MapleQuest q = MapleQuest.getInstance(quest);
++        return MapleItemInformationProvider.getInstance().getName(q.getMedalRequirement());
++    }
+ }
+diff --git a/src/scripting/quest/QuestScriptManager.java b/src/scripting/quest/QuestScriptManager.java
+index 5f647213c..2bd0a22fb 100644
+--- a/src/scripting/quest/QuestScriptManager.java
++++ b/src/scripting/quest/QuestScriptManager.java
+@@ -30,6 +30,7 @@
+ import scripting.AbstractScriptManager;
+ import server.quest.MapleQuest;
+ import tools.FilePrinter;
++import constants.GameConstants;
+ import client.MapleClient;
+ import client.MapleQuestStatus;
+ 
+@@ -45,40 +46,44 @@
+ 	public synchronized static QuestScriptManager getInstance() {
+ 		return instance;
+ 	}
+-
++        
+ 	public void start(MapleClient c, short questid, int npc) {
+-		MapleQuest quest = MapleQuest.getInstance(questid);
+-		if (!c.getPlayer().getQuest(quest).getStatus().equals(MapleQuestStatus.Status.NOT_STARTED)) {
+-			dispose(c);
+-			return;
+-		}
+-		try {
+-			QuestActionManager qm = new QuestActionManager(c, questid, npc, true);
+-			if (qms.containsKey(c)) {
+-				return;
+-			}
+-			if(c.canClickNPC()) {
+-				qms.put(c, qm);
+-				Invocable iv = getInvocable("quest/" + questid + ".js", c);
+-				if (iv == null) {
+-					FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.\r\n");
+-				}
+-				if (iv == null || QuestScriptManager.getInstance() == null) {
+-					qm.dispose();
+-					return;
+-				}
+-				engine.put("qm", qm);
+-				scripts.put(c, iv);
+-				c.setClickedNPC();
+-				iv.invokeFunction("start", (byte) 1, (byte) 0, 0);
+-			}
+-		} catch (final UndeclaredThrowableException ute) {
+-			FilePrinter.printError(FilePrinter.QUEST + questid + ".txt", ute);
+-			dispose(c);
+-		} catch (final Throwable t) {
+-			FilePrinter.printError(FilePrinter.QUEST + getQM(c).getQuest() + ".txt", t);
+-			dispose(c);
+-		}
++                MapleQuest quest = MapleQuest.getInstance(questid);
++                if (!quest.canStartWithoutRequirements(c.getPlayer())) {
++                        dispose(c);
++                        return;
++                }
++                try {
++                        QuestActionManager qm = new QuestActionManager(c, questid, npc, true);
++                        if (qms.containsKey(c)) {
++                                return;
++                        }
++                        if(c.canClickNPC()) {
++                                qms.put(c, qm);
++                                Invocable iv = getInvocable("quest/" + questid + ".js", c);
++                                if (iv == null) {
++                                        if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
++                                                iv = getInvocable("quest/medalQuest.js", c);
++                                        } else {
++                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.\r\n");
++                                        }
++                                }
++                                if (iv == null || QuestScriptManager.getInstance() == null) {
++                                        qm.dispose();
++                                        return;
++                                }
++                                engine.put("qm", qm);
++                                scripts.put(c, iv);
++                                c.setClickedNPC();
++                                iv.invokeFunction("start", (byte) 1, (byte) 0, 0);
++                        }
++                } catch (final UndeclaredThrowableException ute) {
++                        FilePrinter.printError(FilePrinter.QUEST + questid + ".txt", ute);
++                        dispose(c);
++                } catch (final Throwable t) {
++                        FilePrinter.printError(FilePrinter.QUEST + getQM(c).getQuest() + ".txt", t);
++                        dispose(c);
++                }
+ 	}
+ 
+ 	public void start(MapleClient c, byte mode, byte type, int selection) {
+@@ -96,7 +101,7 @@ public void start(MapleClient c, byte mode, byte type, int selection) {
+ 			}
+ 		}
+ 	}
+-
++        
+ 	public void end(MapleClient c, short questid, int npc) {
+ 		MapleQuest quest = MapleQuest.getInstance(questid);
+ 		if (!c.getPlayer().getQuest(quest).getStatus().equals(MapleQuestStatus.Status.STARTED) || !c.getPlayer().getMap().containsNPC(npc)) {
+@@ -112,9 +117,13 @@ public void end(MapleClient c, short questid, int npc) {
+ 				qms.put(c, qm);
+ 				Invocable iv = getInvocable("quest/" + questid + ".js", c);
+ 				if (iv == null) {
+-                                        FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.\r\n");
+-					qm.dispose();
+-					return;
++                                        if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
++                                                iv = getInvocable("quest/medalQuest.js", c);
++                                        } else {
++                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.\r\n");
++                                                qm.dispose();
++                                                return;
++                                        }
+ 				}
+ 				engine.put("qm", qm);
+ 				scripts.put(c, iv);
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 6b9e42a8a..01d03be4c 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -955,14 +955,14 @@ private void applyMonsterBuff(MapleCharacter applyfrom) {
+             MapleMonster monster = (MapleMonster) mo;
+             if (isDispel()) { 
+         		monster.debuffMob(skill_.getId());
+-        	} else {
+-        		if (makeChanceResult()) {
+-        			monster.applyStatus(applyfrom, new MonsterStatusEffect(getMonsterStati(), skill_, null, false), isPoison(), getDuration());
+-        			if (isCrash()) {
+-        				monster.debuffMob(skill_.getId());
+-        			}
+-        		}
+-        	}
++            } else {
++                    if (makeChanceResult()) {
++                            monster.applyStatus(applyfrom, new MonsterStatusEffect(getMonsterStati(), skill_, null, false), isPoison(), getDuration());
++                            if (isCrash()) {
++                                    monster.debuffMob(skill_.getId());
++                            }
++                    }
++            }
+             i++;
+             if (i >= mobCount) {
+                 break;
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index fafa9d740..d8a39292f 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -1446,6 +1446,19 @@ public void updateMonsterController(MapleMonster monster) {
+         }
+     }
+ 
++    public MapleNPC getNPCById(int id) {
++        for (MapleMapObject obj : getMapObjects()) {
++            if (obj.getType() == MapleMapObjectType.NPC) {
++                MapleNPC npc = (MapleNPC) obj;
++                if (npc.getId() == id) {
++                    return npc;
++                }
++            }
++        }
++        
++        return null;
++    }
++    
+     public boolean containsNPC(int npcid) {
+         if (npcid == 9000066) {
+             return true;
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 2d3fe9812..c5ce034b3 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -23,6 +23,7 @@
+ 
+ import java.io.File;
+ import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+@@ -30,6 +31,7 @@
+ import client.MapleQuestStatus;
+ import client.MapleQuestStatus.Status;
+ import java.util.EnumMap;
++import java.util.Set;
+ import provider.MapleData;
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+@@ -41,10 +43,21 @@
+ /**
+  *
+  * @author Matze
++ * @author Ronan (support for medal quests)
+  */
+ public class MapleQuest {
+ 
+     private static Map<Integer, MapleQuest> quests = new HashMap<>();
++    private static Map<Short, Integer> medals = new HashMap<>();
++    
++    private static final Set<Short> exploitableQuests = new HashSet<>();
++    static {
++        exploitableQuests.add((short) 2338);
++        exploitableQuests.add((short) 3637);
++        exploitableQuests.add((short) 3714);
++        exploitableQuests.add((short) 21752);
++    }
++    
+     protected short infoNumber, id;
+     protected int timeLimit, timeLimit2;
+     protected String infoex;
+@@ -77,6 +90,9 @@ private MapleQuest(int id) {
+                 autoStart = MapleDataTool.getInt("autoStart", reqInfo, 0) == 1;
+                 autoPreComplete = MapleDataTool.getInt("autoPreComplete", reqInfo, 0) == 1;
+                 autoComplete = MapleDataTool.getInt("autoComplete", reqInfo, 0) == 1;
++                
++                int medalid = MapleDataTool.getInt("viewMedalItem", reqInfo, 0);
++                if(medalid != 0) medals.put(this.id, medalid);
+             } else {
+                 System.out.println("no data " + id);
+             }
+@@ -209,8 +225,13 @@ private String getIntervalTimeLeft(MapleCharacter c, IntervalRequirement r) {
+         return str.toString();
+     }
+ 
++    public boolean canStartWithoutRequirements(MapleCharacter c) {
++        MapleQuestStatus mqs = c.getQuest(this);
++        return !(mqs.getStatus() != Status.NOT_STARTED && !(mqs.getStatus() == Status.COMPLETED && repeatable));
++    }
++    
+     public boolean canStart(MapleCharacter c, int npcid) {
+-        if (c.getQuest(this).getStatus() != Status.NOT_STARTED && !(c.getQuest(this).getStatus() == Status.COMPLETED && repeatable)) {
++        if (!canStartWithoutRequirements(c)) {
+             return false;
+         }
+         for (MapleQuestRequirement r : startReqs.values()) {
+@@ -229,7 +250,9 @@ public boolean canComplete(MapleCharacter c, Integer npcid) {
+             return false;
+         }
+         for (MapleQuestRequirement r : completeReqs.values()) {
+-            if (r == null || !r.check(c, npcid)) {
++            if (r == null) {
++                return false;
++            } else if(!r.check(c, npcid)) {
+                 if(r.getType() == MapleQuestRequirementType.MESO) { // TODO: find a way to tell the client about the new MESO requirement type.
+                     c.dropMessage(5, "You don't have enough mesos to complete this quest.");
+                 }
+@@ -263,10 +286,6 @@ public void complete(MapleCharacter c, int npc, Integer selection) {
+                 }
+             }
+ 
+-            if (timeLimit > 0) {
+-                c.announce(MaplePacketCreator.removeQuestTimeLimit(id));
+-            }
+-            
+             forceComplete(c, npc);
+             for (MapleQuestAction a : completeActs.values()) {
+                 a.run(c, selection);
+@@ -308,6 +327,10 @@ public boolean forceStart(MapleCharacter c, int npc) {
+     }
+ 
+     public boolean forceComplete(MapleCharacter c, int npc) {
++        if (timeLimit > 0) {
++            c.announce(MaplePacketCreator.removeQuestTimeLimit(id));
++        }
++        
+         MapleQuestStatus newStatus = new MapleQuestStatus(this, MapleQuestStatus.Status.COMPLETED, npc);
+         newStatus.setForfeited(c.getQuest(this).getForfeited());
+         newStatus.setCompletionTime(System.currentTimeMillis());
+@@ -431,6 +454,12 @@ private MapleQuestRequirement getRequirement(MapleQuestRequirementType type, Map
+ 			case PET:
+ 				ret = new PetRequirement(this, data);
+ 				break;
++                        case BUFF:
++				ret = new BuffRequirement(this, data);
++				break;
++                        case EXCEPT_BUFF:
++				ret = new BuffExceptRequirement(this, data);
++				break;
+ 			case SCRIPT:
+ 			case NORMAL_AUTO_START:
+ 			case START:
+@@ -480,7 +509,16 @@ private MapleQuestAction getAction(MapleQuestActionType type, MapleData data) {
+ 		}
+ 		return ret;
+ 	}
++        
++        public static boolean isExploitableQuest(short questid) {
++                return exploitableQuests.contains(questid);
++        }
+ 	
++        public int getMedalRequirement() {
++                Integer medalid = medals.get(id);
++                return medalid != null ? medalid : -1;
++        }
++        
+ 	public static void loadAllQuest() {
+ 		questInfo = questData.getData("QuestInfo.img");
+ 		questReq = questData.getData("Check.img");
+diff --git a/src/server/quest/MapleQuestRequirementType.java b/src/server/quest/MapleQuestRequirementType.java
+index 073fcab88..f96991773 100644
+--- a/src/server/quest/MapleQuestRequirementType.java
++++ b/src/server/quest/MapleQuestRequirementType.java
+@@ -26,7 +26,7 @@
+  * @author Matze
+  */
+ public enum MapleQuestRequirementType {
+-    UNDEFINED(-1), JOB(0), ITEM(1), QUEST(2), MIN_LEVEL(3), MAX_LEVEL(4), END_DATE(5), MOB(6), NPC(7), FIELD_ENTER(8), INTERVAL(9), SCRIPT(10), PET(11), MIN_PET_TAMENESS(12), MONSTER_BOOK(13), NORMAL_AUTO_START(14), INFO_NUMBER(15), INFO_EX(16), COMPLETED_QUEST(17), START(18), END(19), DAY_BY_DAY(20), MESO(21);
++    UNDEFINED(-1), JOB(0), ITEM(1), QUEST(2), MIN_LEVEL(3), MAX_LEVEL(4), END_DATE(5), MOB(6), NPC(7), FIELD_ENTER(8), INTERVAL(9), SCRIPT(10), PET(11), MIN_PET_TAMENESS(12), MONSTER_BOOK(13), NORMAL_AUTO_START(14), INFO_NUMBER(15), INFO_EX(16), COMPLETED_QUEST(17), START(18), END(19), DAY_BY_DAY(20), MESO(21), BUFF(22), EXCEPT_BUFF(23);
+     final byte type;
+ 
+     private MapleQuestRequirementType(int type) {
+@@ -77,13 +77,17 @@ public static MapleQuestRequirementType getByWZName(String name) {
+         } else if (name.equals("questComplete")) {
+             return COMPLETED_QUEST;
+ 	} else if(name.equals("start")) {
+-		return START;
++            return START;
+ 	} else if(name.equals("end")) {
+-		return END;
++            return END;
+ 	} else if(name.equals("daybyday")) {
+-		return DAY_BY_DAY;
++            return DAY_BY_DAY;
+         } else if (name.equals("money")) {
+             return MESO;
++        } else if (name.equals("buff")) {
++            return BUFF;
++        } else if (name.equals("exceptbuff")) {
++            return EXCEPT_BUFF;
+         } else {
+             return UNDEFINED;
+         }
+diff --git a/src/server/quest/actions/BuffAction.java b/src/server/quest/actions/BuffAction.java
+index 860c252d9..8ac57eef2 100644
+--- a/src/server/quest/actions/BuffAction.java
++++ b/src/server/quest/actions/BuffAction.java
+@@ -39,7 +39,11 @@ public BuffAction(MapleQuest quest, MapleData data) {
+ 		super(MapleQuestActionType.BUFF, quest);
+ 		processData(data);
+ 	}
+-	
++        
++        @Override
++	public boolean check(MapleCharacter chr, Integer extSelection) {
++		return true;
++	}
+ 	
+ 	@Override
+ 	public void processData(MapleData data) {
+diff --git a/src/server/quest/requirements/BuffExceptRequirement.java b/src/server/quest/requirements/BuffExceptRequirement.java
+new file mode 100644
+index 000000000..081ca7209
+--- /dev/null
++++ b/src/server/quest/requirements/BuffExceptRequirement.java
+@@ -0,0 +1,50 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package server.quest.requirements;
++    
++import client.MapleCharacter;
++import provider.MapleData;
++import provider.MapleDataTool;
++import server.quest.MapleQuest;
++import server.quest.MapleQuestRequirementType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class BuffExceptRequirement extends MapleQuestRequirement {
++        private int buffId = -1;
++        
++	public BuffExceptRequirement(MapleQuest quest, MapleData data) {
++		super(MapleQuestRequirementType.BUFF);
++		processData(data);
++	}
++	
++	@Override
++	public void processData(MapleData data) {
++                // item buffs are negative
++		buffId = -1 * Integer.valueOf(MapleDataTool.getString(data));
++	}
++	
++	@Override
++	public boolean check(MapleCharacter chr, Integer npcid) {
++                return !chr.hasBuffFromSourceid(buffId);
++	}
++}
+diff --git a/src/server/quest/requirements/BuffRequirement.java b/src/server/quest/requirements/BuffRequirement.java
+new file mode 100644
+index 000000000..a0708fb95
+--- /dev/null
++++ b/src/server/quest/requirements/BuffRequirement.java
+@@ -0,0 +1,50 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package server.quest.requirements;
++
++import client.MapleCharacter;
++import provider.MapleData;
++import provider.MapleDataTool;
++import server.quest.MapleQuest;
++import server.quest.MapleQuestRequirementType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class BuffRequirement extends MapleQuestRequirement {
++        private int buffId = 1;
++        
++	public BuffRequirement(MapleQuest quest, MapleData data) {
++		super(MapleQuestRequirementType.BUFF);
++		processData(data);
++	}
++	
++	@Override
++	public void processData(MapleData data) {
++                // item buffs are negative
++		buffId = -1 * Integer.valueOf(MapleDataTool.getString(data));
++	}
++	
++	@Override
++	public boolean check(MapleCharacter chr, Integer npcid) {
++                return chr.hasBuffFromSourceid(buffId);
++	}
++}
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 4c609459b..d47a5c521 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1458,7 +1458,7 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+         		 * 14: Angry ^
+         		 * 15: Orb animation thing, ??
+         		 * 16: ??
+-        		 * 19: Mushroom kingdom boss thing
++        		 * 19: Mushroom castle boss thing
+         		 */
+                 
+                 if (life.getParentMobOid() != 0) {

@@ -1,0 +1,871 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index d96f2ca17..bd590a03d 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -137,4 +137,10 @@ Otimiza
+ Correção nos métodos que completam quests, que não atribuíam corretamente itens que dependem de jobs.
+ Agora é possível variar atributos de mobs a serem spawnados (classes ChangeableStats, OverrideStats).
+ Removido ataques letais (1HP/1MP) de bosses em Dojo, que tornava impossível a completude do mesmo.
+-Adição de novos scripts de evento no jogo.
+\ No newline at end of file
++Adição de novos scripts de evento no jogo.
++
++08 - 09 Abril 2017,
++Adição de efeito: Zombify.
++Adição da expedição BPQ.
++Aprimoramento de métodos que usam acesso concorrente no projeto.
++Diversas pequenas alterações nos WZs do cliente/servidor.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index d299c6bb7..9b44440cf 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,8 +3,7 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/portal/outPerrion_2.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/AbstractPlayerInteraction.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/map/onFirstUserEnter/balog_summon.js b/scripts/map/onFirstUserEnter/balog_summon.js
+new file mode 100644
+index 000000000..a11306b3c
+--- /dev/null
++++ b/scripts/map/onFirstUserEnter/balog_summon.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.server.life);
++importPackage(Packages.tools);
++importPackage(Packages.server.events);
++
++function start(ms) {
++    try {
++        ms.getPlayer().resetEnteredScript();
++        ms.getPlayer().getClient().getSession().write(MaplePacketCreator.getClock(BalrogPQ.getSecondsLeft())); // 60 mins(1hr)
++        BalrogPQ.spawnBalrog(1, ms.getPlayer());
++    } catch(err) {
++        ms.getPlayer().dropMessage(err);
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1061014.js b/scripts/npc/world0/1061014.js
+index c5040e229..3b9804955 100644
+--- a/scripts/npc/world0/1061014.js
++++ b/scripts/npc/world0/1061014.js
+@@ -1,85 +1,49 @@
+-/*/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-//@Author FateJiki
+-//@Author Even (modifier)
+-importPackage(Packages.server.expeditions);
+-importPackage(Packages.tools);
+-importPackage(Packages.scripting.event);
+-
+-
++importPackage(Packages.server.events);
+ var status = 0;
+-var expedition;
+-var player;
+-var em;
+-//var barlog_easy = MapleExpeditionType.BALROG_EASY;
+-//var barlog_hard = MapleExpeditionType.BALROG_HARD;
+ 
+ function start(){
+     status = 0;
+-    
+-    cm.sendNext("Hi there. I am #b#nMu Young#n#k, the temple Keeper. This expedition is currently unavailable.");
+-    cm.dispose();
+-    
+-    //action(1, 0, 0);
++    action(1, 0, 0);
+ }
+ 
+-function action(mode, type, selection) {
+-    if (mode <= 0) {
++function action(mode, type, selection){
++    if(mode <= 0){
+         cm.dispose();
+-    } else if (status == 0) {
++    } else if(status == 0){
+         cm.sendNext("Hi there. I am #b#nMu Young#n#k, the temple Keeper.");
+         status++;
+-    } else if (BalrogPQ.partyLeader == "undefined") {
+-        if (status == 1) {
++    } else if(BalrogPQ.partyLeader == "undefined"){
++        if(status == 1){
+         var text = "This temple is currently under siege by the Balrog troops. We currently do not know who gave the orders. " +
+             "For a few weeks now, the #e#b Order of the Altair#n#k has been sending mercenaries, but they were eliminated every time." +
+             " So, traveler, would you like to try your luck at defeating this unspeakable horror? \r\n\r\n " +
+             "#L0#Yes. Please register me as party leader\r\n#L1#What is the #eOrder of the Altair?";
+         cm.sendSimple(text);
+         status++;
+-        } else if (selection == 0) {
+-            if (cm.getPlayer().getLevel() >= 70) {
++        } else if(selection == 0){
++            if(cm.getPlayer().getLevel() >= 70){
+                 BalrogPQ.partyLeader = cm.getPlayer().getName();
+                 cm.sendOk("Success. Your name has been registered and you may enter the battlefield. Come speak to me when you're ready!");
+                 cm.getPlayer().getMap().broadcastMessage(Packages.tools.MaplePacketCreator.serverNotice(0, cm.getPlayer().getName() + " is currently fighting the balrog on CH" + cm.getPlayer().getClient().getChannel() + ". To join, do @balrogpq."))
+                 BalrogPQ.open(cm.getPlayer());
+                 cm.dispose();
+-            } else if (cm.getPlayer().getLevel() < 70) {
++            } else if(cm.getPlayer().getLevel() < 70){
+                 cm.sendOk("You must be at least level 70 to even consider battling the monster.");
+                 cm.dispose();
+             }
+-        } else if (selection == 1) {
++        } else if(selection == 1){
+             cm.sendOk("The Order of the Altair is a group of elite mercenaries that oversee the world's economy and battle operations. It was founded 40 years ago right after Black Mage was defeated in hopes of forseeing the next possible attack.");
+             cm.dispose();
+-        } else if (status == 3) {
++        } else if(status == 3){
+             cm.warp(105100300);
+             cm.dispose();
+         }
+         } else {
+-            if (status == 1) {
++            if(status == 1){
+             cm.sendYesNo(BalrogPQ.partyLeader + "'s party is currently battling the Balrog. Would you like to assist?");
+             status++;
+             } else if(status == 2){
+-                if (cm.getPlayer().getLevel() > 60 && cm.getPlayer().getClient().getChannel() == BalrogPQ.channel){
++                if(cm.getPlayer().getLevel() > 60 && cm.getPlayer().getClient().getChannel() == BalrogPQ.channel){
+                 cm.warp(105100300);
+                 cm.dispose();
+                 } else {
+diff --git a/scripts/npc/world0/1061018.js b/scripts/npc/world0/1061018.js
+index 2ba01cf1a..9850b6a88 100644
+--- a/scripts/npc/world0/1061018.js
++++ b/scripts/npc/world0/1061018.js
+@@ -1,10 +1,51 @@
+-function start() {
+-    cm.sendYesNo("If you leave now, you'll have to start over. Are you sure you want to leave?");
++importPackage(Packages.server.events);
++
++var status = 0;
++var dispose = false;
++function start(){
++    status == 0;
++    action(1, 0, 0);
+ }
+ 
+-function action(mode, type, selection) {
+-    if (mode == 1) {
+-	cm.warp(105100301);
++function action(mode, type, selection){
++    if(mode <= 0){
++        if(!cm.getPlayer().getMap().getAllmonsters().size() == 2){
++        cm.sendOk("Alrighty. We have high hopes for you so make us mercenaries proud!");
++        cm.dispose();
++        } else {
++        cm.getPlayer().getMap().killAllMonsters();
++        BalrogPQ.partyLeader = "undefined";
++        BalrogPQ.balrogSpawned = false;
++        BalrogPQ.close();
++            cm.warp(105100100);
++            cm.dispose();
++        }
++    } else if(status == 0){
++        if(cm.getPlayer().getMap().getCharacters().size() > 1){
++            cm.sendYesNo("Are you really going to leave this battle and leave your fellow travelers to die?");
++            dispose = false;
++            status++;
++        } else if(cm.getPlayer().getMap().getCharacters().size() <= 1 && cm.getPlayer().getMap().getAllmonsters().size() != 2){
++            cm.sendYesNo("If you're a coward, you will leave.");
++            dispose = true;
++            status++;
++        } else if(cm.getPlayer().getMap().getAllmonsters().size() == 0){
++            cm.sendOk("Wow! You defeated the balrog.");
++            dispose = true;
++            cm.getPlayer().getClient().getChannelServer().broadcastPacket(Packages.tools.MaplePacketCreator.serverNotice(0, BalrogPQ.partyLeader + "'s party has successfully defeated the Balrog! Praise to them, they finished with " + cm.getPlayer().getMap().getCharacters().size() + " players."));
++            status++;
++        } else {
++            cm.sendYesNo("So you are really going to leave?");
++            status++;
++        }
++    } else if(status == 1){
++        if(dispose){
++            cm.getPlayer().getMap().killAllMonsters();
++            BalrogPQ.partyLeader = "undefined";
++            BalrogPQ.balrogSpawned = false;
++            BalrogPQ.close();
++        }
++        cm.warp(105100100);
++        cm.dispose();
+     }
+-    cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 75c3c295f..fe2fe2175 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18846,6 +18846,7 @@
+   UPDATE drop_data SET chance=40000 WHERE itemid=4031991;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
+   UPDATE drop_data SET questid=6190 WHERE itemid=4001111;
++  UPDATE drop_data SET questid=28282 WHERE itemid=4001373;
+ 
+   # two items named "Sparta": remove the entries where lv100 Sparta is being dropped by low-level mobs.
+   UPDATE IGNORE drop_data SET itemid=1402011 WHERE itemid=1302056 AND dropperid < 8000000;
+diff --git a/src/client/MapleDisease.java b/src/client/MapleDisease.java
+index 925ed6111..7e5c375c3 100644
+--- a/src/client/MapleDisease.java
++++ b/src/client/MapleDisease.java
+@@ -26,6 +26,7 @@
+     SLOW(0x1),
+     SEDUCE(0x80),
+     FISHABLE(0x100),
++    ZOMBIFY(0x4000),
+     CONFUSE(0x80000),
+     STUN(0x2000000000000L),
+     POISON(0x4000000000000L),
+diff --git a/src/client/inventory/ItemFactory.java b/src/client/inventory/ItemFactory.java
+index 524a8036a..93ff9f610 100644
+--- a/src/client/inventory/ItemFactory.java
++++ b/src/client/inventory/ItemFactory.java
+@@ -43,9 +43,9 @@
+     CASH_CYGNUS(4, false),
+     CASH_ARAN(5, false),
+     MERCHANT(6, false);
+-    private int value;
+-    private boolean account;
+-	private static ReentrantLock lock = new ReentrantLock(true);
++    private final int value;
++    private final boolean account;
++    private static final ReentrantLock lock = new ReentrantLock(true);
+ 
+     private ItemFactory(int value, boolean account) {
+         this.value = value;
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index f109ee22e..907d6d2b1 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -26,13 +26,14 @@
+ import java.util.Iterator;
+ import java.util.LinkedHashMap;
+ import java.util.Map;
+-import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ 
+ public class PlayerStorage {
+-    private final ReentrantReadWriteLock locks = new ReentrantReadWriteLock();
+-    private final Lock rlock = locks.readLock();
+-    private final Lock wlock = locks.writeLock();
++    private final ReentrantReadWriteLock locks = new ReentrantReadWriteLock(true);
++    private final ReadLock rlock = locks.readLock();
++    private final WriteLock wlock = locks.writeLock();
+     private final Map<Integer, MapleCharacter> storage = new LinkedHashMap<>();
+ 
+     public void addPlayer(MapleCharacter chr) {
+@@ -76,7 +77,7 @@ public MapleCharacter getCharacterById(int id) {
+     }
+ 
+     public Collection<MapleCharacter> getAllCharacters() {
+-        rlock.lock();    
++        rlock.lock();
+         try {
+             return storage.values();
+         } finally {
+@@ -98,6 +99,11 @@ public final void disconnectAll() {
+     }
+     
+     public int getSize(){
+-    	return storage.size();
++        rlock.lock();
++        try {
++            return storage.size();
++        } finally {
++            rlock.unlock();
++        }
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index d498c717a..2ae74c6db 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -27,9 +27,11 @@
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.Collections;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ 
+ import net.MapleServerHandler;
+@@ -71,7 +73,9 @@
+     private EventScriptManager eventSM;
+     private Map<Integer, HiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+-	private ReentrantReadWriteLock merchant_lock = new ReentrantReadWriteLock(true);
++    private ReentrantReadWriteLock merchant_lock = new ReentrantReadWriteLock(true);
++    private ReadLock merchRlock = merchant_lock.readLock();
++    private WriteLock merchWlock = merchant_lock.writeLock();
+     private List<MapleExpedition> expeditions = new ArrayList<>();
+     private List<MapleExpeditionType> expedType = new ArrayList<>();
+     private MapleEvent event;
+@@ -130,8 +134,7 @@ public final void shutdown() {
+     }
+ 
+     public void closeAllMerchants() {
+-        WriteLock wlock = merchant_lock.writeLock();
+-        wlock.lock();
++        merchWlock.lock();
+         try {
+             final Iterator<HiredMerchant> hmit = hiredMerchants.values().iterator();
+             while (hmit.hasNext()) {
+@@ -141,7 +144,7 @@ public void closeAllMerchants() {
+         } catch (Exception e) {
+ 		e.printStackTrace();
+         } finally {
+-                wlock.unlock();
++                merchWlock.unlock();
+         }
+     }
+     
+@@ -228,28 +231,31 @@ public void run() {
+     }
+ 
+     public Map<Integer, HiredMerchant> getHiredMerchants() {
+-        return hiredMerchants;
++        merchRlock.lock();
++        try {
++            return Collections.unmodifiableMap(hiredMerchants);
++        } finally {
++            merchRlock.unlock();
++        }
+     }
+ 
+     public void addHiredMerchant(int chrid, HiredMerchant hm) {
+-        WriteLock wlock = merchant_lock.writeLock();
+-        wlock.lock();
++        merchWlock.lock();
+         try {
+             hiredMerchants.put(chrid, hm);
+         } finally {
+-            wlock.unlock();
++            merchWlock.unlock();
+         }
+     }
+ 
+     public void removeHiredMerchant(int chrid) {
+-        WriteLock wlock = merchant_lock.writeLock();
+-        wlock.lock();
++        merchWlock.lock();
+         try {        
+             hiredMerchants.remove(chrid);
+         } finally {
+-            wlock.unlock();
+-        }
++            merchWlock.unlock();
+         }
++    }
+ 
+     public int[] multiBuddyFind(int charIdFrom, int[] characterIds) {
+         List<Integer> ret = new ArrayList<>(characterIds.length);
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 450bd9c5c..2a6019499 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -30,8 +30,9 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Properties;
+-import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ 
+ import javax.script.ScriptException;
+ 
+@@ -64,7 +65,8 @@
+         private List<Integer> mapIds = new LinkedList<Integer>();
+         private List<Boolean> isInstanced = new LinkedList<Boolean>();
+         private final ReentrantReadWriteLock mutex = new ReentrantReadWriteLock();
+-        private final Lock rL = mutex.readLock(), wL = mutex.writeLock();
++        private final ReadLock rL = mutex.readLock();
++        private final WriteLock wL = mutex.writeLock();
+         private boolean disposed = false;
+ 
+ 	public EventInstanceManager(EventManager em, String name) {
+@@ -148,11 +150,23 @@ public void unregisterPlayer(MapleCharacter chr) {
+ 	}
+ 	
+ 	public int getPlayerCount() {
+-		return chars.size();
++                rL.lock();
++                try {
++                    return chars.size();
++                }
++                finally {
++                    rL.unlock();
++                }
+ 	}
+ 
+ 	public List<MapleCharacter> getPlayers() {
+-		return new ArrayList<>(chars);
++                rL.lock();
++                try {
++                    return new ArrayList<>(chars);
++                }
++                finally {
++                    rL.unlock();
++                }
+ 	}
+ 
+ 	public void registerMonster(MapleMonster mob) {
+@@ -247,7 +261,14 @@ public void dispose() {
+         } catch (ScriptException | NoSuchMethodException ex) {
+             ex.printStackTrace();
+         }
+-        chars.clear();
++        
++        wL.lock();
++        try {
++            chars.clear();
++        } finally {
++            wL.unlock();
++        }
++        
+         mobs.clear();
+         killCount.clear();
+         mapFactory = null;
+@@ -374,11 +395,10 @@ public final boolean disposeIfPlayerBelow(final byte size, final int towarp) {
+                 map = this.getMapFactory().getMap(towarp);
+             }
+ 
+-            wL.lock();
++            rL.lock();
+             try {
+                 if (chars != null && chars.size() <= size) {
+-                    final List<MapleCharacter> chrs = new LinkedList<MapleCharacter>(chars);
+-                    for (MapleCharacter chr : chrs) {
++                    for (MapleCharacter chr : chars) {
+                         if (chr == null) {
+                             continue;
+                         }
+@@ -393,7 +413,7 @@ public final boolean disposeIfPlayerBelow(final byte size, final int towarp) {
+             } catch (Exception ex) {
+                 ex.printStackTrace();
+             } finally {
+-                wL.unlock();
++                rL.unlock();
+             }
+             return false;
+         }
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 5f5da8fbb..60d2cddff 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -699,7 +699,8 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+          AutobanFactory.MPCON.addPoint(applyfrom.getAutobanManager(), "mpCon hack for skill:" + sourceid + "; Player MP: " + applyto.getMp() + " MP Needed: " + getMpCon());
+          } */
+         if (hpchange != 0) {
+-            if (hpchange < 0 && (-hpchange) > applyto.getHp()) {
++            if (hpchange < 0 && (-hpchange) > applyto.getHp() && !applyto.hasDisease(MapleDisease.ZOMBIFY)) {
++                applyto.getClient().announce(MaplePacketCreator.enableActions());
+                 return false;
+             }
+             int newHp = applyto.getHp() + hpchange;
+@@ -712,6 +713,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+         int newMp = applyto.getMp() + mpchange;
+         if (mpchange != 0) {
+             if (mpchange < 0 && -mpchange > applyto.getMp()) {
++                applyto.getClient().announce(MaplePacketCreator.enableActions());
+                 return false;
+             }
+ 
+@@ -1037,12 +1039,18 @@ private int calcHPChange(MapleCharacter applyfrom, boolean primary) {
+                 } else {
+                     hpchange += hp;
+                 }
+-            } else {
++                if (applyfrom.hasDisease(MapleDisease.ZOMBIFY)) {
++                    hpchange /= 2;
++                }
++            } else { // assumption: this is heal
+                 hpchange += makeHealHP(hp / 100.0, applyfrom.getTotalMagic(), 3, 5);
++                if (applyfrom.hasDisease(MapleDisease.ZOMBIFY)) {
++                    hpchange = -hpchange;
++                }
+             }
+         }
+         if (hpR != 0) {
+-            hpchange += (int) (applyfrom.getCurrentMaxHp() * hpR);
++            hpchange += (int) (applyfrom.getCurrentMaxHp() * hpR) / (applyfrom.hasDisease(MapleDisease.ZOMBIFY) ? 2 : 1);
+             applyfrom.checkBerserk();
+         }
+         if (primary) {
+diff --git a/src/server/events/BalrogPQ.java b/src/server/events/BalrogPQ.java
+new file mode 100644
+index 000000000..4a100b2a9
+--- /dev/null
++++ b/src/server/events/BalrogPQ.java
+@@ -0,0 +1,108 @@
++package server.events;
++import client.MapleCharacter;
++import java.util.*;
++import server.life.MapleLifeFactory;
++import java.awt.Point;
++import server.maps.MapleMap;
++import server.TimerManager;
++
++/**
++ *
++ * @author FateJiki
++ * @Mapid 105100300
++ */
++public class BalrogPQ {
++    public static final int[] EasyBalrogParts = {8830002, 8830003, 8830000};
++    public static final int[] HardBalrogParts = {8830000, 8830001, 8830002};
++    public static List<MapleCharacter> candidates = new ArrayList<MapleCharacter>();
++    public static boolean hasStarted = false;
++    public static String partyLeader = "undefined";
++    public static boolean balrogSpawned = false;
++    public static long timeStamp = 0;
++    public static byte channel = 1;
++    
++    public static void addCandidate(MapleCharacter chr){
++        synchronized(candidates){
++            candidates.add(chr);
++        }
++    }
++
++    public static void warpAllCandidates(){
++        for(MapleCharacter c : candidates){
++            c.changeMap(105100300);
++        }
++    }
++
++    public static boolean isFull(MapleCharacter chr){
++        return chr.getClient().getChannelServer().getMapFactory().getMap(105100300).getCharacters().size() > 0;
++    }
++
++    public static void warpIn(MapleCharacter chr){
++        if(hasStarted){
++            chr.changeMap(105100300);
++        }
++    }
++
++    public static void scheduleChecks(MapleMap map){
++        final MapleMap fmap = map;
++        TimerManager tMan = TimerManager.getInstance();
++        tMan.schedule(new Runnable(){
++            @Override
++        public void run(){
++                for(MapleCharacter chrs : fmap.getCharacters()){
++                    chrs.changeMap(105100100);
++                    chrs.message("You did not defeat the balrog in time..");
++                    close();
++                }
++            }
++        } , 60 * 60 * 1000);
++
++                tMan.schedule(new Runnable(){
++            @Override
++        public void run(){
++                if(fmap.getCharacters().size() <= 3){
++                    if(fmap.getCharacters().size() > 0){
++                    for(MapleCharacter chrs : fmap.getCharacters()){
++                        chrs.message("[The Order]: What? You're down to that many mercenaries? I need you get you out of there.");
++                        chrs.changeMap(105100100);
++                    }
++                    }
++                    fmap.killAllMonsters();
++                    close();
++                }
++            }
++        } , 60 * 1000);
++    }
++
++    public static void open(MapleCharacter chr){
++        channel = (byte)chr.getClient().getChannel();
++        hasStarted = true;
++        timeStamp = System.currentTimeMillis();
++        scheduleChecks(chr.getClient().getChannelServer().getMapFactory().getMap(105100300));
++    }
++
++    public static int getSecondsLeft(){ // assuming the thing lasts 60 minutes
++        int hour = 60 * 60; // 3600 seconds = 1hr
++        long elapsed = System.currentTimeMillis() - timeStamp;
++        int secondsLeft = (int)(hour - (elapsed / 1000));
++        return secondsLeft;
++    }
++
++    public static void close(){
++        hasStarted = false;
++        balrogSpawned = false;
++        partyLeader = "undefined";
++        candidates.clear();
++        timeStamp = 0;
++    }
++    public static void spawnBalrog(int mode, MapleCharacter chr){
++        if(!balrogSpawned){
++            for(int i = 0; i < HardBalrogParts.length; i++){
++                chr.getClient().getChannelServer().getMapFactory().getMap(105100300).spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(HardBalrogParts[i]), new Point(412, 258));
++                balrogSpawned = true;
++            }
++        } else {
++            // DO NUFFIN'
++        }
++    }
++}  
+\ No newline at end of file
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 2681ade90..80b7ae37c 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -274,7 +274,7 @@ public void applyEffect(MapleCharacter player, MapleMonster monster, boolean ski
+                 }
+                 break;
+               default:
+-            	  System.out.println("Unhandeled Mob skill: " + skillId);
++            	  System.out.println("Unhandled Mob skill: " + skillId);
+             	  break;
+         }
+ 		if (stats.size() > 0) {
+diff --git a/src/server/life/MobSkillFactory.java b/src/server/life/MobSkillFactory.java
+index 4b16b1785..17176608d 100644
+--- a/src/server/life/MobSkillFactory.java
++++ b/src/server/life/MobSkillFactory.java
+@@ -28,6 +28,8 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
++import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import provider.MapleData;
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+@@ -42,20 +44,22 @@
+     private static Map<String, MobSkill> mobSkills = new HashMap<String, MobSkill>();
+     private final static MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Skill.wz"));
+     private static MapleData skillRoot = dataSource.getData("MobSkill.img");
+-    private static ReentrantReadWriteLock dataLock = new ReentrantReadWriteLock();
++    private final static ReentrantReadWriteLock dataLock = new ReentrantReadWriteLock();
++    private final static ReadLock rL = dataLock.readLock();
++    private final static WriteLock wL = dataLock.writeLock();
+ 
+     public static MobSkill getMobSkill(final int skillId, final int level) {
+         final String key = skillId + "" + level;
+-        dataLock.readLock().lock();
++        rL.lock();
+         try {
+             MobSkill ret = mobSkills.get(key);
+             if (ret != null) {
+                 return ret;
+             }
+         } finally {
+-            dataLock.readLock().unlock();
++            rL.unlock();
+         }
+-        dataLock.writeLock().lock();
++        wL.lock();
+         try {
+             MobSkill ret;
+             ret = mobSkills.get(key);
+@@ -103,7 +107,7 @@ public static MobSkill getMobSkill(final int skillId, final int level) {
+             }
+             return ret;
+         } finally {
+-            dataLock.writeLock().unlock();
++            wL.unlock();
+         }
+     }
+ }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index bbf8f2970..9f888bbcd 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -81,7 +81,6 @@
+ import tools.Randomizer;
+ 
+ public class MapleMap {
+-
+     private static final List<MapleMapObjectType> rangedMapobjectTypes = Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.ITEM, MapleMapObjectType.NPC, MapleMapObjectType.MONSTER, MapleMapObjectType.DOOR, MapleMapObjectType.SUMMON, MapleMapObjectType.REACTOR);
+     private Map<Integer, MapleMapObject> mapobjects = new LinkedHashMap<>();
+     private Collection<SpawnPoint> monsterSpawn = Collections.synchronizedList(new LinkedList<SpawnPoint>());
+@@ -875,7 +874,13 @@ public void updateMonsterController(MapleMonster monster) {
+     }
+ 
+     public Collection<MapleMapObject> getMapObjects() {
+-        return Collections.unmodifiableCollection(mapobjects.values());
++        objectRLock.lock();
++        try {
++            return Collections.unmodifiableCollection(mapobjects.values());
++        }
++        finally {
++            objectRLock.unlock();
++        }
+     }
+ 
+     public boolean containsNPC(int npcid) {
+@@ -898,7 +903,12 @@ public boolean containsNPC(int npcid) {
+     }
+ 
+     public MapleMapObject getMapObject(int oid) {
+-        return mapobjects.get(oid);
++        objectRLock.lock();
++        try {
++            return mapobjects.get(oid);
++        } finally {
++            objectRLock.unlock();
++        }
+     }
+ 
+     /**
+@@ -1285,11 +1295,9 @@ public void run() {
+ 
+     public void addPlayer(final MapleCharacter chr) {
+         chrWLock.lock();
+-        chrRLock.lock();
+         try {
+             characters.add(chr);
+         } finally {
+-            chrRLock.unlock();
+             chrWLock.unlock();
+         }
+         chr.setMapId(mapid);
+@@ -1528,11 +1536,9 @@ public MaplePortal getRandomSpawnpoint() {
+ 
+     public void removePlayer(MapleCharacter chr) {
+         chrWLock.lock();
+-        chrRLock.lock();
+         try {
+             characters.remove(chr);
+         } finally {
+-            chrRLock.unlock();
+             chrWLock.unlock();
+         }
+         removeMapObject(chr.getObjectId());
+@@ -1841,6 +1847,8 @@ public void movePlayer(MapleCharacter player, Point newPosition) {
+         player.setPosition(newPosition);
+         Collection<MapleMapObject> visibleObjects = player.getVisibleMapObjects();
+         MapleMapObject[] visibleObjectsNow = visibleObjects.toArray(new MapleMapObject[visibleObjects.size()]);
++        
++        objectRLock.lock();
+         try {
+             for (MapleMapObject mo : visibleObjectsNow) {
+                 if (mo != null) {
+@@ -1853,7 +1861,10 @@ public void movePlayer(MapleCharacter player, Point newPosition) {
+             }
+         } catch (Exception e) {
+             e.printStackTrace();
++        } finally {
++            objectRLock.unlock();
+         }
++        
+         for (MapleMapObject mo : getMapObjectsInRange(player.getPosition(), 722500, rangedMapobjectTypes)) {
+             if (!player.isMapObjectVisible(mo)) {
+                 mo.sendSpawnData(player.getClient());
+@@ -2399,17 +2410,22 @@ public void timeMob(int id, String msg) {
+     }
+ 
+     public void toggleHiddenNPC(int id) {
+-        for (MapleMapObject obj : mapobjects.values()) {
+-            if (obj.getType() == MapleMapObjectType.NPC) {
+-                MapleNPC npc = (MapleNPC) obj;
+-                if (npc.getId() == id) {
+-                    npc.setHide(!npc.isHidden());
+-                    if (!npc.isHidden()) //Should only be hidden upon changing maps
+-                    {
+-                        broadcastMessage(MaplePacketCreator.spawnNPC(npc));
++        objectRLock.lock();
++        try {
++            for (MapleMapObject obj : mapobjects.values()) {
++                if (obj.getType() == MapleMapObjectType.NPC) {
++                    MapleNPC npc = (MapleNPC) obj;
++                    if (npc.getId() == id) {
++                        npc.setHide(!npc.isHidden());
++                        if (!npc.isHidden()) //Should only be hidden upon changing maps
++                        {
++                            broadcastMessage(MaplePacketCreator.spawnNPC(npc));
++                        }
+                     }
+                 }
+             }
++        } finally {
++            objectRLock.unlock();
+         }
+     }
+ 
+diff --git a/wz/Item.wz/Etc/0400.img.xml b/wz/Item.wz/Etc/0400.img.xml
+index 9d13d76a6..beda6f96a 100644
+--- a/wz/Item.wz/Etc/0400.img.xml
++++ b/wz/Item.wz/Etc/0400.img.xml
+@@ -9646,6 +9646,7 @@
+       </canvas>
+       <int name="price" value="1"/>
+       <int name="slotMax" value="200"/>
++      <int name="quest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04002000">
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 9404edc0d..626cb6f3c 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -12821,6 +12821,13 @@
+     <imgdir name="0">
+     </imgdir>
+     <imgdir name="1">
++      <imgdir name="item">
++        <imgdir name="0">
++          <int name="count" value="1"/>
++          <int name="id" value="1142079"/>
++        </imgdir>
++      </imgdir>
++      <int name="exp" value="6800"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="2245">
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index c135b58f4..d64339731 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -24325,11 +24325,16 @@
+   <imgdir name="2244">
+     <imgdir name="0">
+       <int name="npc" value="1061017"/>
+-      <int name="lvmin" value="10"/>
++      <int name="lvmin" value="50"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="1061017"/>
+-      <string name="endscript" value="q2244e"/>
++      <imgdir name="mob">
++        <imgdir name="0">
++          <int name="count" value="200"/>
++          <int name="id" value="8830003"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="2245">

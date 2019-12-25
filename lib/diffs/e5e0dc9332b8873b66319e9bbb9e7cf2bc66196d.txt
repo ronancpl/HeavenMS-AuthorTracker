@@ -1,0 +1,19 @@
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 2775a4f1d..81b0d3195 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -9710,6 +9710,14 @@ public void run() {
+     
+     public void logOff() {
+         this.loggedIn = false;
++
++        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement("UPDATE characters SET lastLogoutTime=? WHERE id=?")) {
++            ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
++            ps.setInt(2, getId());
++            ps.executeUpdate();
++        } catch (SQLException e) {
++            e.printStackTrace();
++        }
+     }
+ 
+     public boolean isLoggedin() {

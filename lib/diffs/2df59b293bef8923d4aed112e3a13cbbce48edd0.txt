@@ -1,0 +1,570 @@
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 764d5695e..1eb2a6c28 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1276,7 +1276,7 @@ public void broadcastStance(int newStance) {
+     }
+     
+     public void broadcastStance() {
+-        map.broadcastMessage(this, MaplePacketCreator.movePlayer(id, this.getIdleMovement()), false);
++        map.broadcastMessage(this, MaplePacketCreator.movePlayer(id, this.getIdleMovement(), getIdleMovementDataLength()), false);
+     }
+     
+     public MapleMap getWarpMap(int map) {
+diff --git a/src/net/server/channel/handlers/AbstractMovementPacketHandler.java b/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
+index 47f2852c6..ed9cd8681 100644
+--- a/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
++++ b/src/net/server/channel/handlers/AbstractMovementPacketHandler.java
+@@ -30,7 +30,6 @@
+ import server.movement.AbsoluteLifeMovement;
+ import server.movement.ChangeEquip;
+ import server.movement.JumpDownMovement;
+-import server.movement.LifeMovement;
+ import server.movement.LifeMovementFragment;
+ import server.movement.RelativeLifeMovement;
+ import server.movement.TeleportMovement;
+@@ -144,17 +143,96 @@
+         }
+         return res;
+     }
+-
+-    protected void updatePosition(List<LifeMovementFragment> movement, AnimatedMapleMapObject target, int yoffset) {
+-        for (LifeMovementFragment move : movement) {
+-            if (move instanceof LifeMovement) {
+-                if (move instanceof AbsoluteLifeMovement) {
+-                    Point position = ((LifeMovement) move).getPosition();
+-                    position.y += yoffset;
+-                    target.setPosition(position);
++    
++    protected void updatePosition(LittleEndianAccessor lea, AnimatedMapleMapObject target, int yOffset) {
++    	
++        byte numCommands = lea.readByte();
++        for (byte i = 0; i < numCommands; i++) {
++            byte command = lea.readByte();
++            switch (command) {
++                case 0: // normal move
++                case 5:
++                case 17: { // Float
++                	//Absolute movement - only this is important for the server, other movement can be passed to the client
++                    short xpos = lea.readShort(); //is signed fine here?
++                    short ypos = lea.readShort();
++                    target.setPosition(new Point(xpos, ypos + yOffset));
++                    lea.skip(6); //xwobble = lea.readShort(); ywobble = lea.readShort(); fh = lea.readShort();
++                    byte newstate = lea.readByte();
++                    target.setStance(newstate);
++                    lea.readShort(); //duration
++                    break;
+                 }
+-                target.setStance(((LifeMovement) move).getNewstate());
++                case 1:
++                case 2:
++                case 6: // fj
++                case 12:
++                case 13: // Shot-jump-back thing
++                case 16: // Float
++                case 18:
++                case 19: // Springs on maps
++                case 20: // Aran Combat Step
++                case 22: {
++                	//Relative movement - server only cares about stance
++                	lea.skip(4); //xpos = lea.readShort(); ypos = lea.readShort();
++                    byte newstate = lea.readByte();
++                    target.setStance(newstate);
++                    lea.readShort(); //duration
++                    break;
++                }
++                case 3:
++                case 4: // tele... -.-
++                case 7: // assaulter
++                case 8: // assassinate
++                case 9: // rush
++                case 11: //chair
++                {
++//                case 14: {
++                	//Teleport movement - same as above
++                	lea.skip(8); //xpos = lea.readShort(); ypos = lea.readShort(); xwobble = lea.readShort(); ywobble = lea.readShort();
++                    byte newstate = lea.readByte();
++                    target.setStance(newstate);
++                    break;
++                }
++                case 14:
++                    lea.skip(9); // jump down (?)
++                    break;
++                case 10: // Change Equip
++                    //ignored by server
++                    lea.readByte();
++                    break;
++                /*case 11: { // Chair
++                    short xpos = lea.readShort();
++                    short ypos = lea.readShort();
++                    short fh = lea.readShort();
++                    byte newstate = lea.readByte();
++                    short duration = lea.readShort();
++                    ChairMovement cm = new ChairMovement(command, new Point(xpos, ypos), duration, newstate);
++                    cm.setFh(fh);
++                    res.add(cm);
++                    break;
++                }*/
++                case 15: {
++                	//Jump down movement - stance only
++                	lea.skip(12); //short xpos = lea.readShort(); ypos = lea.readShort(); xwobble = lea.readShort(); ywobble = lea.readShort(); fh = lea.readShort(); ofh = lea.readShort();
++                    byte newstate = lea.readByte();
++                    target.setStance(newstate);
++                    lea.readShort(); // duration
++                    break;
++                }
++                case 21: {//Causes aran to do weird stuff when attacking o.o
++                    /*byte newstate = lea.readByte();
++                     short unk = lea.readShort();
++                     AranMovement am = new AranMovement(command, null, unk, newstate);
++                     res.add(am);*/
++                    lea.skip(3);
++                    break;
++                }
++                default:
++                    System.out.println("Unhandled Case:" + command);
++                    return;
+             }
+         }
++        return;
+     }
+ }
+diff --git a/src/net/server/channel/handlers/MoveDragonHandler.java b/src/net/server/channel/handlers/MoveDragonHandler.java
+index c806b82d2..16c842240 100644
+--- a/src/net/server/channel/handlers/MoveDragonHandler.java
++++ b/src/net/server/channel/handlers/MoveDragonHandler.java
+@@ -21,12 +21,11 @@
+  */
+ package net.server.channel.handlers;
+ 
++import java.awt.Point;
++
+ import client.MapleCharacter;
+ import client.MapleClient;
+-import java.awt.Point;
+-import java.util.List;
+ import server.maps.MapleDragon;
+-import server.movement.LifeMovementFragment;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -36,14 +35,16 @@
+     public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         final MapleCharacter chr = c.getPlayer();
+         final Point startPos = new Point(slea.readShort(), slea.readShort());
+-        List<LifeMovementFragment> res = parseMovement(slea);
++        long movementDataStart = slea.getPosition();
+         final MapleDragon dragon = chr.getDragon();
+-        if (dragon != null && res != null && res.size() > 0) {
+-            updatePosition(res, dragon, 0);
++        updatePosition(slea, dragon, 0);
++        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
++        if (dragon != null && movementDataLength > 0) {
++            slea.seek(movementDataStart);
+             if (chr.isHidden()) {
+-                chr.getMap().broadcastGMMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, res));
++                chr.getMap().broadcastGMMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength));
+             } else {
+-                chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, res), dragon.getPosition());
++                chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength), dragon.getPosition());
+             }
+         }
+     }
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 727859343..70abe5a64 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -141,24 +141,26 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		short start_x = slea.readShort(); // hmm.. startpos?
+ 		short start_y = slea.readShort(); // hmm...
+ 		Point startPos = new Point(start_x, start_y - 2);
+-		List<LifeMovementFragment> res = parseMovement(slea);
++		long movementDataStart = slea.getPosition();
++        updatePosition(slea, monster, 0);
++        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+ 		
+-                Boolean aggro = monster.aggroMoveLifeUpdate(player);
+-                if (aggro == null) return;
+-                
+-                if (nextUse != null) {
+-                        c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro, nextSkillId, nextSkillLevel));
++        Boolean aggro = monster.aggroMoveLifeUpdate(player);
++        if (aggro == null) return;
++        
++        if (nextUse != null) {
++            c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro, nextSkillId, nextSkillLevel));
+ 		} else {
+ 			c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro));
+ 		}
+                 
+-		if (res != null) {
+-                        if (ServerConstants.USE_DEBUG_SHOW_RCVD_MVLIFE) {
+-                                System.out.println((isSkill ? "SKILL " : (isAttack ? "ATTCK " : " ")) + "castPos: " + castPos + " rawAct: " + rawActivity + " opt: " + pOption + " skillID: " + useSkillId + " skillLV: " + useSkillLevel + " " + "allowSkill: " + nextMovementCouldBeSkill + " mobMp: " + mobMp);
+-                        }
+-                        
+-                        map.broadcastMessage(player, MaplePacketCreator.moveMonster(objectid, nextMovementCouldBeSkill, rawActivity, useSkillId, useSkillLevel, pOption, startPos, res), monster.getPosition());
+-			updatePosition(res, monster, -2);
++		if (movementDataLength > 0) {
++            if (ServerConstants.USE_DEBUG_SHOW_RCVD_MVLIFE) {
++                System.out.println((isSkill ? "SKILL " : (isAttack ? "ATTCK " : " ")) + "castPos: " + castPos + " rawAct: " + rawActivity + " opt: " + pOption + " skillID: " + useSkillId + " skillLV: " + useSkillLevel + " " + "allowSkill: " + nextMovementCouldBeSkill + " mobMp: " + mobMp);
++            }
++            slea.seek(movementDataStart);
++            map.broadcastMessage(player, MaplePacketCreator.moveMonster(objectid, nextMovementCouldBeSkill, rawActivity, useSkillId, useSkillLevel, pOption, startPos, slea, movementDataLength), monster.getPosition());
++			//updatePosition(res, monster, -2); //does this need to be done after the packet is broadcast?
+ 			map.moveMonster(monster, monster.getPosition());
+ 		}
+                 
+diff --git a/src/net/server/channel/handlers/MovePetHandler.java b/src/net/server/channel/handlers/MovePetHandler.java
+index 005f26560..dd6257049 100644
+--- a/src/net/server/channel/handlers/MovePetHandler.java
++++ b/src/net/server/channel/handlers/MovePetHandler.java
+@@ -35,7 +35,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         slea.readLong();
+ //        Point startPos = StreamUtil.readShortPoint(slea);
+         List<LifeMovementFragment> res = parseMovement(slea);
+-        if (res.isEmpty()) {
++        if (res == null || res.isEmpty()) {
+             return;
+         }
+         MapleCharacter player = c.getPlayer();
+diff --git a/src/net/server/channel/handlers/MovePlayerHandler.java b/src/net/server/channel/handlers/MovePlayerHandler.java
+index 6e6f4aa81..2a572003b 100644
+--- a/src/net/server/channel/handlers/MovePlayerHandler.java
++++ b/src/net/server/channel/handlers/MovePlayerHandler.java
+@@ -22,8 +22,6 @@
+ package net.server.channel.handlers;
+ 
+ import client.MapleClient;
+-import java.util.List;
+-import server.movement.LifeMovementFragment;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -31,14 +29,16 @@
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         slea.skip(9);
+-        final List<LifeMovementFragment> res = parseMovement(slea);
+-        if (res != null) {
+-            updatePosition(res, c.getPlayer(), 0);
++        long movementDataStart = slea.getPosition();
++        updatePosition(slea, c.getPlayer(), 0);
++        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
++        if (movementDataLength > 0) {
++        	slea.seek(movementDataStart);
+             c.getPlayer().getMap().movePlayer(c.getPlayer(), c.getPlayer().getPosition());
+             if (c.getPlayer().isHidden()) {
+-                c.getPlayer().getMap().broadcastGMMessage(c.getPlayer(), MaplePacketCreator.movePlayer(c.getPlayer().getId(), res), false);
++                c.getPlayer().getMap().broadcastGMMessage(c.getPlayer(), MaplePacketCreator.movePlayer(c.getPlayer().getId(), slea, movementDataLength), false);
+             } else {
+-                c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.movePlayer(c.getPlayer().getId(), res), false);
++                c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.movePlayer(c.getPlayer().getId(), slea, movementDataLength), false);
+             }
+         }
+     }
+diff --git a/src/net/server/channel/handlers/MoveSummonHandler.java b/src/net/server/channel/handlers/MoveSummonHandler.java
+index 1e5762705..3ea5c0118 100644
+--- a/src/net/server/channel/handlers/MoveSummonHandler.java
++++ b/src/net/server/channel/handlers/MoveSummonHandler.java
+@@ -23,11 +23,10 @@
+ 
+ import java.awt.Point;
+ import java.util.Collection;
+-import java.util.List;
++
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import server.maps.MapleSummon;
+-import server.movement.LifeMovementFragment;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -36,7 +35,6 @@
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         int oid = slea.readInt();
+         Point startPos = new Point(slea.readShort(), slea.readShort());
+-        List<LifeMovementFragment> res = parseMovement(slea);
+         MapleCharacter player = c.getPlayer();
+         Collection<MapleSummon> summons = player.getSummonsValues();
+         MapleSummon summon = null;
+@@ -46,9 +44,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 break;
+             }
+         }
++        long movementDataStart = slea.getPosition();
++        updatePosition(slea, summon, 0);
++        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+         if (summon != null) {
+-            updatePosition(res, summon, 0);
+-            player.getMap().broadcastMessage(player, MaplePacketCreator.moveSummon(player.getId(), oid, startPos, res), summon.getPosition());
++            slea.seek(movementDataStart);
++            player.getMap().broadcastMessage(player, MaplePacketCreator.moveSummon(player.getId(), oid, startPos, slea, movementDataLength), summon.getPosition());
+         }
+     }
+ }
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index dc57eb490..797eed98f 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -1337,7 +1337,7 @@ public void resetMobPosition(Point newPoint) {
+         aggroRemoveController();
+         
+         setPosition(newPoint);
+-        map.broadcastMessage(MaplePacketCreator.moveMonster(this.getObjectId(), false, -1, 0, 0, 0, this.getPosition(), this.getIdleMovement()));
++        map.broadcastMessage(MaplePacketCreator.moveMonster(this.getObjectId(), false, -1, 0, 0, 0, this.getPosition(), this.getIdleMovement(), getIdleMovementDataLength()));
+         map.moveMonster(this, this.getPosition());
+         
+         aggroUpdateController();
+diff --git a/src/server/maps/AbstractAnimatedMapleMapObject.java b/src/server/maps/AbstractAnimatedMapleMapObject.java
+index 8c54788a7..7e6921880 100644
+--- a/src/server/maps/AbstractAnimatedMapleMapObject.java
++++ b/src/server/maps/AbstractAnimatedMapleMapObject.java
+@@ -21,14 +21,31 @@
+ */
+ package server.maps;
+ 
+-import java.awt.Point;
+-import java.util.Collections;
+-import java.util.List;
+-import server.movement.AbsoluteLifeMovement;
+-import server.movement.LifeMovementFragment;
++import java.util.Arrays;
++
++import tools.data.input.ByteArrayByteStream;
++import tools.data.input.GenericSeekableLittleEndianAccessor;
++import tools.data.input.SeekableLittleEndianAccessor;
++import tools.data.output.MaplePacketLittleEndianWriter;
+ 
+ public abstract class AbstractAnimatedMapleMapObject extends AbstractMapleMapObject implements AnimatedMapleMapObject {
+-    private int stance;
++    
++	static {
++		MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter((int) getIdleMovementDataLength());
++    	mplew.write(1); //movement command count
++    	mplew.writeShort(-1); //x
++    	mplew.writeShort(-1); //y
++    	mplew.writeShort(0); //xwobble
++    	mplew.writeShort(0); //ywobble
++    	mplew.writeShort(0); //fh
++    	mplew.write(-1); //stance
++    	mplew.writeShort(0); //duration
++    	idleMovementPacketData = mplew.getPacket();
++	}
++	
++	private static final byte[] idleMovementPacketData;
++	
++	private int stance;
+ 
+     @Override
+     public int getStance() {
+@@ -45,11 +62,20 @@ public boolean isFacingLeft() {
+         return Math.abs(stance) % 2 == 1;
+     }
+     
+-    public List<LifeMovementFragment> getIdleMovement() {
+-        AbsoluteLifeMovement alm = new AbsoluteLifeMovement(0, getPosition(), 0, getStance());
+-        alm.setPixelsPerSecond(new Point(0, 0));
+-        
+-        List<LifeMovementFragment> moveUpdate = Collections.singletonList((LifeMovementFragment) alm);
+-        return moveUpdate;
++    public SeekableLittleEndianAccessor getIdleMovement() {
++    	byte[] movementData = Arrays.copyOf(idleMovementPacketData, idleMovementPacketData.length);
++    	//seems wasteful to create a whole packet writer when only a few values are changed
++    	int x = getPosition().x;
++    	int y = getPosition().y;
++    	movementData[1] = (byte) (x & 0xFF); //x
++    	movementData[2] = (byte) (x >> 8 & 0xFF);
++    	movementData[3] = (byte) (y & 0xFF); //y
++    	movementData[4] = (byte) (y >> 8 & 0xFF);
++    	movementData[11] = (byte) (getStance() & 0xFF);
++    	return new GenericSeekableLittleEndianAccessor(new ByteArrayByteStream(movementData));
++    }
++    
++    public static long getIdleMovementDataLength() {
++    	return 14;
+     }
+ }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 391e6a300..0192563b4 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -35,6 +35,39 @@
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
++import client.BuddylistEntry;
++import client.MapleBuffStat;
++import client.MapleCharacter;
++import client.MapleCharacter.SkillEntry;
++import client.MapleClient;
++import client.MapleDisease;
++import client.MapleFamilyEntry;
++import client.MapleKeyBinding;
++import client.MapleMount;
++import client.MapleQuestStatus;
++import client.MapleRing;
++import client.MapleStat;
++import client.MonsterBook;
++import client.Skill;
++import client.SkillMacro;
++import client.inventory.Equip;
++import client.inventory.Equip.ScrollResult;
++import client.inventory.Item;
++import client.inventory.ItemFactory;
++import client.inventory.MapleInventory;
++import client.inventory.MapleInventoryType;
++import client.inventory.MaplePet;
++import client.inventory.ModifyInventory;
++import client.newyear.NewYearCardRecord;
++import client.status.MonsterStatus;
++import client.status.MonsterStatusEffect;
++import constants.ExpTable;
++import constants.GameConstants;
++import constants.ItemConstants;
++import constants.ServerConstants;
++import constants.skills.Buccaneer;
++import constants.skills.Corsair;
++import constants.skills.ThunderBreaker;
+ import net.opcodes.SendOpcode;
+ import net.server.PlayerCoolDownValueHolder;
+ import net.server.Server;
+@@ -59,59 +92,27 @@
+ import server.events.gm.MapleSnowball;
+ import server.life.MapleMonster;
+ import server.life.MapleNPC;
++import server.life.MaplePlayerNPC;
+ import server.life.MobSkill;
+-import server.maps.MapleHiredMerchant;
++import server.maps.AbstractMapleMapObject;
+ import server.maps.MapleDoor;
+ import server.maps.MapleDoorObject;
+ import server.maps.MapleDragon;
++import server.maps.MapleHiredMerchant;
+ import server.maps.MapleMap;
+ import server.maps.MapleMapItem;
+-import server.maps.MapleMist;
+ import server.maps.MapleMiniGame;
+ import server.maps.MapleMiniGame.MiniGameResult;
++import server.maps.MapleMist;
+ import server.maps.MaplePlayerShop;
+ import server.maps.MaplePlayerShopItem;
+ import server.maps.MapleReactor;
+ import server.maps.MapleSummon;
+-import server.life.MaplePlayerNPC;
+ import server.movement.LifeMovementFragment;
++import tools.data.input.SeekableLittleEndianAccessor;
+ import tools.data.output.LittleEndianWriter;
+ import tools.data.output.MaplePacketLittleEndianWriter;
+-import client.BuddylistEntry;
+-import client.MapleBuffStat;
+-import client.MapleCharacter;
+-import client.MapleCharacter.SkillEntry;
+-import client.MapleClient;
+-import client.MapleDisease;
+-import client.MapleFamilyEntry;
+-import client.MapleKeyBinding;
+-import client.MapleMount;
+-import client.MapleQuestStatus;
+-import client.MapleRing;
+-import client.MapleStat;
+-import client.MonsterBook;
+-import client.Skill;
+-import client.SkillMacro;
+-import client.inventory.Equip;
+-import client.inventory.Equip.ScrollResult;
+-import client.inventory.Item;
+-import client.inventory.ItemFactory;
+-import client.inventory.MapleInventory;
+-import client.inventory.MapleInventoryType;
+-import client.inventory.MaplePet;
+-import client.inventory.ModifyInventory;
+-import client.newyear.NewYearCardRecord;
+-import client.status.MonsterStatus;
+-import client.status.MonsterStatusEffect;
+-import constants.ExpTable;
+-import constants.GameConstants;
+-import constants.ItemConstants;
+-import constants.ServerConstants;
+-import constants.skills.Buccaneer;
+-import constants.skills.Corsair;
+-import constants.skills.ThunderBreaker;
+ import java.util.TimeZone;
+-import server.maps.AbstractMapleMapObject;
+ 
+ /**
+  *
+@@ -2272,33 +2273,41 @@ private static void updatePlayerShopBoxInfo(final MaplePacketLittleEndianWriter
+                 return mplew.getPacket();
+         }
+ 
++        private static void rebroadcastMovementList(LittleEndianWriter lew, SeekableLittleEndianAccessor slea, long movementDataLength) {
++        	//movement command length is sent by client, probably not a big issue? (could be calculated on server)
++        	//if multiple write/reads are slow, could use a (cached?) byte[] buffer
++        	for(long i = 0; i < movementDataLength; i++) {
++        		lew.write(slea.readByte());
++        	}
++        }
++        
+         private static void serializeMovementList(LittleEndianWriter lew, List<LifeMovementFragment> moves) {
+-                lew.write(moves.size());
+-                for (LifeMovementFragment move : moves) {
+-                        move.serialize(lew);
+-                }
++        	lew.write(moves.size());
++        	for(LifeMovementFragment move : moves) {
++        		move.serialize(lew);
++        	}
+         }
+ 
+-        public static byte[] movePlayer(int cid, List<LifeMovementFragment> moves) {
++        public static byte[] movePlayer(int cid, SeekableLittleEndianAccessor movementSlea, long movementDataLength) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MOVE_PLAYER.getValue());
+                 mplew.writeInt(cid);
+                 mplew.writeInt(0);
+-                serializeMovementList(mplew, moves);
++                rebroadcastMovementList(mplew, movementSlea, movementDataLength);
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] moveSummon(int cid, int oid, Point startPos, List<LifeMovementFragment> moves) {
++        public static byte[] moveSummon(int cid, int oid, Point startPos, SeekableLittleEndianAccessor movementSlea, long movementDataLength) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MOVE_SUMMON.getValue());
+                 mplew.writeInt(cid);
+                 mplew.writeInt(oid);
+                 mplew.writePos(startPos);
+-                serializeMovementList(mplew, moves);
++                rebroadcastMovementList(mplew, movementSlea, movementDataLength);
+                 return mplew.getPacket();
+         }
+         
+-        public static byte[] moveMonster(int oid, boolean skillPossible, int skill, int skillId, int skillLevel, int pOption, Point startPos, List<LifeMovementFragment> moves) {
++        public static byte[] moveMonster(int oid, boolean skillPossible, int skill, int skillId, int skillLevel, int pOption, Point startPos, SeekableLittleEndianAccessor movementSlea, long movementDataLength) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MOVE_MONSTER.getValue());
+                 mplew.writeInt(oid);
+@@ -2309,7 +2318,7 @@ private static void serializeMovementList(LittleEndianWriter lew, List<LifeMovem
+                 mplew.write(skillLevel);
+                 mplew.writeShort(pOption);
+                 mplew.writePos(startPos);
+-                serializeMovementList(mplew, moves);
++                rebroadcastMovementList(mplew, movementSlea, movementDataLength);
+                 return mplew.getPacket();
+         }
+         
+@@ -8021,12 +8030,12 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] moveDragon(MapleDragon dragon, Point startPos, List<LifeMovementFragment> res) {
++        public static byte[] moveDragon(MapleDragon dragon, Point startPos, SeekableLittleEndianAccessor movementSlea, long movementDataLength) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MOVE_DRAGON.getValue());
+                 mplew.writeInt(dragon.getOwner().getId());
+                 mplew.writePos(startPos);
+-                serializeMovementList(mplew, res);
++                rebroadcastMovementList(mplew, movementSlea, movementDataLength);
+                 return mplew.getPacket();
+         }
+ 

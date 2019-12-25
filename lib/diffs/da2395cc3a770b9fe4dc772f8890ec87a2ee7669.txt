@@ -1,0 +1,48 @@
+diff --git a/src/constants/skills/Aran.java b/src/constants/skills/Aran.java
+index 7a78c8ff6..923807c63 100644
+--- a/src/constants/skills/Aran.java
++++ b/src/constants/skills/Aran.java
+@@ -47,6 +47,7 @@
+     public static final int HIDDEN_FULL_TRIPLE = 21110008;
+     public static final int SMART_KNOCKBACK = 21111001;
+     public static final int OVER_SWING = 21120002;
++    public static final int HIGH_DEFENSE = 21120004;
+     public static final int COMBO_TEMPEST = 21120006;
+     public static final int COMBO_BARRIER = 21120007;
+     public static final int HIDDEN_OVER_DOUBLE = 21120009;
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index c1a4cb0ee..6d34fdb59 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -240,6 +240,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (achilles != 0 && achilles1 != null) {
+                     damage *= (achilles1.getEffect(achilles).getX() / 1000.0);
+                 }
++                
++                Skill highDef = SkillFactory.getSkill(Aran.HIGH_DEFENSE);
++                int hdLevel = chr.getSkillLevel(highDef);
++                if (highDef != null && hdLevel > 0) {
++                    damage *= (highDef.getEffect(hdLevel).getX() / 1000.0);
++                }
+             }
+             Integer mesoguard = chr.getBuffedValue(MapleBuffStat.MESOGUARD);
+             if (chr.getBuffedValue(MapleBuffStat.MAGIC_GUARD) != null && mpattack == 0) {
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 19cf04b4c..f82b07657 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1774,10 +1774,10 @@ private int getMorph() {
+     }
+ 
+     private int getMorph(MapleCharacter chr) {
+-        if (morphId % 10 == 0) {
+-            return morphId + chr.getGender();
+-        }
+-        return morphId + 100 * chr.getGender();
++        if (morphId == 1000 || morphId == 1001 || morphId == 1003) { // morph skill
++            return chr.getGender() == 0 ? morphId : morphId + 100;
++        } 
++        return morphId;
+     }
+ 
+     private SummonMovementType getSummonMovementType() {

@@ -1,0 +1,395 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 4ea438c08..af7c4aae9 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -225,4 +225,8 @@ Implementa
+ 
+ 17 Maio 2017,
+ Correção de bug com o item "Pet Name Tag", que não retirava o item após ser usado.
+-Correção em bug de uma quest (id 3927) de Ariant que envolve uma "parede".
+\ No newline at end of file
++Correção em bug de uma quest (id 3927) de Ariant que envolve uma "parede".
++
++18 - 19 Maio 2017,
++Implementação das mecânicas do Horntail (spawn e kill).
++Correção de bugs em casos onde valores de EXP ganhos excedem o limite máximo de um inteiro de 32bits.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index ae5b7fa23..3cdb87e88 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,18 +3,24 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/UseCashItemHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/SpecialMoveHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/CashOperationHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleStatEffect.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/skills/Priest.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/PacketProcessor.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/inventory/MaplePet.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/partyquest/MonsterCarnival.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/2013002.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/ServerConstants.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/life/MapleMonster.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/tools/MaplePacketCreator.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/OrbisPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/MapleServerHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/LudiPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/ScrollHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/ItemRewardHandler.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/GeneralChatHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/AbstractPlayerInteraction.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleBuffStat.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PetFoodHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleInventoryManipulator.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/CashShop.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/maps/MapleMap.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PetLootHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/ItemPickupHandler.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index b7f7db9c0..f2fc59968 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1730,17 +1730,18 @@ public void gainExp(int gain, int party, boolean show, boolean inChat, boolean w
+             gain *= 0.5;
+             party *= 0.5;
+         }
+-		
+-        int equip = (gain / 10) * pendantExp;
+-        int total = gain + equip + party;
+-
++	
++        if(gain < 0) gain = Integer.MAX_VALUE;   // integer overflow, heh.
++        int equip = (int)Math.min((long)((gain / 10) * pendantExp), Integer.MAX_VALUE);
++        
++        long total = gain + equip + party;
+         if (level < getMaxLevel()) {
+-            if ((long) this.exp.get() + (long) total > (long) Integer.MAX_VALUE) {
++            if ((long) this.exp.get() + total > (long) Integer.MAX_VALUE) {
+                 int gainFirst = ExpTable.getExpNeededForLevel(level) - this.exp.get();
+                 total -= gainFirst + 1;
+                 this.gainExp(gainFirst + 1, party, false, inChat, white);
+             }
+-            updateSingleStat(MapleStat.EXP, this.exp.addAndGet(total));
++            updateSingleStat(MapleStat.EXP, this.exp.addAndGet((int)Math.min(total, Integer.MAX_VALUE)));
+             if (show && gain != 0) {
+                 client.announce(MaplePacketCreator.getShowExpGain(gain, equip, party, inChat, white));
+             }
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 0c8021282..507afee3a 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -101,8 +101,7 @@
+ import server.maps.FieldLimit;
+ 
+ public class Commands {
+-
+-	private static HashMap<String, Integer> gotomaps = new HashMap<String, Integer>();
++        private static HashMap<String, Integer> gotomaps = new HashMap<String, Integer>();
+ 
+ 	private static String[] tips = {
+ 		"Please only use @gm in emergencies or to report somebody.",
+@@ -612,7 +611,7 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 						bar += i < percent ? "|" : ".";
+ 					}
+ 					bar += "]";
+-					player.yellowMessage(monster.getName() + " has " + percent + "% HP left.");
++					player.yellowMessage(monster.getName() + " (" + monster.getId() + ") has " + percent + "% HP left.");
+ 					player.yellowMessage("HP: " + bar);
+ 				}
+ 			} 
+@@ -755,7 +754,7 @@ public static boolean executeGMCommand(MapleClient c, String[] sub, char heading
+ 			player.getMap().clearDrops(player);
+ 		} else if (sub[0].equals("go")) {
+                         if (sub.length < 2){
+-				player.yellowMessage("Syntax: !spawn <mobid>");
++				player.yellowMessage("Syntax: !go <mapid>");
+ 				return false;
+ 			}
+                     
+@@ -1132,7 +1131,7 @@ public static boolean executeGMCommand(MapleClient c, String[] sub, char heading
+ 					e.printStackTrace();
+ 				}
+ 			}
+-		} else if (sub[0].equals("killall")) {
++		} else if (sub[0].equals("killall")) {  // will need to be used again in case of horntail or multiple state baddies
+ 			List<MapleMapObject> monsters = player.getMap().getMapObjectsInRange(player.getPosition(), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER));
+ 			MapleMap map = player.getMap();
+ 			for (MapleMapObject monstermo : monsters) {
+@@ -1147,7 +1146,7 @@ public static boolean executeGMCommand(MapleClient c, String[] sub, char heading
+ 			List<MapleMapObject> monsters = player.getMap().getMapObjectsInRange(player.getPosition(), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER));
+ 			for (MapleMapObject monstermo : monsters) {
+ 				MapleMonster monster = (MapleMonster) monstermo;
+-				player.message("Monster ID: " + monster.getId());
++				player.message("Monster ID: " + monster.getId() + " Aggro target: " + ((monster.getController() != null) ? monster.getController().getName() : "<none>"));
+ 			}
+ 		} else if (sub[0].equals("unbug")) {
+ 			c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.enableActions());
+@@ -1428,6 +1427,24 @@ public void run() {
+ 	public static void executeAdminCommand(MapleClient c, String[] sub, char heading) {
+ 		MapleCharacter player = c.getPlayer();
+ 		switch (sub[0]) {
++                case "zakum":
++                        player.getMap().spawnFakeMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800000), player.getPosition());
++                        for (int x = 8800003; x < 8800011; x++) {
++                                player.getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(x), player.getPosition());
++                        }
++                        break;
++                    
++                case "horntail":
++                        final Point targetPoint = player.getPosition();
++                        final MapleMap targetMap = player.getMap();
++                        
++                        targetMap.spawnHorntailOnGroundBelow(targetPoint);
++                        break;
++                    
++                case "pinkbean":
++                       player.getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8820001), player.getPosition());
++                       break;
++                    
+ 		case "sp":  //Changed to support giving sp /a
+                         if (sub.length < 2){
+ 				player.yellowMessage("Syntax: !sp <newsp>");
+@@ -1443,9 +1460,7 @@ public static void executeAdminCommand(MapleClient c, String[] sub, char heading
+ 				victim.updateSingleStat(MapleStat.AVAILABLESP, player.getRemainingSp());
+ 			}
+ 			break;
+-		case "horntail":
+-			player.getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8810026), player.getPosition());
+-			break;
++                
+ 		case "packet":
+ 			player.getMap().broadcastMessage(MaplePacketCreator.customPacket(joinStringFrom(sub, 1)));
+ 			break;
+@@ -1613,12 +1628,6 @@ public static void executeAdminCommand(MapleClient c, String[] sub, char heading
+ 				player.getMap().removeMapObject(item);
+ 			}
+ 			break;
+-		case "zakum":
+-			player.getMap().spawnFakeMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800000), player.getPosition());
+-			for (int x = 8800003; x < 8800011; x++) {
+-				player.getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(x), player.getPosition());
+-			}
+-			break;
+ 		case "clearquestcache":
+ 			MapleQuest.clearCache();
+ 			player.dropMessage(5, "Quest Cache Cleared.");
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 47be9bf15..f9798b2c8 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -210,6 +210,7 @@ public synchronized void damage(MapleCharacter from, int damage) { // may be poi
+         int trueDamage = Math.min(hp, damage); // since magic happens otherwise B^)
+         
+         if(ServerConstants.USE_DEBUG == true && from != null) from.dropMessage(5, "Hitted MOB " + this.getId());
++        dispatchMonsterDamaged(from, trueDamage);
+ 
+         hp -= damage;
+         if (takenDamage.containsKey(from.getId())) {
+@@ -368,16 +369,14 @@ public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKille
+                     personalExp *= (stati.get(MonsterStatus.SHOWDOWN).getStati().get(MonsterStatus.SHOWDOWN).doubleValue() / 100.0 + 1.0);
+                 }
+             }
+-            if (exp < 0) {//O.O ><
+-                personalExp = Integer.MAX_VALUE;
+-            }
++            
+             attacker.gainExp(personalExp, partyExp, true, false, isKiller);
+             attacker.mobKilled(getId());
+             attacker.increaseEquipExp(personalExp);//better place
+         }
+     }
+ 
+-    public MapleCharacter killBy(MapleCharacter killer) {
++    public MapleCharacter killBy(final MapleCharacter killer) {
+         distributeExperience(killer != null ? killer.getId() : 0);
+ 
+         if (getController() != null) { // this can/should only happen when a hidden gm attacks the monster
+@@ -424,11 +423,16 @@ public void run() {
+                             mob.disableDrops();
+                         }
+                         reviveMap.spawnMonster(mob);
++                        
++                        if(mob.getId() >= 8810010 && mob.getId() <= 8810017 && reviveMap.isHorntailDefeated()) {
++                            for(int i = 8810018; i >= 8810010; i--)
++                                reviveMap.killMonster(reviveMap.getMonsterById(i), killer, true);
++                        }
+                     }
+                 }
+             }, getAnimationTime("die1"));
+         }
+-        else {
++        else {  // is this even necessary?
+             System.out.println("[CRITICAL LOSS] toSpawn is null for " + this.getName());
+         }
+         
+@@ -447,6 +451,12 @@ public void dispatchMonsterKilled() {
+             listener.monsterKilled(getAnimationTime("die1"));
+         }
+     }
++    
++    public void dispatchMonsterDamaged(MapleCharacter from, int trueDmg) {
++        for (MonsterListener listener : listeners.toArray(new MonsterListener[listeners.size()])) {
++            listener.monsterDamaged(from, trueDmg);
++        }
++    }
+ 
+     // should only really be used to determine drop owner
+     private int getHighestDamagerId() {
+@@ -992,7 +1002,7 @@ private float getDifficultyRate(final int difficulty) {
+         return(1.0f);
+     }
+     
+-    private final void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
++    private void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
+         changeLevel((int)(this.getLevel() * getDifficultyRate(difficulty)), pqMob);
+     }
+     
+diff --git a/src/server/life/MonsterListener.java b/src/server/life/MonsterListener.java
+index eaf5d7846..49e41620a 100644
+--- a/src/server/life/MonsterListener.java
++++ b/src/server/life/MonsterListener.java
+@@ -1,6 +1,8 @@
+ package server.life;
++import client.MapleCharacter;
+ 
+ public interface MonsterListener {
+     
+     public void monsterKilled(int aniTime);
++    public void monsterDamaged(MapleCharacter from, int trueDmg);
+ }
+diff --git a/src/server/life/SpawnPoint.java b/src/server/life/SpawnPoint.java
+index 3288dd69d..be523cc3e 100644
+--- a/src/server/life/SpawnPoint.java
++++ b/src/server/life/SpawnPoint.java
+@@ -91,6 +91,9 @@ public void monsterKilled(int aniTime) {
+                 }
+                 spawnedMonsters.decrementAndGet();
+             }
++            
++            @Override
++            public void monsterDamaged(MapleCharacter from, int trueDmg) {}
+         });
+         if (mobTime == 0) {
+             nextPossibleSpawn = System.currentTimeMillis() + mobInterval;
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 55a9b1f94..87a6a981a 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -77,6 +77,7 @@
+ import server.partyquest.MonsterCarnivalParty;
+ import server.partyquest.Pyramid;
+ import scripting.event.EventInstanceManager;
++import server.life.MonsterListener;
+ import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+@@ -611,7 +612,7 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+             }
+             if (monster.getStats().selfDestruction() != null && monster.getStats().selfDestruction().getHp() > -1) {// should work ;p
+                 if (monster.getHp() <= monster.getStats().selfDestruction().getHp()) {
+-                    killMonster(monster, chr, true, false, monster.getStats().selfDestruction().getAction());
++                    killMonster(monster, chr, true, monster.getStats().selfDestruction().getAction());
+                     return true;
+                 }
+             }
+@@ -632,20 +633,12 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+     }
+ 
+     public void killMonster(final MapleMonster monster, final MapleCharacter chr, final boolean withDrops) {
+-        killMonster(monster, chr, withDrops, false, 1);
++        killMonster(monster, chr, withDrops, 1);
+     }
+ 
+-    public void killMonster(final MapleMonster monster, final MapleCharacter chr, final boolean withDrops, final boolean secondTime, int animation) {
+-        if (monster.getId() == 8810018 && !secondTime) {
+-            TimerManager.getInstance().schedule(new Runnable() {
+-                @Override
+-                public void run() {
+-                    killMonster(monster, chr, withDrops, true, 1);
+-                    killAllMonsters();
+-                }
+-            }, 3000);
+-            return;
+-        }
++    public void killMonster(final MapleMonster monster, final MapleCharacter chr, final boolean withDrops, int animation) {
++        if(monster == null) return;
++        
+         if (chr == null) {
+             spawnedMonstersOnMap.decrementAndGet();
+             monster.setHp(0);
+@@ -780,7 +773,7 @@ public void killAllMonstersNotFriendly() {
+                 continue;
+             }
+             
+-            killMonster(monster, null, false, false, 1);
++            killMonster(monster, null, false, 1);
+         }
+     }
+ 
+@@ -792,7 +785,7 @@ public void killAllMonsters() {
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+             MapleMonster monster = (MapleMonster) monstermo;
+             
+-            killMonster(monster, null, false, false, 1);
++            killMonster(monster, null, false, 1);
+         }
+     }
+ 
+@@ -1174,7 +1167,7 @@ public void run() {
+                 TimerManager.getInstance().schedule(new Runnable() {
+                     @Override
+                     public void run() {
+-                        killMonster(monster, null, false, false, selfDestruction.getAction());
++                        killMonster(monster, null, false, selfDestruction.getAction());
+                     }
+                 }, selfDestruction.removeAfter() * 1000);
+             }
+@@ -2666,4 +2659,40 @@ public void broadcastEnemyShip(final boolean state) {
+     public boolean isDojoMap() {
+         return mapid >= 925020000 && mapid < 925040000;
+     }
++    
++    public boolean isHorntailDefeated() {   // all parts of dead horntail can be found here?
++        for(int i = 8810010; i <= 8810017; i++) {
++            if(getMonsterById(i) == null) return false;
++        }
++        
++        return true;
++    }
++    
++    public void spawnHorntailOnGroundBelow(final Point targetPoint) {   // ayy lmao
++        spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8810026), targetPoint);
++        TimerManager.getInstance().schedule(new Runnable() {
++            @Override
++            public void run() {
++                for (int x = 8810002; x <= 8810009; x++) {
++                    spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(x), targetPoint);
++                }
++
++                spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8810018), targetPoint);
++                
++                final MapleMonster ht = getMonsterById(8810018);
++                for(int mobId = 8810002; mobId <= 8810009; mobId++) {
++                    getMonsterById(mobId).addListener(new MonsterListener() {
++                        @Override
++                        public void monsterKilled(int aniTime) {}
++
++                        @Override
++                        public void monsterDamaged(MapleCharacter from, int trueDmg) {
++                            ht.damage(from, trueDmg);
++                        }
++                    });
++                }
++            }
++
++        }, 5 * 1000);
++    }
+ }

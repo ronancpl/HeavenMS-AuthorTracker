@@ -1,0 +1,327 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 5342e1078..2a056ae0c 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -825,4 +825,8 @@ Nova PQ: TreasurePQ, level 140+, acessível via portal em NLC.
+ 
+ 08 Março 2018,
+ Corrigido levelup contabilizando o stat INT nos ganhos de MP mesmo quando a flag USE_RANDOMIZE_HPMP_GAIN está desativada.
+-Aprimorado comando de item/drop agora permitindo gerar pets.
+\ No newline at end of file
++Aprimorado comando de item/drop agora permitindo gerar pets.
++
++14 Março 2018,
++Modificado spawn do Horntail, utilizando efeitos de mob ao invés de schedules. Cortesia de Arnah e Zenns.
++Modificado "hint" banners para usar menor espaço visual.
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index da2cedfc8..46017e597 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1496,7 +1496,7 @@ public final void pickupItem(MapleMapObject ob, int petIndex) {     // yes, one
+                             int nxGain = mapitem.getItemId() == 4031865 ? 100 : 250;
+                             this.getCashShop().gainCash(1, nxGain);
+                             
+-                            showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)");
++                            showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)", 300);
+                             
+                             this.getMap().pickItemDrop(pickupPacket, mapitem);
+                         } else if (MapleInventoryManipulator.addFromDrop(client, mapitem.getItem(), true)) {
+@@ -1573,7 +1573,7 @@ public final void pickupItem(MapleMapObject ob, int petIndex) {     // yes, one
+                         int nxGain = mapitem.getItemId() == 4031865 ? 100 : 250;
+                         this.getCashShop().gainCash(1, nxGain);
+                         
+-                        showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)");
++                        showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)", 300);
+                     } else if (useItem(client, mapitem.getItem().getItemId())) {
+                         if (mapitem.getItem().getItemId() / 10000 == 238) {
+                             this.getMonsterBook().addCard(client, mapitem.getItem().getItemId());
+@@ -4939,7 +4939,7 @@ public void levelUp(boolean takeexp) {
+             if(this.isPartyLeader()) party.assignNewLeader(client);
+             PartyOperationHandler.leaveParty(party, mpc, client);
+             
+-            client.announceHint("You have reached #blevel 10#k, therefore you must leave your #rstarter party#k.");
++            showHint("You have reached #blevel 10#k, therefore you must leave your #rstarter party#k.");
+         }
+         
+         if (this.guildid > 0) {
+@@ -7238,7 +7238,11 @@ public void showUnderleveledInfo(MapleMonster mob) {
+     }
+     
+     public void showHint(String msg) {
+-        client.announceHint(msg);
++        showHint(msg, 500);
++    }
++    
++    public void showHint(String msg, int length) {
++        client.announceHint(msg, length);
+     }
+     
+     public void showNote() {
+@@ -7993,7 +7997,7 @@ public void showAllEquipFeatures() {
+         }
+         
+         if(!showMsg.isEmpty()) {
+-            this.showHint("#ePLAYER EQUIPMENTS:#n\r\n\r\n" + showMsg);
++            this.showHint("#ePLAYER EQUIPMENTS:#n\r\n\r\n" + showMsg, 400);
+         }
+     }
+ 
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 786876a1f..112fbb257 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1258,8 +1258,8 @@ public synchronized void announce(final byte[] packet) {//MINA CORE IS A FUCKING
+ 		session.write(packet);
+ 	}
+ 
+-        public void announceHint(String msg) {
+-                announce(MaplePacketCreator.sendHint(msg, 500, 10));
++        public void announceHint(String msg, int length) {
++                announce(MaplePacketCreator.sendHint(msg, length, 10));
+                 announce(MaplePacketCreator.enableActions());
+         }
+ 
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 7fa53eb4b..e31f48752 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -355,9 +355,9 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+                 case "droplimit":
+                         int dropCount = c.getPlayer().getMap().getDroppedItemCount();
+                         if(((float) dropCount) / ServerConstants.ITEM_LIMIT_ON_MAP < 0.75f) {
+-                            c.getPlayer().showHint("Current drop count: #b" + dropCount + "#k / #e" + ServerConstants.ITEM_LIMIT_ON_MAP + "#n");
++                            c.getPlayer().showHint("Current drop count: #b" + dropCount + "#k / #e" + ServerConstants.ITEM_LIMIT_ON_MAP + "#n", 300);
+                         } else {
+-                            c.getPlayer().showHint("Current drop count: #r" + dropCount + "#k / #e" + ServerConstants.ITEM_LIMIT_ON_MAP + "#n");
++                            c.getPlayer().showHint("Current drop count: #r" + dropCount + "#k / #e" + ServerConstants.ITEM_LIMIT_ON_MAP + "#n", 300);
+                         }
+                         
+                         break;
+@@ -523,7 +523,7 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+                             showMsg += "Server QUEST Rate: #e#b" + c.getWorldServer().getQuestRate() + "x#k#n" + "\r\n";
+                         }
+                         
+-                        player.showHint(showMsg);
++                        player.showHint(showMsg, 300);
+                     break;
+                      
+                 case "rates":
+@@ -533,7 +533,7 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+                         showMsg_ += "DROP Rate: #e#b" + player.getDropRate() + "x#k#n" + "\r\n";
+                         if(ServerConstants.USE_QUEST_RATE) showMsg_ += "QUEST Rate: #e#b" + c.getWorldServer().getQuestRate() + "x#k#n" + "\r\n";
+                         
+-                        player.showHint(showMsg_);
++                        player.showHint(showMsg_, 300);
+                     break;
+                     
+ 		case "online":
+@@ -1970,8 +1970,9 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 					player.dropMessage(6, s.substring(0, s.length() - 2));
+ 				}
+ 			}
+-			player.dropMessage(6, "There are a total of " + total + " players online.");
+-                        player.showHint("Players online: #e#r" + total + "#k#n.");
++			
++                        //player.dropMessage(6, "There are a total of " + total + " players online.");
++                        player.showHint("Players online: #e#r" + total + "#k#n.", 300);
+                     break;
+        
+ 		case "warpsnowball":
+diff --git a/src/client/inventory/Equip.java b/src/client/inventory/Equip.java
+index 7a995eb78..765dce1e8 100644
+--- a/src/client/inventory/Equip.java
++++ b/src/client/inventory/Equip.java
+@@ -553,7 +553,7 @@ public String showEquipFeatures(MapleClient c) {
+     }
+ 
+     public final void showLevelupMessage(String msg, MapleClient c) {
+-        c.getPlayer().showHint(msg);
++        c.getPlayer().showHint(msg, 300);
+     }
+     
+     public void setItemExp(int exp) {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 3cc403433..cfb19f11a 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -84,6 +84,7 @@
+     private Map<Pair<Integer, Integer>, Integer> skillsUsed = new HashMap<>();
+     private List<Integer> stolenItems = new ArrayList<>();
+     private int team;
++    private int parentMobOid = 0;
+     private final HashMap<Integer, AtomicInteger> takenDamage = new HashMap<>();
+ 
+     private Lock externalLock = new MonitoredReentrantLock(MonitoredLockType.MOB_EXT);
+@@ -128,6 +129,14 @@ public boolean dropsDisabled() {
+     public void setMap(MapleMap map) {
+         this.map = map;
+     }
++    
++    public int getParentMobOid() {
++        return parentMobOid;
++    }
++
++    public void setParentMobOid(int parentMobId) {
++        this.parentMobOid = parentMobId;
++    }
+ 
+     public int getHp() {
+         return hp.get();
+@@ -497,6 +506,9 @@ public void run() {
+                         for (Integer mid : toSpawn) {
+                             final MapleMonster mob = MapleLifeFactory.getMonster(mid);
+                             mob.setPosition(getPosition());
++                            mob.setFh(getFh());
++                            mob.setParentMobOid(getObjectId());
++                            
+                             if (dropsDisabled()) {
+                                 mob.disableDrops();
+                             }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index fd6173105..36491eb7c 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -3534,50 +3534,48 @@ public boolean isHorntailDefeated() {   // all parts of dead horntail can be fou
+     }
+     
+     public void spawnHorntailOnGroundBelow(final Point targetPoint) {   // ayy lmao
+-        spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8810026), targetPoint);
+-        TimerManager.getInstance().schedule(new Runnable() {
++        MapleMonster htIntro = MapleLifeFactory.getMonster(8810026);
++        spawnMonsterOnGroundBelow(htIntro, targetPoint);
++        
++        final MapleMonster ht = MapleLifeFactory.getMonster(8810018);
++        ht.setParentMobOid(htIntro.getObjectId());
++        ht.addListener(new MonsterListener() {
+             @Override
+-            public void run() {
+-                final MapleMonster ht = MapleLifeFactory.getMonster(8810018);
+-                ht.addListener(new MonsterListener() {
+-                    @Override
+-                    public void monsterKilled(int aniTime) {}
++            public void monsterKilled(int aniTime) {}
+ 
+-                    @Override
+-                    public void monsterDamaged(MapleCharacter from, int trueDmg) {
+-                        ht.addHp(trueDmg);
+-                    }
++            @Override
++            public void monsterDamaged(MapleCharacter from, int trueDmg) {
++                ht.addHp(trueDmg);
++            }
+ 
+-                    @Override
+-                    public void monsterHealed(int trueHeal) {
+-                        ht.addHp(-trueHeal);
+-                    }
+-                });
+-                spawnMonsterOnGroundBelow(ht, targetPoint);
+-                
+-                for (int x = 8810002; x <= 8810009; x++) {
+-                    MapleMonster m = MapleLifeFactory.getMonster(x);
+-                    
+-                    m.addListener(new MonsterListener() {
+-                        @Override
+-                        public void monsterKilled(int aniTime) {}
+-
+-                        @Override
+-                        public void monsterDamaged(MapleCharacter from, int trueDmg) {
+-                            ht.applyAndGetHpDamage(trueDmg, true);
+-                            ht.broadcastMobHpBar(from);
+-                        }
++            @Override
++            public void monsterHealed(int trueHeal) {
++                ht.addHp(-trueHeal);
++            }
++        });
++        spawnMonsterOnGroundBelow(ht, targetPoint);
+ 
+-                        @Override
+-                        public void monsterHealed(int trueHeal) {
+-                            ht.addHp(trueHeal);
+-                        }
+-                    });
+-                    
+-                    spawnMonsterOnGroundBelow(m, targetPoint);
++        for (int x = 8810002; x <= 8810009; x++) {
++            MapleMonster m = MapleLifeFactory.getMonster(x);
++            m.setParentMobOid(htIntro.getObjectId());
++
++            m.addListener(new MonsterListener() {
++                @Override
++                public void monsterKilled(int aniTime) {}
++
++                @Override
++                public void monsterDamaged(MapleCharacter from, int trueDmg) {
++                    ht.applyAndGetHpDamage(trueDmg, true);
++                    ht.broadcastMobHpBar(from);
+                 }
+-            }
+ 
+-        }, 5 * 1000);
++                @Override
++                public void monsterHealed(int trueHeal) {
++                    ht.addHp(trueHeal);
++                }
++            });
++
++            spawnMonsterOnGroundBelow(m, targetPoint);
++        }
+     }
+ }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index c4db45f32..2147bd217 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1428,18 +1428,41 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.write(life.getStance());
+                 mplew.writeShort(0); //Origin FH //life.getStartFh()
+                 mplew.writeShort(life.getFh());
+-
+-                if (effect > 0) {
+-                        mplew.write(effect);
+-                        mplew.write(0);
+-                        mplew.writeShort(0);
+-                        if (effect == 15) {
+-                                mplew.write(0);
++                
++                
++                /**
++        		 * -4: Fake
++        		 * -3: Appear after linked mob is dead
++        		 * -2: Fade in
++        		 * 1: Smoke
++        		 * 3: King Slime spawn
++        		 * 4: Summoning rock thing, used for 3rd job?
++        		 * 6: Magical shit
++        		 * 7: Smoke shit
++        		 * 8: 'The Boss'
++        		 * 9/10: Grim phantom shit?
++        		 * 11/12: Nothing?
++        		 * 13: Frankenstein
++        		 * 14: Angry ^
++        		 * 15: Orb animation thing, ??
++        		 * 16: ??
++        		 * 19: Mushroom kingdom boss thing
++        		 */
++                
++                if (life.getParentMobOid() != 0) {
++                        MapleMonster parentMob = life.getMap().getMonsterByOid(life.getParentMobOid());
++                        if(parentMob != null && parentMob.isAlive()) {
++                                mplew.write(effect != 0 ? effect : -3);
++                                mplew.writeInt(life.getParentMobOid());
++                        } else {
++                                mplew.write(newSpawn ? -2 : -1);
+                         }
++                } else {
++                	mplew.write(newSpawn ? -2 : -1);
+                 }
+-                mplew.write(newSpawn ? -2 : -1);
++                
+                 mplew.write(life.getTeam());
+-                mplew.writeInt(0);
++                mplew.writeInt(0); // getItemEffect
+                 return mplew.getPacket();
+         }
+ 

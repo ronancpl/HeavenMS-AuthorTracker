@@ -1,0 +1,2752 @@
+diff --git a/docs/leftover.txt b/docs/leftover.txt
+index b005a6c3c..200168885 100644
+--- a/docs/leftover.txt
++++ b/docs/leftover.txt
+@@ -3,7 +3,6 @@
+ Uncoded features:
+ NX Format
+ MTS (v53)
+-Family system (v67)
+ Family and Medal Quests(?)
+ 
+ Uncoded Party Quests:
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index da70aa963..d826dd75e 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -12853,17 +12853,26 @@ CREATE TABLE IF NOT EXISTS `famelog` (
+ CREATE TABLE IF NOT EXISTS `family_character` (
+   `cid` int(11) NOT NULL,
+   `familyid` int(11) NOT NULL,
+-  `rank` int(11) NOT NULL,
+-  `reputation` int(11) NOT NULL,
+-  `todaysrep` int(11) NOT NULL,
+-  `totaljuniors` int(11) NOT NULL,
+-  `name` varchar(255) NOT NULL,
+-  `juniorsadded` int(11) NOT NULL,
+-  `totalreputation` int(11) NOT NULL,
++  `seniorid` int(11) NOT NULL,
++  `reputation` int(11) NOT NULL DEFAULT '0',
++  `todaysrep` int(11) NOT NULL DEFAULT '0',
++  `totalreputation` int(11) NOT NULL DEFAULT '0',
++  `reptosenior` int(11) NOT NULL DEFAULT '0',
++  `precepts` varchar(200) DEFAULT NULL,
++  `lastresettime` BIGINT(20) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`cid`),
+   INDEX (cid, familyid)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+ 
++CREATE TABLE IF NOT EXISTS `family_entitlement` (
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `charid` int(11) NOT NULL,
++  `entitlementid` int(11) NOT NULL,
++  `timestamp` BIGINT(20) NOT NULL DEFAULT '0',
++  PRIMARY KEY (`id`),
++  INDEX (charid)
++) ENGINE=InnoDB DEFAULT CHARSET=latin1;
++
+ CREATE TABLE IF NOT EXISTS `fredstorage` (
+   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+   `cid` int(10) unsigned NOT NULL,
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index bfa645f25..39c745486 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -193,7 +193,7 @@
+     private int energybar;
+     private int gmLevel;
+     private int ci = 0;
+-    private MapleFamily family;
++    private MapleFamilyEntry familyEntry;
+     private int familyId;
+     private int bookCover;
+     private int battleshipHp = 0;
+@@ -331,6 +331,7 @@
+     private long banishTime = 0;
+     private long lastExpGainTime;
+     private boolean pendingNameChange; //only used to change name on logout, not to be relied upon elsewhere
++    private long loginTime;
+     
+     private MapleCharacter() {
+         super.setListener(new AbstractCharacterListener() {
+@@ -1254,6 +1255,10 @@ public synchronized void changeJob(MapleJob newJob) {
+         if (this.guildid > 0) {
+             getGuild().broadcast(MaplePacketCreator.jobMessage(0, job.getId(), name), this.getId());
+         }
++        MapleFamily family = getFamily();
++        if(family != null) {
++            family.broadcast(MaplePacketCreator.jobMessage(1, job.getId(), name), this.getId());
++        }
+         setMasteries(this.job.getId());
+         guildUpdate();
+         
+@@ -1279,9 +1284,9 @@ public void broadcastAcquaintances(int type, String message) {
+     
+     public void broadcastAcquaintances(byte[] packet) {
+         buddylist.broadcast(packet, getWorldServer().getPlayerStorage());
+-        
++        MapleFamily family = getFamily();
+         if(family != null) {
+-            //family.broadcast(packet, id); not yet implemented
++            family.broadcast(packet, id);
+         }
+         
+         MapleGuild guild = getGuild();
+@@ -4873,11 +4878,17 @@ public int getFame() {
+     }
+ 
+     public MapleFamily getFamily() {
+-        return family;
++        if(familyEntry != null) return familyEntry.getFamily();
++        else return null;
+     }
+-
+-    public void setFamily(MapleFamily f) {
+-        this.family = f;
++    
++    public MapleFamilyEntry getFamilyEntry() {
++        return familyEntry;
++    }
++    
++    public void setFamilyEntry(MapleFamilyEntry entry) {
++        if(entry != null) setFamilyId(entry.getFamily().getID());
++        this.familyEntry = entry;
+     }
+ 
+     public int getFamilyId() {
+@@ -6440,6 +6451,16 @@ public void run() {
+ 
+         levelUpMessages();
+         guildUpdate();
++        
++        MapleFamilyEntry familyEntry = getFamilyEntry();
++        if(familyEntry != null) {
++            familyEntry.giveReputationToSenior(ServerConstants.FAMILY_REP_PER_LEVELUP, true);
++            MapleFamilyEntry senior = familyEntry.getSenior();
++            if(senior != null) { //only send the message to direct senior
++                MapleCharacter seniorChr = senior.getChr();
++                if(seniorChr != null) seniorChr.announce(MaplePacketCreator.levelUpMessage(1, level, getName()));
++            }
++        }
+     }
+     
+     public boolean leaveParty() {
+@@ -8555,6 +8576,20 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             psf.close();
+             ps.close();
+             
++            MapleFamilyEntry familyEntry = getFamilyEntry(); //save family rep
++            if(familyEntry != null) {
++                if(familyEntry.saveReputation(con)) familyEntry.savedSuccessfully();
++                MapleFamilyEntry senior = familyEntry.getSenior();
++                if(senior != null && senior.getChr() == null) { //only save for offline family members
++                    if(senior.saveReputation(con)) senior.savedSuccessfully();
++                    senior = senior.getSenior(); //save one level up as well
++                    if(senior != null && senior.getChr() == null) {
++                        if(senior.saveReputation(con)) senior.savedSuccessfully();
++                    }
++                }
++                
++            }
++            
+             con.commit();
+             con.setAutoCommit(true);
+ 	    
+@@ -10327,7 +10362,11 @@ public final void empty(final boolean remove) {
+             mpc = null;
+             mgc = null;
+             party = null;
+-            family = null;
++            MapleFamilyEntry familyEntry = getFamilyEntry();
++            if(familyEntry != null) {
++                familyEntry.setCharacter(null);
++                setFamilyEntry(null);
++            }
+             
+             getWorldServer().registerTimedMapObject(new Runnable() {
+                 @Override
+@@ -10351,6 +10390,18 @@ public void logOff() {
+             e.printStackTrace();
+         }
+     }
++    
++    public void setLoginTime(long time) {
++        this.loginTime = time;
++    }
++    
++    public long getLoginTime() {
++        return loginTime;
++    }
++    
++    public long getLoggedInTime() {
++        return System.currentTimeMillis() - loginTime;
++    }
+ 
+     public boolean isLoggedin() {
+         return loggedIn;
+diff --git a/src/client/MapleFamily.java b/src/client/MapleFamily.java
+index 51eb44115..781ec33d6 100644
+--- a/src/client/MapleFamily.java
++++ b/src/client/MapleFamily.java
+@@ -25,75 +25,273 @@
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+-import java.util.HashMap;
++import java.util.ArrayList;
++import java.util.Calendar;
++import java.util.List;
+ import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.atomic.AtomicInteger;
++
++import net.server.Server;
++import net.server.world.World;
+ import tools.DatabaseConnection;
++import tools.FilePrinter;
++import tools.MaplePacketCreator;
++import tools.Pair;
+ 
+ /**
+  *
+  * @author Jay Estrella - Mr.Trash :3
++ * @author Ubaware
+  */
+ public class MapleFamily {
+-	private static int id;
+-	private static Map<Integer, MapleFamilyEntry> members = new HashMap<Integer, MapleFamilyEntry>();
+-
+-	public MapleFamily(int cid) {
+-		try {
+-                        Connection con = DatabaseConnection.getConnection();
+-			PreparedStatement ps = con.prepareStatement("SELECT familyid FROM family_character WHERE cid = ?");
+-			ps.setInt(1, cid);
+-			ResultSet rs = ps.executeQuery();
+-			if (rs.next()) {
+-				id = rs.getInt("familyid");
+-			}
+-			ps.close();
+-			rs.close();
+-                        con.close();
+-			getMapleFamily();
+-		} catch (SQLException ex) {
+-                    ex.printStackTrace();
+-		}
+-	}
+-
+-	private static void getMapleFamily() {
+-		try {
+-                        Connection con = DatabaseConnection.getConnection();
+-			PreparedStatement ps = con.prepareStatement("SELECT * FROM family_character WHERE familyid = ?");
+-			ps.setInt(1, id);
+-			ResultSet rs = ps.executeQuery();
+-			while (rs.next()) {
+-				MapleFamilyEntry ret = new MapleFamilyEntry();
+-				ret.setFamilyId(id);
+-				ret.setRank(rs.getInt("rank"));
+-				ret.setReputation(rs.getInt("reputation"));
+-				ret.setTotalJuniors(rs.getInt("totaljuniors"));
+-				ret.setFamilyName(rs.getString("name"));
+-				ret.setJuniors(rs.getInt("juniorsadded"));
+-				ret.setTodaysRep(rs.getInt("todaysrep"));
+-				int cid = rs.getInt("cid");
+-				ret.setChrId(cid);
+-				members.put(cid, ret);
+-			}
+-			rs.close();
+-			ps.close();
+-                        con.close();
+-		} catch (SQLException sqle) {
+-                    sqle.printStackTrace();
+-		}
+-	}
+-
+-	public MapleFamilyEntry getMember(int cid) {
+-		if (members.containsKey(cid)){
+-			return members.get(cid);
+-		}
+-		return null;
+-	}
+-
+-	public Map<Integer, MapleFamilyEntry> getMembers() {
+-		return members;
+-	}
+-        
+-        public void broadcast(byte[] packet) {
+-                // family currently not developed
++
++    private static final AtomicInteger familyIDCounter = new AtomicInteger();
++
++    private final int id, world;
++    private final Map<Integer, MapleFamilyEntry> members = new ConcurrentHashMap<Integer, MapleFamilyEntry>();
++    private MapleFamilyEntry leader;
++    private String name;
++    private String preceptsMessage = "";
++    private int totalGenerations;
++
++    public MapleFamily(int id, int world) {
++        int newId = id;
++        if(id == -1) {
++            // get next available family id
++            while(idInUse(newId = familyIDCounter.incrementAndGet())) {
++            }
++        }
++        this.id = newId;
++        this.world = world;
++    }
++
++    private static boolean idInUse(int id) {
++        for(World world : Server.getInstance().getWorlds()) {
++            if(world.getFamily(id) != null) return true;
++        }
++        return false;
++    }
++
++    public int getID() {
++        return id;
++    }
++
++    public int getWorld() {
++        return world;
++    }
++
++    public void setLeader(MapleFamilyEntry leader) {
++        this.leader = leader;
++        setName(leader.getName());
++    }
++
++    public MapleFamilyEntry getLeader() {
++        return leader;
++    }
++
++    private void setName(String name) {
++        this.name = name;
++    }
++
++    public int getTotalMembers() {
++        return members.size();
++    }
++    
++    public int getTotalGenerations() {
++        return totalGenerations;
++    }
++    
++    public void setTotalGenerations(int generations) {
++        this.totalGenerations = generations;
++    }
++
++    public String getName() {
++        return this.name;
++    }
++
++    public void setMessage(String message, boolean save) {
++        this.preceptsMessage = message;
++        if(save) {
++            try (Connection con = DatabaseConnection.getConnection();
++                    PreparedStatement ps = con.prepareStatement("UPDATE family_character SET precepts = ? WHERE cid = ?")) {
++                ps.setString(1, message);
++                ps.setInt(2, getLeader().getChrId());
++                ps.executeUpdate();
++            } catch(SQLException e) {
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not save new precepts for family " + getID() + ".");
++                e.printStackTrace();
++            }
++        }
++    }
++
++    public String getMessage() {
++        return preceptsMessage;
++    }
++
++    public void addEntry(MapleFamilyEntry entry) {
++        members.put(entry.getChrId(), entry);
++    }
++
++    public void removeEntryBranch(MapleFamilyEntry root) {
++        members.remove(root.getChrId());
++        for(MapleFamilyEntry junior : root.getJuniors()) {
++            if(junior != null) removeEntryBranch(junior);
++        }
++    }
++    
++    public void addEntryTree(MapleFamilyEntry root) {
++        members.put(root.getChrId(), root);
++        for(MapleFamilyEntry junior : root.getJuniors()) {
++            if(junior != null) addEntryTree(junior);
++        }
++    }
++
++    public MapleFamilyEntry getEntryByID(int cid) {
++        return members.get(cid);
++    }
++
++    public void broadcast(byte[] packet) {
++        broadcast(packet, -1);
++    }
++
++    public void broadcast(byte[] packet, int ignoreID) {
++        for(MapleFamilyEntry entry : members.values()) {
++            MapleCharacter chr = entry.getChr();
++            if(chr != null) {
++                if(chr.getId() == ignoreID) continue;
++                chr.getClient().announce(packet);
++            }
++        }
++    }
++    
++    public void broadcastFamilyInfoUpdate() {
++        for(MapleFamilyEntry entry : members.values()) {
++            MapleCharacter chr = entry.getChr();
++            if(chr != null) {
++                chr.getClient().announce(MaplePacketCreator.getFamilyInfo(entry));
++            }
++        }
++    }
++    
++    public void resetDailyReps() {
++        for(MapleFamilyEntry entry : members.values()) {
++            entry.setTodaysRep(0);
++            entry.setRepsToSenior(0);
++            entry.resetEntitlementUsages();
++        }
++    }
++
++    public static void loadAllFamilies() {
++        try(Connection con = DatabaseConnection.getConnection()) {
++            List<Pair<Pair<Integer, Integer>, MapleFamilyEntry>> unmatchedJuniors = new ArrayList<Pair<Pair<Integer, Integer>, MapleFamilyEntry>>(200); // <<world, seniorid> familyEntry>
++            try(PreparedStatement psEntries = con.prepareStatement("SELECT * FROM family_character")) {
++                ResultSet rsEntries = psEntries.executeQuery();
++                while(rsEntries.next()) { // can be optimized
++                    int cid = rsEntries.getInt("cid");
++                    String name = null;
++                    int level = -1;
++                    int jobID = -1;
++                    int world = -1;
++                    try(PreparedStatement ps = con.prepareStatement("SELECT world, name, level, job FROM characters WHERE id = ?")) {
++                        ps.setInt(1, cid);
++                        ResultSet rs = ps.executeQuery();
++                        if(rs.next()) {
++                            world = rs.getInt("world");
++                            name = rs.getString("name");
++                            level = rs.getInt("level");
++                            jobID = rs.getInt("job");
++                        } else {
++                            FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Could not load character information of " + cid + " in loadAllFamilies(). (RECORD DOES NOT EXIST)");
++                        }
++                    } catch(SQLException e) {
++                        FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not load character information of " + cid + " in loadAllFamilies(). (SQL ERROR)");
++                    }
++                    int familyid = rsEntries.getInt("familyid");
++                    int seniorid = rsEntries.getInt("seniorid");
++                    int reputation = rsEntries.getInt("reputation");
++                    int todaysRep = rsEntries.getInt("todaysrep");
++                    int totalRep = rsEntries.getInt("totalreputation");
++                    int repsToSenior = rsEntries.getInt("reptosenior");
++                    String precepts = rsEntries.getString("precepts");
++                    //Timestamp lastResetTime = rsEntries.getTimestamp("lastresettime"); //taken care of by FamilyDailyResetWorker
++                    MapleFamily family = Server.getInstance().getWorld(world).getFamily(familyid);
++                    if(family == null) {
++                        family = new MapleFamily(familyid, world);
++                        Server.getInstance().getWorld(world).addFamily(familyid, family);
++                    }
++                    MapleFamilyEntry familyEntry = new MapleFamilyEntry(family, cid, name, level, MapleJob.getById(jobID));
++                    family.addEntry(familyEntry);
++                    if(seniorid <= 0) {
++                        family.setLeader(familyEntry);
++                        family.setMessage(precepts, false);
++                    }
++                    MapleFamilyEntry senior = family.getEntryByID(seniorid);
++                    if(senior != null) {
++                        familyEntry.setSenior(family.getEntryByID(seniorid), false);
++                    } else {
++                        if(seniorid > 0) unmatchedJuniors.add(new Pair<Pair<Integer, Integer>, MapleFamilyEntry>(new Pair<Integer, Integer>(world, seniorid), familyEntry));
++                    }
++                    familyEntry.setReputation(reputation);
++                    familyEntry.setTodaysRep(todaysRep);
++                    familyEntry.setTotalReputation(totalRep);
++                    familyEntry.setRepsToSenior(repsToSenior);
++                    //load used entitlements
++                    try (PreparedStatement ps = con.prepareStatement("SELECT entitlementid FROM family_entitlement WHERE charid = ?")) {
++                        ps.setInt(1, familyEntry.getChrId());
++                        ResultSet rs = ps.executeQuery();
++                        while(rs.next()) {
++                            familyEntry.setEntitlementUsed(rs.getInt("entitlementid"));
++                        }
++                    }
++                }
++            } catch(SQLException e) {
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get family_character entries.");
++                e.printStackTrace();
++            }
++            // link missing ones (out of order)
++            for(Pair<Pair<Integer, Integer>, MapleFamilyEntry> unmatchedJunior : unmatchedJuniors) {
++                int world = unmatchedJunior.getLeft().getLeft();
++                int seniorid = unmatchedJunior.getLeft().getRight();
++                MapleFamilyEntry junior = unmatchedJunior.getRight();
++                MapleFamilyEntry senior = Server.getInstance().getWorld(world).getFamily(junior.getFamily().getID()).getEntryByID(seniorid);
++                if(senior != null) {
++                    junior.setSenior(senior, false);
++                } else {
++                    FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Missing senior for character " + junior.getName() + " in world " + world);
++                }
++            }
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get DB connection.");
++            e.printStackTrace();
++        }
++        for(World world : Server.getInstance().getWorlds()) {
++            for(MapleFamily family : world.getFamilies()) {
++                family.getLeader().doFullCount();
++            }
++        }
++    }
++
++    public void saveAllMembersRep() { //was used for autosave worker, but character autosave should be enough
++        try(Connection con = DatabaseConnection.getConnection()) {
++            con.setAutoCommit(false);
++            boolean success = true;
++            for(MapleFamilyEntry entry : members.values()) {
++                success = entry.saveReputation(con);
++                if(!success) break;
++            }
++            if(!success) {
++                con.rollback();
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Family rep autosave failed for family " + getID() + " on " + Calendar.getInstance().getTime().toString() + ".");
++            }
++            con.setAutoCommit(true);
++            //reset repChanged after successful save
++            for(MapleFamilyEntry entry : members.values()) {
++                entry.savedSuccessfully();
++            }
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
+         }
++    }
+ }
+diff --git a/src/client/MapleFamilyEntitlement.java b/src/client/MapleFamilyEntitlement.java
+new file mode 100644
+index 000000000..fed32c302
+--- /dev/null
++++ b/src/client/MapleFamilyEntitlement.java
+@@ -0,0 +1,41 @@
++package client;
++
++public enum MapleFamilyEntitlement {
++    FAMILY_REUINION(1, 300, "Family Reunion", "[Target] Me\\n[Effect] Teleport directly to the Family member of your choice."),
++    SUMMON_FAMILY(1, 500, "Summon Family", "[Target] 1 Family member\\n[Effect] Summon a Family member of choice to the map you're in."),
++    SELF_DROP_1_5(1, 700, "My Drop Rate 1.5x (15 min)", "[Target] Me\\n[Time] 15 min.\\n[Effect] Monster drop rate will be increased #c1.5x#.\\n*  If the Drop Rate event is in progress, this will be nullified."),
++    SELF_EXP_1_5(1, 800, "My EXP 1.5x (15 min)", "[Target] Me\\n[Time] 15 min.\\n[Effect] EXP earned from hunting will be increased #c1.5x#.\\n* If the EXP event is in progress, this will be nullified."),
++    FAMILY_BONDING(1, 1000, "Family Bonding (30 min)", "[Target] At least 6 Family members online that are below me in the Pedigree\\n[Time] 30 min.\\n[Effect] Monster drop rate and EXP earned will be increased #c2x#. \\n* If the EXP event is in progress, this will be nullified."),
++    SELF_DROP_2(1, 1200, "My Drop Rate 2x (15 min)", "[Target] Me\\n[Time] 15 min.\\n[Effect] Monster drop rate will be increased #c2x#.\\n* If the Drop Rate event is in progress, this will be nullified."),
++    SELF_EXP_2(1, 1500, "My EXP 2x (15 min)", "[Target] Me\\n[Time] 15 min.\\n[Effect] EXP earned from hunting will be increased #c2x#.\\n* If the EXP event is in progress, this will be nullified."),
++    SELF_DROP_2_30MIN(1, 2000, "My Drop Rate 2x (30 min)", "[Target] Me\\n[Time] 30 min.\\n[Effect] Monster drop rate will be increased #c2x#.\\n* If the Drop Rate event is in progress, this will be nullified."),
++    SELF_EXP_2_30MIN(1, 2500, "My EXP 2x (30 min)", "[Target] Me\\n[Time] 30 min.\\n[Effect] EXP earned from hunting will be increased #c2x#. \\n* If the EXP event is in progress, this will be nullified."),
++    PARTY_DROP_2_30MIN(1, 4000, "My Party Drop Rate 2x (30 min)", "[Target] My party\\n[Time] 30 min.\\n[Effect] Monster drop rate will be increased #c2x#.\\n* If the Drop Rate event is in progress, this will be nullified."),
++    PARTY_EXP_2_30MIN(1, 5000, "My Party EXP 2x (30 min)", "[Target] My party\\n[Time] 30 min.\\n[Effect] EXP earned from hunting will be increased #c2x#.\\n* If the EXP event is in progress, this will be nullified.");
++    
++    private final int usageLimit, repCost;
++    private final String name, description;
++    
++    private MapleFamilyEntitlement(int usageLimit, int repCost, String name, String description) {
++        this.usageLimit = usageLimit;
++        this.repCost = repCost;
++        this.name = name;
++        this.description = description;
++    }
++    
++    public int getUsageLimit() {
++        return usageLimit;
++    }
++    
++    public int getRepCost() {
++        return repCost;
++    }
++    
++    public String getName() {
++        return name;
++    }
++    
++    public String getDescription() {
++        return description;
++    }
++}
+diff --git a/src/client/MapleFamilyEntry.java b/src/client/MapleFamilyEntry.java
+index af8ac7e37..82858ae13 100644
+--- a/src/client/MapleFamilyEntry.java
++++ b/src/client/MapleFamilyEntry.java
+@@ -1,8 +1,6 @@
+ /*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -21,33 +19,210 @@
+ */
+ package client;
+ 
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.SQLException;
++import java.util.Arrays;
++import java.util.Collections;
++import java.util.List;
++
++import net.server.Server;
++import tools.DatabaseConnection;
++import tools.FilePrinter;
++import tools.MaplePacketCreator;
++import tools.Pair;
++
++/**
++ * @author Ubaware
++ */
++
+ public class MapleFamilyEntry {
+-    private int familyId;
+-    private int rank, reputation, totalReputation, todaysRep, totalJuniors, juniors, chrid;
+-    private String familyName;
++    private final int characterID;
++    private volatile MapleFamily family;
++    private volatile MapleCharacter character;
++
++    private volatile MapleFamilyEntry senior;
++    private final MapleFamilyEntry[] juniors = new MapleFamilyEntry[2];
++    private final int[] entitlements = new int[11];
++    private volatile int reputation, totalReputation;
++    private volatile int todaysRep, repsToSenior; //both are daily values
++    private volatile int totalJuniors, totalSeniors;
++    
++    private volatile int generation;
++    
++    private volatile boolean repChanged; //used to ignore saving unchanged rep values
++
++    // cached values for offline players
++    private String charName;
++    private int level;
++    private MapleJob job;
++
++    public MapleFamilyEntry(MapleFamily family, int characterID, String charName, int level, MapleJob job) {
++        this.family = family;
++        this.characterID = characterID;
++        this.charName = charName;
++        this.level = level;
++        this.job = job;
++    }
++
++    public MapleCharacter getChr() {
++        return character;
++    }
++
++    public void setCharacter(MapleCharacter newCharacter) {
++        if(newCharacter == null) cacheOffline(newCharacter);
++        else newCharacter.setFamilyEntry(this);
++        this.character = newCharacter;
++    }
++
++    private void cacheOffline(MapleCharacter chr) {
++        if(chr != null) {
++            charName = chr.getName();
++            level = chr.getLevel();
++            job = chr.getJob();
++        }
++    }
++    
++    public synchronized void join(MapleFamilyEntry senior) {
++        if(senior == null || getSenior() != null) return;
++        MapleFamily oldFamily = getFamily();
++        MapleFamily newFamily = senior.getFamily();
++        setSenior(senior, false);
++        addSeniorCount(newFamily.getTotalGenerations(), newFamily); //count will be overwritten by doFullCount()
++        newFamily.getLeader().doFullCount(); //easier than keeping track of numbers
++        oldFamily.setMessage(null, true);
++        newFamily.addEntryTree(this);
++        Server.getInstance().getWorld(oldFamily.getWorld()).removeFamily(oldFamily.getID());
++        
++        //db
++        try(Connection con = DatabaseConnection.getConnection()) {
++            con.setAutoCommit(false);
++            boolean success = updateDBChangeFamily(con, getChrId(), newFamily.getID(), senior.getChrId());
++            for(MapleFamilyEntry junior : juniors) { // better to duplicate this than the SQL code
++                if(junior != null) {
++                    success = junior.updateNewFamilyDB(con); // recursively updates juniors in db
++                    if(!success) break;
++                }
++            }
++            if(!success) {
++                con.rollback();
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Could not absorb " + oldFamily.getName() + " family into " + newFamily.getName() + " family. (SQL ERROR)");
++            }
++            con.setAutoCommit(true);
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++        }
++    }
++
++    public synchronized void fork() {
++        MapleFamily oldFamily = getFamily();
++        MapleFamilyEntry oldSenior = getSenior();
++        family = new MapleFamily(-1, oldFamily.getWorld());
++        Server.getInstance().getWorld(family.getWorld()).addFamily(family.getID(), family);
++        setSenior(null, false);
++        family.setLeader(this);
++        addSeniorCount(-getTotalSeniors(), family);
++        setTotalSeniors(0);
++        if(oldSenior != null) {
++            oldSenior.addJuniorCount(-getTotalJuniors());
++            oldSenior.removeJunior(this);
++            oldFamily.getLeader().doFullCount();
++        }
++        oldFamily.removeEntryBranch(this);
++        family.addEntryTree(this);
++        this.repsToSenior = 0;
++        this.repChanged = true;
++        family.setMessage("", true);
++        doFullCount(); //to make sure all counts are correct
++        // update db
++        try(Connection con = DatabaseConnection.getConnection()) {
++            con.setAutoCommit(false);
+ 
+-    public int getId() {
+-        return familyId;
++            boolean success = updateDBChangeFamily(con, getChrId(), getFamily().getID(), 0);
++
++            for(MapleFamilyEntry junior : juniors) { // better to duplicate this than the SQL code
++                if(junior != null) {
++                    success = junior.updateNewFamilyDB(con); // recursively updates juniors in db
++                    if(!success) break;
++                }
++            }
++            if(!success) {
++                con.rollback();
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Could not fork family with new leader " + getName() + ". (Old senior : " + oldSenior.getName() + ", leader :" + oldFamily.getLeader().getName() + ")");
++            }
++            con.setAutoCommit(true);
++            
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++        }
+     }
+ 
+-    public void setFamilyId(int familyId) {
+-        this.familyId = familyId;
++    private synchronized boolean updateNewFamilyDB(Connection con) {
++        if(!updateFamilyEntryDB(con, getChrId(), getFamily().getID())) return false;
++        if(!updateCharacterFamilyDB(con, getChrId(), getFamily().getID(), true)) return false;
++
++        for(MapleFamilyEntry junior : juniors) {
++            if(junior != null) {
++                if(!junior.updateNewFamilyDB(con)) return false;
++            }
++        }
++        return true;
+     }
+ 
+-    public int getRank() {
+-        return rank;
++    private static boolean updateFamilyEntryDB(Connection con, int cid, int familyid) {
++        try(PreparedStatement ps = con.prepareStatement("UPDATE family_character SET familyid = ? WHERE cid = ?")) {
++            ps.setInt(1, familyid);
++            ps.setInt(2, cid);
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not update family id in 'family_character' for character id " + cid + ". (fork)");
++            e.printStackTrace();
++            return false;
++        }
++        return true;
+     }
+ 
+-    public void setRank(int rank) {
+-        this.rank = rank;
++    private synchronized void addSeniorCount(int seniorCount, MapleFamily newFamily) { // traverses tree and subtracts seniors and updates family
++        if(newFamily != null) this.family = newFamily;
++        setTotalSeniors(getTotalSeniors() + seniorCount);
++        this.generation += seniorCount;
++        for(MapleFamilyEntry junior : juniors) {
++            if(junior != null) junior.addSeniorCount(seniorCount, newFamily);
++        }
++    }
++
++    private synchronized void addJuniorCount(int juniorCount) { // climbs tree and adds junior count
++        setTotalJuniors(getTotalJuniors() + juniorCount);
++        MapleFamilyEntry senior = getSenior();
++        if(senior != null) senior.addJuniorCount(juniorCount);
++    }
++
++    public MapleFamily getFamily() {
++        return family;
+     }
+ 
+     public int getChrId() {
+-        return chrid;
++        return characterID;
++    }
++
++    public String getName() {
++        MapleCharacter chr = character;
++        if(chr != null) return chr.getName();
++        else return charName;
++    }
++
++    public int getLevel() {
++        MapleCharacter chr = character;
++        if(chr != null) return chr.getLevel();
++        else return level;
+     }
+ 
+-    public void setChrId(int chrid) {
+-        this.chrid = chrid;
++    public MapleJob getJob() {
++        MapleCharacter chr = character;
++        if(chr != null) return chr.getJob();
++        else return job;
+     }
+ 
+     public int getReputation() {
+@@ -59,16 +234,182 @@ public int getTodaysRep() {
+     }
+ 
+     public void setReputation(int reputation) {
++        if(reputation != this.reputation) this.repChanged = true;
+         this.reputation = reputation;
+     }
+ 
+     public void setTodaysRep(int today) {
++        if(today != todaysRep) this.repChanged = true;
+         this.todaysRep = today;
+     }
+-
+-    public void gainReputation(int gain) {
++    
++    public int getRepsToSenior() {
++        return repsToSenior;
++    }
++    
++    public void setRepsToSenior(int reputation) {
++        if(reputation != this.repsToSenior) this.repChanged = true;
++        this.repsToSenior = reputation;
++    }
++    
++    public void gainReputation(int gain, boolean countTowardsTotal) {
++        gainReputation(gain, countTowardsTotal, this);
++    }
++    
++    private void gainReputation(int gain, boolean countTowardsTotal, MapleFamilyEntry from) {
++        if(gain != 0) repChanged = true;
+         this.reputation += gain;
+-        this.totalReputation += gain;
++        this.todaysRep += gain;
++        if(gain > 0 && countTowardsTotal) {
++            this.totalReputation += gain;
++        }
++        MapleCharacter chr = getChr();
++        if(chr != null) chr.announce(MaplePacketCreator.sendGainRep(gain, from != null ? from.getName() : ""));
++    }
++
++    public void giveReputationToSenior(int gain, boolean includeSuperSenior) {
++        int actualGain = gain;
++        MapleFamilyEntry senior = getSenior();
++        if(senior != null && senior.getLevel() < getLevel() && gain > 0) actualGain /= 2; //don't halve negative values
++        if(senior != null) {
++            senior.gainReputation(actualGain, true, this);
++            if(actualGain > 0) {
++                this.repsToSenior += actualGain;
++                this.repChanged = true;
++            }
++            if(includeSuperSenior) {
++                senior = senior.getSenior();
++                if(senior != null) {
++                    senior.gainReputation(actualGain, true, this);
++                }
++            }
++        }
++    }
++
++    public int getTotalReputation() {
++        return totalReputation;
++    }
++
++    public void setTotalReputation(int totalReputation) {
++        if(totalReputation != this.totalReputation) this.repChanged = true;
++        this.totalReputation = totalReputation;
++    }
++
++    public MapleFamilyEntry getSenior() {
++        return senior;
++    }
++
++    public synchronized boolean setSenior(MapleFamilyEntry senior, boolean save) {
++        if(this.senior == senior) return false;
++        MapleFamilyEntry oldSenior = this.senior;
++        this.senior = senior;
++        if(senior != null) {
++            if(senior.addJunior(this)) {
++                if(save) {
++                    updateDBChangeFamily(getChrId(), senior.getFamily().getID(), senior.getChrId());
++                }
++                if(this.repsToSenior != 0) this.repChanged = true;
++                this.repsToSenior = 0;                
++                this.addSeniorCount(1, null);
++                this.setTotalSeniors(senior.getTotalSeniors() + 1);
++                return true;
++            }
++        } else {
++            if(oldSenior != null) {
++                oldSenior.removeJunior(this);
++            }
++        }
++        return false;
++    }
++
++    private static boolean updateDBChangeFamily(int cid, int familyid, int seniorid) {
++        try(Connection con = DatabaseConnection.getConnection()) {
++            return updateDBChangeFamily(con, cid, familyid, seniorid);
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++            return false;
++        }
++    }
++
++    private static boolean updateDBChangeFamily(Connection con, int cid, int familyid, int seniorid) {
++        try(PreparedStatement ps = con.prepareStatement("UPDATE family_character SET familyid = ?, seniorid = ?, reptosenior = 0 WHERE cid = ?")) {
++            ps.setInt(1, familyid);
++            ps.setInt(2, seniorid);
++            ps.setInt(3, cid);
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not update seniorid in 'family_character' for character id " + cid + ".");
++            e.printStackTrace();
++            return false;
++        }
++        return updateCharacterFamilyDB(con, cid, familyid, false);
++    }
++
++    private static boolean updateCharacterFamilyDB(Connection con, int charid, int familyid, boolean fork) {
++        try(PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ? WHERE id = ?")) {
++            ps.setInt(1, familyid);
++            ps.setInt(2, charid);
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not update familyid in 'characters' for character id " + charid + " when changing family. " + (fork ? "(fork)" : ""));
++            e.printStackTrace();
++            return false;
++        }
++        return true;
++    }
++
++    public List<MapleFamilyEntry> getJuniors() {
++        return Collections.unmodifiableList(Arrays.asList(juniors));
++    }
++    
++    public MapleFamilyEntry getOtherJunior(MapleFamilyEntry junior) {
++        if(juniors[0] == junior) return juniors[1];
++        else if(juniors[1] == junior) return juniors[0];
++        return null;
++    }
++
++    public int getJuniorCount() { //close enough to be relatively consistent to multiple threads (and the result is not vital)
++        int juniorCount = 0;
++        if(juniors[0] != null) juniorCount++;
++        if(juniors[1] != null) juniorCount++;
++        return juniorCount;
++    }
++
++    public synchronized boolean addJunior(MapleFamilyEntry newJunior) {
++        for(int i = 0; i < juniors.length; i++) {
++            if(juniors[i] == null) { // successfully add new junior to family
++                juniors[i] = newJunior;
++                addJuniorCount(1);
++                getFamily().addEntry(newJunior);
++                return true;
++            }
++        }
++        return false;
++    }
++
++    public synchronized boolean isJunior(MapleFamilyEntry entry) { //require locking since result accuracy is vital
++        if(juniors[0] == entry) return true;
++        else if(juniors[1] == entry) return true;
++        return false;
++    }
++
++    public synchronized boolean removeJunior(MapleFamilyEntry junior) {
++        for(int i = 0; i < juniors.length; i++) {
++            if(juniors[i] == junior) {
++                juniors[i] = null;
++                return true;
++            }
++        }
++        return false;
++    }
++
++    public int getTotalSeniors() {
++        return totalSeniors;
++    }
++
++    public void setTotalSeniors(int totalSeniors) {
++        this.totalSeniors = totalSeniors;
+     }
+ 
+     public int getTotalJuniors() {
+@@ -78,28 +419,134 @@ public int getTotalJuniors() {
+     public void setTotalJuniors(int totalJuniors) {
+         this.totalJuniors = totalJuniors;
+     }
+-
+-    public int getJuniors() {
+-        return juniors;
++    
++    public void announceToSenior(byte[] packet, boolean includeSuperSenior) {
++        MapleFamilyEntry senior = getSenior();
++        if(senior != null) {
++            MapleCharacter seniorChr = senior.getChr();
++            if(seniorChr != null) seniorChr.announce(packet);
++            senior = senior.getSenior();
++            if(includeSuperSenior && senior != null) {
++                seniorChr = senior.getChr();
++                if(seniorChr != null) seniorChr.announce(packet);
++            }
++        }
+     }
+-
+-    public void setJuniors(int juniors) {
+-        this.juniors = juniors;
++    
++    public void updateSeniorFamilyInfo(boolean includeSuperSenior) {
++        MapleFamilyEntry senior = getSenior();
++        if(senior != null) {
++            MapleCharacter seniorChr = senior.getChr();
++            if(seniorChr != null) seniorChr.announce(MaplePacketCreator.getFamilyInfo(senior));
++            senior = senior.getSenior();
++            if(includeSuperSenior && senior != null) {
++                seniorChr = senior.getChr();
++                if(seniorChr != null) seniorChr.announce(MaplePacketCreator.getFamilyInfo(senior));
++            }
++        }
+     }
+ 
+-    public void setFamilyName(String familyName) {
+-        this.familyName = familyName;
++    /**
++     * Traverses entire family tree to update senior/junior counts. Call on leader.
++     */
++    public synchronized void doFullCount() {
++        Pair<Integer, Integer> counts = this.traverseAndUpdateCounts(0);
++        getFamily().setTotalGenerations(counts.getLeft() + 1);
+     }
+ 
+-    public String getFamilyName() {
+-        return familyName;
++    private Pair<Integer, Integer> traverseAndUpdateCounts(int seniors) { // recursion probably limits family size, but it should handle a depth of a few thousand
++        setTotalSeniors(seniors);
++        this.generation = seniors;
++        int juniorCount = 0;
++        int highestGeneration = this.generation;
++        for(MapleFamilyEntry entry : juniors) {
++            if(entry != null) {
++                Pair<Integer, Integer> counts = entry.traverseAndUpdateCounts(seniors + 1);
++                juniorCount += counts.getRight(); //total juniors
++                if(counts.getLeft() > highestGeneration) highestGeneration = counts.getLeft();
++            }
++        }
++        setTotalJuniors(juniorCount);
++        return new Pair<>(highestGeneration, juniorCount); //creating new objects to return is a bit inefficient, but cleaner than packing into a long
+     }
+ 
+-    public int getTotalReputation() {
+-        return totalReputation;
++    public boolean useEntitlement(MapleFamilyEntitlement entitlement) {
++        int id = entitlement.ordinal();
++        if(entitlements[id] >= 1) return false;
++        try(Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement("INSERT INTO family_entitlement (entitlementid, charid, timestamp) VALUES (?, ?, ?)")) {
++            ps.setInt(1, id);
++            ps.setInt(2, getChrId());
++            ps.setLong(3, System.currentTimeMillis());
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not insert new row in 'family_entitlement' for character " + getName() + ".");
++            e.printStackTrace();
++        }
++        entitlements[id]++;
++        return true;
++    }
++    
++    public boolean refundEntitlement(MapleFamilyEntitlement entitlement) {
++        int id = entitlement.ordinal();
++        try(Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement("DELETE FROM family_entitlement WHERE entitlementid = ? AND charid = ?")) {
++            ps.setInt(1, id);
++            ps.setInt(2, getChrId());
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not refund family entitlement \"" + entitlement.getName() + "\" for character " + getName() + ".");
++            e.printStackTrace();
++        }
++        entitlements[id] = 0;
++        return true;
+     }
+ 
+-    public void setTotalReputation(int totalReputation) {
+-        this.totalReputation = totalReputation;
++    public boolean isEntitlementUsed(MapleFamilyEntitlement entitlement) {
++        return entitlements[entitlement.ordinal()] >= 1;
++    }
++    
++    public int getEntitlementUsageCount(MapleFamilyEntitlement entitlement) {
++        return entitlements[entitlement.ordinal()];
++    }
++    
++    public void setEntitlementUsed(int id) {
++        entitlements[id]++;
++    }
++    
++    public void resetEntitlementUsages() {
++        for(MapleFamilyEntitlement entitlement : MapleFamilyEntitlement.values()) {
++            entitlements[entitlement.ordinal()] = 0;
++        }
++    }
++    
++    public boolean saveReputation() {
++        if(!repChanged) return true;
++        try(Connection con = DatabaseConnection.getConnection()) {
++            return saveReputation(con);
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++            return false;
++        }
++    }
++    
++    public boolean saveReputation(Connection con) {
++        if(!repChanged) return true;
++        try (PreparedStatement ps = con.prepareStatement("UPDATE family_character SET reputation = ?, todaysrep = ?, totalreputation = ?, reptosenior = ? WHERE cid = ?")) {
++            ps.setInt(1, getReputation());
++            ps.setInt(2, getTodaysRep());
++            ps.setInt(3, getTotalReputation());
++            ps.setInt(4, getRepsToSenior());
++            ps.setInt(5, getChrId());
++            ps.executeUpdate();
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Failed to autosave rep to 'family_character' for charid " + getChrId());
++            e.printStackTrace();
++            return false;
++        }
++        return true;
++    }
++    
++    public void savedSuccessfully() {
++        this.repChanged = false;
+     }
+ }
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index b037901ae..bfc993684 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -71,7 +71,7 @@
+     public static final boolean USE_AUTOHIDE_GM = false;            //When enabled, GMs are automatically hidden when joining. Thanks to Steven Deblois (steven1152).
+     public static final boolean USE_BUYBACK_SYSTEM = true;          //Enables the HeavenMS-builtin buyback system, to be used by dead players when clicking the MTS button.
+     public static final boolean USE_FIXED_RATIO_HPMP_UPDATE = true; //Enables the HeavenMS-builtin HPMP update based on the current pool to max pool ratio.
+-    public static final boolean USE_FAMILY_SYSTEM = false;
++    public static final boolean USE_FAMILY_SYSTEM = true;
+     public static final boolean USE_DUEY = true;
+     public static final boolean USE_RANDOMIZE_HPMP_GAIN = true;     //Enables randomizing on MaxHP/MaxMP gains and INT accounting for the MaxMP gain on level up.
+     public static final boolean USE_STORAGE_ITEM_SORT = true;       //Enables storage "Arrange Items" feature.
+@@ -239,6 +239,12 @@
+     public static final int EXPAND_GUILD_BASE_COST = 500000;
+     public static final int EXPAND_GUILD_TIER_COST = 1000000;
+     public static final int EXPAND_GUILD_MAX_COST = 5000000;
++    
++    //Family Configuration
++    public static final int FAMILY_REP_PER_KILL = 4;             //Amount of rep gained per monster kill.
++    public static final int FAMILY_REP_PER_BOSS_KILL = 20;       //Amount of rep gained per boss kill.
++    public static final int FAMILY_REP_PER_LEVELUP = 200;        //Amount of rep gained upon leveling up.
++    public static final int FAMILY_MAX_GENERATIONS = 1000;       //Maximum depth of family tree. (Distance from leader to farthest junior)
+ 
+     //Equipment Configuration
+     public static final boolean USE_EQUIPMNT_LVLUP_SLOTS = true;//Equips can upgrade slots at level up.
+diff --git a/src/net/PacketProcessor.java b/src/net/PacketProcessor.java
+index 16d7accdc..ad7dade73 100644
+--- a/src/net/PacketProcessor.java
++++ b/src/net/PacketProcessor.java
+@@ -223,8 +223,14 @@ public void reset(int channel) {
+             registerHandler(RecvOpcode.MONSTER_BOOK_COVER, new MonsterBookCoverHandler());
+             registerHandler(RecvOpcode.AUTO_DISTRIBUTE_AP, new AutoAssignHandler());
+             registerHandler(RecvOpcode.MAKER_SKILL, new MakerSkillHandler());
++            registerHandler(RecvOpcode.OPEN_FAMILY_PEDIGREE, new OpenFamilyPedigreeHandler());
++            registerHandler(RecvOpcode.OPEN_FAMILY, new OpenFamilyHandler());
+             registerHandler(RecvOpcode.ADD_FAMILY, new FamilyAddHandler());
++            registerHandler(RecvOpcode.SEPARATE_FAMILY_BY_SENIOR, new FamilySeparateHandler());
++            registerHandler(RecvOpcode.SEPARATE_FAMILY_BY_JUNIOR, new FamilySeparateHandler());
+             registerHandler(RecvOpcode.USE_FAMILY, new FamilyUseHandler());
++            registerHandler(RecvOpcode.CHANGE_FAMILY_MESSAGE, new FamilyPreceptsHandler());
++            registerHandler(RecvOpcode.FAMILY_SUMMON_RESPONSE, new FamilySummonResponseHandler());
+             registerHandler(RecvOpcode.USE_HAMMER, new UseHammerHandler());
+             registerHandler(RecvOpcode.SCRIPTED_ITEM, new ScriptedItemHandler());
+             registerHandler(RecvOpcode.TOUCHING_REACTOR, new TouchReactorHandler());
+diff --git a/src/net/opcodes/RecvOpcode.java b/src/net/opcodes/RecvOpcode.java
+index e35762021..98fab2ed9 100644
+--- a/src/net/opcodes/RecvOpcode.java
++++ b/src/net/opcodes/RecvOpcode.java
+@@ -145,10 +145,15 @@
+     WEDDING_TALK_MORE(0x8B),
+     ALLIANCE_OPERATION(0x8F),
+     DENY_ALLIANCE_REQUEST(0x90),
++    OPEN_FAMILY_PEDIGREE(0x91),
+     OPEN_FAMILY(0x92),
+     ADD_FAMILY(0x93),
++    SEPARATE_FAMILY_BY_SENIOR(0x94),
++    SEPARATE_FAMILY_BY_JUNIOR(0x95),
+     ACCEPT_FAMILY(0x96),
+     USE_FAMILY(0x97),
++    CHANGE_FAMILY_MESSAGE(0x98),
++    FAMILY_SUMMON_RESPONSE(0x99),
+     BBS_OPERATION(0x9B),
+     ENTER_MTS(0x9C),
+     USE_SOLOMON_ITEM(0x9D),
+diff --git a/src/net/opcodes/SendOpcode.java b/src/net/opcodes/SendOpcode.java
+index 7564cf3a0..bcbeb2eb1 100644
+--- a/src/net/opcodes/SendOpcode.java
++++ b/src/net/opcodes/SendOpcode.java
+@@ -124,7 +124,7 @@
+     FAMILY_JOIN_REQUEST_RESULT(0x62),
+     FAMILY_JOIN_ACCEPTED(0x63),
+     FAMILY_PRIVILEGE_LIST(0x64),
+-    FAMILY_FAMOUS_POINT_INC_RESULT(0x65),
++    FAMILY_REP_GAIN(0x65),
+     FAMILY_NOTIFY_LOGIN_OR_LOGOUT(0x66), //? is logged in. LOLWUT
+     FAMILY_SET_PRIVILEGE(0x67),
+     FAMILY_SUMMON_REQUEST(0x68),
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 94537cb29..d61f84c94 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -80,6 +80,7 @@
+ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+ 
+ import client.MapleClient;
++import client.MapleFamily;
+ import client.MapleCharacter;
+ import client.SkillFactory;
+ import client.command.CommandsExecutor;
+@@ -531,7 +532,7 @@ private static long getTimeLeftForNextHour() {
+         return Math.max(0, nextHour.getTimeInMillis() - System.currentTimeMillis());
+     }
+     
+-    private static long getTimeLeftForNextDay() {
++    public static long getTimeLeftForNextDay() {
+         Calendar nextDay = Calendar.getInstance();
+         nextDay.add(Calendar.DAY_OF_MONTH, 1);
+         nextDay.set(Calendar.HOUR, 0);
+@@ -947,6 +948,12 @@ public void init() {
+             System.out.println("[SEVERE] Syntax error in 'world.ini'.");
+             System.exit(0);
+         }
++        
++        if(ServerConstants.USE_FAMILY_SYSTEM) {
++            timeToTake = System.currentTimeMillis();
++            MapleFamily.loadAllFamilies();
++            System.out.println("Families loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
++        }
+ 
+         acceptor.getSessionConfig().setIdleTime(IdleStatus.BOTH_IDLE, 30);
+         acceptor.setHandler(new MapleServerHandler());
+diff --git a/src/net/server/channel/handlers/AcceptFamilyHandler.java b/src/net/server/channel/handlers/AcceptFamilyHandler.java
+index b87b124ad..4bffaa5d5 100644
+--- a/src/net/server/channel/handlers/AcceptFamilyHandler.java
++++ b/src/net/server/channel/handlers/AcceptFamilyHandler.java
+@@ -22,30 +22,132 @@
+ package net.server.channel.handlers;
+ 
+ import constants.ServerConstants;
++
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.SQLException;
++
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleFamily;
++import client.MapleFamilyEntry;
+ import net.AbstractMaplePacketHandler;
++import net.server.coordinator.MapleInviteCoordinator;
++import net.server.coordinator.MapleInviteCoordinator.InviteResult;
++import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
++import tools.DatabaseConnection;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+  *
+  * @author Jay Estrella
++ * @author Ubaware
+  */
+ public final class AcceptFamilyHandler extends AbstractMaplePacketHandler {
+ 
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-    	if (!ServerConstants.USE_FAMILY_SYSTEM){
+-    		return;
+-    	}
+-        //System.out.println(slea.toString());
++        if(!ServerConstants.USE_FAMILY_SYSTEM) {
++            return;
++        }
++        MapleCharacter chr = c.getPlayer();
+         int inviterId = slea.readInt();
+-        //String inviterName = slea.readMapleAsciiString();
++        slea.readMapleAsciiString();
++        boolean accept = slea.readByte() != 0;
++        // String inviterName = slea.readMapleAsciiString();
+         MapleCharacter inviter = c.getWorldServer().getPlayerStorage().getCharacterById(inviterId);
+-        if (inviter != null) {
+-            inviter.getClient().announce(MaplePacketCreator.sendFamilyJoinResponse(true, c.getPlayer().getName()));
++        if(inviter != null) {
++            MapleInviteResult inviteResult = MapleInviteCoordinator.answerInvite(InviteType.FAMILY, c.getPlayer().getId(), c.getPlayer(), accept);
++            if(inviteResult.result == InviteResult.NOT_FOUND) return; //was never invited. (or expired on server only somehow?)
++            if(accept) {
++                if(inviter.getFamily() != null) {
++                    if(chr.getFamily() == null) {
++                        MapleFamilyEntry newEntry = new MapleFamilyEntry(inviter.getFamily(), chr.getId(), chr.getName(), chr.getLevel(), chr.getJob());
++                        newEntry.setCharacter(chr);
++                        if(!newEntry.setSenior(inviter.getFamilyEntry(), true)) {
++                            inviter.announce(MaplePacketCreator.sendFamilyMessage(1, 0));
++                            return;
++                        } else {
++                            // save
++                            inviter.getFamily().addEntry(newEntry);
++                            insertNewFamilyRecord(chr.getId(), inviter.getFamily().getID(), inviter.getId(), false);
++                        }
++                    } else { //absorb target family
++                        MapleFamilyEntry targetEntry = chr.getFamilyEntry();
++                        MapleFamily targetFamily = targetEntry.getFamily();
++                        if(targetFamily.getLeader() != targetEntry) return;
++                        if(inviter.getFamily().getTotalGenerations() + targetFamily.getTotalGenerations() <= ServerConstants.FAMILY_MAX_GENERATIONS) {
++                            targetEntry.join(inviter.getFamilyEntry());
++                        } else {
++                            inviter.announce(MaplePacketCreator.sendFamilyMessage(76, 0));
++                            chr.announce(MaplePacketCreator.sendFamilyMessage(76, 0));
++                            return;
++                        }
++                    }
++                } else { // create new family
++                    if(chr.getFamily() != null && inviter.getFamily() != null && chr.getFamily().getTotalGenerations() + inviter.getFamily().getTotalGenerations() >= ServerConstants.FAMILY_MAX_GENERATIONS) {
++                        inviter.announce(MaplePacketCreator.sendFamilyMessage(76, 0));
++                        chr.announce(MaplePacketCreator.sendFamilyMessage(76, 0));
++                        return;
++                    }
++                    MapleFamily newFamily = new MapleFamily(-1, c.getWorld());
++                    c.getWorldServer().addFamily(newFamily.getID(), newFamily);
++                    MapleFamilyEntry inviterEntry = new MapleFamilyEntry(newFamily, inviter.getId(), inviter.getName(), inviter.getLevel(), inviter.getJob());
++                    inviterEntry.setCharacter(inviter);
++                    newFamily.setLeader(inviter.getFamilyEntry());                    
++                    newFamily.addEntry(inviterEntry);
++                    if(chr.getFamily() == null) { //completely new family
++                        MapleFamilyEntry newEntry = new MapleFamilyEntry(newFamily, chr.getId(), chr.getName(), chr.getLevel(), chr.getJob());
++                        newEntry.setCharacter(chr);
++                        newEntry.setSenior(inviterEntry, true);
++                        // save new family
++                        insertNewFamilyRecord(inviter.getId(), newFamily.getID(), 0, true);
++                        insertNewFamilyRecord(chr.getId(), newFamily.getID(), inviter.getId(), false); // char was already saved by setSenior() above
++                        newFamily.setMessage("", true);
++                    } else { //new family for inviter, absorb invitee family
++                        insertNewFamilyRecord(inviter.getId(), newFamily.getID(), 0 , true);
++                        newFamily.setMessage("", true);
++                        chr.getFamilyEntry().join(inviterEntry);
++                    }
++                }
++                c.getPlayer().getFamily().broadcast(MaplePacketCreator.sendFamilyJoinResponse(true, c.getPlayer().getName()), c.getPlayer().getId());
++                c.announce(MaplePacketCreator.getSeniorMessage(inviter.getName()));
++                c.announce(MaplePacketCreator.getFamilyInfo(chr.getFamilyEntry()));
++                chr.getFamilyEntry().updateSeniorFamilyInfo(true);
++            } else {
++                inviter.announce(MaplePacketCreator.sendFamilyJoinResponse(false, c.getPlayer().getName()));
++            }
+         }
+         c.announce(MaplePacketCreator.sendFamilyMessage(0, 0));
+     }
++
++    private static void insertNewFamilyRecord(int characterID, int familyID, int seniorID, boolean updateChar) {
++        try(Connection con = DatabaseConnection.getConnection()) {
++            try(PreparedStatement ps = con.prepareStatement("INSERT INTO family_character (cid, familyid, seniorid) VALUES (?, ?, ?)")) {
++                ps.setInt(1, characterID);
++                ps.setInt(2, familyID);
++                ps.setInt(3, seniorID);
++                ps.executeUpdate();
++            } catch(SQLException e) {
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not save new family record for char id " + characterID + ".");
++                e.printStackTrace();
++            }
++            if(updateChar) {
++                try(PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ? WHERE id = ?")) {
++                    ps.setInt(1, familyID);
++                    ps.setInt(2, characterID);
++                    ps.executeUpdate();
++                } catch(SQLException e) {
++                    FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not update 'characters' 'familyid' record for char id " + characterID + ".");
++                    e.printStackTrace();
++                }
++            }
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++        }
++    }
+ }
+diff --git a/src/net/server/channel/handlers/DenyPartyRequestHandler.java b/src/net/server/channel/handlers/DenyPartyRequestHandler.java
+index b6f12b4b7..2da154845 100644
+--- a/src/net/server/channel/handlers/DenyPartyRequestHandler.java
++++ b/src/net/server/channel/handlers/DenyPartyRequestHandler.java
+@@ -41,7 +41,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (cfrom != null) {
+             MapleCharacter chr = c.getPlayer();
+             
+-            if (MapleInviteCoordinator.answerInvite(InviteType.PARTY, chr.getId(), cfrom.getPartyId(), false).getLeft() == InviteResult.DENIED) {
++            if (MapleInviteCoordinator.answerInvite(InviteType.PARTY, chr.getId(), cfrom.getPartyId(), false).result == InviteResult.DENIED) {
+                 chr.updatePartySearchAvailability(chr.getParty() == null);
+                 cfrom.getClient().announce(MaplePacketCreator.partyStatusMessage(23, chr.getName()));
+             }
+diff --git a/src/net/server/channel/handlers/FamilyAddHandler.java b/src/net/server/channel/handlers/FamilyAddHandler.java
+index cbbf17d30..1e22dc46a 100644
+--- a/src/net/server/channel/handlers/FamilyAddHandler.java
++++ b/src/net/server/channel/handlers/FamilyAddHandler.java
+@@ -25,29 +25,44 @@
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import net.AbstractMaplePacketHandler;
++import net.server.coordinator.MapleInviteCoordinator;
++import net.server.coordinator.MapleInviteCoordinator.InviteType;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+  *
+  * @author Jay Estrella
++ * @author Ubaware
+  */
+ public final class FamilyAddHandler extends AbstractMaplePacketHandler {
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-    	if (!ServerConstants.USE_FAMILY_SYSTEM){
+-    		return;
+-    	}
+-        System.out.println(slea.toString());
++        if(!ServerConstants.USE_FAMILY_SYSTEM) {
++            return;
++        }
+         String toAdd = slea.readMapleAsciiString();
+         MapleCharacter addChr = c.getChannelServer().getPlayerStorage().getCharacterByName(toAdd);
+-        if (addChr != null) {
+-            addChr.getClient().announce(MaplePacketCreator.sendFamilyInvite(c.getPlayer().getId(), toAdd));
+-            c.getPlayer().dropMessage("The invite has been sent.");
++        MapleCharacter chr = c.getPlayer();
++        if(addChr == null) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(65, 0));
++        } else if(addChr.getMap() != chr.getMap() || (addChr.isHidden()) && chr.gmLevel() < addChr.gmLevel()) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(69, 0));
++        } else if(addChr.getLevel() <= 10) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(77, 0));
++        } else if(Math.abs(addChr.getLevel() - chr.getLevel()) > 20) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(72, 0));
++        } else if(addChr.getFamily() != null && addChr.getFamily() == chr.getFamily()) { //same family
++            c.announce(MaplePacketCreator.enableActions());
++        } else if(MapleInviteCoordinator.hasInvite(InviteType.FAMILY, addChr.getId())) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(73, 0));
++        } else if(chr.getFamily() != null && addChr.getFamily() != null && addChr.getFamily().getTotalGenerations() + chr.getFamily().getTotalGenerations() > ServerConstants.FAMILY_MAX_GENERATIONS) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(76, 0));
+         } else {
+-            c.getPlayer().dropMessage("The player cannot be found!");
++            MapleInviteCoordinator.createInvite(InviteType.FAMILY, chr, addChr, addChr.getId());
++            addChr.getClient().announce(MaplePacketCreator.sendFamilyInvite(chr.getId(), chr.getName()));
++            chr.dropMessage("The invite has been sent.");
++            c.announce(MaplePacketCreator.enableActions());
+         }
+-        c.announce(MaplePacketCreator.enableActions());
+     }
+ }
+-
+diff --git a/src/net/server/channel/handlers/FamilyPreceptsHandler.java b/src/net/server/channel/handlers/FamilyPreceptsHandler.java
+new file mode 100644
+index 000000000..7da34c29f
+--- /dev/null
++++ b/src/net/server/channel/handlers/FamilyPreceptsHandler.java
+@@ -0,0 +1,23 @@
++package net.server.channel.handlers;
++
++import client.MapleClient;
++import client.MapleFamily;
++import net.AbstractMaplePacketHandler;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++public class FamilyPreceptsHandler extends AbstractMaplePacketHandler {
++
++    @Override
++    public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        MapleFamily family = c.getPlayer().getFamily();
++        if(family == null) return;
++        if(family.getLeader().getChr() != c.getPlayer()) return; //only the leader can set the precepts
++        String newPrecepts = slea.readMapleAsciiString();
++        if(newPrecepts.length() > 200) return;
++        family.setMessage(newPrecepts, true);
++        //family.broadcastFamilyInfoUpdate(); //probably don't need to broadcast for this?
++        c.announce(MaplePacketCreator.getFamilyInfo(c.getPlayer().getFamilyEntry()));
++    }
++
++}
+diff --git a/src/net/server/channel/handlers/FamilySeparateHandler.java b/src/net/server/channel/handlers/FamilySeparateHandler.java
+new file mode 100644
+index 000000000..191ce23a3
+--- /dev/null
++++ b/src/net/server/channel/handlers/FamilySeparateHandler.java
+@@ -0,0 +1,78 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.handlers;
++
++import client.MapleClient;
++import client.MapleFamily;
++import client.MapleFamilyEntry;
++import constants.ServerConstants;
++import net.AbstractMaplePacketHandler;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++public class FamilySeparateHandler extends AbstractMaplePacketHandler {
++
++    @Override
++    public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        if(!ServerConstants.USE_FAMILY_SYSTEM) return;
++        MapleFamily oldFamily = c.getPlayer().getFamily();
++        if(oldFamily == null) return;
++        MapleFamilyEntry forkOn = null;
++        boolean isSenior;
++        if(slea.available() > 0) { //packet 0x95 doesn't send id, since there is only one senior
++            forkOn = c.getPlayer().getFamily().getEntryByID(slea.readInt());
++            if(!c.getPlayer().getFamilyEntry().isJunior(forkOn)) return; //packet editing?
++            isSenior = true;
++        } else {
++            forkOn = c.getPlayer().getFamilyEntry();
++            isSenior = false;
++        }
++        if(forkOn == null) return;
++        
++        MapleFamilyEntry senior = forkOn.getSenior();
++        if(senior == null) return;
++        int levelDiff = Math.abs(c.getPlayer().getLevel() - senior.getLevel());
++        int cost = 2500 * levelDiff;
++        cost += levelDiff * levelDiff;
++        if(c.getPlayer().getMeso() < cost) {
++            c.announce(MaplePacketCreator.sendFamilyMessage(isSenior ? 81 : 80, cost));
++            return;
++        }
++        c.getPlayer().gainMeso(-cost);
++        int repCost = separateRepCost(forkOn);
++        senior.gainReputation(-repCost, false);
++        if(senior.getSenior() != null) senior.getSenior().gainReputation(-(repCost/2), false);
++        forkOn.announceToSenior(MaplePacketCreator.serverNotice(5, forkOn.getName() + " has left the family."), true);
++        forkOn.fork();
++        c.announce(MaplePacketCreator.getFamilyInfo(forkOn)); //pedigree info will be requested by the client if the window is open
++        forkOn.updateSeniorFamilyInfo(true);
++        c.announce(MaplePacketCreator.sendFamilyMessage(1, 0));
++    }
++    
++    
++    private static int separateRepCost(MapleFamilyEntry junior) {
++        int level = junior.getLevel();
++        int ret = level / 20;
++        ret += 10;
++        ret *= level;
++        ret *= 2;
++        return ret;
++    }
++}
+diff --git a/src/net/server/channel/handlers/FamilySummonResponseHandler.java b/src/net/server/channel/handlers/FamilySummonResponseHandler.java
+new file mode 100644
+index 000000000..96ccee2c4
+--- /dev/null
++++ b/src/net/server/channel/handlers/FamilySummonResponseHandler.java
+@@ -0,0 +1,40 @@
++package net.server.channel.handlers;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.MapleFamilyEntitlement;
++import client.MapleFamilyEntry;
++import constants.ServerConstants;
++import net.AbstractMaplePacketHandler;
++import net.server.coordinator.MapleInviteCoordinator;
++import net.server.coordinator.MapleInviteCoordinator.InviteResult;
++import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
++import server.maps.MapleMap;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++public class FamilySummonResponseHandler extends AbstractMaplePacketHandler {
++
++    @Override
++    public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        if(!ServerConstants.USE_FAMILY_SYSTEM) return;
++        slea.readMapleAsciiString(); //family name
++        boolean accept = slea.readByte() != 0;
++        MapleInviteResult inviteResult = MapleInviteCoordinator.answerInvite(InviteType.FAMILY_SUMMON, c.getPlayer().getId(), c.getPlayer(), accept);
++        if(inviteResult.result == InviteResult.NOT_FOUND) return;
++        MapleCharacter inviter = inviteResult.from;
++        MapleFamilyEntry inviterEntry = inviter.getFamilyEntry();
++        if(inviterEntry == null) return;
++        MapleMap map = (MapleMap) inviteResult.params[0];
++        if(accept && inviter.getMap() == map) { //cancel if inviter has changed maps
++            c.getPlayer().changeMap(map, map.getPortal(0));
++        } else {
++            inviterEntry.refundEntitlement(MapleFamilyEntitlement.SUMMON_FAMILY);
++            inviterEntry.gainReputation(MapleFamilyEntitlement.SUMMON_FAMILY.getRepCost(), false); //refund rep cost if declined
++            inviter.announce(MaplePacketCreator.getFamilyInfo(inviterEntry));
++            inviter.dropMessage(5, c.getPlayer().getName() + " has denied the summon request.");
++        }
++    }
++
++}
+diff --git a/src/net/server/channel/handlers/FamilyUseHandler.java b/src/net/server/channel/handlers/FamilyUseHandler.java
+index 38af1f49d..dd33793e6 100644
+--- a/src/net/server/channel/handlers/FamilyUseHandler.java
++++ b/src/net/server/channel/handlers/FamilyUseHandler.java
+@@ -21,82 +21,121 @@
+ */
+ package net.server.channel.handlers;
+ 
+-import constants.ServerConstants;
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleFamilyEntitlement;
++import client.MapleFamilyEntry;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
+-import net.opcodes.SendOpcode;
++import net.server.coordinator.MapleInviteCoordinator;
++import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import server.maps.FieldLimit;
++import server.maps.MapleMap;
++import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+-import tools.data.output.MaplePacketLittleEndianWriter;
+ 
+ /**
+  *
+  * @author Moogra
++ * @author Ubaware
+  */
+ public final class FamilyUseHandler extends AbstractMaplePacketHandler {
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-    	if (!ServerConstants.USE_FAMILY_SYSTEM){
+-    		return;
+-    	}
+-        int[] repCost = {3, 5, 7, 8, 10, 12, 15, 20, 25, 40, 50};
+-        final int type = slea.readInt();
++        if(!ServerConstants.USE_FAMILY_SYSTEM) {
++            return;
++        }
++        MapleFamilyEntitlement type = MapleFamilyEntitlement.values()[slea.readInt()];
++        int cost = type.getRepCost();
++        MapleFamilyEntry entry = c.getPlayer().getFamilyEntry();
++        if(entry.getReputation() < cost || entry.isEntitlementUsed(type)) {
++            return; // shouldn't even be able to request it
++        }
++        c.announce(MaplePacketCreator.getFamilyInfo(entry));
+         MapleCharacter victim;
+-        if (type == 0 || type == 1) {
++        if(type == MapleFamilyEntitlement.FAMILY_REUINION || type == MapleFamilyEntitlement.SUMMON_FAMILY) {
+             victim = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
+-            if (victim != null) {
+-                if (type == 0) {
+-                    c.getPlayer().changeMap(victim.getMap(), victim.getMap().getPortal(0));
++            if(victim != null && victim != c.getPlayer()) {
++                if(victim.getFamily() == c.getPlayer().getFamily()) {
++                    MapleMap targetMap = victim.getMap();
++                    MapleMap ownMap = c.getPlayer().getMap();
++                    if(targetMap != null) {
++                        if(type == MapleFamilyEntitlement.FAMILY_REUINION) {
++                            if(!FieldLimit.CANNOTMIGRATE.check(ownMap.getFieldLimit()) && !FieldLimit.CANNOTVIPROCK.check(targetMap.getFieldLimit())
++                                    && (targetMap.getForcedReturnId() == 999999999 || targetMap.getId() < 100000000) && targetMap.getEventInstance() == null) {
++                                
++                                c.getPlayer().changeMap(victim.getMap(), victim.getMap().getPortal(0));
++                                useEntitlement(entry, type);
++                            } else {
++                                c.announce(MaplePacketCreator.sendFamilyMessage(75, 0)); // wrong message, but close enough. (client should check this first anyway)
++                                return;
++                            }
++                        } else {
++                            if(!FieldLimit.CANNOTMIGRATE.check(targetMap.getFieldLimit()) && !FieldLimit.CANNOTVIPROCK.check(ownMap.getFieldLimit()) 
++                                    && (ownMap.getForcedReturnId() == 999999999 || ownMap.getId() < 100000000) && ownMap.getEventInstance() == null) {
++                                
++                                if(MapleInviteCoordinator.hasInvite(InviteType.FAMILY_SUMMON, victim.getId())) {
++                                    c.announce(MaplePacketCreator.sendFamilyMessage(74, 0));
++                                    return;
++                                }
++                                MapleInviteCoordinator.createInvite(InviteType.FAMILY_SUMMON, c.getPlayer(), victim, victim.getId(), c.getPlayer().getMap());
++                                victim.announce(MaplePacketCreator.sendFamilySummonRequest(c.getPlayer().getFamily().getName(), c.getPlayer().getName()));
++                                useEntitlement(entry, type);
++                            } else {
++                                c.announce(MaplePacketCreator.sendFamilyMessage(75, 0));
++                                return;
++                            }
++                        }
++                    }
+                 } else {
+-                    victim.changeMap(c.getPlayer().getMap(), c.getPlayer().getMap().getPortal(0));
++                    c.announce(MaplePacketCreator.sendFamilyMessage(67, 0));
+                 }
+-            } else {
+-                return;
+             }
++        } else if(type == MapleFamilyEntitlement.FAMILY_BONDING) {
++            //not implemented
+         } else {
+-            int erate = type == 3 ? 150 : (type == 4 || type == 6 || type == 8 || type == 10 ? 200 : 100);
+-            int drate = type == 2 ? 150 : (type == 4 || type == 5 || type == 7 || type == 9 ? 200 : 100);
+-            if (type > 8) {
+-            } else {
+-                c.announce(useRep(drate == 100 ? 2 : (erate == 100 ? 3 : 4), type, erate, drate, ((type > 5 || type == 4) ? 2 : 1) * 15 * 60 * 1000));
+-            }
++            boolean party = false;
++            boolean isExp = false;
++            float rate = 1.5f;
++            int duration = 15;
++            do {
++                switch(type) {
++                case PARTY_EXP_2_30MIN:
++                    party = true;
++                    isExp = true;
++                    type = MapleFamilyEntitlement.SELF_EXP_2_30MIN;
++                    continue;
++                case PARTY_DROP_2_30MIN:
++                    party = true;
++                    type = MapleFamilyEntitlement.SELF_DROP_2_30MIN;
++                    continue;
++                case SELF_DROP_2_30MIN:
++                    duration = 30;
++                case SELF_DROP_2:
++                    rate = 2.0f;
++                case SELF_DROP_1_5:
++                    break;
++                case SELF_EXP_2_30MIN:
++                    duration = 30;
++                case SELF_EXP_2:
++                    rate = 2.0f;
++                case SELF_EXP_1_5:
++                    isExp = true;
++                default:
++                    break;
++                }
++                break;
++            } while(true);
++            //not implemented
+         }
+-        c.getPlayer().getFamily().getMember(c.getPlayer().getId()).gainReputation(repCost[type]);
+     }
+-
+-    /**
+-     * [65 00][02][08 00 00 00][C8 00 00 00][00 00 00 00][00][40 77 1B 00]
+-     */
+-    private static byte[] useRep(int mode, int type, int erate, int drate, int time) {
+-        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-        mplew.writeShort(0x60);//noty
+-        mplew.write(mode);
+-        mplew.writeInt(type);
+-        if (mode < 4) {
+-            mplew.writeInt(erate);
+-            mplew.writeInt(drate);
++    
++    private boolean useEntitlement(MapleFamilyEntry entry, MapleFamilyEntitlement entitlement) {
++        if(entry.useEntitlement(entitlement)) {
++            entry.gainReputation(-entitlement.getRepCost(), false);
++            entry.getChr().announce(MaplePacketCreator.getFamilyInfo(entry));
++            return true;
+         }
+-        mplew.write(0);
+-        mplew.writeInt(time);
+-        return mplew.getPacket();
+-    }
+-
+-    //20 00
+-    //00 00 00 00
+-    //00 00 00 00 00 00 00 00
+-    //80 01
+-    //00 00 28 00
+-    //8C 93 3E 00
+-    //40 0D
+-    //03 00 14 00
+-    //8C 93 3E 00
+-    //40 0D 03 00 00 00 00 00 02
+-    private static byte[] giveBuff() {
+-        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-        mplew.writeShort(SendOpcode.GIVE_BUFF.getValue());
+-        mplew.writeInt(0);
+-        mplew.writeLong(0);
+-
+-        return null;
++        return false;
+     }
+ }
+diff --git a/src/net/server/channel/handlers/MessengerHandler.java b/src/net/server/channel/handlers/MessengerHandler.java
+index 3b2539afb..5b835df3c 100644
+--- a/src/net/server/channel/handlers/MessengerHandler.java
++++ b/src/net/server/channel/handlers/MessengerHandler.java
+@@ -27,11 +27,11 @@
+ import net.server.coordinator.MapleInviteCoordinator;
+ import net.server.coordinator.MapleInviteCoordinator.InviteResult;
+ import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
+ import net.server.world.MapleMessenger;
+ import net.server.world.MapleMessengerCharacter;
+ import net.server.world.World;
+ import tools.MaplePacketCreator;
+-import tools.Pair;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class MessengerHandler extends AbstractMaplePacketHandler {
+@@ -58,8 +58,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             } else {
+                                 messenger = world.getMessenger(messengerid);
+                                 if (messenger != null) {
+-                                    Pair<InviteResult, MapleCharacter> inviteRes = MapleInviteCoordinator.answerInvite(InviteType.MESSENGER, player.getId(), messengerid, true);
+-                                    InviteResult res = inviteRes.getLeft();
++                                    MapleInviteResult inviteRes = MapleInviteCoordinator.answerInvite(InviteType.MESSENGER, player.getId(), messengerid, true);
++                                    InviteResult res = inviteRes.result;
+                                     if (res == InviteResult.ACCEPTED) {
+                                         int position = messenger.getLowestPosition();
+                                         MapleMessengerCharacter messengerplayer = new MapleMessengerCharacter(player, position);
+diff --git a/src/net/server/channel/handlers/OpenFamilyHandler.java b/src/net/server/channel/handlers/OpenFamilyHandler.java
+new file mode 100644
+index 000000000..3cd053c8b
+--- /dev/null
++++ b/src/net/server/channel/handlers/OpenFamilyHandler.java
+@@ -0,0 +1,41 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.handlers;
++
++import constants.ServerConstants;
++import client.MapleCharacter;
++import client.MapleClient;
++import net.AbstractMaplePacketHandler;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++/**
++ *
++ * @author Ubaware
++ */
++public final class OpenFamilyHandler extends AbstractMaplePacketHandler {
++    @Override
++    public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        if(!ServerConstants.USE_FAMILY_SYSTEM) return;
++        MapleCharacter chr = c.getPlayer();
++        c.announce(MaplePacketCreator.getFamilyInfo(chr.getFamilyEntry()));
++    }
++}
++
+diff --git a/src/net/server/channel/handlers/OpenFamilyPedigreeHandler.java b/src/net/server/channel/handlers/OpenFamilyPedigreeHandler.java
+new file mode 100644
+index 000000000..e382112f4
+--- /dev/null
++++ b/src/net/server/channel/handlers/OpenFamilyPedigreeHandler.java
+@@ -0,0 +1,43 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.handlers;
++
++import constants.ServerConstants;
++import client.MapleCharacter;
++import client.MapleClient;
++import net.AbstractMaplePacketHandler;
++import tools.MaplePacketCreator;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++/**
++ *
++ * @author Ubaware
++ */
++public final class OpenFamilyPedigreeHandler extends AbstractMaplePacketHandler {
++    @Override
++    public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        if(!ServerConstants.USE_FAMILY_SYSTEM) return;
++        MapleCharacter target = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
++        if(target != null && target.getFamily() != null) {
++            c.announce(MaplePacketCreator.showPedigree(target.getFamilyEntry()));
++        }
++    }
++}
++
+diff --git a/src/net/server/channel/handlers/PartyOperationHandler.java b/src/net/server/channel/handlers/PartyOperationHandler.java
+index 605ee0f17..17a8cd1da 100644
+--- a/src/net/server/channel/handlers/PartyOperationHandler.java
++++ b/src/net/server/channel/handlers/PartyOperationHandler.java
+@@ -34,7 +34,7 @@
+ import net.server.coordinator.MapleInviteCoordinator;
+ import net.server.coordinator.MapleInviteCoordinator.InviteResult;
+ import net.server.coordinator.MapleInviteCoordinator.InviteType;
+-import tools.Pair;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
+ 
+ import java.util.List;
+ 
+@@ -64,8 +64,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             case 3: { // join
+                 int partyid = slea.readInt();
+                 
+-                Pair<InviteResult, MapleCharacter> inviteRes = MapleInviteCoordinator.answerInvite(InviteType.PARTY, player.getId(), partyid, true);
+-                InviteResult res = inviteRes.getLeft();
++                MapleInviteResult inviteRes = MapleInviteCoordinator.answerInvite(InviteType.PARTY, player.getId(), partyid, true);
++                InviteResult res = inviteRes.result;
+                 if (res == InviteResult.ACCEPTED) {
+                     MapleParty.joinParty(player, partyid, false);
+                 } else {
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 1698aa373..e41ecce64 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -40,6 +40,7 @@
+ import net.server.world.PartyOperation;
+ import net.server.world.World;
+ import tools.DatabaseConnection;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -50,6 +51,7 @@
+ import client.MapleClient;
+ import client.MapleDisease;
+ import client.MapleFamily;
++import client.MapleFamilyEntry;
+ import client.MapleKeyBinding;
+ import client.SkillFactory;
+ import client.inventory.Equip;
+@@ -260,12 +262,22 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 c.announce(MaplePacketCreator.loadFamily(player));
+                 if (player.getFamilyId() > 0) {
+                     MapleFamily f = wserv.getFamily(player.getFamilyId());
+-                    if (f == null) {
+-                        f = new MapleFamily(player.getId());
+-                        wserv.addFamily(player.getFamilyId(), f);
++                    if(f != null) {
++                        MapleFamilyEntry familyEntry = f.getEntryByID(player.getId());
++                        if(familyEntry != null) {
++                            familyEntry.setCharacter(player);
++                            player.setFamilyEntry(familyEntry);
++                        } else {
++                            FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Player " + player.getName() + "'s family doesn't have an entry for them. (" + f.getID() + ")");
++                        }
++                        c.announce(MaplePacketCreator.getFamilyInfo(familyEntry));
++                        familyEntry.announceToSenior(MaplePacketCreator.sendFamilyLoginNotice(player.getName(), true), true);
++                    } else {
++                        FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Player " + player.getName() + " has an invalid family ID. (" + player.getFamilyId() + ")");
++                        c.announce(MaplePacketCreator.getFamilyInfo(null));
+                     }
+-                    player.setFamily(f);
+-                    c.announce(MaplePacketCreator.getFamilyInfo(f.getMember(player.getId())));
++                } else {
++                    c.announce(MaplePacketCreator.getFamilyInfo(null));
+                 }
+                 if (player.getGuildId() > 0) {
+                     MapleGuild playerGuild = server.getGuild(player.getGuildId(), player.getWorld(), player);
+@@ -410,6 +422,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (ServerConstants.USE_NPCS_SCRIPTABLE) {
+                     c.announce(MaplePacketCreator.setNPCScriptable(ScriptableNPCConstants.SCRIPTABLE_NPCS));
+                 }
++                
++                if(newcomer) player.setLoginTime(System.currentTimeMillis());
++            } catch(Exception e) {
++                e.printStackTrace();
+             } finally {
+                 c.releaseClient();
+             }
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 978ce9c28..c821c8002 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -427,17 +427,9 @@ public void run() {
+             slea.readByte();
+             slea.readInt();
+             if(itemId == 5400000) { //name change
+-                if(player.cancelPendingNameChange()) {
+-                    player.dropMessage(1, "Successfully canceled pending name change.");
+-                } else {
+-                    player.dropMessage(1, "You do not have a pending name change.");
+-                }
++                c.announce(MaplePacketCreator.showNameChangeCancel(player.cancelPendingNameChange()));
+             } else if(itemId == 5401000) { //world transfer
+-                if(player.cancelPendingWorldTranfer()) {
+-                    player.dropMessage(1, "Successfully canceled pending world transfer.");
+-                } else {
+-                    player.dropMessage(1, "You do not have a pending world transfer.");
+-                }
++                c.announce(MaplePacketCreator.showWorldTransferCancel(player.cancelPendingWorldTranfer()));
+             }
+             remove(c, position, itemId);
+             c.announce(MaplePacketCreator.enableActions());
+diff --git a/src/net/server/coordinator/MapleInviteCoordinator.java b/src/net/server/coordinator/MapleInviteCoordinator.java
+index ac5bf1894..e2436795f 100644
+--- a/src/net/server/coordinator/MapleInviteCoordinator.java
++++ b/src/net/server/coordinator/MapleInviteCoordinator.java
+@@ -42,7 +42,8 @@
+     
+     public enum InviteType {
+         //BUDDY, (not needed)
+-        //FAMILY, (not implemented)
++        FAMILY,
++        FAMILY_SUMMON,
+         MESSENGER,
+         TRADE,
+         PARTY,
+@@ -52,11 +53,13 @@
+         final ConcurrentHashMap<Integer, Object> invites;
+         final ConcurrentHashMap<Integer, MapleCharacter> inviteFrom;
+         final ConcurrentHashMap<Integer, Integer> inviteTimeouts;
++        final ConcurrentHashMap<Integer, Object[]> inviteParams;
+ 
+         private InviteType() {
+             invites = new ConcurrentHashMap<>();
+             inviteTimeouts = new ConcurrentHashMap<>();
+             inviteFrom = new ConcurrentHashMap<>();
++            inviteParams = new ConcurrentHashMap<>();
+         }
+ 
+         private Map<Integer, Object> getRequestsTable() {
+@@ -67,15 +70,15 @@ private InviteType() {
+             return inviteTimeouts;
+         }
+         
+-        private MapleCharacter removeRequest(Integer target) {
++        private Pair<MapleCharacter, Object[]> removeRequest(Integer target) {
+             invites.remove(target);
+             MapleCharacter from = inviteFrom.remove(target);
+             inviteTimeouts.remove(target);
+             
+-            return from;
++            return new Pair<>(from, inviteParams.remove(target));
+         }
+         
+-        private boolean addRequest(MapleCharacter from, Object referenceFrom, int targetCid) {
++        private boolean addRequest(MapleCharacter from, Object referenceFrom, int targetCid, Object[] params) {
+             Object v = invites.putIfAbsent(targetCid, referenceFrom);
+             if (v != null) {    // there was already an entry
+                 return false;
+@@ -83,7 +86,7 @@ private boolean addRequest(MapleCharacter from, Object referenceFrom, int target
+             
+             inviteFrom.put(targetCid, from);
+             inviteTimeouts.put(targetCid, 0);
+-            
++            inviteParams.put(targetCid, params);
+             return true;
+         }
+         
+@@ -93,29 +96,31 @@ private boolean hasRequest(int targetCid) {
+     }
+     
+     // note: referenceFrom is a specific value that represents the "common association" created between the sender/recver parties
+-    public static boolean createInvite(InviteType type, MapleCharacter from, Object referenceFrom, int targetCid) {
+-        return type.addRequest(from, referenceFrom, targetCid);
++    public static boolean createInvite(InviteType type, MapleCharacter from, Object referenceFrom, int targetCid, Object... params) {
++        return type.addRequest(from, referenceFrom, targetCid, params);
+     }
+     
+     public static boolean hasInvite(InviteType type, int targetCid) {
+         return type.hasRequest(targetCid);
+     }
+     
+-    public static Pair<InviteResult, MapleCharacter> answerInvite(InviteType type, int targetCid, Object referenceFrom, boolean answer) {
++    public static MapleInviteResult answerInvite(InviteType type, int targetCid, Object referenceFrom, boolean answer) {
+         Map<Integer, Object> table = type.getRequestsTable();
+         
+         MapleCharacter from = null;
+         InviteResult result = InviteResult.NOT_FOUND;
++        Pair<MapleCharacter, Object[]> inviteInfo = null;
+         
+         Object reference = table.get(targetCid);
+         if (referenceFrom.equals(reference)) {
+-            from = type.removeRequest(targetCid);
++            inviteInfo = type.removeRequest(targetCid);
++            from = inviteInfo.getLeft();
+             if (from != null && !from.isLoggedinWorld()) from = null;
+             
+             result = answer ? InviteResult.ACCEPTED : InviteResult.DENIED;
+         }
+         
+-        return new Pair<>(result, from);
++        return new MapleInviteResult(result, from, inviteInfo != null ? inviteInfo.getRight() : new Object[0]);
+     }
+     
+     public static void removeInvite(InviteType type, int targetCid) {
+@@ -146,4 +151,17 @@ public static void runTimeoutSchedule() {
+             }
+         }
+     }
++    
++    public static class MapleInviteResult {
++        
++        public final InviteResult result;
++        public final MapleCharacter from;
++        public final Object[] params;
++        
++        private MapleInviteResult(InviteResult result, MapleCharacter from, Object[] params) {
++            this.result = result;
++            this.from = from;
++            this.params = params;
++        }
++    }
+ }
+diff --git a/src/net/server/guild/MapleAlliance.java b/src/net/server/guild/MapleAlliance.java
+index 947b6c62e..dffd7a3c2 100644
+--- a/src/net/server/guild/MapleAlliance.java
++++ b/src/net/server/guild/MapleAlliance.java
+@@ -32,13 +32,12 @@
+ import client.MapleClient;
+ import net.server.Server;
+ import net.server.coordinator.MapleInviteCoordinator;
+-import net.server.coordinator.MapleInviteCoordinator.InviteResult;
+ import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+-import tools.Pair;
+ 
+ /**
+  *
+@@ -494,11 +493,11 @@ public static void sendInvitation(MapleClient c, String targetGuildName, int all
+     }
+     
+     public static boolean answerInvitation(int targetId, String targetGuildName, int allianceId, boolean answer) {
+-        Pair<InviteResult, MapleCharacter> res = MapleInviteCoordinator.answerInvite(InviteType.ALLIANCE, targetId, allianceId, answer);
++        MapleInviteResult res = MapleInviteCoordinator.answerInvite(InviteType.ALLIANCE, targetId, allianceId, answer);
+         
+         String msg;
+-        MapleCharacter sender = res.getRight();
+-        switch (res.getLeft()) {
++        MapleCharacter sender = res.from;
++        switch (res.result) {
+             case ACCEPTED:
+                 return true;
+                 
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index f544f6e55..dca74c482 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -45,11 +45,10 @@
+ import net.server.channel.Channel;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+-import tools.Pair;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.coordinator.MapleInviteCoordinator;
+ import net.server.coordinator.MapleInviteCoordinator.InviteType;
+-import net.server.coordinator.MapleInviteCoordinator.InviteResult;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
+ import net.server.coordinator.MapleMatchCheckerCoordinator;
+ 
+ public class MapleGuild {
+@@ -727,11 +726,11 @@ public static MapleGuildResponse sendInvitation(MapleClient c, String targetName
+     }
+     
+     public static boolean answerInvitation(int targetId, String targetName, int guildId, boolean answer) {
+-        Pair<InviteResult, MapleCharacter> res = MapleInviteCoordinator.answerInvite(InviteType.GUILD, targetId, guildId, answer);
++        MapleInviteResult res = MapleInviteCoordinator.answerInvite(InviteType.GUILD, targetId, guildId, answer);
+         
+         MapleGuildResponse mgr;
+-        MapleCharacter sender = res.getRight();
+-        switch (res.getLeft()) {
++        MapleCharacter sender = res.from;
++        switch (res.result) {
+             case ACCEPTED:
+                 return true;
+                 
+diff --git a/src/net/server/worker/FamilyDailyResetWorker.java b/src/net/server/worker/FamilyDailyResetWorker.java
+new file mode 100644
+index 000000000..28f32d8f9
+--- /dev/null
++++ b/src/net/server/worker/FamilyDailyResetWorker.java
+@@ -0,0 +1,56 @@
++package net.server.worker;
++
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.SQLException;
++import java.util.Calendar;
++
++import client.MapleFamily;
++import net.server.world.World;
++import tools.DatabaseConnection;
++import tools.FilePrinter;
++
++public class FamilyDailyResetWorker implements Runnable {
++
++    private final World world;
++
++    public FamilyDailyResetWorker(World world) {
++        this.world = world;
++    }
++
++    @Override
++    public void run() {
++        resetEntitlementUsage(world);
++        for(MapleFamily family : world.getFamilies()) {
++            family.resetDailyReps();
++        }
++    }
++
++    public static void resetEntitlementUsage(World world) {
++        Calendar resetTime = Calendar.getInstance();
++        resetTime.add(Calendar.MINUTE, 1); // to make sure that we're in the "next day", since this is called at midnight
++        resetTime.set(Calendar.HOUR, 0);
++        resetTime.set(Calendar.MINUTE, 0);
++        resetTime.set(Calendar.SECOND, 0);
++        resetTime.set(Calendar.MILLISECOND, 0);
++        try(Connection con = DatabaseConnection.getConnection()) {
++            try(PreparedStatement ps = con.prepareStatement("UPDATE family_character SET todaysrep = 0, reptosenior = 0 WHERE lastresettime <= ?")) {
++                ps.setLong(1, resetTime.getTimeInMillis());
++                ps.executeUpdate();
++            } catch(SQLException e) {
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not reset daily rep for families. On " + Calendar.getInstance().getTime());
++                e.printStackTrace();
++            }
++            try(PreparedStatement ps = con.prepareStatement("DELETE FROM family_entitlement WHERE timestamp <= ?")) {
++                ps.setLong(1, resetTime.getTimeInMillis());
++                ps.executeUpdate();
++            } catch(SQLException e) {
++                FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not do daily reset for family entitlements. On " + Calendar.getInstance().getTime());
++                e.printStackTrace();
++            }
++        } catch(SQLException e) {
++            FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not get connection to DB.");
++            e.printStackTrace();
++        }
++    }
++}
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index fa1df90ca..05572d68c 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -67,6 +67,7 @@
+ import server.maps.MaplePlayerShopItem;
+ import server.maps.AbstractMapleMapObject;
+ import net.server.worker.CharacterAutosaverWorker;
++import net.server.worker.FamilyDailyResetWorker;
+ import net.server.worker.FishingWorker;
+ import net.server.worker.HiredMerchantWorker;
+ import net.server.worker.MapOwnershipWorker;
+@@ -211,6 +212,11 @@ public World(int world, int flag, String eventmsg, int exprate, int droprate, in
+         fishingSchedule = tman.register(new FishingWorker(this), 10 * 1000, 10 * 1000);
+         partySearchSchedule = tman.register(new PartySearchWorker(this), 10 * 1000, 10 * 1000);
+         
++        if(ServerConstants.USE_FAMILY_SYSTEM) {
++            long timeLeft = Server.getTimeLeftForNextDay();
++            FamilyDailyResetWorker.resetEntitlementUsage(this);
++            tman.register(new FamilyDailyResetWorker(this), 24 * 60 * 60 * 1000, timeLeft);
++        }
+     }
+ 
+     public int getChannelsSize() {
+@@ -540,6 +546,12 @@ public void addFamily(int id, MapleFamily f) {
+             }
+         }
+     }
++    
++    public void removeFamily(int id) {
++        synchronized (families) {
++            families.remove(id);
++        }
++    }
+ 
+     public MapleFamily getFamily(int id) {
+         synchronized (families) {
+@@ -549,6 +561,12 @@ public MapleFamily getFamily(int id) {
+             return null;
+         }
+     }
++    
++    public Collection<MapleFamily> getFamilies() {
++        synchronized(families) {
++            return Collections.unmodifiableCollection((Collection<MapleFamily>) families.values());
++        }
++    }
+ 
+     public MapleGuild getGuild(MapleGuildCharacter mgc) {
+         if(mgc == null) return null;
+@@ -1109,7 +1127,7 @@ public void declineChat(String sender, MapleCharacter player) {
+         if (isConnected(sender)) {
+             MapleCharacter senderChr = getPlayerStorage().getCharacterByName(sender);
+             if (senderChr != null && senderChr.getMessenger() != null) {
+-                if (MapleInviteCoordinator.answerInvite(InviteType.MESSENGER, player.getId(), senderChr.getMessenger().getId(), false).getLeft() == InviteResult.DENIED) {
++                if (MapleInviteCoordinator.answerInvite(InviteType.MESSENGER, player.getId(), senderChr.getMessenger().getId(), false).result == InviteResult.DENIED) {
+                     senderChr.getClient().announce(MaplePacketCreator.messengerNote(player.getName(), 5, 0));
+                 }
+             }
+diff --git a/src/server/MapleTrade.java b/src/server/MapleTrade.java
+index bba71f378..b14faade9 100644
+--- a/src/server/MapleTrade.java
++++ b/src/server/MapleTrade.java
+@@ -39,6 +39,7 @@
+ import net.server.coordinator.MapleInviteCoordinator;
+ import net.server.coordinator.MapleInviteCoordinator.InviteResult;
+ import net.server.coordinator.MapleInviteCoordinator.InviteType;
++import net.server.coordinator.MapleInviteCoordinator.MapleInviteResult;
+ import tools.Pair;
+ 
+ /**
+@@ -476,9 +477,9 @@ public static void inviteTrade(MapleCharacter c1, MapleCharacter c2) {
+     }
+ 
+     public static void visitTrade(MapleCharacter c1, MapleCharacter c2) {
+-        Pair<InviteResult, MapleCharacter> inviteRes = MapleInviteCoordinator.answerInvite(InviteType.TRADE, c1.getId(), c2.getId(), true);
++        MapleInviteResult inviteRes = MapleInviteCoordinator.answerInvite(InviteType.TRADE, c1.getId(), c2.getId(), true);
+         
+-        InviteResult res = inviteRes.getLeft();
++        InviteResult res = inviteRes.result;
+         if (res == InviteResult.ACCEPTED) {
+             if (c1.getTrade() != null && c1.getTrade().getPartner() == c2.getTrade() && c2.getTrade() != null && c2.getTrade().getPartner() == c1.getTrade()) {
+                 c2.getClient().announce(MaplePacketCreator.getTradePartnerAdd(c1));
+@@ -499,7 +500,7 @@ public static void declineTrade(MapleCharacter c) {
+         if (trade != null) {
+             if (trade.getPartner() != null) {
+                 MapleCharacter other = trade.getPartner().getChr();
+-                if (MapleInviteCoordinator.answerInvite(InviteType.TRADE, c.getId(), other.getId(), false).getLeft() == InviteResult.DENIED) {
++                if (MapleInviteCoordinator.answerInvite(InviteType.TRADE, c.getId(), other.getId(), false).result == InviteResult.DENIED) {
+                     other.message(c.getName() + " has declined your trade request.");
+                 }
+                 
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index c65000697..aef8cb8b5 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -24,6 +24,7 @@
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleFamilyEntry;
+ import client.MapleJob;
+ import client.Skill;
+ import client.SkillFactory;
+@@ -522,6 +523,7 @@ private void distributePlayerExperience(MapleCharacter chr, float exp, float par
+         float bonusExp = partyBonusMod * playerExp;
+         
+         this.giveExpToCharacter(chr, playerExp, bonusExp, whiteExpGain, hasPartySharers);
++        giveFamilyRep(chr.getFamilyEntry());
+     }
+     
+     private void distributePartyExperience(Map<MapleCharacter, Long> partyParticipation, float expPerDmg, Set<MapleCharacter> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
+@@ -548,7 +550,7 @@ private void distributePartyExperience(Map<MapleCharacter, Long> partyParticipat
+         int totalPartyLevel = 0;
+         
+         // thanks G h o s t, Alfred, Vcoc, BHB for poiting out a bug in detecting party members after membership transactions in a party took place
+-        if (!ServerConstants.USE_ENFORCE_MOB_LEVEL_RANGE) {
++        if (ServerConstants.USE_ENFORCE_MOB_LEVEL_RANGE) {
+             for (MapleCharacter member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
+                 if (!leechInterval.inInterval(member.getLevel())) {
+                     underleveled.add(member);
+@@ -574,6 +576,7 @@ private void distributePartyExperience(Map<MapleCharacter, Long> partyParticipat
+         
+         for (MapleCharacter mc : expMembers) {
+             distributePlayerExperience(mc, participationExp, partyBonusMod, totalPartyLevel, mc == participationMvp, isWhiteExpGain(mc, personalRatio, sdevRatio), hasPartySharers);
++            giveFamilyRep(mc.getFamilyEntry());
+         }
+     }
+     
+@@ -949,6 +952,14 @@ private void dispatchMonsterHealed(int trueHeal) {
+             listener.monsterHealed(trueHeal);
+         }
+     }
++    
++    private void giveFamilyRep(MapleFamilyEntry entry) {
++        if(entry != null) {
++            int repGain = isBoss() ? ServerConstants.FAMILY_REP_PER_BOSS_KILL : ServerConstants.FAMILY_REP_PER_KILL;
++            if(getMaxHp() <= 1) repGain = 0; //don't count trash mobs
++            entry.giveReputationToSenior(repGain, true);
++        }
++    }
+ 
+     public int getHighestDamagerId() {
+         int curId = 0;
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index 0d787b146..b24c80ec8 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -61,6 +61,7 @@
+             SAVING_CHARACTER = "players/SaveChar.txt",
+             CHANGE_CHARACTER_NAME = "players/NameChange.txt",
+             WORLD_TRANSFER = "players/WorldTransfer.txt",
++            FAMILY_ERROR = "players/FamilyErrors.txt",
+             USED_COMMANDS = "commands/UsedCommands.txt",
+             DEADLOCK_ERROR = "deadlocks/Deadlocks.txt",
+             DEADLOCK_STACK = "deadlocks/Path.txt",
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 6006443af..8eebeaeea 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -41,6 +41,7 @@
+ import client.MapleCharacter.SkillEntry;
+ import client.MapleClient;
+ import client.MapleDisease;
++import client.MapleFamilyEntitlement;
+ import client.MapleFamilyEntry;
+ import client.MapleKeyBinding;
+ import client.MapleMount;
+@@ -1030,7 +1031,7 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 for (Pair<MapleStat, Integer> statupdate : mystats) {
+                         if (statupdate.getLeft().getValue() >= 1) {
+                                 if (statupdate.getLeft().getValue() == 0x1) {
+-                                        mplew.writeShort(statupdate.getRight().shortValue());
++                                        mplew.write(statupdate.getRight().byteValue());
+                                 } else if (statupdate.getLeft().getValue() <= 0x4) {
+                                         mplew.writeInt(statupdate.getRight());
+                                 } else if (statupdate.getLeft().getValue() < 0x20) {
+@@ -1043,6 +1044,8 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                                         }
+                                 } else if (statupdate.getLeft().getValue() < 0xFFFF) {
+                                         mplew.writeShort(statupdate.getRight().shortValue());
++                                } else if (statupdate.getLeft().getValue() == 0x20000) {
++                                        mplew.writeShort(statupdate.getRight().shortValue());
+                                 } else {
+                                         mplew.writeInt(statupdate.getRight().intValue());
+                                 }
+@@ -2045,7 +2048,8 @@ private static void writeForeignBuffs(MaplePacketLittleEndianWriter mplew, Maple
+                 addRingLook(mplew, chr, false); // friendship
+                 addMarriageRingLook(target, mplew, chr);
+                 encodeNewYearCardInfo(mplew, chr);  // new year seems to crash sometimes...
+-                mplew.skip(2);
++                mplew.write(0);
++                mplew.write(0);
+                 mplew.write(chr.getTeam());//only needed in specific fields
+                 return mplew.getPacket();
+         }
+@@ -6150,6 +6154,24 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+         
++        public static byte[] showNameChangeCancel(boolean success) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CANCEL_NAME_CHANGE_RESULT.getValue());
++            mplew.writeBool(success);
++            if(!success) mplew.write(0);
++            //mplew.writeMapleAsciiString("Custom message."); //only if ^ != 0
++            return mplew.getPacket();
++        }
++        
++        public static byte[] showWorldTransferCancel(boolean success) {
++            final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++            mplew.writeShort(SendOpcode.CANCEL_TRANSFER_WORLD_RESULT.getValue());
++            mplew.writeBool(success);
++            if(!success) mplew.write(0);
++            //mplew.writeMapleAsciiString("Custom message."); //only if ^ != 0
++            return mplew.getPacket();
++        }
++        
+         public static byte[] showMTSCash(MapleCharacter p) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.MTS_OPERATION2.getValue());
+@@ -6376,18 +6398,16 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+         }
+ 
+         public static byte[] loadFamily(MapleCharacter player) {
+-                String[] title = {"Family Reunion", "Summon Family", "My Drop Rate 1.5x (15 min)", "My EXP 1.5x (15 min)", "Family Bonding (30 min)", "My Drop Rate 2x (15 min)", "My EXP 2x (15 min)", "My Drop Rate 2x (30 min)", "My EXP 2x (30 min)", "My Party Drop Rate 2x (30 min)", "My Party EXP 2x (30 min)"};
+-                String[] description = {"[Target] Me\n[Effect] Teleport directly to the Family member of your choice.", "[Target] 1 Family member\n[Effect] Summon a Family member of choice to the map you're in.", "[Target] Me\n[Time] 15 min.\n[Effect] Monster drop rate will be increased #c1.5x#.\n*  If the Drop Rate event is in progress, this will be nullified.", "[Target] Me\n[Time] 15 min.\n[Effect] EXP earned from hunting will be increased #c1.5x#.\n* If the EXP event is in progress, this will be nullified.", "[Target] At least 6 Family members online that are below me in the Pedigree\n[Time] 30 min.\n[Effect] Monster drop rate and EXP earned will be increased #c2x#. \n* If the EXP event is in progress, this will be nullified.", "[Target] Me\n[Time] 15 min.\n[Effect] Monster drop rate will be increased #c2x#.\n* If the Drop Rate event is in progress, this will be nullified.", "[Target] Me\n[Time] 15 min.\n[Effect] EXP earned from hunting will be increased #c2x#.\n* If the EXP event is in progress, this will be nullified.", "[Target] Me\n[Time] 30 min.\n[Effect] Monster drop rate will be increased #c2x#.\n* If the Drop Rate event is in progress, this will be nullified.", "[Target] Me\n[Time] 30 min.\n[Effect] EXP earned from hunting will be increased #c2x#. \n* If the EXP event is in progress, this will be nullified.", "[Target] My party\n[Time] 30 min.\n[Effect] Monster drop rate will be increased #c2x#.\n* If the Drop Rate event is in progress, this will be nullified.", "[Target] My party\n[Time] 30 min.\n[Effect] EXP earned from hunting will be increased #c2x#.\n* If the EXP event is in progress, this will be nullified."};
+-                int[] repCost = {3, 5, 7, 8, 10, 12, 15, 20, 25, 40, 50};
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.FAMILY_PRIVILEGE_LIST.getValue());
+-                mplew.writeInt(11);
+-                for (int i = 0; i < 11; i++) {
+-                        mplew.write(i > 4 ? (i % 2) + 1 : i);
+-                        mplew.writeInt(repCost[i] * 100);
+-                        mplew.writeInt(1);
+-                        mplew.writeMapleAsciiString(title[i]);
+-                        mplew.writeMapleAsciiString(description[i]);
++                mplew.writeInt(MapleFamilyEntitlement.values().length);
++                for (int i = 0; i < MapleFamilyEntitlement.values().length; i++) {
++                        MapleFamilyEntitlement entitlement = MapleFamilyEntitlement.values()[i];
++                        mplew.write(i <= 1 ? 1 : 2); //type
++                        mplew.writeInt(entitlement.getRepCost());
++                        mplew.writeInt(entitlement.getUsageLimit());
++                        mplew.writeMapleAsciiString(entitlement.getName());
++                        mplew.writeMapleAsciiString(entitlement.getDescription());
+                 }
+                 return mplew.getPacket();
+         }
+@@ -6396,6 +6416,9 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+          * Family Result Message
+          *
+          * Possible values for <code>type</code>:<br>
++         * 64: You cannot add this character as a junior.
++         * 65: The name could not be found or is not online.
++         * 66: You belong to the same family.
+          * 67: You do not belong to the same family.<br>
+          * 69: The character you wish to add as\r\na Junior must be in the same
+          * map.<br>
+@@ -6433,26 +6456,120 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+         }
+ 
+         public static byte[] getFamilyInfo(MapleFamilyEntry f) {
++                if(f == null) return getEmptyFamilyInfo();
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.FAMILY_INFO_RESULT.getValue());
+                 mplew.writeInt(f.getReputation()); // cur rep left
+                 mplew.writeInt(f.getTotalReputation()); // tot rep left
+                 mplew.writeInt(f.getTodaysRep()); // todays rep
+-                mplew.writeShort(f.getJuniors()); // juniors added
+-                mplew.writeShort(f.getTotalJuniors()); // juniors allowed
++                mplew.writeShort(f.getJuniorCount()); // juniors added
++                mplew.writeShort(2); // juniors allowed
++                mplew.writeShort(0); //Unknown
++                mplew.writeInt(f.getFamily().getLeader().getChrId()); // Leader ID (Allows setting message)
++                mplew.writeMapleAsciiString(f.getFamily().getName());
++                mplew.writeMapleAsciiString(f.getFamily().getMessage()); //family message
++                mplew.writeInt(MapleFamilyEntitlement.values().length); //Entitlement info count
++                for(MapleFamilyEntitlement entitlement : MapleFamilyEntitlement.values()) {
++                    mplew.writeInt(entitlement.ordinal()); //ID
++                    mplew.writeInt(f.isEntitlementUsed(entitlement) ? 1 : 0); //Used count
++                }
++                return mplew.getPacket();
++        }
++        
++        private static byte[] getEmptyFamilyInfo() {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_INFO_RESULT.getValue());
++                mplew.writeInt(0); // cur rep left
++                mplew.writeInt(0); // tot rep left
++                mplew.writeInt(0); // todays rep
++                mplew.writeShort(0); // juniors added
++                mplew.writeShort(2); // juniors allowed
+                 mplew.writeShort(0); //Unknown
+-                mplew.writeInt(f.getId()); // id?
+-                mplew.writeMapleAsciiString(f.getFamilyName());
++                mplew.writeInt(0); // Leader ID (Allows setting message)
++                mplew.writeMapleAsciiString("");
++                mplew.writeMapleAsciiString(""); //family message
+                 mplew.writeInt(0);
+-                mplew.writeShort(0);
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] showPedigree(int chrid, Map<Integer, MapleFamilyEntry> members) {
++        public static byte[] showPedigree(MapleFamilyEntry entry) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.FAMILY_CHART_RESULT.getValue());
+-                //Hmmm xD
+-                return mplew.getPacket();
++                mplew.writeInt(entry.getChrId()); //ID of viewed player's pedigree, can't be leader?
++                List<MapleFamilyEntry> superJuniors = new ArrayList<MapleFamilyEntry>(4);
++                boolean hasOtherJunior = false;
++                int entryCount = 2; //2 guaranteed, leader and self
++                entryCount += Math.min(2, entry.getTotalSeniors());
++                //needed since MaplePacketLittleEndianWriter doesn't have any seek functionality
++                if(entry.getSenior() != null) {
++                    if(entry.getSenior().getJuniorCount() == 2) {
++                        entryCount++;
++                        hasOtherJunior = true;
++                    }
++                }
++                for(MapleFamilyEntry junior : entry.getJuniors()) {
++                    if(junior == null) continue;
++                    entryCount++;
++                    for(MapleFamilyEntry superJunior : junior.getJuniors()) {
++                        if(superJunior == null) continue;
++                        entryCount++;
++                        superJuniors.add(superJunior);
++                    }
++                }
++                //write entries
++                boolean missingEntries = entryCount == 2; //pedigree requires at least 3 entries to show leader, might only have 2 if leader's juniors leave
++                if(missingEntries) entryCount++;
++                mplew.writeInt(entryCount); //player count
++                addPedigreeEntry(mplew, entry.getFamily().getLeader());
++                if(entry.getSenior() != null) {
++                    if(entry.getSenior().getSenior() != null) addPedigreeEntry(mplew, entry.getSenior().getSenior());
++                    addPedigreeEntry(mplew, entry.getSenior());
++                }
++                addPedigreeEntry(mplew, entry);
++                if(hasOtherJunior) { //must be sent after own entry
++                    MapleFamilyEntry otherJunior = entry.getSenior().getOtherJunior(entry);
++                    if(otherJunior != null) addPedigreeEntry(mplew, otherJunior);
++                }
++                if(missingEntries) addPedigreeEntry(mplew, entry);
++                for(MapleFamilyEntry junior : entry.getJuniors()) {
++                    if(junior == null) continue;
++                    addPedigreeEntry(mplew, junior);
++                    for(MapleFamilyEntry superJunior : junior.getJuniors()) {
++                        if(superJunior != null) addPedigreeEntry(mplew, superJunior);
++                    }
++                }
++                mplew.writeInt(2 + superJuniors.size()); //member info count
++                // 0 = total seniors, -1 = total members, otherwise junior count of ID
++                mplew.writeInt(-1); 
++                mplew.writeInt(entry.getFamily().getTotalMembers());
++                mplew.writeInt(0);
++                mplew.writeInt(entry.getTotalSeniors()); //client subtracts provided seniors
++                for(MapleFamilyEntry superJunior : superJuniors) {
++                    mplew.writeInt(superJunior.getChrId());
++                    mplew.writeInt(superJunior.getTotalJuniors());
++                }
++                mplew.writeInt(0); //another loop count (entitlements used)
++                //mplew.writeInt(1); //entitlement index
++                //mplew.writeInt(2); //times used
++                mplew.writeShort(entry.getJuniorCount() >= 2 ? 0 : 2); //0 disables Add button (only if viewing own pedigree)
++                return mplew.getPacket();
++        }
++        
++        private static void addPedigreeEntry(MaplePacketLittleEndianWriter mplew, MapleFamilyEntry entry) {
++                MapleCharacter chr = entry.getChr();
++                boolean isOnline = chr != null;
++                mplew.writeInt(entry.getChrId()); //ID
++                mplew.writeInt(entry.getSenior() != null ? entry.getSenior().getChrId() : 0); //parent ID
++                mplew.writeShort(entry.getJob().getId()); //job id
++                mplew.write(entry.getLevel()); //level
++                mplew.writeBool(isOnline); //isOnline
++                mplew.writeInt(entry.getReputation()); //current rep
++                mplew.writeInt(entry.getTotalReputation()); //total rep
++                mplew.writeInt(entry.getRepsToSenior()); //reps recorded to senior
++                mplew.writeInt(entry.getTodaysRep());
++                mplew.writeInt(isOnline ? ((chr.isAwayFromWorld() || chr.getCashShop().isOpened()) ? -1 : chr.getClient().getChannel() - 1) : 0);
++                mplew.writeInt(isOnline ? (int) (chr.getLoggedInTime() / 60000) : 0); //time online in minutes
++                mplew.writeMapleAsciiString(entry.getName()); //name
+         }
+ 
+         public static byte[] updateAreaInfo(int area, String info) {
+@@ -6935,6 +7052,46 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 mplew.writeMapleAsciiString(inviter);
+                 return mplew.getPacket();
+         }
++        
++        public static byte[] sendFamilySummonRequest(String familyName, String from) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_SUMMON_REQUEST.getValue());
++                mplew.writeMapleAsciiString(from);
++                mplew.writeMapleAsciiString(familyName);
++                return mplew.getPacket();
++        }
++        
++        public static byte[] sendFamilyLoginNotice(String name, boolean loggedIn) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_NOTIFY_LOGIN_OR_LOGOUT.getValue());
++                mplew.writeBool(loggedIn);
++                mplew.writeMapleAsciiString(name);
++                return mplew.getPacket();
++        }
++        
++        public static byte[] sendFamilyJoinResponse(boolean accepted, String added) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_JOIN_REQUEST_RESULT.getValue());
++                mplew.write(accepted ? 1 : 0);
++                mplew.writeMapleAsciiString(added);
++                return mplew.getPacket();
++        }
++    
++        public static byte[] getSeniorMessage(String name) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_JOIN_ACCEPTED.getValue());
++                mplew.writeMapleAsciiString(name);
++                mplew.writeInt(0);
++                return mplew.getPacket();
++        }
++    
++        public static byte[] sendGainRep(int gain, String from) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.FAMILY_REP_GAIN.getValue());
++                mplew.writeInt(gain);
++                mplew.writeMapleAsciiString(from);
++                return mplew.getPacket();
++        }
+ 
+         public static byte[] showBoughtCashPackage(List<Item> cashPackage, int accountId) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+@@ -7176,30 +7333,6 @@ private static void getGuildInfo(final MaplePacketLittleEndianWriter mplew, Mapl
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] sendFamilyJoinResponse(boolean accepted, String added) {
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.FAMILY_JOIN_REQUEST_RESULT.getValue());
+-                mplew.write(accepted ? 1 : 0);
+-                mplew.writeMapleAsciiString(added);
+-                return mplew.getPacket();
+-        }
+-
+-        public static byte[] getSeniorMessage(String name) {
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.FAMILY_JOIN_ACCEPTED.getValue());
+-                mplew.writeMapleAsciiString(name);
+-                mplew.writeInt(0);
+-                return mplew.getPacket();
+-        }
+-
+-        public static byte[] sendGainRep(int gain, int mode) {
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.FAMILY_FAMOUS_POINT_INC_RESULT.getValue());
+-                mplew.writeInt(gain);
+-                mplew.writeShort(0);
+-                return mplew.getPacket();
+-        }
+-
+         public static byte[] removeItemFromDuey(boolean remove, int Package) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.PARCEL.getValue());

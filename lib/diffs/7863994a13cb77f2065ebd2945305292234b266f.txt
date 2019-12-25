@@ -1,0 +1,2060 @@
+diff --git a/README.txt b/README.txt
+index 5d11db1d2..9ca818c38 100644
+--- a/README.txt
++++ b/README.txt
+@@ -6,8 +6,8 @@ Credits are to be given to the original MapleSolaxia staff and other colaborator
+ changes/patches on the game were applied by myself, in which some of them diverged from the original v83
+ patch contents.
+ 
+-This is a NetBeans 8.0.2 Project. This means that it's easier to install the project via "NetBeans' import
+-new project using existing code". Once installed, build this project on your machine and run the server using
++This is a NetBeans 8.0.2 Project. This means that it's easier to install the project via opening the server
++project folder inside NetBeans' IDE. Once installed, build this project on your machine and run the server using
+ the "launch.bat" application.
+ 
+ In this project, many gameplay-wise issues generated from either the original WZ files and the server sources
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index a1368a5fc..ca13de9f7 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -121,4 +121,10 @@ Corre
+ Adição dos cards de mob restantes no drop_data do BD.
+ 
+ 03 Abril 2017,
+-Inclusão de scripts para interceptar condições de corrida em eventos de viagem.
+\ No newline at end of file
++Inclusão de scripts para interceptar condições de corrida em eventos de viagem.
++Correção no script do Mr. Do.
++Sparta lv100 não surge mais em mob de nível baixo.
++Diversas alterações corretivas em itens das tabelas drop_data e reactordrops no BD.
++
++04 Abril 2017,
++Correção na API sobre progresso das quests.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 2f34f1369..465ac5a66 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,9 +3,17 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/tools/LogHelper.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/tools/FilePrinter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/tools/MapleLogger.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/CashShop.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleQuestStatus.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/map/MapScriptMethods.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/AbstractPlayerInteraction.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/npc/NPCConversationManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleClient.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/life/MapleMonster.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/MonsterBook.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/MaplePacketCreator.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/event/EventInstanceManager.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/Ellin.js b/scripts/event/Ellin.js
+new file mode 100644
+index 000000000..def16c144
+--- /dev/null
++++ b/scripts/event/Ellin.js
+@@ -0,0 +1,90 @@
++var minPlayers = 2;
++
++function init() {
++em.setProperty("state", "0");
++	em.setProperty("leader", "true");
++}
++
++function setup(level, leaderid) {
++em.setProperty("state", "1");
++	em.setProperty("leader", "true");
++    var eim = em.newInstance("Ellin" + leaderid);
++
++        eim.setInstanceMap(930000000).resetPQ(level);
++	eim.setInstanceMap(930000100).resetPQ(level);
++	eim.setInstanceMap(930000200).resetPQ(level);
++	eim.setInstanceMap(930000300).resetPQ(level);
++	eim.setInstanceMap(930000400).resetPQ(level);
++	var map = eim.setInstanceMap(930000500);
++	map.resetPQ(level);
++	map.shuffleReactors();
++	eim.setInstanceMap(930000600).resetPQ(level);
++	eim.setInstanceMap(930000700).resetPQ(level);
++
++    eim.startEventTimer(1200000); //20 mins
++    return eim;
++}
++
++function playerEntry(eim, player) {
++    var map = eim.getMapInstance(0);
++    player.changeMap(map, map.getPortal(0));
++    player.tryPartyQuest(1206);
++}
++
++function playerRevive(eim, player) {
++}
++
++function scheduledTimeout(eim) {
++    end(eim);
++}
++
++function changedMap(eim, player, mapid) {
++    if (mapid < 930000000 || mapid > 930000700) {
++	eim.unregisterPlayer(player);
++
++	if (eim.disposeIfPlayerBelow(0, 0)) {
++		em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++	}
++    }
++}
++
++function playerDisconnected(eim, player) {
++    return 0;
++}
++
++function monsterValue(eim, mobId) {
++    return 1;
++}
++
++function playerExit(eim, player) {
++    eim.unregisterPlayer(player);
++
++    if (eim.disposeIfPlayerBelow(0, 0)) {
++	em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++	}
++}
++
++function end(eim) {
++    eim.disposeIfPlayerBelow(100, 930000800);
++	em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++}
++
++function clearPQ(eim) {
++    end(eim);
++}
++
++function allMonstersDead(eim) {
++}
++
++function leftParty (eim, player) {
++    // If only 2 players are left, uncompletable:
++	end(eim);
++}
++function disbandParty (eim) {
++	end(eim);
++}
++function playerDead(eim, player) {}
++function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/event/Subway.js b/scripts/event/Subway.js
+index 483a09948..729e0cca4 100644
+--- a/scripts/event/Subway.js
++++ b/scripts/event/Subway.js
+@@ -1,5 +1,5 @@
+ //Time Setting is in millisecond
+-var closeTime = 24 * 1000; //[30 seconds] The time to close the gate
++var closeTime = 24 * 1000; //[24 seconds] The time to close the gate
+ var beginTime = 30 * 1000; //[30 seconds] The time to begin the ride
+ var rideTime = 30 * 1000; //[30 seconds] The time that require move to destination
+ var KC_Waiting;
+diff --git a/scripts/map/onUserEnter/101000301.js b/scripts/map/onUserEnter/101000301.js
+new file mode 100644
+index 000000000..c5ad952c9
+--- /dev/null
++++ b/scripts/map/onUserEnter/101000301.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Boats";
++var toMap = 200090010;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000112.js b/scripts/map/onUserEnter/200000112.js
+new file mode 100644
+index 000000000..89182ac14
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000112.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Boats";
++var toMap = 200090000;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000122.js b/scripts/map/onUserEnter/200000122.js
+new file mode 100644
+index 000000000..93062227d
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000122.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Trains";
++var toMap = 200090100;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/200000132.js b/scripts/map/onUserEnter/200000132.js
+new file mode 100644
+index 000000000..4d7045004
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000132.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Cabin";
++var toMap = 200090200;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/200000152.js b/scripts/map/onUserEnter/200000152.js
+new file mode 100644
+index 000000000..332b0e835
+--- /dev/null
++++ b/scripts/map/onUserEnter/200000152.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Genie";
++var toMap = 200090400;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/220000111.js b/scripts/map/onUserEnter/220000111.js
+new file mode 100644
+index 000000000..404fdac38
+--- /dev/null
++++ b/scripts/map/onUserEnter/220000111.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Trains";
++var toMap = 200090110;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/240000111.js b/scripts/map/onUserEnter/240000111.js
+new file mode 100644
+index 000000000..8d0b6e82f
+--- /dev/null
++++ b/scripts/map/onUserEnter/240000111.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Cabin";
++var toMap = 200090210;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/260000110.js b/scripts/map/onUserEnter/260000110.js
+new file mode 100644
+index 000000000..f06af751e
+--- /dev/null
++++ b/scripts/map/onUserEnter/260000110.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Genie";
++var toMap = 200090410;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/540010001.js b/scripts/map/onUserEnter/540010001.js
+new file mode 100644
+index 000000000..a513d8cfe
+--- /dev/null
++++ b/scripts/map/onUserEnter/540010001.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "AirPlane";
++var toMap = 540010002;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/540010100.js b/scripts/map/onUserEnter/540010100.js
+new file mode 100644
+index 000000000..9f0adcb13
+--- /dev/null
++++ b/scripts/map/onUserEnter/540010100.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "AirPlane";
++var toMap = 540010101;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/600010002.js b/scripts/map/onUserEnter/600010002.js
+new file mode 100644
+index 000000000..be4975d5b
+--- /dev/null
++++ b/scripts/map/onUserEnter/600010002.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Subway";
++var toMap = 600010003;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/map/onUserEnter/600010004.js b/scripts/map/onUserEnter/600010004.js
+new file mode 100644
+index 000000000..a4920ab50
+--- /dev/null
++++ b/scripts/map/onUserEnter/600010004.js
+@@ -0,0 +1,13 @@
++importPackage(Packages.tools);
++
++var eventName = "Subway";
++var toMap = 600010005;
++
++function start(ms) {   	       
++	var em = ms.getClient().getEventManager(eventName);
++	
++	//is the player late to start the travel?
++	if(em.getProperty("docked") == "false") {
++		ms.getClient().getPlayer().warpAhead(toMap);
++        }
++}
+diff --git a/scripts/npc/world0/1022101.js b/scripts/npc/world0/1022101.js
+index 082882db7..e4cbe1975 100644
+--- a/scripts/npc/world0/1022101.js
++++ b/scripts/npc/world0/1022101.js
+@@ -43,8 +43,8 @@ var vp;
+ var choice;
+  
+ function start() {
+-	vp = cm.getClient().getVotePoints();
+-	if(vp == null)
++	//vp = cm.getClient().getVotePoints();
++	//if(vp == null)
+ 		vp = 0;
+ 	
+     status = -1;
+diff --git a/scripts/npc/world0/2040030.js b/scripts/npc/world0/2040030.js
+new file mode 100644
+index 000000000..244400e5b
+--- /dev/null
++++ b/scripts/npc/world0/2040030.js
+@@ -0,0 +1,141 @@
++/* Author: aaroncsn(MapleSea Like)(Need to add creation of minigame)
++	NPC Name: 		Wisp
++	Map(s): 		Ludibrium: Eos Tower Entrance(220000400)
++	Description: 		Pet Master
++*/
++
++function start() {
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        if (status >= 0 && mode == 0) {
++            cm.dispose();
++            return;
++        }
++        if (mode == 1)
++            status++;
++        else
++            status--;
++			if(status == 0){
++				cm.sendSimple("Hello there, I'm #bMar the Fairy#k of Victoria Island's main disciple. Mar the Fairy summoned me here to see if the pets are being taken care of here in Ludibrium. What can I do for you? \r\n#L0##bMy pet has turned back into a doll\r\nPlease help me make it move again!#k#l \r\n#L1##bTell me more about Pets.#k#l \r\n#L2##bHow do I raise Pets?#k#l \r\n#L3##bDo Pets die too?#k#l \r\n#L4##bWhat are the commands for brown and black kitty?#k#l \r\n#L5##bWhat are the commands for brown puppy?#k#l \r\n#L6##bWhat are the commands for pink and white bunny?#k#l \r\n#L7##bWhat are the commands for Mini Cargo?#k#l \r\n#L8##bWhat are the commands for Husky?#k#l \r\n#L9##bWhat are the commands for Black Pig?#k#l \r\n#L10##bWhat are the commands for Panda#k#l \r\n#L11##bWhat are the commands for Dino Boy & Girl?#k#l \r\n#L12##bWhat are the commands for Rudolph?#k#l \r\n#L13##bWhat are the commands for Monkey?#k#l \r\n#L14##bWhat are the commands for Robot?#k#l \r\n#L15##bWhat are the commands for Elephant?#k#l \r\n#L16##bWhat are the commands for Golden Pig?#k#l \r\n#L17##bWhat are the commands for Penguin?#k#l \r\n#L18##bWhat are the commands for Mini Yeti?#k#l \r\n#L19##bWhat are the commands for Jr. Balrog? \r\n#L20##bWhat are the commands for Baby Dragon?#k#l \r\n#L21##bWhat are the commands for Green/Red/Blue Dragon?#k#l \r\n#L22##bWhat are the commands for Black Dragon?#k#l \r\n#L23##bWhat are the commands for Snowman?#k#l \r\n#L24##bWhat are the commands for Sun Wu Kong?#k#l \r\n#L25##bWhat are the commands for Jr. Reaper?#k#l \r\n#L26##bWhat are the commands for Crystal Rudolph?#k#l \r\n#L27##bWhat are the commands for Kino?#k#l \r\n#L28##bWhat are the commands for White Duck?#k#l \r\n#L29##bWhat are the commands for Pink Bean?#k#l \r\n#L30##bWhat are the commands for Porcupine?#k#l");
++				}
++			else if(status == 1){
++				if(selection == 0){
++					cm.sendNext("I'm Wisp, continuing on with the studies that my Master Mar the Fairy assigned me. There seems to be a lot of pets even her in Ludibrium. I need to get back to my studies, so if you'll excuse me...");
++					cm.dispose();
++				} else if(selection == 1){
++					cm.sendNext("Hmmmm,you must have a lot of questions regarding the pets. Long ago, a person by the name #bCloy#k, sprayed Water of Life on it, and cast spell on it to create a magical animal. I know it sounds unbelievable, but it's a doll that became an actual living thing. They understand and follow people very well.");
++				} else if(selection == 2){
++					cm.sendNext("Depending on the command you give, pets can love it, hate, and display other kinds of reactions to it. If you give the pet a command and it follows you well, your closeness goes up. Double click on the pet and you can check the closeness, level, fullness and etc...");
++				} else if(selection == 3){
++					cm.sendNext("Dying... well, they aren't technically ALIVE per se, so I don't know if dying is the right term to use. They are dolls with my magical power and the power of Water of Life to become a live object. Of course while it's alive, it's just like a live animal...");
++				} else if(selection == 4){
++					cm.sendNext("These are the commands for #rBrown Kitty and Black Kitty#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bstupid, ihateyou, dummy#k (level 1 ~ 30)\r\n#biloveyou#k (level 1~30)\r\n#bpoop#k (level 1 ~ 30)\r\n#btalk, say, chat#k (level 10 ~ 30)\r\n#bcutie#k (level 10 ~ 30)\r\n#bup, stand, rise#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 5){
++					cm.sendNext("These are the commands for #rBrown Puppy#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bstupid, ihateyou, baddog, dummy#k (level 1 ~ 30)\r\n#biloveyou#k (level 1~30)\r\n#bpee#k (level 10 ~ 30)\r\n#btalk, say, chat, bark#k (level 10 ~ 30)\r\n#bdown#k (level 10 ~ 30)\r\n#bup, stand, rise#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 6){
++					cm.sendNext("These are the commands for #rPink Bunny and White Bunny#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bup, stand#k (level 1 ~ 30)\r\n#biloveyou#k (level 1~30)\r\n#bpoop#k (level 1 ~ 30)\r\n#btalk, say, chat#k (level 10 ~ 30)\r\n#bhug#k (level 10 ~ 30)\r\n#bsleep, sleepy, gotobed#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 7){
++					cm.sendNext("These are the commands for #rMini Cargo#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bup, stand#k (level 1 ~ 30)\r\n#biloveyou#k (level 1~30)\r\n#bpee#k (level 1 ~ 30)\r\n#btalk, say, chat#k (level 10 ~ 30)\r\n#bthelook, charisma#k (level 10 ~ 30)\r\n#bgoodboy, good#k (level 20 ~ 30)");
++					cm.dispose();				
++				} else if(selection == 8){
++					cm.sendNext("These are the commands for #rHusky#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bstupid, ihateyou, baddog, dummy#k (level 1 ~ 30)\r\n#biloveyou#k (level 1 ~ 30)\r\n#bpee#k (level 1 ~ 30)\r\n#btalk, say, chat, bark#k (level 10 ~ 30)\r\n#bdown#k (level 10 ~ 30)\r\n#bup, stand, rise#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 9){
++					cm.sendNext("These are the commands for #rBlack Pig#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#biloveyou#k (level 1~30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bhand, up, stand#k (level 1 ~ 30)\r\n#btalk, say, chat, hug#k (level 10 ~ 30)\r\n#bsmile#k (level 10 ~ 30)\r\n#blaugh, smile#k (level 10 ~ 30)\r\n#bcharisma, sleep, sleepy, gotobed#k(level 20~30)");
++					cm.dispose();
++				} else if(selection == 10){
++					cm.sendNext("These are the commands for #rPanda#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#biloveyou#k (level 1 ~ 30)\r\n#bpee#k(level 1 ~ 30)\r\n#bup, stand, hug#k (level 1 ~ 30)\r\n#btalk, chat#k (level 10 ~ 30)\r\n#bplay#k (level 20 ~ 30)\r\n#bmeh, bleh#k (level 10 ~ 30)\r\n#bsleep, sleepy, gotobed#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 11){
++					cm.sendNext("These are the commands for #rDino Boy and Dino Girl#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no,, stupid, ihateyou, badboy, badgirl#k (evel 1 ~ 30)\r\n#biloveyou, dummy#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#btalk, chat(level 10 ~ 30)\r\n#bsmile, laugh#k (level 1 ~ 30)\r\n#bcutie#k (level 10 ~ 30)\r\n#bsleep, nap, sleepy#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if(selection == 12){
++					cm.sendNext("These are the commands for #rRudolph#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k(level 1 ~30) \r\n#bbad, no, badgirl, badboy#k(level 1~30)\r\n#bup, stand#k(level 1 ~ 30) \r\n#bstupid, ihateyou, dummy#k(level 1 ~ 30) \r\n#bmerryxmas, merrychristmas#k(level 11 ~ 30)\r\n#biloveyou#k(level 1 ~ 30)\r\n#bpoop#k(level 1 ~ 30)\r\n#btalk, say, chat#k(level 11 ~ 30)\r\n#blonely, alone, down, rednose#k(level 11~30),\r\n#bcutie#k(level 11 ~ 30)\r\n#bmush, go#k(level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 13) {
++					cm.sendNext("These are the commands for #rMonkey#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit, rest#k (level 1 ~ 30)\r\n#bbad, no, badboy, badgirl#k (level 1 ~ 30)\r\n#bup, stand#k(level 1 ~ 30)\r\n#biloveyou, pee#k (level 1 ~ 30)\r\n#btalk, say, chat#k (level 11 ~ 30)\r\n#bplay, melong#k (level 11 ~ 30)\r\n#bsleep, sleepy, gotobed#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 14) {
++					cm.sendNext("These are the commands for #rRobot#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit, stand, rise#k (level 1 ~ 30)\r\n#battack, bad, no, badboy#k (level 1 ~ 30)\r\n#bstupid, ihateyou, dummy#k (level 1 ~ 30)\r\n#biloveyou, good#k (level 1 ~ 30)\r\n#bspeak, disguise#k (level 11 ~ 30)");
++					cm.dispose();
++				} else if (selection == 15) {
++					cm.sendNext("These are the commands for #rElephant#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit, rest#k (level 1 ~ 30)\r\n#bbad, no, badboy, badgirl#k (level 1 ~ 30)\r\n#bup, stand, rise#k(level 1 ~ 30)\r\n#biloveyou, pee#k (level 1 ~ 30)\r\n#btalk, say, chat, play#k (level 11 ~ 30)\r\n#bsleep, sleepy, gotobed#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 16) {
++					cm.sendNext("These are the commands for #rGolden Pig#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badboy, badgirl#k (level 1 ~ 30)\r\n#bpoop, iloveyou#k (level 1 ~ 30)\r\n#btalk, say, chat#k (level 11 ~ 30)\r\n#bloveme, hugme#k (level 11 ~ 30)\r\n#bsleep, sleepy, gotobed#k (level 21 ~ 30)\r\n#bimpressed, outofhere#k (level 21 ~ 30)\r\n#broll, showmethemoney#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 17) {
++					cm.sendNext("These are the commands for #rPenguin#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badboy, badgirl#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bup, stand, rise#k (level 1 ~ 30)\r\n#biloveyou#k (level 1 ~ 30)\r\n#btalk, chat, say#k (level 10 ~ 30)\r\n#bhug, hugme#k (level 10 ~ 30)\r\n#bwing, hand#k (level 10 ~ 30)\r\n#bsleep#k (level 20 ~ 30)\r\n#bkiss, smooch, muah#k (level 20 ~ 30)\r\n#bfly#k (level 20 ~ 30)\r\n#bcute, adorable#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 18) {
++					cm.sendNext("These are the commands for #rMini Yeti#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad, no, badboy, badgirl#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bdance, boogie, shakeit#k (level 1 ~ 30)\r\n#bcute, cutie, pretty, adorable#k (level 1 ~ 30)\r\n#biloveyou, likeyou, mylove#k (level 1 ~ 30)\r\n#btalk, chat, say#k (level 10 ~ 30)\r\n#bsleep, nap#k (level 10 ~ 30)");
++					cm.dispose();
++				} else if (selection == 19) {
++					cm.sendNext("These are the commands for #rJr. Balrog#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bliedown#k (level 1 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 1 ~ 30)\r\n#biloveyou|mylove|likeyou#k (level 1 ~ 30)\r\n#bcute|cutie|pretty|adorable#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bsmirk|crooked|laugh#k (level 1 ~ 30)\r\n#bmelong#k (level 11 ~ 30)\r\n#bgood|thelook|charisma#k (level 11 ~ 30)\r\n#bspeak|talk|chat|say#k (level 11 ~ 30)\r\n#bsleep|nap|sleepy#k (level 11 ~ 30)\r\n#bgas#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 20) {
++					cm.sendNext("These are the commands for #rBaby Dragon#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 1 ~ 30)\r\n#biloveyou|loveyou#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bstupid|ihateyou|dummy#k (level 1 ~ 30)\r\n#bcutie#k (level 11 ~ 30)\r\n#btalk|chat|say#k (level 11 ~ 30)\r\n#bsleep|sleepy|gotobed#k (level 11 ~ 30)");
++					cm.dispose();
++				} else if (selection == 21) {
++					cm.sendNext("These are the commands for #rGreen/Red/Blue Dragon#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 15 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 15 ~ 30)\r\n#biloveyou|loveyou#k (level 15 ~ 30)\r\n#bpoop#k (level 15 ~ 30)\r\n#bstupid|ihateyou|dummy#k (level 15 ~ 30)\r\n#btalk|chat|say#k (level 15 ~ 30)\r\n#bsleep|sleepy|gotobed#k (level 15 ~ 30)\r\n#bchange#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 22) {
++					cm.sendNext("These are the commands for #rBlack Dragon#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 15 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 15 ~ 30)\r\n#biloveyou|loveyou#k (level 15 ~ 30)\r\n#bpoop#k (level 15 ~ 30)\r\n#bstupid|ihateyou|dummy#k (level 15 ~ 30)\r\n#btalk|chat|say#k (level 15 ~ 30)\r\n#bsleep|sleepy|gotobed#k (level 15 ~ 30)\r\n#bcutie, change#k (level 21 ~ 30)");
++					cm.dispose();
++				} else if (selection == 23) {
++					cm.sendNext("These are the commands for #rSnowman#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bstupid, ihateyou, dummy#k (level 1 ~ 30)\r\n#bloveyou, mylove, ilikeyou#k (level 1 ~ 30)\r\n#bmerrychristmas#k (level 1 ~ 30)\r\n#bcutie, adorable, cute, pretty#k (level 1 ~ 30)\r\n#bbad, no, badgirl, badboy#k (level 1 ~ 30)\r\n#btalk, chat, say/sleep, sleepy, gotobed#k (level 10 ~ 30)\r\n#bchang#k (level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 24) {
++					cm.sendNext("These are the commands for #rSun Wu Kong#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k(level 1 ~ 30)\r\n#bno,bad,badgirl,badboy#k(level 1 ~ 30) \r\n#bpoope#k(level 1 ~ 30) \r\n#bcutie,adorable,cute,pretty#k(level 1 ~ 30) \r\n#biloveyou,loveyou,luvyou,ilikeyou,mylove#k(level 1 ~ 30) \r\n#btalk,chat,say/sleep,sleepy,gotobed#k(level 10 ~ 30) \r\n#btransform#k(level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 25) {
++					cm.sendNext("These are the commands for #rJr. Reaper#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 1 ~ 30)\r\n#bplaydead, poop#k (level 1 ~ 30)\r\n#btalk|chat|say#k (level 1 ~ 30)\r\n#biloveyou, hug#k (level 1 ~ 30)\r\n#bsmellmyfeet, rockout, boo#k (level 1 ~ 30)\r\n#btrickortreat#k (level 1 ~ 30)\r\n#bmonstermash#k (level 1 ~ 30)");
++					cm.dispose();
++				} else if (selection == 26) {
++					cm.sendNext("These are the commands for #rCrystal Rudolph#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bno|badgirl|badboy#k (level 1 ~ 30)\r\n#bbleh|joke#k(level 1~30)\r\n#bdisguise|transform#k(level 1 ~ 30) \r\n#bawesome|feelgood|lalala#k(level 1 ~ 30) \r\n#bloveyou|heybabe#k(level 1 ~ 30) \r\n#btalk|say|chat#k(level 10 ~ 30) \r\n#bsleep|sleepy|nap|gotobed#k(level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 27) {
++					cm.sendNext("These are the commands for #rKino#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bbad|no|badgirl|badboy#k (level 1 ~ 30)\r\n#bpoop#k (level 1 ~ 30)\r\n#bsleep|nap|sleepy|gotobed#k(level 1 ~ 30) \r\n#btalk|say|chat#k(level 10 ~ 30) \r\n#biloveyou|mylove|likeyou#k(level 10 ~ 30) \r\n#bmeh|bleh#k(level 10 ~ 30) \r\n#bdisguise|change|transform#k(level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 28) {
++					cm.sendNext("These are the commands for #rWhite Duck#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k(level 1 ~ 30) \r\n#bbad|no|badgirl|badboy#k(level 1 ~ 30) \r\n#bup|stand#k(level 1 ~ 30) \r\n#bpoop#k(level 1 ~ 30) \r\n#btalk|chat|say#k(level 1 ~ 30) \r\n#bhug#k(level 1 ~ 30) \r\n#bloveyou#k(level 1 ~ 30) \r\n#bcutie#k(level 1 ~ 30) \r\n#bsleep#k(level 1 ~ 30) \r\n#bsmarty(level 10 ~ 30) \r\n#bdance#k (level 20 ~ 30) \r\n#bswan#k(level 20 ~ 30)");
++					cm.dispose();
++				} else if (selection == 29){
++					cm.sendNext("These are the commands for #rPink Bean#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k(level 1 ~ 30) \r\n#bbad|no|badgirl|badboy|poop#k(level 1 ~ 30) \r\n#blazy|dummy|ihateyoutalk|chat|say|mumbleiloveyou|hugme|loveyou|#k(level 1 ~ 30) \r\n#bshake|music|charmbleh|joke|boo#k(level 20 ~ 30) \r\n#bgotobed|sleep|sleepypoke|stinky|dummy|ihateyou#k(level 20 ~ 30)\r\n#bkongkong#k(level 30)");
++					cm.dispose();
++				} else if (selection == 30){
++					cm.sendNext("These are the commands for #rPorcupine#k. The level mentioned next to the command shows the pet level required for it to respond.\r\n#bsit#k (level 1 ~ 30)\r\n#bno|bad|badgirl|badboy#k (level 1 ~ 30)\r\n#bhugcushion|sleep|knit|poop#k (level 1 ~ 30)\r\n#bcomb|beach#k (level 10 ~ 30)\r\n#btreeninja|dart#k (level 20 ~ 30)");
++					cm.dispose();
++				}
++			} else if(status == 2){
++				cm.sendNextPrev("But Water of Life only comes out little at the very bottom of the World Tree, so those babies can't be alive forever... I know, it's very unfortunate... but even if it becomes a doll again they can be brought back to life so be good to it while you're with it.");
++			} else if(status == 3){
++				cm.sendNextPrev("Oh yeah, they'll react when you give them special commands. You can scold them, love them.. it all depends on how you take care of them. They are afraid to leave their masters so be nice to them, show them love. They can get sad and lonely fast..");
++				cm.dispose();
++			} else if(status == 4){
++				cm.sendNextPrev("Talk to the pet, pay attention to it and its closeness level will go up and eventually his overall level will go up too. As the closeness rises, the pet's overall level will rise soon after. As the overall level rises, one day the pet may even talk like a person a little bit, so try hard raising it. Of course it won't be easy doing so...");
++			} else if(status == 5){
++				cm.sendNextPrev("It may be a live doll but they also have life so they can feel the hunger too. #bFullness#k shows the level of hunger the pet's in. 100 is the max, and the lower it gets, it means that the pet is getting hungrier. After a while, it won't even follow your command and be on the offensive, so watch out over that.");
++			} else if(status == 6){
++				cm.sendNextPrev("That's right! Pets can't eat the normal human food. Instead a teddy bear in Ludibrium called #bPatricia#k sells #bPet Food#k so if you need food for your pet, find #bPatricia#k It'll be a good idea to buy the food in advance and feed the pet before it gets really hungry.");
++			} else if(status == 7){
++				cm.sendNextPrev("Oh, and if you don't feed the pet for a long period of time, it goes back home by itself. You can take it out of its home and feed it but it's not really good for the pet's health, so try feeding him on a regular basis so it doesn't go down to that level, alright? I think this will do.");
++				cm.dispose();
++			} else if(status == 8){
++				cm.sendNextPrev("After some time... that's correct, they stop moving. They just turn back to being a doll, after the effect of magic dies down and Water of Life dries out. But that doesn't mean it's stopped forever, because once you pour Water of Life over, it's going to be back alive.");
++			} else if(status == 9){
++				cm.sendNextPrev("Even if it someday moves again, it's sad to see them stop altogether. Please be nice to them while they are alive and moving. Feed them well, too. Isn't it nice to know that there's something alive that follows and listens to only you?");
++				cm.dispose();
++			}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2081009.js b/scripts/npc/world0/2081009.js
+index 6f24cc2b6..1b886c5d6 100644
+--- a/scripts/npc/world0/2081009.js
++++ b/scripts/npc/world0/2081009.js
+@@ -21,7 +21,36 @@
+ */
+ //Moose, Warps to exit
+ 
++var status;
++
+ function start() {
+-    cm.warp(221000300,"mid00");
+-    cm.dispose();
+-}
+\ No newline at end of file
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode <= 0) {
++	cm.dispose();
++        return;
++    }
++    
++    status++;
++    if(status == 0) {
++        if(cm.isQuestStarted(6180)) {
++            cm.sendYesNo("Pay attention: during the time you stay inside the training ground make sure you #bhave equipped your #t1092041##k, it is of the utmost importance. Are you ready to proceed to the training area?");
++        }
++        
++        else {
++            cm.sendOk("Only assigned personnel can access the training ground.");
++            cm.dispose();
++        }
++    }
++    
++    else if(status == 1) {
++	cm.warp(924000001);
++	cm.sendOk("Have your shield equipped until the end of the quest, or else you will need to start all over again!");
++        
++        cm.resetQuestProgress(6180,9300096);
++        cm.dispose();
++    }
++}
+diff --git a/scripts/npc/world0/2081010.js b/scripts/npc/world0/2081010.js
+index e9efb7c97..0b564e239 100644
+--- a/scripts/npc/world0/2081010.js
++++ b/scripts/npc/world0/2081010.js
+@@ -25,46 +25,26 @@ Warps to exit map etc.
+ */
+ 
+ var status;
+-var exitMap = 221000300;
+-var exitPortal = "mid00";
++var exitMap = 240010400;
+ 
+ function start() {
+-	status = -1
+-	action(1,0,0);
++    status = -1;
++    action(1,0,0);
+ }
+ 
+ function action(mode, type, selection){
+-	if (mode <= 0 && status == 0)//I think I messed something up here, maybe.
+-		cm.dispose();
+-	else {
+-		if (mode == 1)
+-			status++;
+-		else
+-			status--;
+-		var mapId = cm.getPlayer().getMapId();
+-		if (mapId == exitMap) {
+-			if (status == 0) 
+-				cm.sendNext("See you next time.");
+-			else {
+-				cm.warp(103000000,"mid00");
+-				cm.dispose();
+-			}
+-		}
+-		else {
+-			var outText = "Would you like to leave, " +  cm.getPlayer().getName()  +  "? Once you leave the map, you'll have to restart the whole quest if you want to try it again, and Juudai will be sad.  Do you still want to leave this map?";
+-			if (status == 0)
+-				cm.sendYesNo(outText);
+-			else if (mode == 1) {
+-				var eim = cm.getPlayer().getEventInstance();
+-				if (eim == null)
+-					cm.warp(221000300,0);
+-				else if (cm.isLeader())
+-					eim.disbandParty();
+-				else
+-					eim.leftParty(cm.getPlayer());
+-				cm.dispose();
+-			} else
+-				cm.dispose();
+-		}
+-	}
++    if (mode <= 0) {
++	cm.dispose();
++        return;
++    }
++    
++    status++;
++    if(status == 0) {
++        cm.sendYesNo("Do you want to exit the area? If you quit, you will need to start this task from the scratch.");
++    }
++    
++    else if(status == 1) {
++	cm.warp(exitMap);
++        cm.dispose();
++    }
+ }
+diff --git a/scripts/npc/world0/2090004.js b/scripts/npc/world0/2090004.js
+index 9bb89378b..22be799b2 100644
+--- a/scripts/npc/world0/2090004.js
++++ b/scripts/npc/world0/2090004.js
+@@ -30,11 +30,14 @@ function action(mode, type, selection) {
+ 		status++;
+ 	else {
+                 cm.sendOk("Oh, talk to me when you have decided what you want from me. I am very busy right now.");
+-		cm.dispose();            
++		cm.dispose();
++                return;
+ 	}
+ 
+ 	if (status == 0) {
+ 		if (cm.isQuestActive(3821) && !cm.haveItem(4031554) && !cm.haveItem(4161030) && cm.isQuestCompleted(3830)) {
++                        //player lost his book, help him complete quest anyways
++                    
+                         if(cm.canHold(4031554)) {
+                                 cm.sendOk("Oh, the boy wanted you to bring him a #t4031554#? No problem, I was on his debt anyway. Now, tell him I am repaying the debt, OK?");
+                                 cm.gainItem(4031554, 1);
+@@ -57,12 +60,11 @@ function action(mode, type, selection) {
+ 	} else if (status == 1) {
+ 		selectedType = selection;
+ 		var selStr;
+-		var items;
+ 		if (selectedType == 0){ //Make a medicine
+                         itemSet = new Array(2022145,2022146,2022147,2022148,2022149,2022150,2022178,4031554);
+-                        matSet = new Array(new Array(2022116),new Array(2022116),new Array(4000281,4000293),new Array(4000276,2002005),new Array(4000288,4000292),new Array(4000295),new Array(??),new Array(??));
+-			matQtySet = new Array(new Array(3),new Array(3),new Array(10,10),new Array(20,1),new Array(20,20),new Array(10),new Array(??),new Array(??));
+-                        matQtyMeso = new Array(0,0,910,950,1940,600,??,??);
++                        matSet = new Array(2022116,2022116,new Array(4000281,4000293),new Array(4000276,2002005),new Array(4000288,4000292),4000295,new Array(2022131,2022132),new Array(4000286,4000287,4000293));
++			matQtySet = new Array(3,3,new Array(10,10),new Array(20,1),new Array(20,20),10,new Array(1,1),new Array(20,20,20));
++                        matQtyMeso = new Array(0,0,910,950,1940,600,700,1000);
+                     
+                         if(!cm.haveItem(4161030)) {
+                                 cm.sendNext("If you want to make a medicine, you must study the Book on Herbal Medicine first. Nothing is more dangerous than practicing a medicine without proper knowledge.");
+@@ -78,24 +80,28 @@ function action(mode, type, selection) {
+                         selStr += "#k";
+ 		} 
+ 		else if(selectedType == 1){ //Make a scroll
++                        status++;
++                    
+ 			selStr = "What kind of scrolls are you interested in making?#b";
+-			items = new Array("Scroll for One-Handed Sword for ATT", "Scroll for One-Handed Axe for ATT", "Scroll for One-Handed BW for ATT",
++			itemSet = new Array("Scroll for One-Handed Sword for ATT", "Scroll for One-Handed Axe for ATT", "Scroll for One-Handed BW for ATT",
+ 					"Scroll for Dagger for ATT","Scroll for Wand for Magic Att.","Scroll for Staff for Magic Att.",
+ 					"Scroll for Two-handed Sword for ATT.","Scroll for Two-handed Axe for ATT","Scroll for Two-handed BW for ATT",
+ 					"Scroll for Spear for ATT","Scroll for Pole Arm for ATT","Scroll for Bow for ATT","Scroll for Crossbow for ATT ",
+ 					"Scroll for Claw for ATT","Scroll for Knuckle for ATT","Scroll for Gun for ATT#k");
+ 
+-                        for (var i = 0; i < items.length; i++){
+-                                selStr += "\r\n#L" + i + "# " + items[i] + "#l";
++                        for (var i = 0; i < itemSet.length; i++){
++                                selStr += "\r\n#L" + i + "# " + itemSet[i] + "#l";
+                         }
+ 		} 
+ 		else {//Donate medicine ingredients
++                        status++;
++                    
+ 			selStr = "So you wish to donate some medicine ingredients? This is great news! Donations will be accepted in the unit of #b100#k. The donator will receive a marble that enables one to make a scroll. Which of these would you like to donate? #b";
+-			items = new Array("Acorn","Thimble","Needle Pouch","Necki Flower","Necki Swimming Cap","Broken Piece of Pot","Ginseng-Boiled Water","Straw Doll","Wooden Doll","Bellflower Root","100-Year-Old Bellflower",
++			itemSet = new Array("Acorn","Thimble","Needle Pouch","Necki Flower","Necki Swimming Cap","Broken Piece of Pot","Ginseng-Boiled Water","Straw Doll","Wooden Doll","Bellflower Root","100-Year-Old Bellflower",
+ 					"Old Paper","Yellow Belt","Broken Deer Horn","Red Belt","Peach Seed","Mr. Alli's Leather","Cat Doll","Mark of the Pirate","Captain Hat#k");
+                                         
+-                        for (var i = 0; i < items.length; i++){
+-                                selStr += "\r\n#L" + i + "# " + items[i] + "#l";
++                        for (var i = 0; i < itemSet.length; i++){
++                                selStr += "\r\n#L" + i + "# " + itemSet[i] + "#l";
+                         }
+ 		}
+ 		
+@@ -103,27 +109,26 @@ function action(mode, type, selection) {
+ 	}
+         else if (status == 2) {
+                 selectedItem = selection;
+-            
+-                if(selectedType == 0) {
+-                        cm.sendGetText("How many #b" + items[selectedItem] + "#k do you want to make?");
+-                }
++                cm.sendGetText("How many #b#t" + itemSet[selectedItem] + "##k do you want to make?");
+         }
+ 	else if (status == 3) {
+ 		if(selectedType == 0) { //Medicines
+-                        makeQty = parseInt(cm.getText());
++			var text = cm.getText();
++                        makeQty = parseInt(text);
+                         if(isNaN(makeQty)) makeQty = 1;
+                         
+                         item = itemSet[selectedItem];
+ 			mats = matSet[selectedItem];
+ 			matQty = matQtySet[selectedItem];
+-                        matMeso = matMesoSet[selectedItem];
++                        matMeso = matQtyMeso[selectedItem];
+                         
+-                        var prompt = "You want to make " + makeQty + " #t" + item + "#? In order to make " + makeQty + " #t" + item +"#,You'll need the following items:";
++                        var prompt = "You want to make #b" + makeQty + " #t" + item + "##k? In order to make " + makeQty + " #t" + item +"#, you'll need the following items:\r\n";
+ 			if (mats instanceof Array){
+ 				for(var i = 0; i < mats.length; i++){
+ 					prompt += "\r\n#i"+mats[i]+"# " + matQty[i]*makeQty + " #t" + mats[i] + "#";
+ 				}
+ 			}
++                        else prompt += "\r\n#i"+mats+"# " + matQty*makeQty + " #t" + mats + "#";
+                         
+                         if (matMeso > 0)
+                                 prompt += "\r\n#i4031138# " + matMeso*makeQty + " meso";
+@@ -132,6 +137,8 @@ function action(mode, type, selection) {
+                 }
+                 
+ 		else if (selectedType == 1){ //Scrolls
++                        selectedItem = selection;
++                    
+ 			itemSet = new Array(2043000,2043100,2043200,2043300,2043700,2043800,2044000,2044100,2044200,2044300,2044400,2044500,2044600,2044700,2044800,2044900);
+ 			matSet = new Array(new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),
+ 					new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),new Array(4001124,4010001),
+@@ -142,17 +149,22 @@ function action(mode, type, selection) {
+ 			item = itemSet[selectedItem];
+ 			mats = matSet[selectedItem];
+ 			matQty = matQtySet[selectedItem];
+-			var prompt = "You want to make #t" + item + "#? In order to make #t" + item +"#,You'll need #b100 #t" + mats[0] + "##k and #b10 #t" + mats[1] + "##k.";
++			var prompt = "You want to make #b#t" + item + "##k? In order to make #t" + item +"# you'll need the following items:";
+ 			if (mats instanceof Array){
+ 				for(var i = 0; i < mats.length; i++){
+ 					prompt += "\r\n#i"+mats[i]+"# " + matQty[i] + " #t" + mats[i] + "#";
+ 				}
+ 			}
++                        else {
++                                prompt += "\r\n#i"+mats+"# " + matQty + " #t" + mats + "#";
++                        }
+                         
+                         cm.sendYesNo(prompt);
+ 		} 
+ 		else if(selectedType == 2){
+-			itemSet = new Array(4000276,4000277,4000278,4000279,4000280,4000291,4000292,4000286,4000287,4000293, 4000294,4000298,4000284,4000288,4000285,4000282,4000295,4000289,4000296,4031435);
++                        selectedItem = selection;
++                    
++			itemSet = new Array(4000276,4000277,4000278,4000279,4000280,4000291,4000292,4000286,4000287,4000293,4000294,4000298,4000284,4000288,4000285,4000282,4000295,4000289,4000296,4031435);
+                         rewdSet = new Array(7,7,new Array(7,8),10,11,8,new Array(7,8),new Array(7,9),new Array(7,8),9,10,new Array(10,11),11,new Array(11,12),13,13,14,15,new Array(15,16),17);
+                         
+ 			item = itemSet[selectedItem];
+@@ -167,9 +179,12 @@ function action(mode, type, selection) {
+ 				for(var i = 0; i < mats.length; i++) {
+                                         if(!cm.haveItem(mats[i], matQty[i]*makeQty)) complete = false;
+ 				}
+-                                
+-                                if(cm.getMeso() < matMeso*makeQty) complete = false;
+ 			}
++                        else {
++                                if(!cm.haveItem(mats, matQty*makeQty)) complete = false;
++                        }
++                        
++                        if(cm.getMeso() < matMeso*makeQty) complete = false;
+ 
+ 			if (!complete || !cm.canHold(item, makeQty))
+ 				cm.sendOk("Please make sure you are neither lacking ingredients or lacking space in your use inventory.");
+@@ -179,8 +194,11 @@ function action(mode, type, selection) {
+ 						cm.gainItem(mats[i], -matQty[i]*makeQty);
+ 					}
+ 				}
++                                else {
++                                    cm.gainItem(mats, -matQty*makeQty);
++                                }
+ 
+-                                cm.gainMeso(-matMeso*makeQty);
++                                if(matMeso > 0) cm.gainMeso(-matMeso*makeQty);
+ 				cm.gainItem(item,makeQty);
+ 			}
+ 
+@@ -223,7 +241,7 @@ function action(mode, type, selection) {
+                                 */
+ 			}
+                         
+-                        if(java.lang.Math.random() >= 0.9f) //A lucky find! Scroll 60%
++                        if(java.lang.Math.random() >= 0.9) //A lucky find! Scroll 60%
+                             item += 1;
+ 
+ 			if (!complete || !cm.canHold(item))
+diff --git a/scripts/npc/world0/2131000.js b/scripts/npc/world0/2131000.js
+new file mode 100644
+index 000000000..61ce461e4
+--- /dev/null
++++ b/scripts/npc/world0/2131000.js
+@@ -0,0 +1,10 @@
++/* Author: aaroncsn(MapleSea Like)(Incomplete)
++	NPC Name: 		Athena Pierce
++	Map(s): 		Altair Camp: Conference Hall(300000010)
++	Description: 		Unknown
++*/
++
++function start(){
++	cm.sendOk("It is been a while since we left Ossyria to avoid the Black Magician. If not for the world tree, I do not know where we would have been. I have been trying to establish myself here, but that is not easy. I wonder how things are like back home.");
++	cm.dispose();
++	}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131001.js b/scripts/npc/world0/2131001.js
+new file mode 100644
+index 000000000..c4f9b6ea0
+--- /dev/null
++++ b/scripts/npc/world0/2131001.js
+@@ -0,0 +1,33 @@
++var status = -1;
++
++var exchangeItem = 4000439;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	cm.dispose();
++	return;
++    }
++    if (status == 0) {
++        cm.sendSimple("My name is Pergen, I am the strongest magician around these parts.#b\r\n#L0#Hey, take these rubbles. You can perform your magic on them.#l");
++    } else if (status == 1) {
++	if (!cm.haveItem(exchangeItem, 100)) {
++	    cm.sendNext("You don't have enough... I need at least 100.");
++	    cm.dispose();
++	} else {
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.getPlayer().itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100));
++	}
++    } else if (status == 2) { 
++	if (selection >= 1 && selection <= cm.getPlayer().itemQuantity(exchangeItem) / 100) {
++	    if (!cm.canHold(4310000, selection)) {
++		cm.sendOk("Please make some space in ETC tab.");
++	    } else {
++		cm.gainItem(4310000, selection);
++		cm.gainItem(exchangeItem, -(selection * 100));
++		cm.sendOk("Thanks!");
++	    }
++	}
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131002.js b/scripts/npc/world0/2131002.js
+new file mode 100644
+index 000000000..b5b9cddcd
+--- /dev/null
++++ b/scripts/npc/world0/2131002.js
+@@ -0,0 +1,10 @@
++/* Author: aaroncsn(MapleSea Like)(Incomplete)
++	NPC Name: 		Euryth
++	Map(s): 		Elin Forest:Altair Camp(300000000)
++	Description: 		Unknown
++*/
++
++function start(){
++	cm.sendOk("My name is Euryth... As you can see, I am a fairy. People tell me I do not act fairy-like, but... I like making things out of metal objects. Shhh, don't tell this to anyone, but I also like MMA.");
++	cm.dispose();
++	}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131003.js b/scripts/npc/world0/2131003.js
+new file mode 100644
+index 000000000..1fc3929db
+--- /dev/null
++++ b/scripts/npc/world0/2131003.js
+@@ -0,0 +1,33 @@
++var status = -1;
++
++var exchangeItem = 4000437;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	cm.dispose();
++	return;
++    }
++    if (status == 0) {
++        cm.sendSimple("So many injuries, so little medicine...#b\r\n#L0#Hey, take these black spores. You can make better medicine with them.#l");
++    } else if (status == 1) {
++	if (!cm.haveItem(exchangeItem, 100)) {
++	    cm.sendNext("You don't have enough... I need at least 100.");
++	    cm.dispose();
++	} else {
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.getPlayer().itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100));
++	}
++    } else if (status == 2) { 
++	if (selection >= 1 && selection <= cm.getPlayer().itemQuantity(exchangeItem) / 100) {
++	    if (!cm.canHold(4310000, selection)) {
++		cm.sendOk("Please make some space in ETC tab.");
++	    } else {
++		cm.gainItem(4310000, selection);
++		cm.gainItem(exchangeItem, -(selection * 100));
++		cm.sendOk("Thanks!");
++	    }
++	}
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131005.js b/scripts/npc/world0/2131005.js
+new file mode 100644
+index 000000000..92ddb1f8d
+--- /dev/null
++++ b/scripts/npc/world0/2131005.js
+@@ -0,0 +1,33 @@
++var status = -1;
++
++var exchangeItem = 4000436;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	cm.dispose();
++	return;
++    }
++    if (status == 0) {
++        cm.sendSimple("I wish I had something to hold this water in...#b\r\n#L0#Hey, take these snail shells. You can hold your water with these.#l");
++    } else if (status == 1) {
++	if (!cm.haveItem(exchangeItem, 100)) {
++	    cm.sendNext("You don't have enough... I need at least 100.");
++	    cm.dispose();
++	} else {
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.getPlayer().itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100));
++	}
++    } else if (status == 2) { 
++	if (selection >= 1 && selection <= cm.getPlayer().itemQuantity(exchangeItem) / 100) {
++	    if (!cm.canHold(4310000, selection)) {
++		cm.sendOk("Please make some space in ETC tab.");
++	    } else {
++		cm.gainItem(4310000, selection);
++		cm.gainItem(exchangeItem, -(selection * 100));
++		cm.sendOk("Thanks!");
++	    }
++	}
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131006.js b/scripts/npc/world0/2131006.js
+new file mode 100644
+index 000000000..b77071102
+--- /dev/null
++++ b/scripts/npc/world0/2131006.js
+@@ -0,0 +1,33 @@
++var status = -1;
++
++var exchangeItem = 4000440;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	cm.dispose();
++	return;
++    }
++    if (status == 0) {
++        cm.sendSimple("The monsters are advancing.. I can't fight. I was badly injured by the Primitive Boars...#b\r\n#L0#Hey, take these boar hides. You can recover from them.#l");
++    } else if (status == 1) {
++	if (!cm.haveItem(exchangeItem, 100)) {
++	    cm.sendNext("You don't have enough... I need at least 100.");
++	    cm.dispose();
++	} else {
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.getPlayer().itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100));
++	}
++    } else if (status == 2) { 
++	if (selection >= 1 && selection <= cm.getPlayer().itemQuantity(exchangeItem) / 100) {
++	    if (!cm.canHold(4310000, selection)) {
++		cm.sendOk("Please make some space in ETC tab.");
++	    } else {
++		cm.gainItem(4310000, selection);
++		cm.gainItem(exchangeItem, -(selection * 100));
++		cm.sendOk("Thanks!");
++	    }
++	}
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131007.js b/scripts/npc/world0/2131007.js
+new file mode 100644
+index 000000000..8bb8f338f
+--- /dev/null
++++ b/scripts/npc/world0/2131007.js
+@@ -0,0 +1,33 @@
++var status = -1;
++
++var exchangeItem = 4000438;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	cm.dispose();
++	return;
++    }
++    if (status == 0) {
++        cm.sendSimple("These monsters are a piece of cake! One hit with my sword and I will kill them... better get a sword first.#b\r\n#L0#Hey, take these tree trunks. You can build a better sword with them.#l");
++    } else if (status == 1) {
++	if (!cm.haveItem(exchangeItem, 100)) {
++	    cm.sendNext("You don't have enough... I need at least 100.");
++	    cm.dispose();
++	} else {
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.getPlayer().itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.getPlayer().itemQuantity(exchangeItem) / 100));
++	}
++    } else if (status == 2) { 
++	if (selection >= 1 && selection <= cm.getPlayer().itemQuantity(exchangeItem) / 100) {
++	    if (!cm.canHold(4310000, selection)) {
++		cm.sendOk("Please make some space in ETC tab.");
++	    } else {
++		cm.gainItem(4310000, selection);
++		cm.gainItem(exchangeItem, -(selection * 100));
++		cm.sendOk("Thanks!");
++	    }
++	}
++        cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2132000.js b/scripts/npc/world0/2132000.js
+new file mode 100644
+index 000000000..1a37073f9
+--- /dev/null
++++ b/scripts/npc/world0/2132000.js
+@@ -0,0 +1,10 @@
++/* Author: aaroncsn(MapleSea Like)(Incomplete)
++	NPC Name: 		Kanderun
++	Map(s): 		Elin Forest:Entrance to Rocky Mountain(300010400)
++	Description: 		Unknown
++*/
++
++function start(){
++	cm.sendOk("Hmmm! For you to make your way here, far away from the Camp, you must be one strong individual. Let's explore new areas and find a place to establish our own town!!");
++	cm.dispose();
++	}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2132001.js b/scripts/npc/world0/2132001.js
+new file mode 100644
+index 000000000..18ffc7d79
+--- /dev/null
++++ b/scripts/npc/world0/2132001.js
+@@ -0,0 +1,4 @@
++function action(mode, type, selection) {
++    cm.sendNext("Call me Dark Lord. I will give thieves a place in society... watch in a few years!");
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2132002.js b/scripts/npc/world0/2132002.js
+new file mode 100644
+index 000000000..c01d0abbd
+--- /dev/null
++++ b/scripts/npc/world0/2132002.js
+@@ -0,0 +1,4 @@
++function action(mode, type, selection) {
++    cm.sendNext("The magic of this forest is amazing...");
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2132003.js b/scripts/npc/world0/2132003.js
+new file mode 100644
+index 000000000..4613d1105
+--- /dev/null
++++ b/scripts/npc/world0/2132003.js
+@@ -0,0 +1,4 @@
++function action(mode, type, selection) {
++    cm.sendNext("Being young doesn't mean I'm any different from those guys. I'll show them!");
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133000.js b/scripts/npc/world0/2133000.js
+new file mode 100644
+index 000000000..c76e2bd7a
+--- /dev/null
++++ b/scripts/npc/world0/2133000.js
+@@ -0,0 +1,73 @@
++var status = -1;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	if (status == 0) {
++	    cm.dispose();
++	}
++	status--;
++    }
++    if (status == 0) {
++	    cm.removeAll(4001163);
++	    cm.removeAll(4001169);
++	    cm.removeAll(2270004);
++	cm.sendSimple("#b#L0#Give me Altaire Earrings.#l\r\n#L1#Give me Glittering Altaire Earrings.#l\r\n#L3#Give me Brilliant Altaire Earrings.#l\r\n#L2#Attempt Forest of Poison Haze.#l#k");
++    } else if (status == 1) {
++	if (selection == 0) {
++	    if (!cm.haveItem(1032060) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032060,1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either have Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 1){
++	    if (cm.haveItem(1032060) && !cm.haveItem(1032061) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032060,-1);
++		cm.gainItem(1032061, 1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either don't have Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 1){
++	    if (cm.haveItem(1032061) && !cm.haveItem(1032101) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032061,-1);
++		cm.gainItem(1032101, 1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either don't have Glittering Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 2) {
++	    if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
++		cm.sendOk("The leader of the party must be here.");
++	    } else {
++		var party = cm.getPlayer().getParty().getMembers();
++		var mapId = cm.getPlayer().getMapId();
++		var next = true;
++		var size = 0;
++		var it = party.iterator();
++		while (it.hasNext()) {
++			var cPlayer = it.next();
++			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
++			if (ccPlayer == null || ccPlayer.getLevel() < 70 || ccPlayer.getLevel() > 255) {
++				next = false;
++				break;
++			}
++			size += (ccPlayer.isGM() ? 4 : 1);
++		}	
++		if (next && size >= 2) {
++			var em = cm.getEventManager("Ellin");
++			if (em == null) {
++				cm.sendOk("Please try again later.");
++			} else {
++				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap(), 120);
++			}
++		} else {
++			cm.sendOk("All 2+ members of your party must be here and above level 70.");
++		}
++	    }
++	}
++	cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133001.js b/scripts/npc/world0/2133001.js
+new file mode 100644
+index 000000000..ad99ec233
+--- /dev/null
++++ b/scripts/npc/world0/2133001.js
+@@ -0,0 +1,44 @@
++var status = -1;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	status--;
++    }
++    switch(cm.getPlayer().getMapId()) {
++	case 930000000:
++	    cm.sendNext("Welcome. Please enter the portal.");
++	    break;
++	case 930000100:
++	    cm.sendNext("We have to eliminate all these contaminated monsters!");
++	    break;
++	case 930000200:
++	    cm.sendNext("We have to eliminate all these contaminated reactors!");
++	    break;
++	case 930000300:
++	    cm.warpParty(930000400);
++	    break;
++	case 930000400:
++	    if (cm.haveItem(4001169,20)) {
++		cm.warpParty(930000500);
++		cm.gainItem(4001169,-20);
++	    } else if (!cm.haveItem(2270004)) {
++		cm.gainItem(2270004,10);
++		cm.sendOk("Good luck in purifying these monsters!");
++	    } else {
++		cm.sendOk("We have to purify all these contaminated monsters! Get me 20 Monster Marbles from them!");
++	    }
++	    break;
++	case 930000600:
++	    cm.sendNext("This is it! Place the Magic Stone on the Altar!");
++	    break;
++	case 930000700:
++	    cm.removeAll(4001163);
++	    cm.removeAll(4001169);
++	    cm.removeAll(2270004);
++	    cm.warp(930000800,0);
++	    break;
++    }
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133002.js b/scripts/npc/world0/2133002.js
+new file mode 100644
+index 000000000..631611d01
+--- /dev/null
++++ b/scripts/npc/world0/2133002.js
+@@ -0,0 +1,21 @@
++var status = -1;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	if (status == 0) {
++	    cm.dispose();
++	}
++	status--;
++    }
++    if (status == 0) {
++	cm.sendYesNo("Would you like to get out?");
++    } else if (status == 1) {
++	    cm.removeAll(4001163);
++	    cm.removeAll(4001169);
++	    cm.removeAll(2270004);
++	cm.warp(930000800,0);
++	cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133004.js b/scripts/npc/world0/2133004.js
+new file mode 100644
+index 000000000..2b42dd914
+--- /dev/null
++++ b/scripts/npc/world0/2133004.js
+@@ -0,0 +1,19 @@
++var status = -1;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	status--;
++    }
++    switch(cm.getPlayer().getMapId()) {
++	case 930000500:
++	    if (!cm.haveItem(4001163)) {
++	    	cm.sendNext("Get me the Purple Stone of Magic from here.");
++	    } else {
++		cm.warpParty(930000600);
++	    }
++	    break;
++    }
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2141000.js b/scripts/npc/world0/2141000.js
+new file mode 100644
+index 000000000..008a0b465
+--- /dev/null
++++ b/scripts/npc/world0/2141000.js
+@@ -0,0 +1,19 @@
++/*
++ * Time Temple - Kirston
++ * Twilight of the Gods
++ */
++
++function start() {
++    cm.askAcceptDecline("If only I had the Mirror of Goodness then I can re-summon the Black Wizard! \r\nWait! something's not right! Why is the Black Wizard not summoned? Wait, what's this force? I feel something... totally different from the Black Wizard Ahhhhh!!!!! \r\n\r\n #b(Places a hand on the shoulder of Kryston.)");
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	cm.removeNpc(270050100, 2141000);
++	cm.forceStartReactor(270050100, 2709000);
++    }
++    cm.dispose();
++
++// If accepted, = summon PB + Kriston Disappear + 1 hour timer
++// If deny = NoTHING HAPPEN
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2141001.js b/scripts/npc/world0/2141001.js
+new file mode 100644
+index 000000000..d33ca2fb6
+--- /dev/null
++++ b/scripts/npc/world0/2141001.js
+@@ -0,0 +1,216 @@
++/*
++	NPC Name: 		The Forgotten Temple Manager
++	Map(s): 		Deep in the Shrine - Forgotten Twilight
++	Description: 		Pink Bean battle starter
++*/
++var status = -1;
++
++function start() {
++		if (cm.getPlayer().getLevel() < 120) {
++			cm.sendOk("There is a level requirement of 120 to attempt Pink Bean.");
++			cm.dispose();
++			return;
++		}
++		if (cm.getPlayer().getClient().getChannel() != 5) {
++			cm.sendOk("Pink Bean may only be attempted on channel 5.");
++			cm.dispose();
++			return;
++		}
++    var em = cm.getEventManager("PinkBeanBattle");
++
++    if (em == null) {
++	cm.sendOk("The event isn't started, please contact a GM.");
++	cm.dispose();
++	return;
++    }
++    var eim_status = em.getProperty("state");
++	    var marr = cm.getQuestRecord(160104);
++	    var data = marr.getCustomData();
++	    if (data == null) {
++		marr.setCustomData("0");
++	        data = "0";
++	    }
++	    var time = parseInt(data);
++	if (eim_status == null || eim_status.equals("0")) {
++
++    var squadAvailability = cm.getSquadAvailability("PinkBean");
++    if (squadAvailability == -1) {
++	status = 0;
++	    if (time + (12 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
++		cm.sendOk("You have already went to PinkBean in the past 12 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (12 * 3600000)));
++		cm.dispose();
++		return;
++	    }
++	cm.sendYesNo("Are you interested in becoming the leader of the expedition Squad?");
++
++    } else if (squadAvailability == 1) {
++	    if (time + (12 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
++		cm.sendOk("You have already went to PinkBean in the past 12 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (12 * 3600000)));
++		cm.dispose();
++		return;
++	    }
++	// -1 = Cancelled, 0 = not, 1 = true
++	var type = cm.isSquadLeader("PinkBean");
++	if (type == -1) {
++	    cm.sendOk("The squad has ended, please re-register.");
++	    cm.dispose();
++	} else if (type == 0) {
++	    var memberType = cm.isSquadMember("PinkBean");
++	    if (memberType == 2) {
++		cm.sendOk("You been banned from the squad.");
++		cm.dispose();
++	    } else if (memberType == 1) {
++		status = 5;
++		cm.sendSimple("What would you like to do? \r\n#b#L0#Join the squad to Twilight of the Gods#l \r\n#b#L1#Leave the squad to Twilight of the Gods#l \r\n#b#L2#See the list of members on the squad#l");
++	    } else if (memberType == -1) {
++		cm.sendOk("The squad has ended, please re-register.");
++		cm.dispose();
++	    } else {
++		status = 5;
++		cm.sendSimple("What would you like to do? \r\n#b#L0#Join the squad to Twilight of the Gods#l \r\n#b#L1#Leave the squad to Twilight of the Gods#l \r\n#b#L2#See the list of members on the squad#l");
++	    }
++	} else { // Is leader
++	    status = 10;
++	    cm.sendSimple("What do you want to do, expedition leader? \r\n#b#L0#View expedition list#l \r\n#b#L1#Kick from expedition#l \r\n#b#L2#Remove user from ban list#l \r\n#r#L3#Select expedition team and enter#l");
++	// TODO viewing!
++	}
++	    } else {
++			var eim = cm.getDisconnected("PinkBeanBattle");
++			if (eim == null) {
++				var squd = cm.getSquad("PinkBean");
++				if (squd != null) {
++	    if (time + (12 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
++		cm.sendOk("You have already went to PinkBean in the past 12 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (12 * 3600000)));
++		cm.dispose();
++		return;
++	    }
++					cm.sendYesNo("The squad's battle against the boss has already begun.\r\n" + squd.getNextPlayer());
++					status = 3;
++				} else {
++					cm.sendOk("The squad's battle against the boss has already begun.");
++					cm.safeDispose();
++				}
++			} else {
++				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
++				status = 2;
++			}
++	    }
++	} else {
++			var eim = cm.getDisconnected("PinkBeanBattle");
++			if (eim == null) {
++				var squd = cm.getSquad("PinkBean");
++				if (squd != null) {
++	    if (time + (12 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
++		cm.sendOk("You have already went to PinkBean in the past 12 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (12 * 3600000)));
++		cm.dispose();
++		return;
++	    }
++					cm.sendYesNo("The squad's battle against the boss has already begun.\r\n" + squd.getNextPlayer());
++					status = 3;
++				} else {
++					cm.sendOk("The squad's battle against the boss has already begun.");
++					cm.safeDispose();
++				}
++			} else {
++				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
++				status = 2;
++			}
++	}
++}
++
++function action(mode, type, selection) {
++    switch (status) {
++	case 0:
++	    if (mode == 1) {
++			if (cm.registerSquad("PinkBean", 5, " has been named the Leader of the squad. If you would you like to join please register for the Expedition Squad within the time period.")) {
++				cm.sendOk("You have been named the Leader of the Squad. For the next 5 minutes, you can add the members of the Expedition Squad.");
++			} else {
++				cm.sendOk("An error has occurred adding your squad.");
++			}
++	    }
++	    cm.dispose();
++	    break;
++	case 2:
++		if (!cm.reAdd("PinkBeanBattle", "PinkBean")) {
++			cm.sendOk("Error... please try again.");
++		}
++		cm.safeDispose();
++		break;
++	case 3:
++		if (mode == 1) {
++			var squd = cm.getSquad("PinkBean");
++			if (squd != null && !squd.getAllNextPlayer().contains(cm.getPlayer().getName())) {
++				squd.setNextPlayer(cm.getPlayer().getName());
++				cm.sendOk("You have reserved the spot.");
++			}
++		}
++		cm.dispose();
++		break;
++	case 5:
++	    if (selection == 0) { // join
++		var ba = cm.addMember("PinkBean", true);
++		if (ba == 2) {
++		    cm.sendOk("The squad is currently full, please try again later.");
++		} else if (ba == 1) {
++		    cm.sendOk("You have joined the squad successfully");
++		} else {
++		    cm.sendOk("You are already part of the squad.");
++		}
++	    } else if (selection == 1) {// withdraw
++		var baa = cm.addMember("PinkBean", false);
++		if (baa == 1) {
++		    cm.sendOk("You have withdrawed from the squad successfully");
++		} else {
++		    cm.sendOk("You are not part of the squad.");
++		}
++	    } else if (selection == 2) {
++		if (!cm.getSquadList("PinkBean", 0)) {
++		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
++		}
++	    }
++	    cm.dispose();
++	    break;
++	case 10:
++	    if (mode == 1) {
++		if (selection == 0) {
++		    if (!cm.getSquadList("PinkBean", 0)) {
++			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
++		    }
++		    cm.dispose();
++		} else if (selection == 1) {
++		    status = 11;
++		    if (!cm.getSquadList("PinkBean", 1)) {
++			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
++			cm.dispose();
++		    }
++		} else if (selection == 2) {
++		    status = 12;
++		    if (!cm.getSquadList("PinkBean", 2)) {
++			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
++			cm.dispose();
++		    }
++		} else if (selection == 3) { // get insode
++		    if (cm.getSquad("PinkBean") != null) {
++			var dd = cm.getEventManager("PinkBeanBattle");
++			dd.startInstance(cm.getSquad("PinkBean"), cm.getMap(), 160104);
++		    } else {
++			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
++		    }
++		    cm.dispose();
++		}
++	    } else {
++		cm.dispose();
++	    }
++	    break;
++	case 11:
++	    cm.banMember("PinkBean", selection);
++	    cm.dispose();
++	    break;
++	case 12:
++	    if (selection != -1) {
++		cm.acceptMember("PinkBean", selection);
++	    }
++	    cm.dispose();
++	    break;
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2141002.js b/scripts/npc/world0/2141002.js
+new file mode 100644
+index 000000000..48bc242e3
+--- /dev/null
++++ b/scripts/npc/world0/2141002.js
+@@ -0,0 +1,16 @@
++/*
++	NPC Name: 		The Forgotten Temple Manager
++	Map(s): 		Deep in the Shrine - Twilight of the gods
++	Description: 		Pink Bean
++ */
++
++function start() {
++    cm.sendYesNo("Do you want to get out now?");
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	cm.warp(270050000, 0);
++    }
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2402000.js b/scripts/reactor/2402000.js
+new file mode 100644
+index 000000000..801f05ec9
+--- /dev/null
++++ b/scripts/reactor/2402000.js
+@@ -0,0 +1,30 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
++					   Matthias Butz <matze@odinms.de>
++					   Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/* @Author Ronan
++ * 
++ * Leafre Fruits
++*/
++
++function act(){
++	rm.dropItems();
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2402001.js b/scripts/reactor/2402001.js
+new file mode 100644
+index 000000000..801f05ec9
+--- /dev/null
++++ b/scripts/reactor/2402001.js
+@@ -0,0 +1,30 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
++					   Matthias Butz <matze@odinms.de>
++					   Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/* @Author Ronan
++ * 
++ * Leafre Fruits
++*/
++
++function act(){
++	rm.dropItems();
++}
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 0e92c616c..f2fef6d3f 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18771,17 +18771,13 @@
+ (8810018, 2388024, 1, 1, 0, 8000),
+ (9500320, 2388027, 1, 1, 0, 8000),
+ (8220002, 2388032, 1, 1, 0, 8000),
+-(9300182, 2388039, 1, 1, 0, 8000);
+-
+-
+-
+-
+-
+-
+-
++(9300182, 2388039, 1, 1, 0, 8000),
++(6130204, 0, 316, 478, 0, 400000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
++  UPDATE IGNORE temp_data SET chance=700 WHERE itemid=1302056;
++
+   UPDATE IGNORE temp_data SET dropperid=9000002 WHERE dropperid=9000000;
+   UPDATE IGNORE temp_data SET questid=0 WHERE dropperid=2022354;
+   UPDATE IGNORE temp_data SET chance=600000 WHERE itemid=4000058;
+@@ -18848,9 +18844,13 @@
+   UPDATE drop_data SET questid=77777 WHERE itemid=4001342;
+   UPDATE drop_data SET chance=0 WHERE itemid=2050099;
+   UPDATE drop_data SET chance=40000 WHERE itemid=4031991;
++  UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
+ 
++  # two items named "Sparta": remove the entries where lv100 Sparta is being dropped by low-level mobs.
++  UPDATE IGNORE drop_data SET itemid=1402011 WHERE itemid=1302056 AND dropperid < 8000000;
++  DELETE FROM drop_data WHERE itemid=1302056 AND dropperid < 8000000;
+ 
+-  #update quest reactor items
++  # update quest reactor items
+   UPDATE reactordrops SET questid=2086 WHERE itemid=4031165;
+   UPDATE reactordrops SET questid=3407 WHERE itemid=4031141;
+   UPDATE reactordrops SET questid=3407 WHERE itemid=4031142;
+@@ -18864,8 +18864,11 @@
+   INSERT INTO `reactordrops` (`reactorid`, `itemid`, `chance`, `questid`) VALUES
+     (9102000, 4031157, 1, 2074),
+     (9102001, 4031158, 1, 2074),
+-    (2502000, 4031794, 1, 3839),
+-    (2502000, 4031794, 1, 3839),
+-    (2612000, 4031695, 1, 3335);
++    (2502001, 2022116, 1, -1),
++    (2612000, 4031695, 1, 3335),
++    (2402000, 2022087, 3, -1);
++    (2402001, 2022088, 1, -1),
++    (2402001, 2022086, 1, -1);
++
+ 
+   #global data already updated
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 0cbacb454..eab8041c3 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -273,6 +273,7 @@
+     private boolean useCS = false;  //chaos scroll upon crafting item.
+     private long useDuey;
+     private long petLootCd;
++    private int newWarpMap = -1;
+ 
+     private MapleCharacter() {
+         setStance(0);
+@@ -1082,8 +1083,9 @@ protected MapleMap getWarpMap(int map) {
+ 	return target;
+     }
+     
+-    public void warp(int map) {
+-        changeMap(getWarpMap(map), getWarpMap(map).getPortal(0));
++    // for use ONLY inside OnUserEnter map scripts that requires players changing map even before entering it.
++    public void warpAhead(int map) {
++        newWarpMap = map;
+     }
+ 
+     public void changeMap(int map) {
+@@ -1182,6 +1184,13 @@ public void run() {
+                 }, 10000);
+             }
+         }
++        
++        //alas, new map has been specified when a warping was being processed...
++        if(newWarpMap != -1) {
++            int temp = newWarpMap;
++            newWarpMap = -1;
++            changeMap(temp);
++        }
+     }
+ 
+     public void changePage(int page) {
+diff --git a/src/client/MapleMount.java b/src/client/MapleMount.java
+index d05256974..c7f159713 100644
+--- a/src/client/MapleMount.java
++++ b/src/client/MapleMount.java
+@@ -101,7 +101,7 @@ private void increaseTiredness() {
+ 			this.tiredness++;
+ 			owner.getMap().broadcastMessage(MaplePacketCreator.updateMount(owner.getId(), this, false));
+ 			if (tiredness > 99) {
+-				this.tiredness = 95;
++				this.tiredness = 99;
+ 				owner.dispelSkill(owner.getJobType() * 10000000 + 1004);
+ 			}
+ 		} else {
+diff --git a/src/client/MapleQuestStatus.java b/src/client/MapleQuestStatus.java
+index 20b400746..425417678 100644
+--- a/src/client/MapleQuestStatus.java
++++ b/src/client/MapleQuestStatus.java
+@@ -147,10 +147,25 @@ public boolean madeProgress() {
+         return progress.size() > 0;
+     }
+ 
++    public Integer getAnyProgressKey() {
++        if (!progress.isEmpty()) return progress.entrySet().iterator().next().getKey();
++        return 0;
++    }
++    
+     public String getProgress(int id) {
+         if (progress.get(id) == null) return "";
+         return progress.get(id);
+     }
++    
++    public void resetProgress(int id) {
++        setProgress(id, "000");
++    }
++    
++    public void resetAllProgress() {
++        for(Map.Entry<Integer, String> entry : progress.entrySet()) {
++            setProgress(entry.getKey(), "000");
++        }
++    }
+ 
+     public Map<Integer, String> getProgress() {
+         return Collections.unmodifiableMap(progress);
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 25f25d2c6..a94253c54 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -532,7 +532,8 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 			FilePrinter.printError("bug.txt", MapleCharacter.makeMapleReadable(player.getName()) + ": " + message + "\r\n");
+ 			player.dropMessage(5, "Your bug '" + message + "' was submitted successfully to our developers. Thank you!");
+ 			break;
+-		case "points":
++		/*
++                case "points":
+ 			player.dropMessage(5, "You have " + c.getVotePoints() + " vote point(s).");
+ 			if (c.hasVotedAlready()) {
+ 				Date currentDate = new Date();
+@@ -545,6 +546,7 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 				player.yellowMessage("You are free to vote! Make sure to vote to gain a vote point!");
+ 			}
+ 			break;
++                */
+ 		case "joinevent":
+ 		case "event":
+ 		case "join":
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index e1d484fd4..e2a1821ac 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -198,13 +198,23 @@ public void openNpc(int npcid, String script) {
+ 	}
+ 
+         public void updateQuest(int questid, int data) {
+-            updateQuest(questid, String.valueOf(data));
++            MapleQuestStatus status = c.getPlayer().getQuest(MapleQuest.getInstance(questid));
++            updateQuest(questid, status.getAnyProgressKey(), data);
+         }
+         
+-	public void updateQuest(int questid, String data) {
++        public void updateQuest(int questid, String data) {
++            MapleQuestStatus status = c.getPlayer().getQuest(MapleQuest.getInstance(questid));
++            updateQuest(questid, status.getAnyProgressKey(), data);
++        }
++        
++        public void updateQuest(int questid, int pid, int data) {
++            updateQuest(questid, pid, String.valueOf(data));
++        }
++        
++	public void updateQuest(int questid, int pid, String data) {
+ 		MapleQuestStatus status = c.getPlayer().getQuest(MapleQuest.getInstance(questid));
+ 		status.setStatus(MapleQuestStatus.Status.STARTED);
+-		status.setProgress(0, data);//override old if exists
++		status.setProgress(pid, data);//override old if exists
+ 		c.getPlayer().updateQuest(status);
+ 	}
+ 
+@@ -233,12 +243,30 @@ public boolean isQuestStarted(int quest) {
+ 			return false;
+ 		}
+ 	}
+-
+-	public int getQuestProgress(int qid) {
+-                if(getPlayer().getQuest(MapleQuest.getInstance(qid)).getProgress().isEmpty()) return 0;
+-		return Integer.parseInt(getPlayer().getQuest(MapleQuest.getInstance(qid)).getProgress().get(0));
++        
++        public int getQuestProgress(int qid) {
++                MapleQuestStatus status = c.getPlayer().getQuest(MapleQuest.getInstance(qid));
++                String progress = status.getProgress(status.getAnyProgressKey());
++            
++                if(progress.isEmpty()) return 0;
++                return Integer.parseInt(progress);
++        }
++        
++        public int getQuestProgress(int qid, int pid) {
++                if(getPlayer().getQuest(MapleQuest.getInstance(qid)).getProgress(pid).isEmpty()) return 0;
++		return Integer.parseInt(getPlayer().getQuest(MapleQuest.getInstance(qid)).getProgress(pid));
+ 	}
+         
++        public void resetAllQuestProgress(int qid) {
++                getPlayer().getQuest(MapleQuest.getInstance(qid)).resetAllProgress();
++                getClient().announce(MaplePacketCreator.updateQuest(getPlayer().getQuest(MapleQuest.getInstance(qid)), false));
++        }
++        
++        public void resetQuestProgress(int qid, int pid) {
++                getPlayer().getQuest(MapleQuest.getInstance(qid)).resetProgress(pid);
++                getClient().announce(MaplePacketCreator.updateQuest(getPlayer().getQuest(MapleQuest.getInstance(qid)), false));
++        }
++        
+         public Item evolvePet(byte slot, int afterId) {
+             MaplePet evolved = null;
+             MaplePet target = null;
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index f702bf461..da82f50f9 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -415,6 +415,7 @@ public MapleCharacter killBy(MapleCharacter killer) {
+                     }
+                 }
+             }
++            
+             TimerManager.getInstance().schedule(new Runnable() {
+                 @Override
+                 public void run() {
+@@ -429,6 +430,10 @@ public void run() {
+                 }
+             }, getAnimationTime("die1"));
+         }
++        else {
++            System.out.println("[CRITICAL LOSS] toSpawn is null for " + this.getName());
++        }
++        
+         if (eventInstance != null) {
+             if (!this.getStats().isFriendly()) {
+                 eventInstance.monsterKilled(this);
+diff --git a/wz/Item.wz/Etc/0403.img.xml b/wz/Item.wz/Etc/0403.img.xml
+index 208be899e..c2e6faed2 100644
+--- a/wz/Item.wz/Etc/0403.img.xml
++++ b/wz/Item.wz/Etc/0403.img.xml
+@@ -1,4 +1,4 @@
+-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++ï»¿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="0403.img">
+   <imgdir name="04030000">
+     <imgdir name="info">
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 9c3adeccc..6ad73443b 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -35375,6 +35375,12 @@
+   </imgdir>
+   <imgdir name="6180">
+     <imgdir name="0">
++      <imgdir name="item">
++        <imgdir name="0">
++          <int name="count" value="1"/>
++          <int name="id" value="1092041"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+     <imgdir name="1">
+       <int name="exp" value="1000000"/>
+@@ -35382,7 +35388,10 @@
+         <imgdir name="0">
+           <int name="id" value="1092042"/>
+           <int name="count" value="1"/>
+-          <int name="job" value="3"/>
++        </imgdir>
++        <imgdir name="1">
++          <int name="id" value="1092041"/>
++          <int name="count" value="-1"/>
+         </imgdir>
+       </imgdir>
+       <imgdir name="skill">
+@@ -55694,34 +55703,30 @@
+     <imgdir name="1">
+       <imgdir name="item">
+         <imgdir name="0">
+-          <int name="count" value="-50"/>
++          <int name="count" value="-60"/>
+           <int name="id" value="4000021"/>
+         </imgdir>
+         <imgdir name="1">
+-          <int name="count" value="-10"/>
++          <int name="count" value="-30"/>
+           <int name="id" value="4000264"/>
+         </imgdir>
+         <imgdir name="2">
+-          <int name="count" value="-10"/>
++          <int name="count" value="-30"/>
+           <int name="id" value="4000281"/>
+         </imgdir>
+         <imgdir name="3">
+-          <int name="count" value="-10"/>
++          <int name="count" value="-30"/>
+           <int name="id" value="4000295"/>
+         </imgdir>
+         <imgdir name="4">
+-          <int name="count" value="-10"/>
++          <int name="count" value="-30"/>
+           <int name="id" value="4000440"/>
+         </imgdir>
+         <imgdir name="5">
+           <int name="count" value="-10"/>
+-          <int name="id" value="4031871"/>
+-        </imgdir>
+-        <imgdir name="6">
+-          <int name="count" value="-5"/>
+           <int name="id" value="4032475"/>
+         </imgdir>
+-        <imgdir name="7">
++        <imgdir name="6">
+           <int name="count" value="10"/>
+           <int name="id" value="2022184"/>
+         </imgdir>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index a574d0c0c..c135b58f4 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -58117,6 +58117,12 @@
+           <int name="count" value="200"/>
+         </imgdir>
+       </imgdir>
++      <imgdir name="item">
++        <imgdir name="0">
++          <int name="id" value="1092041"/>
++          <int name="count" value="1"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="6190">
+@@ -76669,31 +76675,27 @@
+       <imgdir name="item">
+         <imgdir name="0">
+           <int name="id" value="4000021"/>
+-          <int name="count" value="50"/>
++          <int name="count" value="60"/>
+         </imgdir>
+         <imgdir name="1">
+-          <int name="count" value="10"/>
++          <int name="count" value="30"/>
+           <int name="id" value="4000264"/>
+         </imgdir>
+         <imgdir name="2">
+-          <int name="count" value="10"/>
++          <int name="count" value="30"/>
+           <int name="id" value="4000281"/>
+         </imgdir>
+         <imgdir name="3">
+           <int name="id" value="4000295"/>
+-          <int name="count" value="10"/>
++          <int name="count" value="30"/>
+         </imgdir>
+         <imgdir name="4">
+-          <int name="count" value="10"/>
++          <int name="count" value="30"/>
+           <int name="id" value="4000440"/>
+         </imgdir>
+         <imgdir name="5">
+-          <int name="id" value="4031871"/>
+-          <int name="count" value="10"/>
+-        </imgdir>
+-        <imgdir name="6">
+           <int name="id" value="4032475"/>
+-          <int name="count" value="5"/>
++          <int name="count" value="10"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+diff --git a/wz/Quest.wz/Say.img.xml b/wz/Quest.wz/Say.img.xml
+index fd5bc851a..d46c8663c 100644
+--- a/wz/Quest.wz/Say.img.xml
++++ b/wz/Quest.wz/Say.img.xml
+@@ -64788,7 +64788,7 @@
+       <string name="0" value="The new hunting season has begun! I am planning to set-up a stand here at the El-Nath Market, selling #rleathers#k of the most fine quality. And for this, I am counting on you to bring all these leathers here, obviously for a #bvery nice reward#k. If you miss that season, you&apos;re not a serious hunter. It&apos;s that important. You know, I can give you a special tip on how to hunt effectively. Are you interested?"/>
+       <imgdir name="yes">
+         <string name="0" value="Oh hoho... Surely you do. As a hunter in training, you should get accostumed with the uncertainties that surround us. So, take this list of leathers I want you to bring, and bring them here, ok? If you pass this test, you will not regret it!"/>
+-        <string name="1" value="You will need firstly regular #b#t4000021##k in a bunch of 50. In #rLeafre#k, hunt for some #b#t4000264##k and #b#t4031871##k. In #rMu Lung#k, hunt for some #b#t4000281##k and #b#t4000295##k, these are famous from around here, and quite rare to find. This one will be tricky: #b#t4000440##k... Well, these are found from Primitive Boars, you will need to go to Ludibrium somewhere and find a portal to jump back in the time. Hey, don&apos;t look to me like that, word has it that they in Ludibrium can do something about this sort of thing!"/>
++        <string name="1" value="You will need firstly regular #b#t4000021##k in a bunch of 60. In #rLeafre#k, hunt for some #b#t4000264##k. In #rMu Lung#k, hunt for some #b#t4000281##k and #b#t4000295##k, these are famous from around here, and quite rare to find. This one will be tricky: #b#t4000440##k... Well, these are found from Primitive Boars, you will need to go to Ludibrium somewhere and find a portal to jump back in the time. Hey, don&apos;t look to me like that, word has it that they in Ludibrium can do something about this sort of thing!"/>
+         <string name="2" value="Finally, #b#t4032475##k. Normally their leather are not very consistent. However, once we are in open hunt season, they have some utility for adorning things. Said all that, good luck on your hunt and be safe."/>
+       </imgdir>
+       <imgdir name="no">

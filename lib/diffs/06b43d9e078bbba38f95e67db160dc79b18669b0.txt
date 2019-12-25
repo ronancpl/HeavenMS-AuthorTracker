@@ -1,0 +1,47 @@
+diff --git a/Dockerfile b/Dockerfile
+index 070ffa17c..d37cf08b8 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,9 +1,13 @@
+ # Docker support, thanks to xinyifly
+ 
+-FROM openjdk:7-alpine
++FROM openjdk:8u171-jdk-alpine
+ RUN apk -U add tini
+ WORKDIR /mnt
+ COPY ./ ./
+ RUN sh ./posix-compile.sh
++ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.6.0/wait /wait
++RUN chmod +x /wait
++
+ EXPOSE 8484 7575 7576 7577
+-CMD exec tini -- sh ./posix-launch.sh
+\ No newline at end of file
++ENTRYPOINT ["tini", "--"]
++CMD /wait && sh ./posix-launch.sh
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 000000000..6e514c1e4
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,20 @@
++version: '3'
++services:
++  maplestory:
++    network_mode: "host"
++    build: .
++    depends_on:
++      - db
++    environment:
++      WAIT_HOSTS: localhost:3306
++    
++  db:
++    network_mode: "host"
++    image: mysql:5.6
++    environment:
++      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
++      MYSQL_DATABASE: "heavenms"
++      MYSQL_USER: "root"
++      MYSQL_PASSWORD: ""
++    volumes:
++      - ./sql:/docker-entrypoint-initdb.d

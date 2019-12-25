@@ -1,0 +1,1152 @@
+diff --git a/README.txt b/README.txt
+index 9ca818c38..9ae27a48d 100644
+--- a/README.txt
++++ b/README.txt
+@@ -119,6 +119,9 @@ property settings must follow these:
+ 	- Run as an administrator;
+ 	- Opening "lolwut.exe", use Fraysa's method.
+ 
++Alternatively, there is available the No-Damage Cap version of the MapleStory client. Just extract and use the
++"localhost.exe" from the one package with the given name.
++
+ ---- Important note about CLIENT EDITING ----
+ 
+ DO NOT USE the server's XMLs for reimporting into the client's WZ, it WILL generate some kind of bugs afterwards.
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index bd590a03d..26c6b9028 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -143,4 +143,9 @@ Adi
+ Adição de efeito: Zombify.
+ Adição da expedição BPQ.
+ Aprimoramento de métodos que usam acesso concorrente no projeto.
+-Diversas pequenas alterações nos WZs do cliente/servidor.
+\ No newline at end of file
++Diversas pequenas alterações nos WZs do cliente/servidor.
++
++10 Abril 2017,
++Navio de Crimson Balrogs agora são renderizados na tela, mesmo depois de mudar de mapas.
++Adição de client alternativo: MapleStory sem Damage Cap.
++Adição de expedições PiratePQ e EllinPQ.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 9b44440cf..4ce607c8f 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,7 +3,7 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/life/MobSkill.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/Boats.js b/scripts/event/Boats.js
+index c2ee975b4..583cd2b47 100644
+--- a/scripts/event/Boats.js
++++ b/scripts/event/Boats.js
+@@ -6,7 +6,8 @@ importPackage(Packages.server.life);
+ var closeTime = 50 * 1000; //The time to close the gate
+ var beginTime = 60 * 1000; //The time to begin the ride
+ var rideTime = 120 * 1000; //The time that require move to destination
+-var invasionTime = 30 * 1000; //The time that spawn balrog
++var invasionTime = 30 * 1000; //The time to balrog ship approach
++var invasionDelay = 5 * 1000; //The time that spawn balrog
+ var Orbis_btf;
+ var Boat_to_Orbis;
+ var Orbis_Boat_Cabin;
+@@ -26,26 +27,24 @@ function init() {
+     Orbis_Station = em.getChannelServer().getMapFactory().getMap(200000100);
+     Orbis_docked = em.getChannelServer().getMapFactory().getMap(200000111);
+     
++    Ellinia_docked.setDocked(true);
++    Orbis_docked.setDocked(true);
++    
+     scheduleNew();
+ }
+ 
+ function scheduleNew() {
+     em.setProperty("docked", "true");
+-    Ellinia_docked.setDocked(true);
+-    Orbis_docked.setDocked(true);
+     
+     em.setProperty("entry", "true");
+     em.setProperty("haveBalrog", "false");
+     em.schedule("stopentry", closeTime);
+     em.schedule("takeoff", beginTime);
+-
+-    Boat_to_Orbis.killAllMonsters();
+-    Boat_to_Ellinia.killAllMonsters();
+ }
+ 
+ function stopentry() {
+     em.setProperty("entry","false");
+-    Orbis_Boat_Cabin.resetReactors();
++    Orbis_Boat_Cabin.resetReactors();   //boxes
+     Ellinia_Boat_Cabin.resetReactors();
+ }
+ 
+@@ -56,10 +55,8 @@ function takeoff() {
+     Orbis_docked.broadcastShip(false);
+     
+     em.setProperty("docked","false");
+-    Ellinia_docked.setDocked(false);
+-    Orbis_docked.setDocked(false);
+     
+-    em.schedule("invasion", invasionTime);
++    em.schedule("approach", invasionTime);
+     em.schedule("arrived", rideTime);
+ }
+ 
+@@ -70,29 +67,37 @@ function arrived() {
+     Ellinia_Boat_Cabin.warpEveryone(Ellinia_docked.getId());
+     Orbis_docked.broadcastShip(true);
+     Ellinia_docked.broadcastShip(true);
++    Boat_to_Orbis.broadcastEnemyShip(false);
++    Boat_to_Ellinia.broadcastEnemyShip(false);
+     Boat_to_Orbis.killAllMonsters();
+     Boat_to_Ellinia.killAllMonsters();
+     em.setProperty("haveBalrog", "false");
+     scheduleNew();
+ }
+ 
+-function invasion() {
++function approach() {
+     if (Math.floor(Math.random() * 10) < 10) {
+-	var map1 = Boat_to_Ellinia;
+-	var pos1 = new java.awt.Point(-538, 143);
+-	map1.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos1);
+-	map1.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos1);
+-
+-	var map2 = Boat_to_Orbis;
+-	var pos2 = new java.awt.Point(339, 148);
+-	map2.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos2);
+-	map2.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos2);
+-
+         em.setProperty("haveBalrog","true");
+-        Boat_to_Ellinia.broadcastShip(true);
+-        Boat_to_Orbis.broadcastShip(true);
++        Boat_to_Orbis.broadcastEnemyShip(true);
++        Boat_to_Ellinia.broadcastEnemyShip(true);
++        Boat_to_Orbis.broadcastMessage(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
++        Boat_to_Ellinia.broadcastMessage(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
++        
++        em.schedule("invasion", invasionDelay);
+     }
+ }
+ 
++function invasion() {
++    var map1 = Boat_to_Ellinia;
++    var pos1 = new java.awt.Point(-538, 143);
++    map1.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos1);
++    map1.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos1);
++
++    var map2 = Boat_to_Orbis;
++    var pos2 = new java.awt.Point(339, 148);
++    map2.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos2);
++    map2.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8150000), pos2);
++}
++
+ function cancelSchedule() {
+ }
+\ No newline at end of file
+diff --git a/scripts/event/Ellin.js b/scripts/event/Ellin.js
+index def16c144..882d42771 100644
+--- a/scripts/event/Ellin.js
++++ b/scripts/event/Ellin.js
+@@ -1,14 +1,14 @@
+ var minPlayers = 2;
+ 
+ function init() {
+-em.setProperty("state", "0");
++        em.setProperty("state", "0");
+ 	em.setProperty("leader", "true");
+ }
+ 
+ function setup(level, leaderid) {
+-em.setProperty("state", "1");
++        em.setProperty("state", "1");
+ 	em.setProperty("leader", "true");
+-    var eim = em.newInstance("Ellin" + leaderid);
++        var eim = em.newInstance("Ellin" + leaderid);
+ 
+         eim.setInstanceMap(930000000).resetPQ(level);
+ 	eim.setInstanceMap(930000100).resetPQ(level);
+@@ -21,21 +21,20 @@ em.setProperty("state", "1");
+ 	eim.setInstanceMap(930000600).resetPQ(level);
+ 	eim.setInstanceMap(930000700).resetPQ(level);
+ 
+-    eim.startEventTimer(1200000); //20 mins
+-    return eim;
++        eim.startEventTimer(20 * 60000); //20 mins
++        return eim;
+ }
+ 
+ function playerEntry(eim, player) {
+-    var map = eim.getMapInstance(0);
+-    player.changeMap(map, map.getPortal(0));
+-    player.tryPartyQuest(1206);
++        var map = eim.getMapInstance(0);
++        player.changeMap(map, map.getPortal(0));
+ }
+ 
+ function playerRevive(eim, player) {
+ }
+ 
+ function scheduledTimeout(eim) {
+-    end(eim);
++        end(eim);
+ }
+ 
+ function changedMap(eim, player, mapid) {
+@@ -68,8 +67,8 @@ function playerExit(eim, player) {
+ 
+ function end(eim) {
+     eim.disposeIfPlayerBelow(100, 930000800);
+-	em.setProperty("state", "0");
+-		em.setProperty("leader", "true");
++    em.setProperty("state", "0");
++    em.setProperty("leader", "true");
+ }
+ 
+ function clearPQ(eim) {
+diff --git a/scripts/event/PiratePQ.js b/scripts/event/PiratePQ.js
+index 818b48edf..a8228dc96 100644
+--- a/scripts/event/PiratePQ.js
++++ b/scripts/event/PiratePQ.js
+@@ -1,3 +1,4 @@
++var isPq = true;
+ var minPlayers = 1;
+ 
+ function init() {
+@@ -27,10 +28,10 @@ em.setProperty("state", "1");
+ 		eim.registerMonster(mob2);
+ 		eim.registerMonster(mob3);
+ 		eim.registerMonster(mob4);
+-		mob.changeLevel(level);
+-		mob2.changeLevel(level);
+-		mob3.changeLevel(level);
+-		mob4.changeLevel(level);
++		mob.changeDifficulty(level,isPq);
++		mob2.changeDifficulty(level,isPq);
++		mob3.changeDifficulty(level,isPq);
++		mob4.changeDifficulty(level,isPq);
+ 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
+ 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
+ 		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
+@@ -43,8 +44,8 @@ em.setProperty("state", "1");
+ 		var mob2 = em.getMonster(9300113);
+ 		eim.registerMonster(mob);
+ 		eim.registerMonster(mob2);
+-		mob.changeLevel(level);
+-		mob2.changeLevel(level);
++		mob.changeDifficulty(level,isPq);
++		mob2.changeDifficulty(level,isPq);
+ 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
+ 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
+ 	}
+@@ -60,10 +61,10 @@ em.setProperty("state", "1");
+ 		eim.registerMonster(mob2);
+ 		eim.registerMonster(mob3);
+ 		eim.registerMonster(mob4);
+-		mob.changeLevel(level);
+-		mob2.changeLevel(level);
+-		mob3.changeLevel(level);
+-		mob4.changeLevel(level);
++		mob.changeDifficulty(level,isPq);
++		mob2.changeDifficulty(level,isPq);
++		mob3.changeDifficulty(level,isPq);
++		mob4.changeDifficulty(level,isPq);
+ 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
+ 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
+ 		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
+@@ -76,8 +77,8 @@ em.setProperty("state", "1");
+ 		var mob2 = em.getMonster(9300113);
+ 		eim.registerMonster(mob);
+ 		eim.registerMonster(mob2);
+-		mob.changeLevel(level);
+-		mob2.changeLevel(level);
++		mob.changeDifficulty(level,isPq);
++		mob2.changeDifficulty(level,isPq);
+ 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
+ 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
+ 	}
+diff --git a/scripts/map/onUserEnter/101000300.js b/scripts/map/onUserEnter/101000300.js
+deleted file mode 100644
+index 5965acd17..000000000
+--- a/scripts/map/onUserEnter/101000300.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Boats";
+-var toMap = 200090010;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/103000000.js b/scripts/map/onUserEnter/103000000.js
+deleted file mode 100644
+index 04bc08a5c..000000000
+--- a/scripts/map/onUserEnter/103000000.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "AirPlane";
+-var toMap = 540010101;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/103000100.js b/scripts/map/onUserEnter/103000100.js
+deleted file mode 100644
+index 450d1c041..000000000
+--- a/scripts/map/onUserEnter/103000100.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Subway";
+-var toMap = 600010005;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/200000111.js b/scripts/map/onUserEnter/200000111.js
+deleted file mode 100644
+index b9a0586eb..000000000
+--- a/scripts/map/onUserEnter/200000111.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Boats";
+-var toMap = 200090000;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/200000121.js b/scripts/map/onUserEnter/200000121.js
+deleted file mode 100644
+index 575bc2399..000000000
+--- a/scripts/map/onUserEnter/200000121.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Trains";
+-var toMap = 200090100;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/200000131.js b/scripts/map/onUserEnter/200000131.js
+deleted file mode 100644
+index 90fa941bb..000000000
+--- a/scripts/map/onUserEnter/200000131.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Cabin";
+-var toMap = 200090200;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/200000151.js b/scripts/map/onUserEnter/200000151.js
+deleted file mode 100644
+index 7c015fc92..000000000
+--- a/scripts/map/onUserEnter/200000151.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Genie";
+-var toMap = 200090400;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/200090000.js b/scripts/map/onUserEnter/200090000.js
+new file mode 100644
+index 000000000..4d6b0e02b
+--- /dev/null
++++ b/scripts/map/onUserEnter/200090000.js
+@@ -0,0 +1,15 @@
++// Author: Ronan
++importPackage(Packages.tools);
++
++var mapId = 200090000;
++
++function start(pi) {
++	var map = pi.getClient().getChannelServer().getMapFactory().getMap(mapId);
++
++	if(map.getDocked()) {
++		pi.getClient().announce(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
++		pi.getClient().announce(MaplePacketCreator.crogBoatPacket(true));
++	}
++
++	return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/200090010.js b/scripts/map/onUserEnter/200090010.js
+new file mode 100644
+index 000000000..49ebeffc7
+--- /dev/null
++++ b/scripts/map/onUserEnter/200090010.js
+@@ -0,0 +1,15 @@
++// Author: Ronan
++importPackage(Packages.tools);
++
++var mapId = 200090010;
++
++function start(pi) {
++	var map = pi.getClient().getChannelServer().getMapFactory().getMap(mapId);
++
++	if(map.getDocked()) {
++		pi.getClient().announce(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
++		pi.getClient().announce(MaplePacketCreator.crogBoatPacket(true));
++	}
++
++	return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/220000110.js b/scripts/map/onUserEnter/220000110.js
+deleted file mode 100644
+index 7cda564f1..000000000
+--- a/scripts/map/onUserEnter/220000110.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Trains";
+-var toMap = 200090110;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+\ No newline at end of file
+diff --git a/scripts/map/onUserEnter/240000110.js b/scripts/map/onUserEnter/240000110.js
+deleted file mode 100644
+index 42f4da5c8..000000000
+--- a/scripts/map/onUserEnter/240000110.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Cabin";
+-var toMap = 200090210;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/260000100.js b/scripts/map/onUserEnter/260000100.js
+deleted file mode 100644
+index 07d208a0b..000000000
+--- a/scripts/map/onUserEnter/260000100.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Genie";
+-var toMap = 200090410;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/540010000.js b/scripts/map/onUserEnter/540010000.js
+deleted file mode 100644
+index 7e6ab137b..000000000
+--- a/scripts/map/onUserEnter/540010000.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "AirPlane";
+-var toMap = 540010002;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/600010001.js b/scripts/map/onUserEnter/600010001.js
+deleted file mode 100644
+index f8d497968..000000000
+--- a/scripts/map/onUserEnter/600010001.js
++++ /dev/null
+@@ -1,13 +0,0 @@
+-importPackage(Packages.tools);
+-
+-var eventName = "Subway";
+-var toMap = 600010003;
+-
+-function start(ms) {   	       
+-	var em = ms.getClient().getEventManager(eventName);
+-	
+-	//is the player late to start the travel?
+-	if(em.getProperty("docked") == "false") {
+-		ms.getClient().getPlayer().warp(toMap);
+-        }
+-}
+diff --git a/scripts/map/onUserEnter/921100300.txt b/scripts/map/onUserEnter/921100300.txt
+deleted file mode 100644
+index e69de29bb..000000000
+diff --git a/scripts/map/onUserEnter/923010000.txt b/scripts/map/onUserEnter/923010000.txt
+deleted file mode 100644
+index e69de29bb..000000000
+diff --git a/scripts/npc/world0/1012008.js b/scripts/npc/world0/1012008.js
+index a2de953b1..7efc7a0d9 100644
+--- a/scripts/npc/world0/1012008.js
++++ b/scripts/npc/world0/1012008.js
+@@ -1,120 +1,121 @@
+ /*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
++ * @Author - Sparrow
++ * @NPC - 1012008 - Casey the Game Master
++ * @Map - 100000203 - Henesys Game Park
++ */
+ 
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-    Author: Ronan Lana
+-*/
+-/* Casey
+-	Henesys Game Park (1012008)
+-	
+-	Refining NPC: 
+-	* Omok sets - Set 1
+-	* Match of cards
+-*/
+-
+-var status = -1;
+-var selectedType = -1;
+-var selectedItem = -1;
+-var item;
+-var mats;
+-var matQty;
+-var cost;
+-var qty;
+-
+-var items = [4080100,4080000,4080001,4080002,4080003,4080004,4080005];
+-var matSet = [[4030012],[4030009,4030000,4030001],[4030009,4030000,4030010],[4030009,4030000,4030011],[4030009,4030010,4030001],[4030009,4030011,4030010],[4030009,4030011,4030001]];
+-var matQtySet = [[99],[1,99,99],[1,99,99],[1,99,99],[1,99,99],[1,99,99],[1,99,99]];
+-var costSet = [10000,25000,25000,25000,25000,25000,25000];
++var status;
++var current;
++var omok =       [4080000, 4080001, 4080002, 4080003, 4080004, 4080005];
++var omok1piece = [4030000, 4030000, 4030000, 4030010, 4030011, 4030011];
++var omok2piece = [4030001, 4030010, 4030011, 4030001, 4030010, 4030001];
++var omokamount = 99;
++var text = "The set also differs based on what kind of pieces you want to use for the game. Which set would you like to make?"
+ 
+ function start() {
+-    cm.getPlayer().setCS(true);
+-    var selStr = "Hey there! My name is #p1012008#, and I am a specialist in mini-games. What kind of mini-game you want me to make? #b"
+-    var options = ["#i4080100# #t4080100#","#i4080006# #t4080006#","#i4080007# #t4080007#","#i4080008# #t4080008#","#i4080009# #t4080009#","#i4080010# #t4080010#","#i4080011# #t4080011#"];
+-    for (var i = 0; i < options.length; i++)
+-        selStr += "\r\n#L" + i + "# " + options[i] + "#l";
+-    cm.sendSimple(selStr);
++    current = 0;
++    status = -1;
++    action(1,0,0);
+ }
+ 
+ function action(mode, type, selection) {
+-    status++;
+-    if (mode != 1){
++    if(mode == -1 && current > 0) {
+         cm.dispose();
+         return;
++    } else {
++        if(mode == 1) { 
++            status++;
++        } else {
++            status--;
++        }
+     }
+-    if (status == 0) {        
+-        selectedItem = selection;
+-        
+-        item = items[selectedItem];
+-        mats = matSet[selectedItem];
+-        matQty = matQtySet[selectedItem];
+-        cost = costSet[selectedItem];
+-        qty = 1;
+-        
+-        var prompt = "So we are going for ";
+-        if (qty == 1)
+-            prompt += "a #t" + item + "#";
+-        else
+-            prompt += qty + " #t" + item + "#";
+-        prompt += ", right? In that case, I'm going to need specific items from you in order to make it. Make sure you have room in your inventory, though!#b";
+-        if (mats instanceof Array)
+-            for(var i = 0; i < mats.length; i++)
+-                prompt += "\r\n#i" + mats[i] + "# " + (matQty[i] * qty) + " #t" + mats[i] + "#";
+-        else
+-            prompt += "\r\n#i" + mats + "# " + (matQty * qty) + " #t" + mats + "#";
+-        if (cost > 0)
+-            prompt += "\r\n#i4031138# " + (cost * qty) + " meso";
+-        cm.sendYesNo(prompt);
+-    }else if (status == 1) {
+-        var complete = true;
+-        
+-        if (cm.getMeso() < (cost * qty)) {
+-            cm.sendOk("See, I need to specify my wages to support my career, that cannot be bypassed. I will gladly help you once you've got the money.");
+-            cm.dispose();
+-            return;
++
++    if (status == 0) {
++        cm.sendSimple("Hey, you look like you need a breather. You should be enjoying the life, just like I am. Well, if you have a couple of items, I can trade you for an item you can play minigames with. Now... what can I do for you?#b\r\n#L0#Create a minigame item#l\r\n#L1#Explain to me what the minigames are about#l#k");
++      
++    } else if (status == 1) {
++        if (selection == 0) {
++            cm.sendSimple("You want to make the minigame item? Minigames aren't something you can just go ahead and play right off the bat. For each minigame, you'll need a specific set of items. Which minigame it em do you want to make?#b\r\n#L4#Omok Set#l\r\n#L5#A Set of Match Cards#l#k");
++        } else if (selection == 1) {
++            cm.sendSimple("You want to learn more about the minigames? Awesome! Ask me anything. Which minigame do you want to know more about?#b\r\n#L2#Omok#l\r\n#L3#Match Cards#l#k");
+         }
+-        else {
+-            if (mats instanceof Array) {
+-                for(var i = 0; complete && i < mats.length; i++)
+-                    if (!cm.haveItem(mats[i], matQty[i]))
+-                        complete = false;
+-            }else if (!cm.haveItem(mats, matQty))
+-                complete = false;
+-        }	
+-        if (!complete)
+-            cm.sendOk("You are lacking some items for the set you want to make. Please provide them so that we can assemble the game set.");
+-        else {
+-            if (cm.canHold(item,qty)) {
+-                if (mats instanceof Array) {
+-                    for (var i = 0; i < mats.length; i++)
+-                        cm.gainItem(mats[i], -(matQty[i] * qty));
+-                }else
+-                    cm.gainItem(mats, -(matQty * qty));
+-                cm.gainMeso(-(cost * qty));
+-                
+-                cm.gainItem(item, qty);
+-                cm.sendOk("There is your game set. Have fun!");
+-            }else {
+-                cm.sendOk("I can't make a set for you if there's no room in your ETC inventory for it. Please free a space first and then talk to me.");
++
++    } else if (status == 2) {
++        if (selection == 2) {
++            current = 1;
++            cm.sendNext("Here are the rules for Omok, so listen carefully. Omok is a game in which you and your opponent take turns laying a piece on the table until someone finds a way to lay 5 consecutive pieces in a line, be it horizontal, diagonal, or vertical. For starters, only the ones with an #bOmok Set#k can open a game room.");
++        } else if (selection == 3) {
++            current = 2;
++            cm.sendNext("Here are the rules for Match Cards, so listen carefully. As the name suggests, Match Cards is simply finding a matching pair among the number of cards laid on the table. When all the matching pairs are found, then the person with more matching pairs will win the game. Just like Omok, you'll need #bA set of Match Cards#k to open the game room.");
++
++        } else if (selection == 4) {
++            current = 3;
++            cm.sendNext("You want to play #bOmok#k, huh? To play it, you'll need the Omok Set. Only the ones with that item can open the room for a game of Omok, and you can play this game almost anywhere except for a few places at the market place.");
++
++        } else if (selection == 5) {
++            current = 4;
++            if (cm.haveItem(4030012, 15)) {
++                cm.gainItem(4030012, -15);
++                cm.gainItem(4080100, 1);
++            } else {
++                cm.sendNext("You want #bA set of Match Cards#k? Hmm...to make A set of Match Cards, you'll need some #bMonster Cards#k. Monster Card can be obtained by taking out the monsters all around the island. Collect 15 Monster Cards and you can make a set of A set of Match Cards."); //Lmfao a set of A set xD
++                cm.dispose();
+             }
+         }
++
++         
++    } else if (status == 3) {
++        if (current == 1) {
++            cm.sendNextPrev("Every game of Omok will cost you #r100 mesos#k. Even if you don't have an #bOmok Set#k, you can enter the room and play. However, if you don't possess 100 mesos, then you won't be allowed to enter in the room at all. The person opening the game room also needs 100 mesos to open the room (or else there's no game). If you run out of mesos during the game, then you're automatically kicked out of the room!");
++        } else if (current == 2) {
++            cm.sendNextPrev("Every game of Match Cards will cost you #r100 mesos#k. Even if you don't have #bA set of Match Cards#k, you can enter the room and play. However, if you don't possess 100 mesos, then you won't be allowed to enter in the room at all. The person opening the game room also needs 100 mesos to open the room (or else there's no game). If you run out of mesos during the game, then you're automatically kicked out of the room!");
++
++        } else if (current == 3) {
++            for (var i = 0; i < omok.length; i++)
++                text += "\r\n#L"+i+"##b#t"+omok[i]+"##k#l";
++            cm.sendSimple(text);
++        }
++
++    } else if (status == 4) {
++        if (current == 1 || current == 2) {
++            cm.sendNextPrev("Enter the room, and when you're ready to play, click on #bReady#k.\r\nOnce the visitor clicks on #bReady#k, the room owner can press #bStart#k to begin the game. If an unwanted visitor walks in, and you don't want to play with that person, the room owner has the right to kick the visitor out of the room. There will be a square box with x written on the right of that person. Click on that for a cold goodbye, okay?"); //Oh yeah, because people WALK in Omok Rooms.
++        }
++        else if (current == 3) {
++            if (cm.haveItem(omok1piece[selection], 99) && cm.haveItem(omok2piece[selection], 99) && cm.haveItem(4030009, 1)) {
++                cm.gainItem(omok1piece[selection], -omokamount);
++                cm.gainItem(omok2piece[selection], -omokamount);
++                cm.gainItem(4030009, -1);
++                cm.gainItem(omok[selection], 1);
++                cm.dispose();
++            } else {
++                cm.sendNext("#bYou want to make #t" + omok[selection] + "##k? Hmm...get me the materials, and I can do just that. Listen carefully, the materials you need will be: #r" + omokamount + " #t" + omok1piece[selection] + "#, " + omokamount + " #t" + omok2piece[selection] + "#, 1 #t" + 4030009 + "##k. The monsters will probrably drop those every once in a while...");
++                cm.dispose();
++            }
++        }
++
++    } else if (status == 5) {
++        if (current == 1) {
++            cm.sendNextPrev("When the first fame starts, #bthe room owner goes first#k. Beward that you'll be given a time limit, and you may lose your turn if you don't make your move on time. Normally, 3 x 3 is not allowed, but if there comes a point that it's absolutely necessary to put your piece there or face ending the game, then you can put it there. 3 x 3 is allowed as the last line of defense! Oh, and it won't count if it's #r6 or 7 straight#k. Only 5!");
++        } else if (current == 2)  {
++            cm.sendNextPrev("Oh, and unlike Omok, when you create the game room for Match Cards, you'll need to set your game on the number of cards you'll use for the game. There are 3 modes avaliable, 3x4, 4x5, and 5x6, which will require 12, 20, and 30 cards respectively. Remember that you won't beable to change it up once the room is open, so if you really wish to change it up, you may have to close the room and open another one.");
++        }
++
++    } else if (status == 6) {
++        if (current == 1) {
++            cm.sendNextPrev("If you know your back is against the wall, you can request a #bRedo#k. If the opponent accepts your request, then you and your opponent's last moves will cancel out. If you ever feel the need to go to the bathroom, or take an extended break, you can request a #btie#k. The game will end in a tie if the opponent accepts the request. Tip: this may be a good way to keep your friendships in tact.");
++        } else if (current == 2) {
++            cm.sendNextPrev("When the first game starts, #bthe room owner goes first.#k Beware that you'll be given a time limit, and you may lose your turn if you don't make your move on time. When you find a matching pair on your turn, you'll get to keep your turn, as long as you keep finding a pair of matching cards. Use your memorizing skills to make a streak.");
++        }
+         
+-        cm.dispose();
++    } else if (status == 7) {
++        if (current == 1) {
++            cm.sendPrev("When the next game starts, the loser will go first. Also, no one is allowed to leave in the middle of a game. If you do, you may need to request either a #bforfeit or tie#k. (Of course, if you request a forfeit, you'll lose the game.) And if you click on 'Leave' in the middle of the game and call to leave after the game, you'll leave the room right after the game is over. This will be a much more useful way to leave.");
++        } else if (current == 2) {
++            cm.sendNextPrev("If you and your opponent have the same number of matched pairs, then whoever had a longer streak of matched pairs will win. If you ever feel the need to go to the bathroom, or take an extended break, you can request a #btie#k. The game will end in a tie if the opponent accepts the request. Tip: this may be a good way to keep your friendships in tact.");
++        }
++    } else if (status == 8) {
++        if (current == 2) {
++            cm.sendPrev("When the next game starts, the loser will go first. Also, no one is allowed to leave in the middle of a game. If you do, you may need to request either a #bforfeit or tie#k. (Of course, if you request a forfeit, you'll lose the game.) And if you click on 'Leave' in the middle of the game and call to leave after the game, you'll leave the room right after the game is over. This will be a much more useful way to leave.");
++        }
+     }
+-}
+\ No newline at end of file
++}  
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1032009.js b/scripts/npc/world0/1032009.js
+index 472e5f70a..083526069 100644
+--- a/scripts/npc/world0/1032009.js
++++ b/scripts/npc/world0/1032009.js
+@@ -31,7 +31,7 @@ function start() {
+ 
+ function action(mode, type, selection) {
+     if (status == 0) {
+-        cm.sendYesNo("Do you wish to go to leave the boat?");
++        cm.sendYesNo("Do you wish to leave the boat?");
+         status++;
+     } else {
+         if (mode < 1) {
+diff --git a/scripts/npc/world0/2012002.js b/scripts/npc/world0/2012002.js
+index d8daf4185..3d2115225 100644
+--- a/scripts/npc/world0/2012002.js
++++ b/scripts/npc/world0/2012002.js
+@@ -29,7 +29,7 @@
+ var status = 0;
+ 
+ function start() {
+-    cm.sendYesNo("Do you wish to go to leave the boat?");
++    cm.sendYesNo("Do you wish to leave the boat?");
+ }
+ 
+ function action(mode, type, selection) {
+diff --git a/scripts/npc/world0/2012024.js b/scripts/npc/world0/2012024.js
+index e4354f12f..d7436a998 100644
+--- a/scripts/npc/world0/2012024.js
++++ b/scripts/npc/world0/2012024.js
+@@ -28,7 +28,7 @@ function start() {
+ 
+ function action(mode, type, selection) {
+     if (status == 0) {
+-        cm.sendYesNo("Do you wish to go to leave the genie?");
++        cm.sendYesNo("Do you wish to leave the genie?");
+         status++;
+     } else {
+         if (mode < 1) {
+diff --git a/scripts/npc/world0/2023000.js b/scripts/npc/world0/2023000.js
+index eb43212a9..6bda2ff57 100644
+--- a/scripts/npc/world0/2023000.js
++++ b/scripts/npc/world0/2023000.js
+@@ -21,7 +21,7 @@
+ 
+ var toMap = new Array(211040200, 220050300, 220000000,240030000);
+ var inMap = new Array(211000000, 220000000, 221000000, 240000000);
+-var cost = new Array(10000, 25000, 25000,55000);
++var cost = new Array(10000, 25000, 25000, 65000);
+ var location;
+ var status = 0;
+ 
+diff --git a/scripts/npc/world0/2102001.js b/scripts/npc/world0/2102001.js
+index 4396d5804..4f2ef64c7 100644
+--- a/scripts/npc/world0/2102001.js
++++ b/scripts/npc/world0/2102001.js
+@@ -28,7 +28,7 @@ function start() {
+ 
+ function action(mode, type, selection) {
+     if (status == 0) {
+-        cm.sendYesNo("Do you wish to go to leave the genie?");
++        cm.sendYesNo("Do you wish to leave the genie?");
+         status++;
+     } else {
+         if (mode < 1) {
+diff --git a/scripts/npc/world0/2120003.js b/scripts/npc/world0/2120003.js
+new file mode 100644
+index 000000000..b1623bf2f
+--- /dev/null
++++ b/scripts/npc/world0/2120003.js
+@@ -0,0 +1,10 @@
++/* @Author SharpAceX
++        Name: Maid
++        Map(s): Foyer.
++        Info: Maid
++*/
++
++function start() {
++	cm.sendOk("Hello and welcome, dear guest. The Master has prepared some wonderful games for you to enjoy tonight.");
++	cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133000.js b/scripts/npc/world0/2133000.js
+index c76e2bd7a..6c105bc47 100644
+--- a/scripts/npc/world0/2133000.js
++++ b/scripts/npc/world0/2133000.js
+@@ -50,7 +50,7 @@ function action(mode, type, selection) {
+ 		while (it.hasNext()) {
+ 			var cPlayer = it.next();
+ 			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
+-			if (ccPlayer == null || ccPlayer.getLevel() < 70 || ccPlayer.getLevel() > 255) {
++			if (ccPlayer == null || ccPlayer.getLevel() < 44 || ccPlayer.getLevel() > 55) {
+ 				next = false;
+ 				break;
+ 			}
+@@ -61,10 +61,10 @@ function action(mode, type, selection) {
+ 			if (em == null) {
+ 				cm.sendOk("Please try again later.");
+ 			} else {
+-				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap(), 120);
++				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap(), 1);    //common level only
+ 			}
+ 		} else {
+-			cm.sendOk("All 2+ members of your party must be here and above level 70.");
++			cm.sendOk("All 2+ members of your party must be here and between level 44 and 55.");
+ 		}
+ 	    }
+ 	}
+diff --git a/scripts/npc/world0/9201143.js b/scripts/npc/world0/9201143.js
+new file mode 100644
+index 000000000..e0944456e
+--- /dev/null
++++ b/scripts/npc/world0/9201143.js
+@@ -0,0 +1,11 @@
++/* @Author SharpAceX 
++        Name: Steward 
++        Map(s): Foyer 
++        Info: Steward 
++        NPC ID: 9201143.js 
++*/ 
++
++function start() { 
++	cm.sendNext("At your service, my friend."); 
++	cm.dispose(); 
++}
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index fe2fe2175..c315f6292 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18842,6 +18842,7 @@
+   UPDATE drop_data SET questid=7777 WHERE itemid=4001358;	#id 7777 for ALL "quest items" with no v83 quest.
+   UPDATE drop_data SET questid=7777 WHERE itemid=4001359;
+   UPDATE drop_data SET questid=7777 WHERE itemid=4001342;
++  UPDATE drop_data SET questid=7777 WHERE itemid=4031906;
+   UPDATE drop_data SET chance=0 WHERE itemid=2050099;
+   UPDATE drop_data SET chance=40000 WHERE itemid=4031991;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 87387d90f..26fbcdf82 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -174,6 +174,16 @@ public void startInstance(MapleParty party, MapleMap map) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+     }
++    
++    //PQ method: starts a PQ with a difficulty level, requires function setup(difficulty, leaderid) instead of setup()
++    public void startInstance(MapleParty party, MapleMap map, int difficulty) {
++        try {
++            EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", difficulty, party.getLeader().getId()));
++            eim.registerParty(party, map);
++        } catch (ScriptException | NoSuchMethodException ex) {
++            Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
++        }
++    }
+ 
+     //non-PQ method for starting instance
+     public void startInstance(EventInstanceManager eim, String leader) {
+diff --git a/src/server/life/ChangeableStats.java b/src/server/life/ChangeableStats.java
+index a4ffa7cd8..210a65ea5 100644
+--- a/src/server/life/ChangeableStats.java
++++ b/src/server/life/ChangeableStats.java
+@@ -1,6 +1,6 @@
+ /*
+ This file is part of the OdinMS Maple Story Server
+-Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
++Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
+ Matthias Butz <matze@odinms.de>
+ Jan Christian Meyer <vimes@odinms.de>
+ This program is free software: you can redistribute it and/or modify
+@@ -47,4 +47,8 @@ public ChangeableStats(MapleMonsterStats stats, int newLevel, boolean pqMob) { /
+         mdef = Math.min(stats.isBoss() ? 30 : 20, (int) Math.round(stats.getMDDamage() * mod));
+         level = newLevel;
+     }
+-}
+\ No newline at end of file
++
++    public ChangeableStats(MapleMonsterStats stats, float statModifier, boolean pqMob) {
++        this(stats, (int)(statModifier * stats.getLevel()), pqMob);
++    }
++}
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index cea59069d..fe8611d8c 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -981,4 +981,24 @@ public final void changeLevel(final int newLevel, boolean pqMob) {
+         this.hp = ostats.getHp();
+         this.mp = ostats.getMp();
+     }
++    
++    private float getDifficultyRate(final int difficulty) {
++        switch(difficulty) {
++            case 6: return(7.7f);
++            case 5: return(5.6f);
++            case 4: return(3.2f);
++            case 3: return(2.1f);
++            case 2: return(1.4f);
++        }
++        
++        return(1.0f);
++    }
++    
++    public final void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
++        changeLevel((int)(this.getLevel() * getDifficultyRate(difficulty)), pqMob);
++    }
++    
++    public final void changeDifficulty(final int difficulty, boolean pqMob) {
++        changeLevelByDifficulty(difficulty, pqMob);
++    }
+ }
+diff --git a/src/server/life/SpawnPoint.java b/src/server/life/SpawnPoint.java
+index 84275bdad..71872c070 100644
+--- a/src/server/life/SpawnPoint.java
++++ b/src/server/life/SpawnPoint.java
+@@ -49,7 +49,7 @@ public int getSpawned() {
+         return spawnedMonsters.intValue();
+     }
+     
+-    public void denySpawn(boolean val) {
++    public void setDenySpawn(boolean val) {
+         spawnedMonsters.set((val == false) ? 0 : 1);
+     }
+ 
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 9f888bbcd..16f7420a0 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -711,7 +711,7 @@ public void killAllMonstersNotFriendly() {
+ 
+     public void killAllMonsters() {
+         for (SpawnPoint spawnPoint : monsterSpawn) {
+-            spawnPoint.denySpawn(true);
++            spawnPoint.setDenySpawn(true);
+         }
+         
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+@@ -2051,10 +2051,14 @@ public void run() {
+         }
+     }
+     
+-    public void instanceMapFirstSpawn() {
++    public void instanceMapFirstSpawn(int difficulty, boolean isPq) {
+         for(SpawnPoint spawnPoint: allMonsterSpawn) {
+-            if(spawnPoint.getMobTime() == -1)   //just those allowed to be spawned only once
+-                spawnMonster(spawnPoint.getMonster());
++            if(spawnPoint.getMobTime() == -1) {   //just those allowed to be spawned only once
++                MapleMonster monst = spawnPoint.getMonster();
++                monst.changeLevelByDifficulty(difficulty, isPq);
++                
++                spawnMonster(monst);
++            }
+         }
+     }
+ 
+@@ -2076,7 +2080,7 @@ public void instanceMapRespawn() {
+     
+     public void restoreMapSpawnPoints() {
+         for (SpawnPoint spawnPoint : monsterSpawn) {
+-            spawnPoint.denySpawn(false);
++            spawnPoint.setDenySpawn(false);
+         }
+     }
+ 
+@@ -2146,6 +2150,10 @@ public void setBoat(boolean hasBoat) {
+     public void setDocked(boolean isDocked) {
+         this.docked = isDocked;
+     }
++    
++    public boolean getDocked() {
++        return this.docked;
++    }
+ 
+     public void broadcastGMMessage(MapleCharacter source, final byte[] packet, boolean repeatToSource) {
+         broadcastGMMessage(repeatToSource ? null : source, packet, Double.POSITIVE_INFINITY, source.getPosition());
+@@ -2444,25 +2452,39 @@ public void clearMapObjects() {
+     }
+     
+     public void resetMapObjects() {
++        resetMapObjects(1, false);
++    }
++    
++    public final void resetFully() {
++        resetMapObjects();
++    }
++    
++    public void resetPQ(int difficulty) {
++        resetMapObjects(difficulty, true);
++    }
++    
++    public void resetPQ() {
++        resetMapObjects(1, true);
++    }
++    
++    public void resetMapObjects(int difficulty, boolean isPq) {
+         clearMapObjects();
+         
+         restoreMapSpawnPoints();
+-        instanceMapFirstSpawn();
++        instanceMapFirstSpawn(difficulty, isPq);
+     }
+     
+     public void broadcastShip(final boolean state) {
+         broadcastMessage(MaplePacketCreator.boatPacket(state));
++        this.setDocked(state);
+     }
+     
+-    public boolean isDojoMap() {
+-        return mapid >= 925020000 && mapid < 925040000;
++    public void broadcastEnemyShip(final boolean state) {
++        broadcastMessage(MaplePacketCreator.crogBoatPacket(state));
++        this.setDocked(state);
+     }
+     
+-    public final void resetFully() {
+-        resetFully(true);
+-    }
+-
+-    public final void resetFully(final boolean respawn) {
+-        resetMapObjects();
++    public boolean isDojoMap() {
++        return mapid >= 925020000 && mapid < 925040000;
+     }
+ }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 9325e2e1a..53f12a7d9 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -4440,8 +4440,15 @@ public static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MaplePe
+                 return mplew.getPacket();
+         }
+ 
++        public static byte[] crogBoatPacket(boolean type) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.CONTI_MOVE.getValue());
++                mplew.write(10);
++                mplew.write(type ? 4 : 5);
++                return mplew.getPacket();
++        }
+ 
+-        public static byte[] boatPacket(boolean type) {//don't think this is correct..
++        public static byte[] boatPacket(boolean type) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CONTI_STATE.getValue());
+                 mplew.write(type ? 1 : 2);
+diff --git a/wz/Item.wz/Etc/0403.img.xml b/wz/Item.wz/Etc/0403.img.xml
+index c2e6faed2..3ce6f76df 100644
+--- a/wz/Item.wz/Etc/0403.img.xml
++++ b/wz/Item.wz/Etc/0403.img.xml
+@@ -1,4 +1,4 @@
+-ï»¿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="0403.img">
+   <imgdir name="04030000">
+     <imgdir name="info">
+@@ -9798,9 +9798,7 @@
+         <int name="z" value="0"/>
+       </canvas>
+       <int name="price" value="1"/>
+-      <int name="tradeBlock" value="1"/>
+       <int name="slotMax" value="1"/>
+-      <int name="notSale" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04031907">

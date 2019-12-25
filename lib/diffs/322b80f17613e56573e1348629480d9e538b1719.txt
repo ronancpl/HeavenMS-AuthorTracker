@@ -1,0 +1,66 @@
+diff --git a/src/net/server/channel/handlers/WhisperHandler.java b/src/net/server/channel/handlers/WhisperHandler.java
+index d3e35f78d..489903c99 100644
+--- a/src/net/server/channel/handlers/WhisperHandler.java
++++ b/src/net/server/channel/handlers/WhisperHandler.java
+@@ -128,7 +128,18 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 c.announce(MaplePacketCreator.getWhisperReply(recipient, (byte) 0));
+             }
+         } else if (mode == 0x44) {
+-            //Buddy find?
++            //Buddy find
++            String recipient = slea.readMapleAsciiString();
++            MapleCharacter player = c.getWorldServer().getPlayerStorage().getCharacterByName(recipient);
++            if (player != null && c.getPlayer().gmLevel() >= player.gmLevel()) {
++                if (player.getCashShop().isOpened()) {  // in CashShop
++                    c.getSession().write(MaplePacketCreator.getFindReplyWithCS(recipient));
++                } else if (player.isAwayFromWorld()) {  // in MTS
++                    c.getSession().write(MaplePacketCreator.getFindReplyWithMTS(recipient));
++                } else {
++                    c.getSession().write(MaplePacketCreator.getFindReplyWithMap(player.getName(), player.getMap().getId()));
++                }
++            }
+         }
+     }
+ }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 75da90f41..a6a85edab 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -6067,6 +6067,37 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+ 
++        public static byte[] getFindReplyWithMap(String target, int mapid) {
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.WHISPER.getValue());
++                mplew.write(72);
++                mplew.writeMapleAsciiString(target);
++                mplew.write(1);
++                mplew.writeInt(mapid);
++                mplew.write(new byte[8]);
++                return mplew.getPacket();
++        }
++
++        public static byte[] getFindReplyWithCS(String target) {
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.WHISPER.getValue());
++                mplew.write(72);
++                mplew.writeMapleAsciiString(target);
++                mplew.write(2);
++                mplew.writeInt(-1);
++                return mplew.getPacket();
++        }
++
++        public static byte[] getFindReplyWithMTS(String target) {
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.WHISPER.getValue());
++                mplew.write(72);
++                mplew.writeMapleAsciiString(target);
++                mplew.write(0);
++                mplew.writeInt(-1);
++                return mplew.getPacket();
++        }
++
+         public static byte[] sendAutoHpPot(int itemId) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.AUTO_HP_POT.getValue());

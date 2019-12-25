@@ -1,0 +1,77 @@
+diff --git a/src/net/server/channel/handlers/WhisperHandler.java b/src/net/server/channel/handlers/WhisperHandler.java
+index fac3ff981..6126ae595 100644
+--- a/src/net/server/channel/handlers/WhisperHandler.java
++++ b/src/net/server/channel/handlers/WhisperHandler.java
+@@ -134,12 +134,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             MapleCharacter player = c.getWorldServer().getPlayerStorage().getCharacterByName(recipient);
+             if (player != null && c.getPlayer().gmLevel() >= player.gmLevel()) {
+                 if (player.getCashShop().isOpened()) {  // in CashShop
+-                    c.getSession().write(MaplePacketCreator.getFindReplyWithCS(recipient));  
++                    c.announce(MaplePacketCreator.getBuddyFindReply(player.getName(), -1, 2));
+                 } else if (player.isAwayFromWorld()) {  // in MTS
+-                    c.getSession().write(MaplePacketCreator.getFindReplyWithMTS(recipient));   
++                    c.announce(MaplePacketCreator.getBuddyFindReply(player.getName(), -1, 0));
++                } else if (player.getClient().getChannel() != c.getChannel()) { // in another channel
++                    c.announce(MaplePacketCreator.getBuddyFindReply(player.getName(), player.getClient().getChannel() - 1, 3));
+                 } else {
+-                    c.getSession().write(MaplePacketCreator.getFindReplyWithMap(player.getName(), player.getMap().getId()));
+-                }        
++                    c.announce(MaplePacketCreator.getBuddyFindReply(player.getName(), player.getMap().getId(), 1));
++                }
+             }
+         }
+     }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index e8bf0d830..28b73c9f7 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -6066,35 +6066,24 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 }
+                 return mplew.getPacket();
+         }
+-        
+-        public static byte[] getFindReplyWithMap(String target, int mapid) {
+-                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.WHISPER.getValue());
+-                mplew.write(72);
+-                mplew.writeMapleAsciiString(target);
+-                mplew.write(1);
+-                mplew.writeInt(mapid);
+-                mplew.skip(8);
+-                return mplew.getPacket();
+-        }
+-
+-        public static byte[] getFindReplyWithCS(String target) {
+-                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.WHISPER.getValue());
+-                mplew.write(72);
+-                mplew.writeMapleAsciiString(target);
+-                mplew.write(2);
+-                mplew.writeInt(-1);
+-                return mplew.getPacket();
+-        }
+ 
+-        public static byte[] getFindReplyWithMTS(String target) {
+-                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++        /**
++         *
++         * @param target
++         * @param mapid
++         * @param MTSmapCSchannel 0: MTS 1: Map 2: CS 3: Different Channel
++         * @return
++         */
++        public static byte[] getBuddyFindReply(String target, int mapid, int MTSmapCSchannel) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.WHISPER.getValue());
+                 mplew.write(72);
+                 mplew.writeMapleAsciiString(target);
+-                mplew.write(0);
+-                mplew.writeInt(-1);
++                mplew.write(MTSmapCSchannel); // 0: mts 1: map 2: cs
++                mplew.writeInt(mapid); // -1 if mts, cs
++                if (MTSmapCSchannel == 1) {
++                        mplew.write(new byte[8]);
++                }
+                 return mplew.getPacket();
+         }
+ 

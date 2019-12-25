@@ -1,0 +1,219 @@
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index d451b962e..7bd871eec 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -21456,6 +21456,9 @@ ALTER TABLE `dueyitems`
+ 
+ ALTER TABLE `famelog`
+   ADD CONSTRAINT `famelog_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
++  
++ALTER TABLE `family_character`
++  ADD CONSTRAINT `family_character_ibfk_1` FOREIGN KEY (`cid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
+ 
+ ALTER TABLE `skills`
+   ADD CONSTRAINT `skills_chrid_fk` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;	# thanks Shavit
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 2d177138c..8c8411e99 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -7577,7 +7577,7 @@ private void playerDead() {
+                 break;
+             }
+         }
+-        if (possesed > 0) {
++        if (possesed > 0 && !GameConstants.isDojo(getMapId())) {
+             message("You have used a safety charm, so your EXP points have not been decreased.");
+             MapleInventoryManipulator.removeById(client, ItemConstants.getInventoryType(charmID[i]), charmID[i], 1, true, false);
+         } else if (getJob() != MapleJob.BEGINNER) { //Hmm...
+diff --git a/src/client/MapleFamily.java b/src/client/MapleFamily.java
+index 781ec33d6..e87e41799 100644
+--- a/src/client/MapleFamily.java
++++ b/src/client/MapleFamily.java
+@@ -203,9 +203,11 @@ public static void loadAllFamilies() {
+                             jobID = rs.getInt("job");
+                         } else {
+                             FilePrinter.printError(FilePrinter.FAMILY_ERROR, "Could not load character information of " + cid + " in loadAllFamilies(). (RECORD DOES NOT EXIST)");
++                            continue;
+                         }
+                     } catch(SQLException e) {
+                         FilePrinter.printError(FilePrinter.FAMILY_ERROR, e, "Could not load character information of " + cid + " in loadAllFamilies(). (SQL ERROR)");
++                        continue;
+                     }
+                     int familyid = rsEntries.getInt("familyid");
+                     int seniorid = rsEntries.getInt("seniorid");
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 723e52b1c..9efc1f515 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -535,7 +535,7 @@ private static long getTimeLeftForNextHour() {
+     public static long getTimeLeftForNextDay() {
+         Calendar nextDay = Calendar.getInstance();
+         nextDay.add(Calendar.DAY_OF_MONTH, 1);
+-        nextDay.set(Calendar.HOUR, 0);
++        nextDay.set(Calendar.HOUR_OF_DAY, 0);
+         nextDay.set(Calendar.MINUTE, 0);
+         nextDay.set(Calendar.SECOND, 0);
+         
+diff --git a/src/net/server/channel/handlers/FamilyAddHandler.java b/src/net/server/channel/handlers/FamilyAddHandler.java
+index 1e22dc46a..a7638e401 100644
+--- a/src/net/server/channel/handlers/FamilyAddHandler.java
++++ b/src/net/server/channel/handlers/FamilyAddHandler.java
+@@ -46,6 +46,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         MapleCharacter chr = c.getPlayer();
+         if(addChr == null) {
+             c.announce(MaplePacketCreator.sendFamilyMessage(65, 0));
++        } else if(addChr == chr) { //only possible through packet editing/client editing i think?
++            c.announce(MaplePacketCreator.enableActions());
+         } else if(addChr.getMap() != chr.getMap() || (addChr.isHidden()) && chr.gmLevel() < addChr.gmLevel()) {
+             c.announce(MaplePacketCreator.sendFamilyMessage(69, 0));
+         } else if(addChr.getLevel() <= 10) {
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index dca74c482..fd767f6c9 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -30,6 +30,7 @@
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+ import java.util.ArrayList;
++import java.util.Comparator;
+ import java.util.LinkedHashMap;
+ import java.util.LinkedList;
+ import java.util.List;
+@@ -307,6 +308,18 @@ public void broadcastEmblemChanged() {
+         }
+     }
+     
++    public void broadcastInfoChanged() {
++        PlayerStorage ps = Server.getInstance().getWorld(world).getPlayerStorage();
++        
++        for (MapleGuildCharacter mgc : getMembers()) {
++            MapleCharacter chr = ps.getCharacterById(mgc.getId());
++            if (chr == null || !chr.isLoggedinWorld()) continue;
++            
++            byte[] packet = MaplePacketCreator.showGuildInfo(chr);
++            chr.announce(packet);
++        }
++    }
++    
+     public void broadcast(final byte[] packet) {
+         broadcast(packet, -1, BCOp.NONE);
+     }
+@@ -567,6 +580,14 @@ public void changeRank(MapleGuildCharacter mgc, int newRank) {
+         }
+         
+         membersLock.lock();
++        members.sort(new Comparator<MapleGuildCharacter>() {
++            @Override
++            public int compare(MapleGuildCharacter t, MapleGuildCharacter o) {
++                if(t.getGuildRank() <= 1 && o.getGuildRank() > 1) return -1;
++                else if(t.getGuildRank() > 1 && o.getGuildRank() <= 1) return 1;
++                else return 0;
++            }
++        });
+         try {
+             this.broadcast(MaplePacketCreator.changeRank(mgc));
+         } finally {
+diff --git a/src/net/server/handlers/login/DeleteCharHandler.java b/src/net/server/handlers/login/DeleteCharHandler.java
+index 5220c9ea3..ef066d107 100644
+--- a/src/net/server/handlers/login/DeleteCharHandler.java
++++ b/src/net/server/handlers/login/DeleteCharHandler.java
+@@ -21,8 +21,16 @@
+  */
+ package net.server.handlers.login;
+ 
++import java.sql.Connection;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++
+ import client.MapleClient;
++import client.MapleFamily;
+ import net.AbstractMaplePacketHandler;
++import net.server.Server;
++import tools.DatabaseConnection;
+ import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -34,11 +42,45 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         String pic = slea.readMapleAsciiString();
+         int cid = slea.readInt();
+         if (c.checkPic(pic)) {
++        	//check for family, guild leader, pending marriage, world transfer
++        	try (Connection con = DatabaseConnection.getConnection();
++        			PreparedStatement ps = con.prepareStatement("SELECT `world`, `guildid`, `guildrank`, `familyId` FROM characters WHERE id = ?");
++        			PreparedStatement ps2 = con.prepareStatement("SELECT COUNT(*) as rowcount FROM worldtransfers WHERE `characterid` = ? AND completionTime IS NULL")) {
++        		ps.setInt(1, cid);
++        		ResultSet rs = ps.executeQuery();
++        		if(!rs.next()) throw new SQLException("Character record does not exist.");
++        		int world = rs.getInt("world");
++        		int guildId = rs.getInt("guildid");
++        		int guildRank = rs.getInt("guildrank");
++        		int familyId = rs.getInt("familyId");
++        		if(guildId != 0 && guildRank <= 1) {
++        			c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x16));
++        			return;
++        		} else if(familyId != -1) {
++        			MapleFamily family = Server.getInstance().getWorld(world).getFamily(familyId);
++        			if(family != null && family.getTotalMembers() > 1) {
++            			c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x1D));
++            			return;
++        			}
++        		}
++        		rs.close();
++        		ps2.setInt(1, cid);
++        		rs = ps2.executeQuery();
++        		rs.next();
++        		if(rs.getInt("rowcount") > 0) {
++        			c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x1A));
++        			return;
++        		}
++        	} catch(SQLException e) {
++        		e.printStackTrace();
++        		c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x09));
++        		return;
++        	}
+             if(c.deleteCharacter(cid, c.getAccID())) {
+                 FilePrinter.print(FilePrinter.DELETED_CHAR + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid);
+                 c.announce(MaplePacketCreator.deleteCharResponse(cid, 0));
+             } else {
+-                c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x14));
++                c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x09));
+             }
+         } else {
+             c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x14));
+diff --git a/src/net/server/worker/FamilyDailyResetWorker.java b/src/net/server/worker/FamilyDailyResetWorker.java
+index 28f32d8f9..92dc8e267 100644
+--- a/src/net/server/worker/FamilyDailyResetWorker.java
++++ b/src/net/server/worker/FamilyDailyResetWorker.java
+@@ -29,7 +29,7 @@ public void run() {
+     public static void resetEntitlementUsage(World world) {
+         Calendar resetTime = Calendar.getInstance();
+         resetTime.add(Calendar.MINUTE, 1); // to make sure that we're in the "next day", since this is called at midnight
+-        resetTime.set(Calendar.HOUR, 0);
++        resetTime.set(Calendar.HOUR_OF_DAY, 0);
+         resetTime.set(Calendar.MINUTE, 0);
+         resetTime.set(Calendar.SECOND, 0);
+         resetTime.set(Calendar.MILLISECOND, 0);
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 6aefe9560..7258b2720 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -2721,7 +2721,17 @@ private static int doubleToShortBits(double d) {
+         }
+ 
+         /**
+-         * state 0 = del ok state 12 = invalid bday state 14 = incorrect pic
++         * State :
++         * 0x00 = success
++         * 0x06 = Trouble logging into the game?
++         * 0x09 = Unknown error
++         * 0x0A = Could not be processed due to too many connection requests to the server.
++         * 0x12 = invalid bday
++         * 0x14 = incorrect pic
++         * 0x16 = Cannot delete a guild master.
++         * 0x18 = Cannot delete a character with a pending wedding.
++         * 0x1A = Cannot delete a character with a pending world transfer.
++         * 0x1D = Cannot delete a character that has a family.
+          *
+          * @param cid
+          * @param state

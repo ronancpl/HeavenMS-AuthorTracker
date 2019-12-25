@@ -1,0 +1,3506 @@
+diff --git a/.gitignore b/.gitignore
+index f87226389..72982b47a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,6 +19,10 @@
+ /tools/MapleIdRetriever/dist/
+ /tools/MapleIdRetriever/nbproject/private/
+ 
++/tools/MapleInvalidItemIdFetcher/build/
++/tools/MapleInvalidItemIdFetcher/dist/
++/tools/MapleInvalidItemIdFetcher/nbproject/private/
++
+ /tools/MapleMapInfoRetriever/build/
+ /tools/MapleMapInfoRetriever/dist/
+ /tools/MapleMapInfoRetriever/nbproject/private/
+@@ -51,4 +55,4 @@
+ /tools/MapleSkillMakerReagentIndexer/dist/
+ /tools/MapleSkillMakerReagentIndexer/nbproject/private/
+ 
+-/out
++/out
+\ No newline at end of file
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 4881b9179..44a1fe1be 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -117,6 +117,7 @@ External tools:
+ * MapleArrowFetcher - Updates min/max quantity dropped on all arrows drop data, calculations based on mob level and whether it's a boss or not.
+ * MapleCouponInstaller - Retrieves coupon info from the WZ and makes a SQL table with it. The server will use that table to gather info regarding rates and intervals.
+ * MapleIdRetriever - Two behaviors: generates a SQL table with relation (id, name) of the handbook given as input. Given a file with names, outputs a file with ids.
++* MapleInvalidItemIdFetcher - Generates a file listing all inexistent itemid's currently laying on the DB.
+ * MapleMapInfoRetriever - Basic tool for detecting missing info nodes on the map field structures (maps failing to have an info node on the WZ is an critical issue).
+ * MapleMesoFetcher - Creates meso drop data for mobs with more than 4 items (thus overworld mobs), calculations based on mob level and whether it's a boss or not.
+ * MapleMobBookIndexer - Generates a SQL table with all relations of cardid and mobid present in the mob book.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index bb14bc4e3..5ebe979a2 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1,4 +1,4 @@
+-NEW NPC SCRIPTS:
++ï»¿NEW NPC SCRIPTS:
+ 	Coco -> 9000017
+ 	Agent E -> 9000036
+ 
+@@ -29,8 +29,8 @@ Corrigi um bug no elevador.
+ Consertei o script restante do Grendel.
+ 
+ 25 --- 27 Julho 2015,
+-Criei uma variação do auto-assign, que leva em conta caracteristicas nos stats dos equips.
+-Consertei upar até 2 niveis por expGain().
++Criei uma variaÃ§Ã£o do auto-assign, que leva em conta caracteristicas nos stats dos equips.
++Consertei upar atÃ© 2 niveis por expGain().
+ 
+ OBS.:	Dar um jeito de automatizar o script para colocar scrolls OP a venda
+ 	NPC Coco (9000017) sera o novo vendedor de scrolls
+@@ -75,7 +75,7 @@ Correcao de bug que nao contabilizava queda de hp qdo um char loga em um mapa.
+ Correcao de bug que nao retirava corretamente recursos de projeteis.
+ 
+ 6 Novembro 2015,
+-Movimentação no ranking agora é contabilizado corretamente.
++MovimentaÃ§Ã£o no ranking agora Ã© contabilizado corretamente.
+ 
+ 11 Dezembro 2015,
+ Correcao de bug que nao permitia ao tentar aceitar quest remotamente (lightbulb).
+@@ -95,7 +95,7 @@ Correcao de bug, onde clientes podiam congelar apos acessar o Cash Shop.
+ Correcao de bug.
+ 
+ 18 Julho 2016,
+-Bazaar NPC (Donation Box): venda automatica de um item designado e todos os itens que estiverem imediatamente após.
++Bazaar NPC (Donation Box): venda automatica de um item designado e todos os itens que estiverem imediatamente apÃ³s.
+ Spindle: NPC scroll seller.
+ 
+ 26 Julho 2016,
+@@ -104,197 +104,197 @@ Correcao de bug.
+ 01 Agosto 2016,
+ Correcao de scripts (Agent E, Donation Box), correcao de bug.
+ 
+-19 Março 2017,
+-Mimi: nova quest, envolvendo manipulações em ambos cliente e servidor. Tirado o aspecto global.
+-Não é possível alterar QuestInfo.img.xml do lado do cliente...
++19 MarÃ§o 2017,
++Mimi: nova quest, envolvendo manipulaÃ§Ãµes em ambos cliente e servidor. Tirado o aspecto global.
++NÃ£o Ã© possÃ­vel alterar QuestInfo.img.xml do lado do cliente...
+ 
+-26 - 27 Março 2017,
+-Elaboração do IMG XML Parser, atuando complementarmente com o HaRepacker v4.2.2.
+-Correção de scripts de NPCs e quests.
++26 - 27 MarÃ§o 2017,
++ElaboraÃ§Ã£o do IMG XML Parser, atuando complementarmente com o HaRepacker v4.2.2.
++CorreÃ§Ã£o de scripts de NPCs e quests.
+ 
+-28 - 31 Março 2017,
++28 - 31 MarÃ§o 2017,
+ Revamp dos WZs e XMLs referentes ao cliente MapleStory e ao servidor MapleSolaxia.
+-Inclusão de printStackTraces nos blocos catches do sistema.
++InclusÃ£o de printStackTraces nos blocos catches do sistema.
+ 
+ 01 - 02 Abril 2017,
+-Correção de bug que impedia carregamento do mapa Singapore: Spooky World.
+-Adição dos cards de mob restantes no drop_data do DB.
++CorreÃ§Ã£o de bug que impedia carregamento do mapa Singapore: Spooky World.
++AdiÃ§Ã£o dos cards de mob restantes no drop_data do DB.
+ 
+ 03 Abril 2017,
+-Inclusão de scripts para interceptar condições de corrida em eventos de viagem.
+-Correção no script do Mr. Do.
+-Sparta lv100 não surge mais em mob de nível baixo.
+-Diversas alterações corretivas em itens das tabelas drop_data e reactordrops no BD.
++InclusÃ£o de scripts para interceptar condiÃ§Ãµes de corrida em eventos de viagem.
++CorreÃ§Ã£o no script do Mr. Do.
++Sparta lv100 nÃ£o surge mais em mob de nÃ­vel baixo.
++Diversas alteraÃ§Ãµes corretivas em itens das tabelas drop_data e reactordrops no BD.
+ 
+ 04 Abril 2017,
+-Correção na API sobre progresso das quests.
++CorreÃ§Ã£o na API sobre progresso das quests.
+ 
+ 06 Abril 2017,
+-Tentativa de correção em casos de falta de respawn em certas areas do jogo.
+-Otimização de funções que lidam com popular ou despopular areas.
++Tentativa de correÃ§Ã£o em casos de falta de respawn em certas areas do jogo.
++OtimizaÃ§Ã£o de funÃ§Ãµes que lidam com popular ou despopular areas.
+ 
+ 07 Abril 2017,
+-Correção nos métodos que completam quests, que não atribuíam corretamente itens que dependem de jobs.
+-Agora é possível variar atributos de mobs a serem spawnados (classes ChangeableStats, OverrideStats).
+-Removido ataques letais (1HP/1MP) de bosses em Dojo, que tornava impossível a completude do mesmo.
+-Adição de novos scripts de evento no jogo.
++CorreÃ§Ã£o nos mÃ©todos que completam quests, que nÃ£o atribuÃ­am corretamente itens que dependem de jobs.
++Agora Ã© possÃ­vel variar atributos de mobs a serem spawnados (classes ChangeableStats, OverrideStats).
++Removido ataques letais (1HP/1MP) de bosses em Dojo, que tornava impossÃ­vel a completude do mesmo.
++AdiÃ§Ã£o de novos scripts de evento no jogo.
+ 
+ 08 - 09 Abril 2017,
+-Adição de efeito: Zombify.
+-Adição da expedição BPQ.
+-Aprimoramento de métodos que usam acesso concorrente no projeto.
+-Diversas pequenas alterações nos WZs do cliente/servidor.
++AdiÃ§Ã£o de efeito: Zombify.
++AdiÃ§Ã£o da expediÃ§Ã£o BPQ.
++Aprimoramento de mÃ©todos que usam acesso concorrente no projeto.
++Diversas pequenas alteraÃ§Ãµes nos WZs do cliente/servidor.
+ 
+ 10 Abril 2017,
+-Navio de Crimson Balrogs agora são renderizados na tela, mesmo depois de mudar de mapas.
+-Adição de client alternativo: MapleStory sem Damage Cap.
+-Adição de expedições PiratePQ e EllinPQ.
++Navio de Crimson Balrogs agora sÃ£o renderizados na tela, mesmo depois de mudar de mapas.
++AdiÃ§Ã£o de client alternativo: MapleStory sem Damage Cap.
++AdiÃ§Ã£o de expediÃ§Ãµes PiratePQ e EllinPQ.
+ 
+ 11 - 12 Abril 2017,
+-Implementação do PiratePQ.
++ImplementaÃ§Ã£o do PiratePQ.
+ 
+ 17 Abril 2017,
+-Correção de bugs envolvendo reactors no PiratePQ, e potencialmente em outros pontos também.
++CorreÃ§Ã£o de bugs envolvendo reactors no PiratePQ, e potencialmente em outros pontos tambÃ©m.
+ 
+ 18 Abril 2017,
+-Adição de area boss: giant centipede.
+-Correção do evento Hak: viajantes não estavam sendo devidamente liberados no fim do evento.
+-Adição de documentação para portforwarding do sistema.
++AdiÃ§Ã£o de area boss: giant centipede.
++CorreÃ§Ã£o do evento Hak: viajantes nÃ£o estavam sendo devidamente liberados no fim do evento.
++AdiÃ§Ã£o de documentaÃ§Ã£o para portforwarding do sistema.
+ 
+ 21 Abril 2017,
+-Implementação do EllinPQ.
+-Correção em módulos da classe ActivateItemReactor.
+-Atualização em diversos drops nos SQLs.
++ImplementaÃ§Ã£o do EllinPQ.
++CorreÃ§Ã£o em mÃ³dulos da classe ActivateItemReactor.
++AtualizaÃ§Ã£o em diversos drops nos SQLs.
+ 
+ 22 Abril 2017,
+-Várias correções envolvendo concorrências em propriedades do MapleCharacter.
+-Adição de constante USE_EQUIPMNT_LVLUP: dá pra nivelar qualquer equip até o nível desejado.
+-Algumas correções em quests no cliente e no servidor.
+-Correção de bug que gerava client stuck para Outlaw, quando chamava 2 summons e mudava de mapa.
++VÃ¡rias correÃ§Ãµes envolvendo concorrÃªncias em propriedades do MapleCharacter.
++AdiÃ§Ã£o de constante USE_EQUIPMNT_LVLUP: dÃ¡ pra nivelar qualquer equip atÃ© o nÃ­vel desejado.
++Algumas correÃ§Ãµes em quests no cliente e no servidor.
++CorreÃ§Ã£o de bug que gerava client stuck para Outlaw, quando chamava 2 summons e mudava de mapa.
+ 
+ 23 - 25 Abril 2017,
+-Introdução de métodos que auxiliam na normalização dos scripts para PQs.
++IntroduÃ§Ã£o de mÃ©todos que auxiliam na normalizaÃ§Ã£o dos scripts para PQs.
+ Nova PQ: Boss Rush PQ.
+-Correção de situações nas PQs Ellin e Pirate.
++CorreÃ§Ã£o de situaÃ§Ãµes nas PQs Ellin e Pirate.
+ 
+ 26 Abril 2017,
+-Adição de Happyville, via Rooney.
+-Correção: mapas com "everlast" fazendo os itens dropados sumirem.
+-Correção: itens dropados na área dos NPCs Snowman não podem ser pegos por outros jogadores.
+-Correção: bug no par de comandos unban/ban não permitindo IP de cliente voltar a reconectar ao jogo.
++AdiÃ§Ã£o de Happyville, via Rooney.
++CorreÃ§Ã£o: mapas com "everlast" fazendo os itens dropados sumirem.
++CorreÃ§Ã£o: itens dropados na Ã¡rea dos NPCs Snowman nÃ£o podem ser pegos por outros jogadores.
++CorreÃ§Ã£o: bug no par de comandos unban/ban nÃ£o permitindo IP de cliente voltar a reconectar ao jogo.
+ 
+ 29 Abril 2017,
+-Novos métodos para uso especializado em eventos caracteristicos de PQ.
+-Aprimoração da Boss Rush PQ: novo sistema de recompensas.
++Novos mÃ©todos para uso especializado em eventos caracteristicos de PQ.
++AprimoraÃ§Ã£o da Boss Rush PQ: novo sistema de recompensas.
+ 
+ 01 Maio 2017,
+-Correção de bugs menores na BRPQ.
+-Refatoração de código pertinente aos Cash USEs para Pet.
+-Animação para Pets ao consumirem pet food.
++CorreÃ§Ã£o de bugs menores na BRPQ.
++RefatoraÃ§Ã£o de cÃ³digo pertinente aos Cash USEs para Pet.
++AnimaÃ§Ã£o para Pets ao consumirem pet food.
+ 
+ 02 Maio 2017,
+-Reestruturação e refatoração de código para PQs (funções específicas para uso em PQs).
+-Reimplementação da Kerning PQ.
++ReestruturaÃ§Ã£o e refatoraÃ§Ã£o de cÃ³digo para PQs (funÃ§Ãµes especÃ­ficas para uso em PQs).
++ReimplementaÃ§Ã£o da Kerning PQ.
+ 
+ 03 Maio 2017,
+-Para quests que podem ser repetidas, adição de mensagem mencionando o tempo restante para recomeçá-la.
++Para quests que podem ser repetidas, adiÃ§Ã£o de mensagem mencionando o tempo restante para recomeÃ§Ã¡-la.
+ 
+ 04 - 05 Maio 2017,
+-Correção de bug no sistema de keybinding em casos onde certas mecanicas de jogo e itens não eram salvos devido a ids conflituosos com certas skills.
+-Finalização da reimplementação da Kerning PQ, com adição de novos mecanismos esperados em eventos/PQs.
+-Adição de barra de HP para bosses King Slime, Alishar e Snack Bar.
++CorreÃ§Ã£o de bug no sistema de keybinding em casos onde certas mecanicas de jogo e itens nÃ£o eram salvos devido a ids conflituosos com certas skills.
++FinalizaÃ§Ã£o da reimplementaÃ§Ã£o da Kerning PQ, com adiÃ§Ã£o de novos mecanismos esperados em eventos/PQs.
++AdiÃ§Ã£o de barra de HP para bosses King Slime, Alishar e Snack Bar.
+ 
+ 08 Maio 2017,
+-Adição de funcionalidade para PQs/eventos: ao sair de evento, remove-se todos os itens listados como exclusivo para evento.
+-Diversas correções em mecânicas das PQs/eventos.
+-Sistema de lobbys para PQs agora. É possível instanciar mais de uma PQ em um mesmo channel.
++AdiÃ§Ã£o de funcionalidade para PQs/eventos: ao sair de evento, remove-se todos os itens listados como exclusivo para evento.
++Diversas correÃ§Ãµes em mecÃ¢nicas das PQs/eventos.
++Sistema de lobbys para PQs agora. Ã possÃ­vel instanciar mais de uma PQ em um mesmo channel.
+ 
+ 12 - 13 Maio 2017,
+ Nova ferramenta: monta uma tabela SQL que armazena id-nome de todos os itens descritos nos arquivos handbook e realiza buscas por nomes, retornando seus ids.
+-Implementação da LPQ.
++ImplementaÃ§Ã£o da LPQ.
+ 
+ 14 Maio 2017,
+ Sistema de Lobbys na BRPQ: aloca lobbys disponiveis para times de acordo com o level medio dos jogadores.
+ Sword Earrings: +30HP -> +1 W.att / Shield Earrings: +1ACC -> +1 M.att
+ 
+ 15 Maio 2017,
+-Implementação da LMPQ.
++ImplementaÃ§Ã£o da LMPQ.
+ 
+ 16 Maio 2017,
+-Implementação da HPQ.
++ImplementaÃ§Ã£o da HPQ.
+ 
+ 17 Maio 2017,
+-Correção de bug com o item "Pet Name Tag", que não retirava o item após ser usado.
+-Correção em bug de uma quest (id 3927) de Ariant que envolve uma "parede".
++CorreÃ§Ã£o de bug com o item "Pet Name Tag", que nÃ£o retirava o item apÃ³s ser usado.
++CorreÃ§Ã£o em bug de uma quest (id 3927) de Ariant que envolve uma "parede".
+ 
+ 18 - 19 Maio 2017,
+-Implementação das mecânicas do Horntail (spawn e kill).
+-Correção de bugs em casos onde valores de EXP ganhos excedem o limite máximo de um inteiro de 32bits.
++ImplementaÃ§Ã£o das mecÃ¢nicas do Horntail (spawn e kill).
++CorreÃ§Ã£o de bugs em casos onde valores de EXP ganhos excedem o limite mÃ¡ximo de um inteiro de 32bits.
+ 
+ 20 Maio 2017,
+-Adição: mecânica de cadeia para GMs.
++AdiÃ§Ã£o: mecÃ¢nica de cadeia para GMs.
+ Em conjunto com vcoc, adicionaram-se comandos: !clearslot, !hide/unhide, !jail, !itemvac e !healmap.
+-Correção de bug em tabela SQL que continha informação imcompleta para com alguns registros de cards e respectivos mobs.
++CorreÃ§Ã£o de bug em tabela SQL que continha informaÃ§Ã£o imcompleta para com alguns registros de cards e respectivos mobs.
+ 
+ 21 Maio 2017,
+-Refatoração de código referente ao métodos de coleta de item pelos jogadores.
+-Retiradas inconsistências entre infos de mobbook e "cartão-de-visitas" do jogador.
++RefatoraÃ§Ã£o de cÃ³digo referente ao mÃ©todos de coleta de item pelos jogadores.
++Retiradas inconsistÃªncias entre infos de mobbook e "cartÃ£o-de-visitas" do jogador.
+ Foi retirado o gargalo no sistema sempre que jogador incorpora um novo card ao mobbook.
+ Consertado bug em potencial ao tentar completar quest que requer item equipado.
+-Adição de scrolls: Scroll for cold protection, Scroll for spike for shoes.
++AdiÃ§Ã£o de scrolls: Scroll for cold protection, Scroll for spike for shoes.
+ Consertado quest-evento Dollhouse.
+ 
+ 23 - 24 Maio 2017,
+-Revamp na DB referente às Alliances.
+-Solução parcial ao problema das Guild Alliances. Pode-se criar uma, sair, expulsar e trocar ranks de jogadores.
++Revamp na DB referente Ã s Alliances.
++SoluÃ§Ã£o parcial ao problema das Guild Alliances. Pode-se criar uma, sair, expulsar e trocar ranks de jogadores.
+ 
+ 25 Maio 2017,
+-Solução final ao problema das Guild Alliances. Todas as funcionalidades implementadas.
++SoluÃ§Ã£o final ao problema das Guild Alliances. Todas as funcionalidades implementadas.
+ Registros de objetos MapleGuildCharacter agora esta sincronizado entre MapleCharacter's e MapleGuild's.
+ 
+ 26 Maio 2017,
+-Correção e proteção a acessos concorrentes em mecânicas de comercialização entre jogadores.
+-Quests com limite de tempo agora expiram. Tempo restante também é mostrado na aba da quest.
++CorreÃ§Ã£o e proteÃ§Ã£o a acessos concorrentes em mecÃ¢nicas de comercializaÃ§Ã£o entre jogadores.
++Quests com limite de tempo agora expiram. Tempo restante tambÃ©m Ã© mostrado na aba da quest.
+ Estrutura de dados que lida com status de quests do jogador agora foi protegido para acesso concorrente.
+-Montarias, tanto como pets, não ficam com "fome" com o tempo caso os flags PETS_NEVER_HUNGRY estejam setados.
++Montarias, tanto como pets, nÃ£o ficam com "fome" com o tempo caso os flags PETS_NEVER_HUNGRY estejam setados.
+ 
+ 27 - 28 Maio 2017,
+-Reajuste de diretório dos scripts de NPCs, agora podendo ser acessados por todos os mundos.
++Reajuste de diretÃ³rio dos scripts de NPCs, agora podendo ser acessados por todos os mundos.
+ Consertado casos onde jogador tenta acessar o Cash Shop, enquanto abertas janelas/abas interativas, ocasionando crash no jogo.
+-Resolvido alguns problemas com Player Shops, não retornado todos os itens ao jogador ao sair da loja.
+-Refatoração de código referente às diversas naturezas de fechamento das janelas interativas (minigames, messenger, npc/player shops, etc), agora utilizando um mesmo código.
+-Adição de restrição de acesso ao Cash Shop pelos jogadores presentes nas salas da Free Market (evitando assim fechamento de lojas de jogadores que tentem acessar o CS).
++Resolvido alguns problemas com Player Shops, nÃ£o retornado todos os itens ao jogador ao sair da loja.
++RefatoraÃ§Ã£o de cÃ³digo referente Ã s diversas naturezas de fechamento das janelas interativas (minigames, messenger, npc/player shops, etc), agora utilizando um mesmo cÃ³digo.
++AdiÃ§Ã£o de restriÃ§Ã£o de acesso ao Cash Shop pelos jogadores presentes nas salas da Free Market (evitando assim fechamento de lojas de jogadores que tentem acessar o CS).
+ 
+ 29 - 30 Maio 2017,
+-Implementação da estrutura referente aos cupons de UP EXP & drop.
+-MapleCouponInstaller: ferramenta desenvolvida para coleta de informações referentes ao rate e faixa de tempo que os cupons se ativam.
++ImplementaÃ§Ã£o da estrutura referente aos cupons de UP EXP & drop.
++MapleCouponInstaller: ferramenta desenvolvida para coleta de informaÃ§Ãµes referentes ao rate e faixa de tempo que os cupons se ativam.
+ 
+ 31 Maio 2017,
+ Compilada uma nova tabela de EXP para equips no jogo.
+-Adicionado novo sistema de EXP e nivelamento para todos os equipamentos, para além daqueles de tipo Reverse e Timeless.
++Adicionado novo sistema de EXP e nivelamento para todos os equipamentos, para alÃ©m daqueles de tipo Reverse e Timeless.
+ 
+ 01 Junho 2017,
+-Consertadas mecânicas principais para deletar character, possivelmente eliminando quaisquer resíduos do mesmo da DB. Requer que ENABLE_PIC esteja ativado para funcionar.
++Consertadas mecÃ¢nicas principais para deletar character, possivelmente eliminando quaisquer resÃ­duos do mesmo da DB. Requer que ENABLE_PIC esteja ativado para funcionar.
+ 
+ 02 Junho 2017,
+ Otimizado e corrigido problemas de queda de desempenho ao atribuir lvups a itens com stats muito elevados, que ocasionavam crashs no servidor.
+-Adicionado funcionalidade USE_ULTRA_THREE_SNAILS. Valor mostrado não é condizente com o dano contabilizado (motivo: client edit).
++Adicionado funcionalidade USE_ULTRA_THREE_SNAILS. Valor mostrado nÃ£o Ã© condizente com o dano contabilizado (motivo: client edit).
+ 
+ 03 Junho 2017,
+ Sistema de PIN agora completamente funcional.
+ Corrigido sistema de ranking para agora mostrar player rankings de acordo com o mundo que ele se encontra.
+ Adicionado barra de HP para o boss da BalrogPQ.
+-Equips apenas cosméticos (sem stats e/ou possibilidade de melhorar) não mais ganham EXP e, consequentemente, nivelam.
++Equips apenas cosmÃ©ticos (sem stats e/ou possibilidade de melhorar) nÃ£o mais ganham EXP e, consequentemente, nivelam.
+ 
+ 04 Junho 2017,
+-Otimizados o método de ganho de stats de equips ao nivelar.
++Otimizados o mÃ©todo de ganho de stats de equips ao nivelar.
+ Diversos ajustes finos nos comandos existentes.
+ Adicionados novos comandos: proitem, seteqstats, buffme, buffmap.
+-Vários ajustes finos em alguns comandos.
++VÃ¡rios ajustes finos em alguns comandos.
+ 
+ 05 Junho 2017,
+ Novo NPC Skillbook announcer: Abdula.
+-Consertada a função que retorna se uma skill pertence ou não à árvore de habilidades do jogador.
++Consertada a funÃ§Ã£o que retorna se uma skill pertence ou nÃ£o Ã  Ã¡rvore de habilidades do jogador.
+ 
+ 06 Junho 2017,
+ Corrigido command empowerme.
+@@ -302,87 +302,87 @@ Corrigidos exploits relacionados a algumas das skills do empowerme.
+ Corrigido possivel loop infinito no sistema de EXP.
+ 
+ 07 - 10 Junho 2017,
+-Implementação da OPQ.
++ImplementaÃ§Ã£o da OPQ.
+ 
+ 11 Junho 2017,
+-Correção de alguns bugs vindos com o commit da OPQ.
+-Incrementada a documentação referente aos métodos usados nos scripts de eventos.
++CorreÃ§Ã£o de alguns bugs vindos com o commit da OPQ.
++Incrementada a documentaÃ§Ã£o referente aos mÃ©todos usados nos scripts de eventos.
+ 
+ 12 Junho 2017,
+-Correção de falha em criação de guilds, não atribuindo corretamente o título de mestre da guild ao criador.
++CorreÃ§Ã£o de falha em criaÃ§Ã£o de guilds, nÃ£o atribuindo corretamente o tÃ­tulo de mestre da guild ao criador.
+ 
+ 13 Junho 2017,
+-Mudança nas mecânicas de busca por portais ao transportar cada jogador: quando não for definido, escolhe-se um spawn point aleatoriamente.
+-Implementação de fila de espera para Guilds na GPQ (funciona em harmonia com o sistema de lobbys).
++MudanÃ§a nas mecÃ¢nicas de busca por portais ao transportar cada jogador: quando nÃ£o for definido, escolhe-se um spawn point aleatoriamente.
++ImplementaÃ§Ã£o de fila de espera para Guilds na GPQ (funciona em harmonia com o sistema de lobbys).
+ 
+ 14 Junho 2017,
+-Correção de bug envolvendo abuso de conversa com NPC logo após o sinal de dispose, ocasionando frequentemente crashes no cliente.
++CorreÃ§Ã£o de bug envolvendo abuso de conversa com NPC logo apÃ³s o sinal de dispose, ocasionando frequentemente crashes no cliente.
+ 
+ 15 - 17 Junho 2017,
+-Correção de bug na função de atribuição de EXP, que não permitia receber valores negativos de EXP.
+-Implementação da GPQ.
++CorreÃ§Ã£o de bug na funÃ§Ã£o de atribuiÃ§Ã£o de EXP, que nÃ£o permitia receber valores negativos de EXP.
++ImplementaÃ§Ã£o da GPQ.
+ 
+ 18 Junho 2017,
+-Correção de problema de concorrência referente às alterações nos rates do server.
+-Consertado bugs referentes ao comando "level", não reatribuindo rates apropriadamente.
++CorreÃ§Ã£o de problema de concorrÃªncia referente Ã s alteraÃ§Ãµes nos rates do server.
++Consertado bugs referentes ao comando "level", nÃ£o reatribuindo rates apropriadamente.
+ 
+ 19 Junho 2017,
+-Consertado cupons não aparecendo apropriadamente na região de buffs.
+-Consertado alguns problemas de concorrência com cupons.
+-Consertado alguns problemas de concorrência com character buffs.
++Consertado cupons nÃ£o aparecendo apropriadamente na regiÃ£o de buffs.
++Consertado alguns problemas de concorrÃªncia com cupons.
++Consertado alguns problemas de concorrÃªncia com character buffs.
+ 
+ 20 Junho 2017,
+-Definido um suporte para o esquema de expedições, tal como pode ser visto na CWKPQ.
++Definido um suporte para o esquema de expediÃ§Ãµes, tal como pode ser visto na CWKPQ.
+ 
+ 21 Junho 2017,
+-Corrigido vários aspectos de guilds e alliances, que operavam irregularmente no cliente.
++Corrigido vÃ¡rios aspectos de guilds e alliances, que operavam irregularmente no cliente.
+ Corrigido "player logged in" aparecendo sempre que jogador troca de canal.
+-MGC do jogador agora está sincronizado com o MGC da guild, não o contrário.
++MGC do jogador agora estÃ¡ sincronizado com o MGC da guild, nÃ£o o contrÃ¡rio.
+ 
+ 23 - 26 Junho 2017,
+-Diversas reimplementações de mecânicas da CWKPQ, ainda trabalho em progresso.
++Diversas reimplementaÃ§Ãµes de mecÃ¢nicas da CWKPQ, ainda trabalho em progresso.
+ 
+ 27 Junho 2017,
+-Reestruturação parcial do esquema de footholds do stage 4 da CWKPQ.
++ReestruturaÃ§Ã£o parcial do esquema de footholds do stage 4 da CWKPQ.
+ 
+ 28 - 29 Junho 2017,
+ Acabamento final da CWKPQ.
+-Corrigido bug no esquema de recuperação de diretórios dos mapas, referenciados em String.wz.
++Corrigido bug no esquema de recuperaÃ§Ã£o de diretÃ³rios dos mapas, referenciados em String.wz.
+ 
+ 30 Junho 2017,
+-Corrigido bug em mecânica de hpDec que permitia aos jogadores postergarem o efeito de decréscimo de HP.
+-Elaborada funcionalidade que permite salvar o "tempo até expirar" para quests com janela de tempo muito alta (as que usam "timeLimit2").
++Corrigido bug em mecÃ¢nica de hpDec que permitia aos jogadores postergarem o efeito de decrÃ©scimo de HP.
++Elaborada funcionalidade que permite salvar o "tempo atÃ© expirar" para quests com janela de tempo muito alta (as que usam "timeLimit2").
+ 
+ 03 Julho 2017,
+-Corrigido cliente não mostrando dano tomado pelo player se ele está com GM escondido para os outros GMs.
+-Corrigido cliente não mostrando dano dado pelo summon para outros players.
++Corrigido cliente nÃ£o mostrando dano tomado pelo player se ele estÃ¡ com GM escondido para os outros GMs.
++Corrigido cliente nÃ£o mostrando dano dado pelo summon para outros players.
+ 
+ 07 - 09 Julho 2017,
+ Corrigido parcialmente Mystic Doors.
+ 
+ 10 - 11 Julho 2017,
+-Abertas novas quests para a região de Masteria (Phantom Woods / Crimsonwood mountain).
+-Codificados novos NPCs para a região de Masteria.
++Abertas novas quests para a regiÃ£o de Masteria (Phantom Woods / Crimsonwood mountain).
++Codificados novos NPCs para a regiÃ£o de Masteria.
+ Adicionado drop data para mobs na Pendergast Mansion.
+-Corrigido Mystic Doors podendo ser lançadas em declives, potencialmente mal-colocando players em mapas-alvo.
++Corrigido Mystic Doors podendo ser lanÃ§adas em declives, potencialmente mal-colocando players em mapas-alvo.
+ Corrigido mount equipado por player de nivel baixo potencialmente crashando o client.
+ 
+ 12 - 14 Julho 2017,
+-Corrigido quests onde player pode escolher recompensa não recompensando corretamente.
++Corrigido quests onde player pode escolher recompensa nÃ£o recompensando corretamente.
+ Corrigido mapas em CBD/Singapore fazendo jogador "cair" do mapa.
+ Adicionado no sql lojas de NPCs de Malaysia.
+ Adicionado minidungeon "ByeBye station" (Malaysia).
+-Codificada expedição Scarlion/Targa.
+-Corrigido exploit com mini-dungeons (toda party, independente de localização atual, movida para dentro da MD).
++Codificada expediÃ§Ã£o Scarlion/Targa.
++Corrigido exploit com mini-dungeons (toda party, independente de localizaÃ§Ã£o atual, movida para dentro da MD).
+ 
+ 15 Julho 2017,
+ Adicionado area boss Snack Bar.
+ Corrigido bugs com "buffmap" desconectando players em certos casos.
+ 
+ 16 - 17 Julho 2017,
+-Adicionados HTPQ e expedição Horntail.
++Adicionados HTPQ e expediÃ§Ã£o Horntail.
+ Corrigido bugs com levelup de equipamentos provocando Integer overflow (stats negativos) nos clientes.
+-Corrigido ataque de Octopus (summon) não revelando direção a clientes de terceiros.
++Corrigido ataque de Octopus (summon) nÃ£o revelando direÃ§Ã£o a clientes de terceiros.
+ Corrigido caso onde player usando chair morre sem desequipar a chair, levando clientes a mostrar chairs ao lado do player.
+ Nova feature: cura extra de chairs de mapa.
+ 
+@@ -390,59 +390,59 @@ Nova feature: cura extra de chairs de mapa.
+ Corrigido varias falhas de concorrencia na classe dos players.
+ Corrigido reator das portas do dojo as vezes lancando nulls.
+ Adicionado sistema de lobbys pro Dojo (multiplas partys podendo acessar salas do Dojo concorrentemente, com limite).
+-Adicionado proteção de acesso concorrente a certas propriedades dos players.
++Adicionado proteÃ§Ã£o de acesso concorrente a certas propriedades dos players.
+ 
+ 21 Julho 2017,
+ Corrigido scripts dojang_Eff (agora aplicando para todos) e dojang_1st (agora somente para o primeiro player entrando no mapa).
+ Dojo agora funcional, com sistema de lobbys aplicado.
+-Bosses no dojo agora dropam buffs e mobs poções.
++Bosses no dojo agora dropam buffs e mobs poÃ§Ãµes.
+ 
+ 22 - 23 Julho 2017,
+-Corrigido vários aspectos errôneos referente ao funcionamento das Mystic Doors.
++Corrigido vÃ¡rios aspectos errÃ´neos referente ao funcionamento das Mystic Doors.
+ Comando adicionado: recharge.
+ Adicionado/modificado alguns scripts de portais relacionados a mapas de skills de 4th job.
+ 
+ 24 Julho 2017,
+-Adicionada mecânica permitindo quests entregarem itens mesmo que não haja slots vazios para garantir tal ação.
++Adicionada mecÃ¢nica permitindo quests entregarem itens mesmo que nÃ£o haja slots vazios para garantir tal aÃ§Ã£o.
+ 
+ 25 Julho 2017,
+-Adicionadas barras de HP para bosses da região de Zipangu/Showa.
+-Adicionada expedição para bosses de Showa.
++Adicionadas barras de HP para bosses da regiÃ£o de Zipangu/Showa.
++Adicionada expediÃ§Ã£o para bosses de Showa.
+ Adicionados chairs a venda por NPCs ao longo de Maple World.
+ 
+ 26 - 27 Julho 2017,
+-HP Bar de bosses agora aparecem de forma inteligente, de acordo com quem o jogador está alvejando.
+-Adicionadas expedições para Zakum e Pinkbean.
++HP Bar de bosses agora aparecem de forma inteligente, de acordo com quem o jogador estÃ¡ alvejando.
++Adicionadas expediÃ§Ãµes para Zakum e Pinkbean.
+ 
+ 31 Julho 2017,
+ Otimizado carregamento de skills ao iniciar o server.
+-Workaround em bosses tais como Riche e Ice Witch, anteriormente inderrotáveis.
++Workaround em bosses tais como Riche e Ice Witch, anteriormente inderrotÃ¡veis.
+ 
+ 01 Agosto 2017,
+-Adicionado drop data para tais bosses anteriormente inderrotáveis.
++Adicionado drop data para tais bosses anteriormente inderrotÃ¡veis.
+ 
+ 02 Agosto 2017,
+-Consertado bug em alguns eventos, relacionado à função isEventLeader.
+-Consertado quests não dando item certo apropriadamente, no caso de escolhas.
++Consertado bug em alguns eventos, relacionado Ã  funÃ§Ã£o isEventLeader.
++Consertado quests nÃ£o dando item certo apropriadamente, no caso de escolhas.
+ 
+ 03 Agosto 2017,
+ Quests agora retiram itens antes de entregar recompensas.
+-Após a primeira inicialização, PQs inicializarão mais rápido, uma vez que há um sistema preparador de EIMs ativo.
++ApÃ³s a primeira inicializaÃ§Ã£o, PQs inicializarÃ£o mais rÃ¡pido, uma vez que hÃ¡ um sistema preparador de EIMs ativo.
+ 
+ 04 - 05 Agosto 2017,
+ Novo scroll: antibanish. Retorna ao local de onde foi banido pela ultima vez.
+-Resolvido alguns problemas de concorrência com MapleMapFactory.
++Resolvido alguns problemas de concorrÃªncia com MapleMapFactory.
+ Removidos drops inexistentes da DB.
+ Resolvido problema com GMs de level alto recebendo bloqueio MWLB.
+ 
+ 07 - 10 Agosto 2017,
+ Adicionada Magatia PQ.
+-Resolvido bug no Dojo impedindo mesma party de tentar entrar de novo se saiu sem acabá-la.
++Resolvido bug no Dojo impedindo mesma party de tentar entrar de novo se saiu sem acabÃ¡-la.
+ Resolvido bugs nos scripts de 2nd job.
+ 
+ 14 Agosto 2017,
+ Resolvidos alguns bugs em alguns NPCs e mapa de Mu Lung.
+-Resolvido algumas inconsistências entre MapleCharacter <-> MaplePartyCharacter, ocasionando infos erroneas em Guilds.
++Resolvido algumas inconsistÃªncias entre MapleCharacter <-> MaplePartyCharacter, ocasionando infos erroneas em Guilds.
+ 
+ 15 Agosto 2017,
+ Rebalanceado ganho de equip exp.
+@@ -450,203 +450,203 @@ Atualizado amostra na tela de lvup stats de equips para os jogadores.
+ Reactors agora dropam itens de quest somente se o player possui a mesma ativada.
+ 
+ 16 Agosto 2017,
+-Consertado corrente de quests da Temple of Time. Agora Pink Bean é alcancável.
++Consertado corrente de quests da Temple of Time. Agora Pink Bean Ã© alcancÃ¡vel.
+ Adicionadas algumas chairs ao SQL.
+ 
+ 17 Agosto 2017,
+ Consertado Orbis Tower<B2> ainda aplicando DOT ao player, mesmo com bolha ativada.
+ Adicionado Boss HPBar em Rombot.
+ Consertado problema de keybinding para USEs com id batendo com id de skills fora da arvore de habilidades do jogador.
+-Consertado bug em scripts de alguns forjadores de itens que não verificava corretamente a quantidade de itens a tirar do jogador antes de fazer o item.
++Consertado bug em scripts de alguns forjadores de itens que nÃ£o verificava corretamente a quantidade de itens a tirar do jogador antes de fazer o item.
+ Adidionado loots para mobs de Kerning Square.
+ Consertado comandos de hair e face.
+ 
+ 18 Agosto 2017,
+-Consertado skill Dispel não aparecendo efeito aos outros jogadores.
++Consertado skill Dispel nÃ£o aparecendo efeito aos outros jogadores.
+ Atualizados alguns scripts de viagens transferindo jogadores a pontos aleatorios nas chegadas.
+ Atualizado relatorio de drop data no monster book.
+ 
+ 20 - 22 Agosto 2017,
+-Refatoradas algumas referências de identificação de itens, quando constantes, para ser realizados pelo classe estática ItemConstants ao invés da classe MapleItemInformationProvider.
++Refatoradas algumas referÃªncias de identificaÃ§Ã£o de itens, quando constantes, para ser realizados pelo classe estÃ¡tica ItemConstants ao invÃ©s da classe MapleItemInformationProvider.
+ Adicionados door portals em Kerning City Square.
+-Refatorado acesso ao DB. Conexões agora podem ser lançadas em paralelo, com um limite máximo de conexões. Excedente espera até que um fique livre.
++Refatorado acesso ao DB. ConexÃµes agora podem ser lanÃ§adas em paralelo, com um limite mÃ¡ximo de conexÃµes. Excedente espera atÃ© que um fique livre.
+ Adicionado MESO como quest RequirementType. Quests agora podem checar por meso de um jogador.
+ Mais drop data e HPBar em bosses.
+ 
+ 23 Agosto 2017,
+ Consertado problema com overflow ao scrollar equips resultando em equips com stats negativos.
+-Consertado pets não expirando corretamente (possivelmente crashando o cliente se no meio do jogo).
++Consertado pets nÃ£o expirando corretamente (possivelmente crashando o cliente se no meio do jogo).
+ 
+ 24 - 25 Agosto 2017,
+-Acesso à DB usando HikariCP (melhor ganho em desempenho e código mais enxuto).
++Acesso Ã  DB usando HikariCP (melhor ganho em desempenho e cÃ³digo mais enxuto).
+ Resolvido bugs com hatch egg e evolvePet.
+ Adicionado energy bar e skills funcionais no Dojo.
+ Consertado cash pet food retirando stats de mount em Character Info.
+ 
+ 26 Agosto 2017,
+ Consertado bug no sistema de exp de pets.
+-Refatorado sistema de trades, agora verificando por slots disponíveis similarmente ao sistema usado pelas rewards de quests.
++Refatorado sistema de trades, agora verificando por slots disponÃ­veis similarmente ao sistema usado pelas rewards de quests.
+ 
+ 27 Agosto 2017,
+-Hero's Will retira a maioria dos diseases. Tonico retira slow além de weakness.
++Hero's Will retira a maioria dos diseases. Tonico retira slow alÃ©m de weakness.
+ Consertado comando itemvac coletando quest itens e itens de outros jogadores.
+-Novo comando: cake. Chama cake boss com valor customizável de HP.
++Novo comando: cake. Chama cake boss com valor customizÃ¡vel de HP.
+ 
+ 28 Agosto 2017,
+ Parties agora podem sair do Dojo sem precisar esperar o timeout expirar.
+ Ao entrar no Dojo, jogadores tem energy points resetados pra zero.
+-Adicionado informação de NX ganho ao coletar cupons.
++Adicionado informaÃ§Ã£o de NX ganho ao coletar cupons.
+ Pets em outros slots agora equipam devidamente.
+ 
+ 31 Agosto 2017,
+-Refatorado autoassigner para focar nos stats primários a partir da avaliação do valor base do stat secundário com o 1º e 2º equips mais forte, ao invés de somente o 1º.
++Refatorado autoassigner para focar nos stats primÃ¡rios a partir da avaliaÃ§Ã£o do valor base do stat secundÃ¡rio com o 1Âº e 2Âº equips mais forte, ao invÃ©s de somente o 1Âº.
+ Corrigido bug de acesso concorrente no sistema de rate cupons.
+ 
+ 01 Setembro 2017,
+-Comando rates e equiplv agora usam visual ao invés de escrever no chat.
+-Corrigido NPC crafters crashando o cliente no caso onde o player não tem slot disponível para o novo item.
++Comando rates e equiplv agora usam visual ao invÃ©s de escrever no chat.
++Corrigido NPC crafters crashando o cliente no caso onde o player nÃ£o tem slot disponÃ­vel para o novo item.
+ 
+ 02 Setembro 2017,
+-Refatorado sistema de schedules para mounts e pets. Agora o server passa a instanciar as chamadas às funções que definem "cansaço" nos animais, ao invés de instanciar uma task para cada.
++Refatorado sistema de schedules para mounts e pets. Agora o server passa a instanciar as chamadas Ã s funÃ§Ãµes que definem "cansaÃ§o" nos animais, ao invÃ©s de instanciar uma task para cada.
+ 
+ 04 Setembro 2017,
+-Adicionado sistema de exclusão de itens (pet feature) no server.
++Adicionado sistema de exclusÃ£o de itens (pet feature) no server.
+ Party recebe update de HP de jogadores ao ressucitarem na city.
+-Flash Jump's levam o update necessário ao trocar de job. 3a pessoa agora pode ver a animação do FJ.
++Flash Jump's levam o update necessÃ¡rio ao trocar de job. 3a pessoa agora pode ver a animaÃ§Ã£o do FJ.
+ 
+ 05 Setembro 2017,
+ Corrigido mais alguns aspectos do autoassigner.
+-Corrigido itens saindo para fora do mapa. Nova posição do drop leva em conta as bordas da camera do jogador.
++Corrigido itens saindo para fora do mapa. Nova posiÃ§Ã£o do drop leva em conta as bordas da camera do jogador.
+ 
+ 07 Setembro 2017,
+ Adicionado Vega's Spell.
+-3rd job event agora possui tempo-limite e verifica se há jogadores já enfrentando o desafio.
++3rd job event agora possui tempo-limite e verifica se hÃ¡ jogadores jÃ¡ enfrentando o desafio.
+ 
+ 10 Setembro 2017,
+ Protegido contra acesso concorrente classes MonsterBook e MapleInventory.
+ Nova feature: autosaver.
+ 
+ 11 Setembro 2017,
+-Consertado pet ignore não recuperando dados dos pets em alguns casos.
++Consertado pet ignore nÃ£o recuperando dados dos pets em alguns casos.
+ 
+ 12 Setembro 2017,
+ Explorer mount quest como evento, com timeout e expulsa o player se o hog morre.
+ 
+ 14 - 15 Setembro 2017,
+ Adicionado AmoriaPQ.
+-Consertado um problema em Inventory Sort que lançava exceção caso tivesse que ordenar vetores vazios.
++Consertado um problema em Inventory Sort que lanÃ§ava exceÃ§Ã£o caso tivesse que ordenar vetores vazios.
+ 
+ 16 Setembro 2017,
+-Refatorado sistema de schedules para hired merchants. Agora o server passa a instanciar as chamadas às funções que fecham as hired merchants, ao invés de instanciar uma task para cada.
++Refatorado sistema de schedules para hired merchants. Agora o server passa a instanciar as chamadas Ã s funÃ§Ãµes que fecham as hired merchants, ao invÃ©s de instanciar uma task para cada.
+ 
+ 18 - 21 Setembro 2017,
+ Refatorado sistema de schedules para skill cooldowns e buff expiretimes.
+-Completamente reestruturado sistema de buffs. Nova flag permite permanência de buffs mais fortes mesmo que novos buffs surjam.
++Completamente reestruturado sistema de buffs. Nova flag permite permanÃªncia de buffs mais fortes mesmo que novos buffs surjam.
+ 
+ 22 Setembro 2017,
+ Adicionado buffs para GPQ.
+-Consertado GPQ não iniciando devido a problemas com o script de evento.
++Consertado GPQ nÃ£o iniciando devido a problemas com o script de evento.
+ 
+ 23 Setembro 2017,
+ Adicionado Water of Life.
+-Consertado bug com sistema novo de buffs ao entrar no cash shop e em outros cenários onde não se detectava o melhor buff corretamente.
++Consertado bug com sistema novo de buffs ao entrar no cash shop e em outros cenÃ¡rios onde nÃ£o se detectava o melhor buff corretamente.
+ 
+ 25 - 27 Setembro 2017,
+-Adicionado proteção de acesso concorrente a ações de Hired Merchant e Player Shop.
+-Corrigido alguns problemas com Hired Merchant não retornando a quantidade correta de itens.
++Adicionado proteÃ§Ã£o de acesso concorrente a aÃ§Ãµes de Hired Merchant e Player Shop.
++Corrigido alguns problemas com Hired Merchant nÃ£o retornando a quantidade correta de itens.
+ Adicionado Owl of Minerva.
+ Corrigido um bug no sistema de checagem de slots.
+ 
+ 28 Setembro 2017,
+-Adidionado wish tickets à AmoriaPQ.
++Adidionado wish tickets Ã  AmoriaPQ.
+ 
+ 02 - 03 Outubro 2017,
+-Adicionado proteção de acesso concorrente em MapleParty.
+-Corrigido bug em sistema de distribuição de EXP para party.
+-Corrigido bug de overflow em distribuição de EXP.
+-Corrigido bug com scrolls não usando slots quando resultam em sucesso.
++Adicionado proteÃ§Ã£o de acesso concorrente em MapleParty.
++Corrigido bug em sistema de distribuiÃ§Ã£o de EXP para party.
++Corrigido bug de overflow em distribuiÃ§Ã£o de EXP.
++Corrigido bug com scrolls nÃ£o usando slots quando resultam em sucesso.
+ Refatorado sistema de schedules para disease expiretimes.
+ 
+ 05 Outubro 2017,
+-Alterado level mínimo para receber exp de um mob de base level - 5 para - 20 (cliente destaca infos do mob em vermelho se o jogador está abaixo desta faixa).
++Alterado level mÃ­nimo para receber exp de um mob de base level - 5 para - 20 (cliente destaca infos do mob em vermelho se o jogador estÃ¡ abaixo desta faixa).
+ 
+ 07 Outubro 2017,
+ Consertado players podendo criar party sendo level menor que 10.
+ Players abaixo do level 10 agora podem convidar outros menores que 10 para party, se o servidor permitir.
+ 
+ 09 Outubro 2017,
+-Adicionado proteção de acesso concorrente em invocação de scripts na EventInstanceManager.
++Adicionado proteÃ§Ã£o de acesso concorrente em invocaÃ§Ã£o de scripts na EventInstanceManager.
+ Alterado tempo-limite em mapas da PiratePQ para seguir o determinado para cada mapa.
+ 
+ 12 Outubro 2017,
+ Corrigido alguns bugs com a PPQ.
+-Se houve sucesso usando white scroll, slot ainda é usado.
++Se houve sucesso usando white scroll, slot ainda Ã© usado.
+ 
+ 15 Outubro 2017,
+-Corrigido Mini-dungeons não liberando os jogadores corretamente. Se player entra em outra sessão de MD antes de dar o timeout da primeira, o timeout leva efeito mesmo fora da sessão.
++Corrigido Mini-dungeons nÃ£o liberando os jogadores corretamente. Se player entra em outra sessÃ£o de MD antes de dar o timeout da primeira, o timeout leva efeito mesmo fora da sessÃ£o.
+ Corrigido um bug/exploit que permitia stackar map chair recovery.
+-Corrigido um bug no inventário de CASH mesclando itens de mesmo id.
+-Adicionado contador de buscas por itens realizados pelos jogadores ao usar Owl. Sugestão de mais pesquisados na Owl implementado.
++Corrigido um bug no inventÃ¡rio de CASH mesclando itens de mesmo id.
++Adicionado contador de buscas por itens realizados pelos jogadores ao usar Owl. SugestÃ£o de mais pesquisados na Owl implementado.
+ 
+ 17 Outubro 2017,
+-Consertado Roaring Tiger Messenger aparecendo fora da tela ao final da animação.
+-Consertado bugs envolvendo ganho de EXP em party, para casos onde o level do mob alvo é bem maior que o do atacante/leecher.
++Consertado Roaring Tiger Messenger aparecendo fora da tela ao final da animaÃ§Ã£o.
++Consertado bugs envolvendo ganho de EXP em party, para casos onde o level do mob alvo Ã© bem maior que o do atacante/leecher.
+ 
+ 20 - 21 Outubro 2017,
+-Bonus de Map chair rearranjado como uma skill, buffando jogador no momento que a codição de ativação é atingida.
++Bonus de Map chair rearranjado como uma skill, buffando jogador no momento que a codiÃ§Ã£o de ativaÃ§Ã£o Ã© atingida.
+ Hired Merchant agora verifica devidamente se jogador possui slot antes de liberar a compra de um item.
+ Pequeno conserto de acesso concorrente com o Storage.
+-Corrigido Map chair não removendo task corretamente caso jogador mude de mapa inesperadamente.
++Corrigido Map chair nÃ£o removendo task corretamente caso jogador mude de mapa inesperadamente.
+ 
+ 22 Outubro 2017,
+ Corrigido itens com ownership diferente sendo agrupados num mesmo slot, perdendo a referencia de dono.
+ Implementado feature "Arrange Items" do MapleStorage. Ele faz os devidos agrupamentos de itens e organiza os itens do storage.
+-Corrigido storage mesclando itens que deveriam ser únicos (que não poderiam haver mais de um num mesmo slot, ou no inventário do jogador).
++Corrigido storage mesclando itens que deveriam ser Ãºnicos (que nÃ£o poderiam haver mais de um num mesmo slot, ou no inventÃ¡rio do jogador).
+ Corrigido bug onde colocar um pet equipado no Cash Inventory e voltar ao jogo causaria crash no jogador.
+ 
+ 23 - 24 Outubro 2017,
+-Adicionado proteção contra acesso concorrente em módulos de MapleMonster.
++Adicionado proteÃ§Ã£o contra acesso concorrente em mÃ³dulos de MapleMonster.
+ Corrigido bug com Venom fazendo aparecer "dano 1" no DOT.
+-Corrigido sistema de EXP agora contabilizando devidamente HP curado pelo mob na distribuição do EXP.
++Corrigido sistema de EXP agora contabilizando devidamente HP curado pelo mob na distribuiÃ§Ã£o do EXP.
+ 
+ 25 Outubro 2017,
+-Corrigido alguns problemas com as configs de inicialização do HikariCP.
+-Corrigido bug com inicialização de NPC scripts podendo desconectar o jogador se instaciado múltiplas vezes.
++Corrigido alguns problemas com as configs de inicializaÃ§Ã£o do HikariCP.
++Corrigido bug com inicializaÃ§Ã£o de NPC scripts podendo desconectar o jogador se instaciado mÃºltiplas vezes.
+ 
+ 26 Outubro 2017,
+-Adicionado feature de randomização dos stats ganhos de HP e MP. Stat ganho de MP leva na contabilização INT do jogador.
++Adicionado feature de randomizaÃ§Ã£o dos stats ganhos de HP e MP. Stat ganho de MP leva na contabilizaÃ§Ã£o INT do jogador.
+ 
+ 27 - 28 Outubro 2017,
+-Alterado fairness de alguns locks do server para atender em fila requisições de acesso ao código atômico.
+-Corrigido jogadores "pulando mapas" se estiverem jogando com Internet lenta e tentarem usar portais múltiplas vezes.
+-Corrigido storage não liberando devidamente o jogador em casos onde o mesmo não possa executar uma transação por falta de nível 15.
+-Corrigido sistema de buffs não computando buffs com valor zero não sendo apropriadamente ativados no jogador.
++Alterado fairness de alguns locks do server para atender em fila requisiÃ§Ãµes de acesso ao cÃ³digo atÃ´mico.
++Corrigido jogadores "pulando mapas" se estiverem jogando com Internet lenta e tentarem usar portais mÃºltiplas vezes.
++Corrigido storage nÃ£o liberando devidamente o jogador em casos onde o mesmo nÃ£o possa executar uma transaÃ§Ã£o por falta de nÃ­vel 15.
++Corrigido sistema de buffs nÃ£o computando buffs com valor zero nÃ£o sendo apropriadamente ativados no jogador.
+ 
+ 29 Outubro 2017,
+-Adicionado drop data para diversas versões de Fairy, Yetis e Pepes.
+-Adicionado proteção contra acesso concorrente em MapleGuild e MapleAlliance.
++Adicionado drop data para diversas versÃµes de Fairy, Yetis e Pepes.
++Adicionado proteÃ§Ã£o contra acesso concorrente em MapleGuild e MapleAlliance.
+ 
+ 30 Outubro 2017,
+ Adicionado drop data de mesos para o restante dos mobs que dropam 4 ou mais itens.
+ 
+ 31 Outubro 2017,
+ Corrigido bug ao mudar classe de Aran desconectando o jogador.
+-Corrigido drop data de flechas agora dropando bundles ao invés de uma quantidade unitária.
++Corrigido drop data de flechas agora dropando bundles ao invÃ©s de uma quantidade unitÃ¡ria.
+ 
+ 01 - 02 Novembro 2017,
+-Modificado licenças do projeto.
++Modificado licenÃ§as do projeto.
+ Corrigido um bug no sistema que calcula slotMax dos itens.
+-Corrigido npcs/portais/reatores e outros mecanismos enviando jogadores para spawnpoints aleatórios onde não deveria.
+-Corrigido buff Wind Walk não cancelando quando atacando.
++Corrigido npcs/portais/reatores e outros mecanismos enviando jogadores para spawnpoints aleatÃ³rios onde nÃ£o deveria.
++Corrigido buff Wind Walk nÃ£o cancelando quando atacando.
+ 
+ 03 Novembro 2017,
+ Modificado custom questline: recompensa deixa de ser PAC com chaos scrolls p/ map chair skill com itens de Maple.
+ Adicionado quest de Horus' Eye.
+-Consertado Wind Walk agora atuando corretamente, não uma outra versão de Dark Sight.
++Consertado Wind Walk agora atuando corretamente, nÃ£o uma outra versÃ£o de Dark Sight.
+ 
+ 04 Novembro 2017,
+-Corrigido WK Charge skills não sobrescrevendo uma à outra ao ativar as skills.
+-Implementado nova ferramenta: MapleQuestItemFetcher. Ela vasculha a DB e os XMLs em busca de informações perdidas quanto aos itens de quest.
++Corrigido WK Charge skills nÃ£o sobrescrevendo uma Ã  outra ao ativar as skills.
++Implementado nova ferramenta: MapleQuestItemFetcher. Ela vasculha a DB e os XMLs em busca de informaÃ§Ãµes perdidas quanto aos itens de quest.
+ 
+ 05 Novembro 2017,
+ Adicionado sistema de level cap para jobs correntes.
+@@ -654,116 +654,124 @@ Revisto acesso concorrente sobre o componente EM da classe EIM.
+ 
+ 07 Novembro 2017,
+ Refatorado esquema de schedules por toda a source, diminuindo drasticamente as chamadas ao TimerManager.
+-Refatorado algumas chamadas à DB, busca somente aquilo que é necessário.
++Refatorado algumas chamadas Ã  DB, busca somente aquilo que Ã© necessÃ¡rio.
+ 
+ 08 - 09 Novembro 2017,
+ Adicionado packet para extra slot pendant.
+-Corrigido possível bug em MapleMapFactory.
+-Modificado todas as DB tables agora utilizando InnoDB (ganhos do MyISAM em contraste se tornou ínfimo, para casos críticos).
++Corrigido possÃ­vel bug em MapleMapFactory.
++Modificado todas as DB tables agora utilizando InnoDB (ganhos do MyISAM em contraste se tornou Ã­nfimo, para casos crÃ­ticos).
+ 
+ 11 Novembro 2017,
+-Adicionado proteção contra acesso concorrente em scripts de portais, eliminando possíveis inconsistencias por script.
++Adicionado proteÃ§Ã£o contra acesso concorrente em scripts de portais, eliminando possÃ­veis inconsistencias por script.
+ Implementado as skills de 2o job de Aran nas questlines.
+ Corrigido GM shop sendo liberado pra jogadores em Amherst.
+ 
+ 13 - 14 Novembro 2017,
+-Modificado ID de jogador agora começando em 20,000,000, evitando assim clash de id de jogador (que tb representa seu OID) com OIDs de objetos do mapa.
+-Nova ferramenta: MapleSkillMakerFetcher. A ferramenta lê info pertinente às descrições de itens feitos pelo Maker e as compila numa tabela, pra ser usada na DB.
++Modificado ID de jogador agora comeÃ§ando em 20,000,000, evitando assim clash de id de jogador (que tb representa seu OID) com OIDs de objetos do mapa.
++Nova ferramenta: MapleSkillMakerFetcher. A ferramenta lÃª info pertinente Ã s descriÃ§Ãµes de itens feitos pelo Maker e as compila numa tabela, pra ser usada na DB.
+ Corrigida questline de mounts e skills de Aran.
+ 
+ 15 Novembro 2017,
+ Implementado sistema de auditoria de deadlocks: ThreadTracker.
+ Corrigido bug onde jogadores recebem dano de mobs de mapas anteriores (que acarretavam em problemas com OID e natureza dos objetos).
+-Corrigido alguns problemas com exceção sendo lançada ao tentar desligar o server.
++Corrigido alguns problemas com exceÃ§Ã£o sendo lanÃ§ada ao tentar desligar o server.
+ 
+ 16 - 17 Novembro 2017,
+-Rearranjado ID de jogador agora começando de 1 mais uma vez. Espera-se que não haja mais de 1bil de jogadores registrados.
+-Corrigido timer de quest não saindo do cliente quando dado o termino bem-sucedido da quest.
++Rearranjado ID de jogador agora comeÃ§ando de 1 mais uma vez. Espera-se que nÃ£o haja mais de 1bil de jogadores registrados.
++Corrigido timer de quest nÃ£o saindo do cliente quando dado o termino bem-sucedido da quest.
+ Corrigido MapleArrowFetcher atribuindo valores iguais para min e max ranges. Max deve sempre ser maior que min.
+-Corrigido bug no ThreadTracker não mostrando os últimos locks capturados pelas threads corretamente.
++Corrigido bug no ThreadTracker nÃ£o mostrando os Ãºltimos locks capturados pelas threads corretamente.
+ 
+ 18 - 20 Novembro 2017,
+ Implementado items sendo dropados de reatores intervaladamente, GMS-like.
+-Adicionado informação ao jogador que tentar completar uma quest com item necessário equipado.
+-Nova ferramenta: MapleMapInfoRetriever. Detecção básica de mapas com sem nó de info em sua estrutura WZ.
++Adicionado informaÃ§Ã£o ao jogador que tentar completar uma quest com item necessÃ¡rio equipado.
++Nova ferramenta: MapleMapInfoRetriever. DetecÃ§Ã£o bÃ¡sica de mapas com sem nÃ³ de info em sua estrutura WZ.
+ Adicionado scripts para Power B. Fore npc.
+ 
+ 21 - 23 Novembro 2017,
+-Implementado Maker skill (métodos de packets pelo menos já existiam).
++Implementado Maker skill (mÃ©todos de packets pelo menos jÃ¡ existiam).
+ Corrigido bug em MapleSkillMakerFetcher, atualizado DB com as tabelas normalizadas.
+-Nova ferramenta: MapleSkillMakerReagentIndexer. Agrupa no banco de dados informação pertinente aos reagentes do Maker, para serem usados pelo server.
++Nova ferramenta: MapleSkillMakerReagentIndexer. Agrupa no banco de dados informaÃ§Ã£o pertinente aos reagentes do Maker, para serem usados pelo server.
+ Quests nivelando/utilizando o Maker funcionam corretamente agora.
+ 
+ 25 - 26 Novembro 2017,
+-Implementado região de Neo City. Progressão do jogo e sistema de quests fluem normalmente agora.
+-Corrigido um bug onde mobs de PQ não atribuem experiência aos jogadores por serem "baixo nível".
++Implementado regiÃ£o de Neo City. ProgressÃ£o do jogo e sistema de quests fluem normalmente agora.
++Corrigido um bug onde mobs de PQ nÃ£o atribuem experiÃªncia aos jogadores por serem "baixo nÃ­vel".
+ Corrigido um bug de deadlock com respawn de reatores.
+-Reatores que consomem drops agora checam por possíveis drops ao se registrar no mapa (seja por respawn ou primeiro spawn).
+-Aprimorado mecânicas da EllinPQ.
++Reatores que consomem drops agora checam por possÃ­veis drops ao se registrar no mapa (seja por respawn ou primeiro spawn).
++Aprimorado mecÃ¢nicas da EllinPQ.
+ 
+ 28 Novembro 2017,
+-Diversas refatorações de classes no projeto.
++Diversas refatoraÃ§Ãµes de classes no projeto.
+ Novo release: HeavenMS.
+ 
+ 02 Dezembro 2017,
+-Adicionado informação de classes nos NPCs para os 2o jobs de Explorer.
++Adicionado informaÃ§Ã£o de classes nos NPCs para os 2o jobs de Explorer.
+ 
+ 04 Dezembro 2017,
+-Adicionado quests para a região de Nihal Desert.
+-Nova ferramenta: MapleQuestMesoFetcher. Busca nos WZs por checagens perdidas em quests onde se precisa pagar uma certa quantia para completá-las.
++Adicionado quests para a regiÃ£o de Nihal Desert.
++Nova ferramenta: MapleQuestMesoFetcher. Busca nos WZs por checagens perdidas em quests onde se precisa pagar uma certa quantia para completÃ¡-las.
+ 
+ 07 Dezembro 2017,
+-Reatores que buscam itens no chão agora buscam por itens ao mudar de estado.
++Reatores que buscam itens no chÃ£o agora buscam por itens ao mudar de estado.
+ Corrigido 3o job de Cygnus.
+ 
+ 08 - 09 Dezembro 2017,
+-Removido UI que aponta erroneamente "Stat Upgrade" nos níveis 15, 20, 25 e 30.
+-Adicionado comando "droplimit", cuja funcionalidade é informar ao jogador a quantidade de drops no mapa em contraste com o limite permitido.
++Removido UI que aponta erroneamente "Stat Upgrade" nos nÃ­veis 15, 20, 25 e 30.
++Adicionado comando "droplimit", cuja funcionalidade Ã© informar ao jogador a quantidade de drops no mapa em contraste com o limite permitido.
+ 
+ 11 - 12 Dezembro 2017,
+-Resolvido bug onde contador do drops do mapa não atualizaria seu valor em casos onde reatores consomem itens ou ao se aplicar comandos como "cleardrops".
+-Corrigido server enviando packets com BroadcastMessage somente para o world 0, ao invés de ser para o world alvo.
+-MapleQuestItemFetcher agora mostra quests já expiradas no relatório.
++Resolvido bug onde contador do drops do mapa nÃ£o atualizaria seu valor em casos onde reatores consomem itens ou ao se aplicar comandos como "cleardrops".
++Corrigido server enviando packets com BroadcastMessage somente para o world 0, ao invÃ©s de ser para o world alvo.
++MapleQuestItemFetcher agora mostra quests jÃ¡ expiradas no relatÃ³rio.
+ 
+ 17 - 19 Dezembro 2017,
+ Implementado New Years card.
+-Adicionado informação, destinado ao dono da loja, de compra de itens dos Player Shops e dos Hired Merchants.
++Adicionado informaÃ§Ã£o, destinado ao dono da loja, de compra de itens dos Player Shops e dos Hired Merchants.
+ Resolvido um problema com overflow em Player Shops.
+ 
+ 20 - 22 Dezembro 2017,
+ Resolvido problema com itens ainda saindo das bordas de alguns mapas em certos casos.
+ Corrigido Enhanced Crafting com a Agent E rodando probabilidade do Chaos Scroll ao fazer o item.
+-Resolvido um problema com certos mapas não possuindo minimapa fazendo drops cairem sempre na posição x = 0.
++Resolvido um problema com certos mapas nÃ£o possuindo minimapa fazendo drops cairem sempre na posiÃ§Ã£o x = 0.
+ Corrigido pets reduzindo fullness enquanto no Cash Shop ou no MTS.
+-Corrigido bug em skills de PQ/Dojo para players que tem skill level = 0. Espera-se que todos possam "ativá-las".
+-Modificado mapa de fora do dojo agora resetando dojo energy, evitando assim possível exploit com skills do dojo.
+-Corrigido exploit em dojos permitindo que jogadores acessem mapas de estágios avançados se não progrediram juntos nos estágios anteriores.
+-Pontos agora estão sendo corretamente atribuídos aos jogadores que estão sendo automaticamente levados para o próximo rest point (quando um jogador passa pelo último portal de cada etapa).
+-Corrigido jogador comprando itens one-of-a-kind dos Hired Merchants quando não se pode obtê-los.
++Corrigido bug em skills de PQ/Dojo para players que tem skill level = 0. Espera-se que todos possam "ativÃ¡-las".
++Modificado mapa de fora do dojo agora resetando dojo energy, evitando assim possÃ­vel exploit com skills do dojo.
++Corrigido exploit em dojos permitindo que jogadores acessem mapas de estÃ¡gios avanÃ§ados se nÃ£o progrediram juntos nos estÃ¡gios anteriores.
++Pontos agora estÃ£o sendo corretamente atribuÃ­dos aos jogadores que estÃ£o sendo automaticamente levados para o prÃ³ximo rest point (quando um jogador passa pelo Ãºltimo portal de cada etapa).
++Corrigido jogador comprando itens one-of-a-kind dos Hired Merchants quando nÃ£o se pode obtÃª-los.
+ 
+ 23 - 24 Dezembro 2017,
+-Corrigido checagem de itens no inventário não verificando apropriadamente itens one-of-a-kind.
+-Adicionado e corrigido vários aspectos do Duey. Descoberto opcodes e respostas de ações de jogadores.
++Corrigido checagem de itens no inventÃ¡rio nÃ£o verificando apropriadamente itens one-of-a-kind.
++Adicionado e corrigido vÃ¡rios aspectos do Duey. Descoberto opcodes e respostas de aÃ§Ãµes de jogadores.
+ Corrigido autopot agora contabilizando bonus de HP e MP dos equipamentos nos stats a serem checados.
+ Adicionado Ereve na lista de plataformas de Orbis.
+ 
+ 27 Dezembro 2017,
+-Corrigido AP reset modificando stats de forma errônea.
++Corrigido AP reset modificando stats de forma errÃ´nea.
+ 
+ 03 Janeiro 2018,
+-Corrigido item megafone permitindo o display de equipamentos não-comercializáveis, mesmo marcados como Untradeable.
++Corrigido item megafone permitindo o display de equipamentos nÃ£o-comercializÃ¡veis, mesmo marcados como Untradeable.
+ 
+ 10 - 13 Janeiro 2018,
+-Incrementado portal de MK Castle agora permitindo uso dos 2 itens possíveis.
+-Resolvido alguns logs de erros disparados por mapas nulos no código-fonte.
++Incrementado portal de MK Castle agora permitindo uso dos 2 itens possÃ­veis.
++Resolvido alguns logs de erros disparados por mapas nulos no cÃ³digo-fonte.
+ Resolvido pequenos problemas de volatidade (nulos) nas referencias ao jogador em alguns handlers.
+ Corrigido alguns problemas com copyright em alguns arquivos.
+-Corrigido exploit com refinadores de minerais permitindo números iguais ou menores que zero como entrada.
++Corrigido exploit com refinadores de minerais permitindo nÃºmeros iguais ou menores que zero como entrada.
+ 
+ 14 - 15 Janeiro 2018,
+ Melhorado pet autopot, agora utilizando os outros slots do mesmo item caso o slot alvo tenha sido completamente usado.
+ Pet autopot agora considera o reuso de pots que fornecem ganho de porcentagem de HP ou MP.
+-Diminuídas levemente as chances de dropar os itens Moon Rock e Star Rock.
+-Função de listagem de itens no inventário agora ordena os itens de acordo com posição dos mesmos.
++DiminuÃ­das levemente as chances de dropar os itens Moon Rock e Star Rock.
++FunÃ§Ã£o de listagem de itens no inventÃ¡rio agora ordena os itens de acordo com posiÃ§Ã£o dos mesmos.
+ Incrementado diversos aspectos das questlines das doorways em Victoria Island.
+-Melhorado mecânica de convite para Alliances agora utilizando o balão apropriado, similar aos utilizados para Party e Guild.
+\ No newline at end of file
++Melhorado mecÃ¢nica de convite para Alliances agora utilizando o balÃ£o apropriado, similar aos utilizados para Party e Guild.
++
++02 - 03 Fevereiro 2018,
++Corrigido bug no servidor que situacionalmente eliminava completamente os dados salvos de mounts.
++Corrigido itemid invÃ¡lidos nos drops da DB.
++Adicionado quest rate (multiplicador de ganhos ao completar quests).
++Pequeno ajuste na Ã¡rea de alcanÃ§e dos drops no mapa. Espera-se que os drops agora nÃ£o caiam fora do mapa em grande quantidade.
++Nova ferramenta: MapleInvalidItemIdFetcher. Busca no DB por todos os itemids invÃ¡lidos e os lista em um arquivo.
++Atualizado lista de drops no monster book.
+\ No newline at end of file
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index 502116b74..bdd23d304 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -83,7 +83,7 @@ function writeSolaxiaCommandsLv4() {    //SuperGM
+         addCommand("exprate", "");
+         addCommand("mesorate", "");
+         addCommand("droprate", "");
+-        addCommand("bossdroprate", "");
++        addCommand("questrate", "");
+         addCommand("itemvac", "");
+         addCommand("forcevac", "");
+         addCommand("zakum", "");
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index fbf92e00c..da8a66912 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -10516,8 +10516,8 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (10294, 9500135, 4031170, 1, 1, 7100, 500000),
+ (10295, 9500136, 4031170, 1, 1, 7100, 500000),
+ (10296, 9500137, 4031170, 1, 1, 7100, 500000),
+-(10297, 7130300, 4031171, 1, 1, 7101, 400000),
+-(10298, 7160000, 4031171, 1, 1, 7101, 400000),
++(10297, 7130300, 4031171, 1, 1, 7101, 100000),
++(10298, 7160000, 4031171, 1, 1, 7101, 100000),
+ (10299, 6130200, 4031175, 1, 1, 7101, 300000),
+ (10300, 6230300, 4031175, 1, 1, 7101, 300000),
+ (10301, 6230400, 4031175, 1, 1, 7101, 300000),
+@@ -16132,7 +16132,7 @@ INSERT INTO `monstercarddata` (`id`, `cardid`, `mobid`) VALUES
+ (116, 2383003, 4130102),
+ (117, 2383004, 4130103),
+ (118, 2383006, 4230505),
+-(119, 2383007, 9300255),
++(119, 2383007, 4110302),
+ (120, 2383008, 4230102),
+ (121, 2383009, 4230104),
+ (122, 2383010, 4230506),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index f47648589..5303bcdd2 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -14497,8 +14497,8 @@ USE `heavenms`;
+ (9301003, 4130004, 1, 1, 0, 3000), 
+ (7160000, 4131007, 1, 1, 0, 3000), 
+ (9301003, 4131007, 1, 1, 0, 3000), 
+-(7160000, 4031171, 1, 1, 0, 7000), 
+-(9301003, 4031171, 1, 1, 0, 7000), 
++(7160000, 4031171, 1, 1, 7101, 100000), 
++(9301003, 4031171, 1, 1, 7101, 100000), 
+ (7160000, 2000006, 1, 1, 0, 40000), 
+ (9301003, 2000006, 1, 1, 0, 40000), 
+ (7160000, 2000002, 1, 1, 0, 40000),
+@@ -14894,7 +14894,7 @@ USE `heavenms`;
+ (8120105, 1472031, 1, 1, 0, 700), 
+ (8120105, 1482010, 1, 1, 0, 700), 
+ (7130300, 4000148, 1, 1, 0, 200000), 
+-(7130300, 4031171, 1, 1, 0, 7000), 
++(7130300, 4031171, 1, 1, 7101, 100000), 
+ (7130300, 2000004, 1, 1, 0, 40000), 
+ (7130300, 2000005, 1, 1, 0, 40000), 
+ (7130300, 2002004, 1, 1, 0, 10000),
+@@ -20008,10 +20008,14 @@ USE `heavenms`;
+ (9400613, 4010006, 1, 1, 0, 7000),
+ (9400613, 4020002, 1, 1, 0, 7000),
+ (9400613, 1082258, 1, 1, 0, 5000),
+-(9400613, 1072421, 1, 1, 0, 5000);
++(9400613, 1072421, 1, 1, 0, 5000),
++(4110302, 2383007, 1, 1, 0, 8000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
++  # delete all inexistent itemids
++  DELETE FROM temp_data WHERE itemid=2290109;
++
+   # delete item drops from other mobs named Freezer
+   DELETE FROM temp_data WHERE dropperid=9300090;
+   DELETE FROM temp_data WHERE dropperid=9420501;
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index eacf75258..786876a1f 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -914,7 +914,7 @@ public final synchronized void disconnect(boolean shutdown, boolean cashshop) {/
+ 					worlda.removePlayer(player);
+                                         
+                                         player.saveCooldowns();
+-                                        player.saveToDB();
++                                        player.saveToDB(true);
+ 					if (player != null) {//no idea, occur :(
+ 						player.empty(false);
+ 					}
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 579224701..11bbea503 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -518,8 +518,10 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+                         if(player.getCouponDropRate() != 1) showMsg += "Coupon DROP Rate: #k" + player.getCouponDropRate() + "x#k" + "\r\n";
+                         showMsg += "DROP Rate: #e#b" + player.getDropRate() + "x#k#n" + "\r\n";
+                     
+-                        showMsg += "\r\n" + "#eBOSSDROP RATE#n" + "\r\n";
+-                        showMsg += "Server BOSSDROP Rate: #e#b" + c.getWorldServer().getBossDropRate() + "x#k#n" + "\r\n";
++                        if(ServerConstants.USE_QUEST_RATE) {
++                            showMsg += "\r\n" + "#eQUEST RATE#n" + "\r\n";
++                            showMsg += "Server QUEST Rate: #e#b" + c.getWorldServer().getQuestRate() + "x#k#n" + "\r\n";
++                        }
+                         
+                         player.showHint(showMsg);
+                     break;
+@@ -529,7 +531,7 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+                         showMsg_ += "EXP Rate: #e#b" + player.getExpRate() + "x#k#n" + "\r\n";
+                         showMsg_ += "MESO Rate: #e#b" + player.getMesoRate() + "x#k#n" + "\r\n";
+                         showMsg_ += "DROP Rate: #e#b" + player.getDropRate() + "x#k#n" + "\r\n";
+-                        showMsg_ += "BOSSDROP Rate: #e#b" + c.getWorldServer().getBossDropRate() + "x#k#n" + "\r\n";
++                        if(ServerConstants.USE_QUEST_RATE) showMsg_ += "QUEST Rate: #e#b" + c.getWorldServer().getQuestRate() + "x#k#n" + "\r\n";
+                         
+                         player.showHint(showMsg_);
+                     break;
+@@ -2252,15 +2254,15 @@ public static boolean executeHeavenMsCommandLv4(Channel cserv, Server srv, Maple
+                             c.getWorldServer().broadcastPacket(MaplePacketCreator.serverNotice(6, "[Rate] Drop Rate has been changed to " + droprate + "x."));
+                         break;
+                     
+-                    case "bossdroprate":
++                    case "questrate":
+                             if (sub.length < 2){
+-                                player.yellowMessage("Syntax: !bossdroprate <newrate>");
++                                player.yellowMessage("Syntax: !questrate <newrate>");
+                                 break;
+                             }
+                             
+-                            int bossdroprate = Math.max(Integer.parseInt(sub[1]), 1);
+-                            c.getWorldServer().setBossDropRate(bossdroprate);
+-                            c.getWorldServer().broadcastPacket(MaplePacketCreator.serverNotice(6, "[Rate] Boss Drop Rate has been changed to " + bossdroprate + "x."));
++                            int questrate = Math.max(Integer.parseInt(sub[1]), 1);
++                            c.getWorldServer().setQuestRate(questrate);
++                            c.getWorldServer().broadcastPacket(MaplePacketCreator.serverNotice(6, "[Rate] Quest Rate has been changed to " + questrate + "x."));
+                         break;
+                     
+                     case "itemvac":
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 384232cf4..37c0d5daf 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -70,12 +70,13 @@
+     public static final boolean USE_ERASE_PET_ON_EXPIRATION = false;//Forces pets to be removed from inventory when expire time comes, rather than converting it to a doll.
+     public static final boolean USE_BUFF_MOST_SIGNIFICANT = true;   //When applying buffs, the player will stick with the highest stat boost among the listed, rather than overwriting stats.
+     public static final boolean USE_MAKER_FEE_HEURISTICS = true;    //Apply compiled values for stimulants and reagents into the Maker fee calculations (max error revolves around 50k mesos). Set false to use basic constant values instead (results are never higher than requested by the client-side).
++    public static final boolean USE_QUEST_RATE = false;              //Exp/Meso gained by quests uses fixed server exp/meso rate times quest rate as multiplier, instead of player rates.
+     
+     //Server Rates And Experience
+     public static final int EXP_RATE = 10;
+     public static final int MESO_RATE = 10;
+     public static final int DROP_RATE = 10;
+-    public static final int BOSS_DROP_RATE = 20;
++    public static final int QUEST_RATE = 5;                         //Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
+     public static final double EQUIP_EXP_RATE = 10.0;               //Rate for equipment exp gain, grows linearly. Set 1.0 for default (about 100~200 same-level range mobs killed to pass equip from level 1 to 2).
+     
+     public static final double PARTY_BONUS_EXP_RATE = 1.0;          //Rate for the party exp reward.
+diff --git a/src/net/server/CreateINI.java b/src/net/server/CreateINI.java
+index b60cd4021..df97a58a4 100644
+--- a/src/net/server/CreateINI.java
++++ b/src/net/server/CreateINI.java
+@@ -60,8 +60,8 @@ public static void main(String args[]) {
+             sb.append("mesorate").append(b).append("=").append(
+                     Integer.parseInt(con.readLine("   Meso rate: "))).append("\r\n");
+ 
+-            sb.append("bossdroprate").append(b).append("=").append(
+-                    Integer.parseInt(con.readLine("   Boss drop rate: "))).append("\r\n");
++            sb.append("questrate").append(b).append("=").append(
++                    Integer.parseInt(con.readLine("   Quest rate: "))).append("\r\n");
+ 
+             System.out.println(nextline);
+             sb.append("\r\n");
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index fd2ecf5c0..79969d344 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -335,7 +335,7 @@ public void run() {
+                         ServerConstants.EXP_RATE,
+                         ServerConstants.DROP_RATE,
+                         ServerConstants.MESO_RATE,
+-                        ServerConstants.BOSS_DROP_RATE);
++                        ServerConstants.QUEST_RATE);
+ 
+                 worldRecommendedList.add(new Pair<>(i, p.getProperty("whyamirecommended" + i)));
+                 worlds.add(world);
+diff --git a/src/net/server/channel/handlers/MoveDragonHandler.java b/src/net/server/channel/handlers/MoveDragonHandler.java
+index b8b08bd52..c806b82d2 100644
+--- a/src/net/server/channel/handlers/MoveDragonHandler.java
++++ b/src/net/server/channel/handlers/MoveDragonHandler.java
+@@ -32,7 +32,6 @@
+ 
+ 
+ public class MoveDragonHandler extends AbstractMovementPacketHandler {
+-
+     @Override
+     public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         final MapleCharacter chr = c.getPlayer();
+diff --git a/src/net/server/channel/handlers/MovePlayerHandler.java b/src/net/server/channel/handlers/MovePlayerHandler.java
+index 78a4c758c..6e6f4aa81 100644
+--- a/src/net/server/channel/handlers/MovePlayerHandler.java
++++ b/src/net/server/channel/handlers/MovePlayerHandler.java
+@@ -23,12 +23,12 @@
+ 
+ import client.MapleClient;
+ import java.util.List;
+-import net.server.channel.handlers.AbstractMovementPacketHandler;
+ import server.movement.LifeMovementFragment;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class MovePlayerHandler extends AbstractMovementPacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         slea.skip(9);
+         final List<LifeMovementFragment> res = parseMovement(slea);
+diff --git a/src/net/server/channel/handlers/MoveSummonHandler.java b/src/net/server/channel/handlers/MoveSummonHandler.java
+index 78117909d..1e5762705 100644
+--- a/src/net/server/channel/handlers/MoveSummonHandler.java
++++ b/src/net/server/channel/handlers/MoveSummonHandler.java
+@@ -21,7 +21,6 @@
+ */
+ package net.server.channel.handlers;
+ 
+-import net.server.channel.handlers.AbstractMovementPacketHandler;
+ import java.awt.Point;
+ import java.util.Collection;
+ import java.util.List;
+@@ -33,6 +32,7 @@
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class MoveSummonHandler extends AbstractMovementPacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         int oid = slea.readInt();
+         Point startPos = new Point(slea.readShort(), slea.readShort());
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index f02e6bef1..5b1e8c0e5 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -77,7 +77,7 @@
+  */
+ public class World {
+ 
+-    private int id, flag, exprate, droprate, mesorate, bossdroprate;
++    private int id, flag, exprate, droprate, mesorate, questrate;
+     private String eventmsg;
+     private List<Channel> channels = new ArrayList<>();
+     private Map<Integer, MapleMessenger> messengers = new HashMap<>();
+@@ -114,14 +114,14 @@
+     
+     private ScheduledFuture<?> charactersSchedule;
+     
+-    public World(int world, int flag, String eventmsg, int exprate, int droprate, int mesorate, int bossdroprate) {
++    public World(int world, int flag, String eventmsg, int exprate, int droprate, int mesorate, int questrate) {
+         this.id = world;
+         this.flag = flag;
+         this.eventmsg = eventmsg;
+         this.exprate = exprate;
+         this.droprate = droprate;
+         this.mesorate = mesorate;
+-        this.bossdroprate = bossdroprate;
++        this.questrate = questrate;
+         runningPartyId.set(1);
+         runningMessengerId.set(1);
+         
+@@ -215,12 +215,12 @@ public void setMesoRate(int meso) {
+         }
+     }
+ 
+-    public int getBossDropRate() {
+-        return bossdroprate;
++    public int getQuestRate() {
++        return questrate;
+     }
+     
+-    public void setBossDropRate(int bossdrop) {
+-        this.bossdroprate = bossdrop;
++    public void setQuestRate(int quest) {
++        this.questrate = quest;
+     }
+ 
+     public PlayerStorage getPlayerStorage() {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 587c17547..491105354 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -2610,7 +2610,7 @@ public MapleFootholdTree getFootholds() {
+     }
+     
+     public void setMapPointBoundings(int px, int py, int h, int w) {
+-        mapArea.setBounds(px + 45, py, w - 90, h);
++        mapArea.setBounds(px + 60, py, w - 120, h);
+     }
+     
+     public void setMapLineBoundings(int vrTop, int vrBottom, int vrLeft, int vrRight) {
+diff --git a/src/server/quest/actions/ExpAction.java b/src/server/quest/actions/ExpAction.java
+index 74cee6687..6ed18644c 100644
+--- a/src/server/quest/actions/ExpAction.java
++++ b/src/server/quest/actions/ExpAction.java
+@@ -22,6 +22,7 @@
+ package server.quest.actions;
+ 
+ import client.MapleCharacter;
++import constants.ServerConstants;
+ import provider.MapleData;
+ import provider.MapleDataTool;
+ import server.quest.MapleQuest;
+@@ -50,7 +51,11 @@ public void run(MapleCharacter chr, Integer extSelection) {
+ 		if (chr.isBeginnerJob() && chr.getLevel() < 10) {
+ 			chr.gainExp(exp, true, true);
+ 		} else {
+-			chr.gainExp(exp * chr.getExpRate(), true, true);
++                        if(!ServerConstants.USE_QUEST_RATE) {
++                                chr.gainExp(exp * chr.getExpRate(), true, true);
++                        } else {
++                                chr.gainExp(exp * ServerConstants.EXP_RATE * ServerConstants.QUEST_RATE, true, true);
++                        }
+ 		}
+ 	}
+ } 
+diff --git a/src/server/quest/actions/MesoAction.java b/src/server/quest/actions/MesoAction.java
+index 96dddb416..9ea5c7d56 100644
+--- a/src/server/quest/actions/MesoAction.java
++++ b/src/server/quest/actions/MesoAction.java
+@@ -22,6 +22,7 @@
+ package server.quest.actions;
+ 
+ import client.MapleCharacter;
++import constants.ServerConstants;
+ import provider.MapleData;
+ import provider.MapleDataTool;
+ import server.quest.MapleQuest;
+@@ -48,6 +49,14 @@ public void processData(MapleData data) {
+ 	
+ 	@Override
+ 	public void run(MapleCharacter chr, Integer extSelection) {
+-		chr.gainMeso(mesos < 0 ? mesos : mesos * chr.getMesoRate(), true, false, true);
++                if(mesos < 0) {
++                        chr.gainMeso(mesos, true, false, true);
++                } else {
++                        if(!ServerConstants.USE_QUEST_RATE) {
++                                chr.gainMeso(mesos * chr.getMesoRate(), true, false, true);
++                        } else {
++                                chr.gainMeso(mesos * ServerConstants.MESO_RATE * ServerConstants.QUEST_RATE, true, false, true);
++                        }
++                }
+ 	}
+ } 
+diff --git a/tools/MapleInvalidItemIdFetcher/build.xml b/tools/MapleInvalidItemIdFetcher/build.xml
+new file mode 100644
+index 000000000..c6f488a07
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/build.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!-- You may freely edit this file. See commented blocks below for -->
++<!-- some examples of how to customize the build. -->
++<!-- (If you delete it and reopen the project it will be recreated.) -->
++<!-- By default, only the Clean and Build commands use this build script. -->
++<!-- Commands such as Run, Debug, and Test only use this build script if -->
++<!-- the Compile on Save feature is turned off for the project. -->
++<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
++<!-- in the project's Project Properties dialog box.-->
++<project name="MapleInvalidItemIdFetcher" default="default" basedir=".">
++    <description>Builds, tests, and runs the project MapleInvalidItemIdFetcher.</description>
++    <import file="nbproject/build-impl.xml"/>
++    <!--
++
++    There exist several targets which are by default empty and which can be 
++    used for execution of your tasks. These targets are usually executed 
++    before and after some main targets. They are: 
++
++      -pre-init:                 called before initialization of project properties
++      -post-init:                called after initialization of project properties
++      -pre-compile:              called before javac compilation
++      -post-compile:             called after javac compilation
++      -pre-compile-single:       called before javac compilation of single file
++      -post-compile-single:      called after javac compilation of single file
++      -pre-compile-test:         called before javac compilation of JUnit tests
++      -post-compile-test:        called after javac compilation of JUnit tests
++      -pre-compile-test-single:  called before javac compilation of single JUnit test
++      -post-compile-test-single: called after javac compilation of single JUunit test
++      -pre-jar:                  called before JAR building
++      -post-jar:                 called after JAR building
++      -post-clean:               called after cleaning build products
++
++    (Targets beginning with '-' are not intended to be called on their own.)
++
++    Example of inserting an obfuscator after compilation could look like this:
++
++        <target name="-post-compile">
++            <obfuscate>
++                <fileset dir="${build.classes.dir}"/>
++            </obfuscate>
++        </target>
++
++    For list of available properties check the imported 
++    nbproject/build-impl.xml file. 
++
++
++    Another way to customize the build is by overriding existing main targets.
++    The targets of interest are: 
++
++      -init-macrodef-javac:     defines macro for javac compilation
++      -init-macrodef-junit:     defines macro for junit execution
++      -init-macrodef-debug:     defines macro for class debugging
++      -init-macrodef-java:      defines macro for class execution
++      -do-jar:                  JAR building
++      run:                      execution of project 
++      -javadoc-build:           Javadoc generation
++      test-report:              JUnit report generation
++
++    An example of overriding the target for project execution could look like this:
++
++        <target name="run" depends="MapleInvalidItemIdFetcher-impl.jar">
++            <exec dir="bin" executable="launcher.exe">
++                <arg file="${dist.jar}"/>
++            </exec>
++        </target>
++
++    Notice that the overridden target depends on the jar target and not only on 
++    the compile target as the regular run target does. Again, for a list of available 
++    properties which you can use, check the target you are overriding in the
++    nbproject/build-impl.xml file. 
++
++    -->
++</project>
+diff --git a/tools/MapleInvalidItemIdFetcher/lib/mysql-connector-java-bin.jar b/tools/MapleInvalidItemIdFetcher/lib/mysql-connector-java-bin.jar
+new file mode 100644
+index 000000000..0539039f7
+Binary files /dev/null and b/tools/MapleInvalidItemIdFetcher/lib/mysql-connector-java-bin.jar differ
+diff --git a/tools/MapleInvalidItemIdFetcher/lib/result.txt b/tools/MapleInvalidItemIdFetcher/lib/result.txt
+new file mode 100644
+index 000000000..e69de29bb
+diff --git a/tools/MapleInvalidItemIdFetcher/manifest.mf b/tools/MapleInvalidItemIdFetcher/manifest.mf
+new file mode 100644
+index 000000000..328e8e5bc
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/manifest.mf
+@@ -0,0 +1,3 @@
++Manifest-Version: 1.0
++X-COMMENT: Main-Class will be added automatically by build
++
+diff --git a/tools/MapleInvalidItemIdFetcher/nbproject/build-impl.xml b/tools/MapleInvalidItemIdFetcher/nbproject/build-impl.xml
+new file mode 100644
+index 000000000..9b93214fb
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/nbproject/build-impl.xml
+@@ -0,0 +1,1448 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++*** GENERATED FROM project.xml - DO NOT EDIT  ***
++***         EDIT ../build.xml INSTEAD         ***
++
++For the purpose of easier reading the script
++is divided into following sections:
++
++  - initialization
++  - compilation
++  - jar
++  - execution
++  - debugging
++  - javadoc
++  - test compilation
++  - test execution
++  - test debugging
++  - applet
++  - cleanup
++
++        -->
++<project xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3" xmlns:jaxrpc="http://www.netbeans.org/ns/j2se-project/jax-rpc" basedir=".." default="default" name="MapleInvalidItemIdFetcher-impl">
++    <fail message="Please build using Ant 1.8.0 or higher.">
++        <condition>
++            <not>
++                <antversion atleast="1.8.0"/>
++            </not>
++        </condition>
++    </fail>
++    <target depends="test,jar,javadoc" description="Build and test whole project." name="default"/>
++    <!-- 
++                ======================
++                INITIALIZATION SECTION 
++                ======================
++            -->
++    <target name="-pre-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="-pre-init" name="-init-private">
++        <property file="nbproject/private/config.properties"/>
++        <property file="nbproject/private/configs/${config}.properties"/>
++        <property file="nbproject/private/private.properties"/>
++    </target>
++    <target depends="-pre-init,-init-private" name="-init-user">
++        <property file="${user.properties.file}"/>
++        <!-- The two properties below are usually overridden -->
++        <!-- by the active platform. Just a fallback. -->
++        <property name="default.javac.source" value="1.4"/>
++        <property name="default.javac.target" value="1.4"/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user" name="-init-project">
++        <property file="nbproject/configs/${config}.properties"/>
++        <property file="nbproject/project.properties"/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-init-macrodef-property" name="-do-init">
++        <j2seproject1:property name="platform.home" value="platforms.${platform.active}.home"/>
++        <j2seproject1:property name="platform.bootcp" value="platforms.${platform.active}.bootclasspath"/>
++        <j2seproject1:property name="platform.compiler" value="platforms.${platform.active}.compile"/>
++        <j2seproject1:property name="platform.javac.tmp" value="platforms.${platform.active}.javac"/>
++        <condition property="platform.javac" value="${platform.home}/bin/javac">
++            <equals arg1="${platform.javac.tmp}" arg2="$${platforms.${platform.active}.javac}"/>
++        </condition>
++        <property name="platform.javac" value="${platform.javac.tmp}"/>
++        <j2seproject1:property name="platform.java.tmp" value="platforms.${platform.active}.java"/>
++        <condition property="platform.java" value="${platform.home}/bin/java">
++            <equals arg1="${platform.java.tmp}" arg2="$${platforms.${platform.active}.java}"/>
++        </condition>
++        <property name="platform.java" value="${platform.java.tmp}"/>
++        <j2seproject1:property name="platform.javadoc.tmp" value="platforms.${platform.active}.javadoc"/>
++        <condition property="platform.javadoc" value="${platform.home}/bin/javadoc">
++            <equals arg1="${platform.javadoc.tmp}" arg2="$${platforms.${platform.active}.javadoc}"/>
++        </condition>
++        <property name="platform.javadoc" value="${platform.javadoc.tmp}"/>
++        <condition property="platform.invalid" value="true">
++            <or>
++                <contains string="${platform.javac}" substring="$${platforms."/>
++                <contains string="${platform.java}" substring="$${platforms."/>
++                <contains string="${platform.javadoc}" substring="$${platforms."/>
++            </or>
++        </condition>
++        <fail unless="platform.home">Must set platform.home</fail>
++        <fail unless="platform.bootcp">Must set platform.bootcp</fail>
++        <fail unless="platform.java">Must set platform.java</fail>
++        <fail unless="platform.javac">Must set platform.javac</fail>
++        <fail if="platform.invalid">
++ The J2SE Platform is not correctly set up.
++ Your active platform is: ${platform.active}, but the corresponding property "platforms.${platform.active}.home" is not found in the project's properties files. 
++ Either open the project in the IDE and setup the Platform with the same name or add it manually.
++ For example like this:
++     ant -Duser.properties.file=&lt;path_to_property_file&gt; jar (where you put the property "platforms.${platform.active}.home" in a .properties file)
++  or ant -Dplatforms.${platform.active}.home=&lt;path_to_JDK_home&gt; jar (where no properties file is used) 
++  </fail>
++        <available file="${manifest.file}" property="manifest.available"/>
++        <condition property="splashscreen.available">
++            <and>
++                <not>
++                    <equals arg1="${application.splash}" arg2="" trim="true"/>
++                </not>
++                <available file="${application.splash}"/>
++            </and>
++        </condition>
++        <condition property="main.class.available">
++            <and>
++                <isset property="main.class"/>
++                <not>
++                    <equals arg1="${main.class}" arg2="" trim="true"/>
++                </not>
++            </and>
++        </condition>
++        <condition property="profile.available">
++            <and>
++                <isset property="javac.profile"/>
++                <length length="0" string="${javac.profile}" when="greater"/>
++                <matches pattern="1\.[89](\..*)?" string="${javac.source}"/>
++            </and>
++        </condition>
++        <condition property="do.archive">
++            <or>
++                <not>
++                    <istrue value="${jar.archive.disabled}"/>
++                </not>
++                <istrue value="${not.archive.disabled}"/>
++            </or>
++        </condition>
++        <condition property="do.mkdist">
++            <and>
++                <isset property="do.archive"/>
++                <isset property="libs.CopyLibs.classpath"/>
++                <not>
++                    <istrue value="${mkdist.disabled}"/>
++                </not>
++            </and>
++        </condition>
++        <condition property="do.archive+manifest.available">
++            <and>
++                <isset property="manifest.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+main.class.available">
++            <and>
++                <isset property="main.class.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+splashscreen.available">
++            <and>
++                <isset property="splashscreen.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+profile.available">
++            <and>
++                <isset property="profile.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="have.tests">
++            <or>
++                <available file="${test.src.dir}"/>
++            </or>
++        </condition>
++        <condition property="have.sources">
++            <or>
++                <available file="${src.dir}"/>
++            </or>
++        </condition>
++        <condition property="netbeans.home+have.tests">
++            <and>
++                <isset property="netbeans.home"/>
++                <isset property="have.tests"/>
++            </and>
++        </condition>
++        <condition property="no.javadoc.preview">
++            <and>
++                <isset property="javadoc.preview"/>
++                <isfalse value="${javadoc.preview}"/>
++            </and>
++        </condition>
++        <property name="run.jvmargs" value=""/>
++        <property name="run.jvmargs.ide" value=""/>
++        <property name="javac.compilerargs" value=""/>
++        <property name="work.dir" value="${basedir}"/>
++        <condition property="no.deps">
++            <and>
++                <istrue value="${no.dependencies}"/>
++            </and>
++        </condition>
++        <property name="javac.debug" value="true"/>
++        <property name="javadoc.preview" value="true"/>
++        <property name="application.args" value=""/>
++        <property name="source.encoding" value="${file.encoding}"/>
++        <property name="runtime.encoding" value="${source.encoding}"/>
++        <condition property="javadoc.encoding.used" value="${javadoc.encoding}">
++            <and>
++                <isset property="javadoc.encoding"/>
++                <not>
++                    <equals arg1="${javadoc.encoding}" arg2=""/>
++                </not>
++            </and>
++        </condition>
++        <property name="javadoc.encoding.used" value="${source.encoding}"/>
++        <property name="includes" value="**"/>
++        <property name="excludes" value=""/>
++        <property name="do.depend" value="false"/>
++        <condition property="do.depend.true">
++            <istrue value="${do.depend}"/>
++        </condition>
++        <path id="endorsed.classpath.path" path="${endorsed.classpath}"/>
++        <condition else="" property="endorsed.classpath.cmd.line.arg" value="-Xbootclasspath/p:'${toString:endorsed.classpath.path}'">
++            <and>
++                <isset property="endorsed.classpath"/>
++                <not>
++                    <equals arg1="${endorsed.classpath}" arg2="" trim="true"/>
++                </not>
++            </and>
++        </condition>
++        <condition else="" property="javac.profile.cmd.line.arg" value="-profile ${javac.profile}">
++            <isset property="profile.available"/>
++        </condition>
++        <property name="jar.index" value="false"/>
++        <property name="jar.index.metainf" value="${jar.index}"/>
++        <property name="copylibs.rebase" value="true"/>
++        <available file="${meta.inf.dir}/persistence.xml" property="has.persistence.xml"/>
++        <condition property="junit.available">
++            <or>
++                <available classname="org.junit.Test" classpath="${run.test.classpath}"/>
++                <available classname="junit.framework.Test" classpath="${run.test.classpath}"/>
++            </or>
++        </condition>
++        <condition property="testng.available">
++            <available classname="org.testng.annotations.Test" classpath="${run.test.classpath}"/>
++        </condition>
++        <condition property="junit+testng.available">
++            <and>
++                <istrue value="${junit.available}"/>
++                <istrue value="${testng.available}"/>
++            </and>
++        </condition>
++        <condition else="testng" property="testng.mode" value="mixed">
++            <istrue value="${junit+testng.available}"/>
++        </condition>
++        <condition else="" property="testng.debug.mode" value="-mixed">
++            <istrue value="${junit+testng.available}"/>
++        </condition>
++    </target>
++    <target name="-post-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init" name="-init-check">
++        <fail unless="src.dir">Must set src.dir</fail>
++        <fail unless="test.src.dir">Must set test.src.dir</fail>
++        <fail unless="build.dir">Must set build.dir</fail>
++        <fail unless="dist.dir">Must set dist.dir</fail>
++        <fail unless="build.classes.dir">Must set build.classes.dir</fail>
++        <fail unless="dist.javadoc.dir">Must set dist.javadoc.dir</fail>
++        <fail unless="build.test.classes.dir">Must set build.test.classes.dir</fail>
++        <fail unless="build.test.results.dir">Must set build.test.results.dir</fail>
++        <fail unless="build.classes.excludes">Must set build.classes.excludes</fail>
++        <fail unless="dist.jar">Must set dist.jar</fail>
++    </target>
++    <target name="-init-macrodef-property">
++        <macrodef name="property" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute name="name"/>
++            <attribute name="value"/>
++            <sequential>
++                <property name="@{name}" value="${@{value}}"/>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-macrodef-javac-with-processors">
++        <macrodef name="javac" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <attribute default="${javac.processorpath}" name="processorpath"/>
++            <attribute default="${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="${javac.debug}" name="debug"/>
++            <attribute default="${empty.dir}" name="sourcepath"/>
++            <attribute default="${empty.dir}" name="gensrcdir"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.dir}/empty" name="empty.dir"/>
++                <mkdir dir="${empty.dir}"/>
++                <mkdir dir="@{apgeneratedsrcdir}"/>
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                    <src>
++                        <dirset dir="@{gensrcdir}" erroronmissingdir="false">
++                            <include name="*"/>
++                        </dirset>
++                    </src>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <compilerarg line="${javac.profile.cmd.line.arg}"/>
++                    <compilerarg line="${javac.compilerargs}"/>
++                    <compilerarg value="-processorpath"/>
++                    <compilerarg path="@{processorpath}:${empty.dir}"/>
++                    <compilerarg line="${ap.processors.internal}"/>
++                    <compilerarg line="${annotation.processing.processor.options}"/>
++                    <compilerarg value="-s"/>
++                    <compilerarg path="@{apgeneratedsrcdir}"/>
++                    <compilerarg line="${ap.proc.none.internal}"/>
++                    <customize/>
++                </javac>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-ap-cmdline-properties" name="-init-macrodef-javac-without-processors" unless="ap.supported.internal">
++        <macrodef name="javac" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <attribute default="${javac.processorpath}" name="processorpath"/>
++            <attribute default="${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="${javac.debug}" name="debug"/>
++            <attribute default="${empty.dir}" name="sourcepath"/>
++            <attribute default="${empty.dir}" name="gensrcdir"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.dir}/empty" name="empty.dir"/>
++                <mkdir dir="${empty.dir}"/>
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                    <src>
++                        <dirset dir="@{gensrcdir}" erroronmissingdir="false">
++                            <include name="*"/>
++                        </dirset>
++                    </src>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <compilerarg line="${javac.profile.cmd.line.arg}"/>
++                    <compilerarg line="${javac.compilerargs}"/>
++                    <customize/>
++                </javac>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-javac-with-processors,-init-macrodef-javac-without-processors" name="-init-macrodef-javac">
++        <macrodef name="depend" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <sequential>
++                <depend cache="${build.dir}/depcache" destdir="@{destdir}" excludes="${excludes}" includes="${includes}" srcdir="@{srcdir}">
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                </depend>
++            </sequential>
++        </macrodef>
++        <macrodef name="force-recompile" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <sequential>
++                <fail unless="javac.includes">Must set javac.includes</fail>
++                <pathconvert pathsep="${line.separator}" property="javac.includes.binary">
++                    <path>
++                        <filelist dir="@{destdir}" files="${javac.includes}"/>
++                    </path>
++                    <globmapper from="*.java" to="*.class"/>
++                </pathconvert>
++                <tempfile deleteonexit="true" property="javac.includesfile.binary"/>
++                <echo file="${javac.includesfile.binary}" message="${javac.includes.binary}"/>
++                <delete>
++                    <files includesfile="${javac.includesfile.binary}"/>
++                </delete>
++                <delete>
++                    <fileset file="${javac.includesfile.binary}"/>
++                </delete>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${junit.available}" name="-init-macrodef-junit-init">
++        <condition else="false" property="nb.junit.batch" value="true">
++            <and>
++                <istrue value="${junit.available}"/>
++                <not>
++                    <isset property="test.method"/>
++                </not>
++            </and>
++        </condition>
++        <condition else="false" property="nb.junit.single" value="true">
++            <and>
++                <istrue value="${junit.available}"/>
++                <isset property="test.method"/>
++            </and>
++        </condition>
++    </target>
++    <target name="-init-test-properties">
++        <property name="test.binaryincludes" value="&lt;nothing&gt;"/>
++        <property name="test.binarytestincludes" value=""/>
++        <property name="test.binaryexcludes" value=""/>
++    </target>
++    <target if="${nb.junit.single}" name="-init-macrodef-junit-single" unless="${nb.junit.batch}">
++        <macrodef name="junit" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-test-properties" if="${nb.junit.batch}" name="-init-macrodef-junit-batch" unless="${nb.junit.single}">
++        <macrodef name="junit" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <batchtest todir="${build.test.results.dir}">
++                        <fileset dir="${test.src.dir}" excludes="@{excludes},${excludes}" includes="@{includes}">
++                            <filename name="@{testincludes}"/>
++                        </fileset>
++                        <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
++                            <filename name="${test.binarytestincludes}"/>
++                        </fileset>
++                    </batchtest>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-init,-init-macrodef-junit-single, -init-macrodef-junit-batch" if="${junit.available}" name="-init-macrodef-junit"/>
++    <target if="${testng.available}" name="-init-macrodef-testng">
++        <macrodef name="testng" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <condition else="" property="testng.methods.arg" value="@{testincludes}.@{testmethods}">
++                    <isset property="test.method"/>
++                </condition>
++                <union id="test.set">
++                    <fileset dir="${test.src.dir}" excludes="@{excludes},**/*.xml,${excludes}" includes="@{includes}">
++                        <filename name="@{testincludes}"/>
++                    </fileset>
++                </union>
++                <taskdef classname="org.testng.TestNGAntTask" classpath="${run.test.classpath}" name="testng"/>
++                <testng classfilesetref="test.set" failureProperty="tests.failed" jvm="${platform.java}" listeners="org.testng.reporters.VerboseReporter" methods="${testng.methods.arg}" mode="${testng.mode}" outputdir="${build.test.results.dir}" suitename="MapleInvalidItemIdFetcher" testname="TestNG tests" workingDir="${work.dir}">
++                    <xmlfileset dir="${build.test.classes.dir}" includes="@{testincludes}"/>
++                    <propertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </propertyset>
++                    <customize/>
++                </testng>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-test-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <echo>No tests executed.</echo>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit" if="${junit.available}" name="-init-macrodef-junit-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:junit excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng" if="${testng.available}" name="-init-macrodef-testng-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:testng excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:testng>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-test-impl,-init-macrodef-junit-impl,-init-macrodef-testng-impl" name="-init-macrodef-test">
++        <macrodef name="test" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <sequential>
++                <j2seproject3:test-impl excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize>
++                        <classpath>
++                            <path path="${run.test.classpath}"/>
++                        </classpath>
++                        <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                        <jvmarg line="${run.jvmargs}"/>
++                        <jvmarg line="${run.jvmargs.ide}"/>
++                    </customize>
++                </j2seproject3:test-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${junit.available}" name="-init-macrodef-junit-debug" unless="${nb.junit.batch}">
++        <macrodef name="junit-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-test-properties" if="${nb.junit.batch}" name="-init-macrodef-junit-debug-batch">
++        <macrodef name="junit-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <batchtest todir="${build.test.results.dir}">
++                        <fileset dir="${test.src.dir}" excludes="@{excludes},${excludes}" includes="@{includes}">
++                            <filename name="@{testincludes}"/>
++                        </fileset>
++                        <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
++                            <filename name="${test.binarytestincludes}"/>
++                        </fileset>
++                    </batchtest>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-debug,-init-macrodef-junit-debug-batch" if="${junit.available}" name="-init-macrodef-junit-debug-impl">
++        <macrodef name="test-debug-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:junit-debug excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:junit-debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${testng.available}" name="-init-macrodef-testng-debug">
++        <macrodef name="testng-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <element name="customize2" optional="true"/>
++            <sequential>
++                <condition else="-testclass @{testClass}" property="test.class.or.method" value="-methods @{testClass}.@{testMethod}">
++                    <isset property="test.method"/>
++                </condition>
++                <condition else="-suitename MapleInvalidItemIdFetcher -testname @{testClass} ${test.class.or.method}" property="testng.cmd.args" value="@{testClass}">
++                    <matches pattern=".*\.xml" string="@{testClass}"/>
++                </condition>
++                <delete dir="${build.test.results.dir}" quiet="true"/>
++                <mkdir dir="${build.test.results.dir}"/>
++                <j2seproject3:debug classname="org.testng.TestNG" classpath="${debug.test.classpath}">
++                    <customize>
++                        <customize2/>
++                        <jvmarg value="-ea"/>
++                        <arg line="${testng.debug.mode}"/>
++                        <arg line="-d ${build.test.results.dir}"/>
++                        <arg line="-listener org.testng.reporters.VerboseReporter"/>
++                        <arg line="${testng.cmd.args}"/>
++                    </customize>
++                </j2seproject3:debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng-debug" if="${testng.available}" name="-init-macrodef-testng-debug-impl">
++        <macrodef name="testng-debug-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <element implicit="true" name="customize2" optional="true"/>
++            <sequential>
++                <j2seproject3:testng-debug testClass="@{testClass}" testMethod="@{testMethod}">
++                    <customize2/>
++                </j2seproject3:testng-debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-debug-impl" if="${junit.available}" name="-init-macrodef-test-debug-junit">
++        <macrodef name="test-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <sequential>
++                <j2seproject3:test-debug-impl excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize>
++                        <classpath>
++                            <path path="${run.test.classpath}"/>
++                        </classpath>
++                        <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                        <jvmarg line="${run.jvmargs}"/>
++                        <jvmarg line="${run.jvmargs.ide}"/>
++                    </customize>
++                </j2seproject3:test-debug-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng-debug-impl" if="${testng.available}" name="-init-macrodef-test-debug-testng">
++        <macrodef name="test-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <sequential>
++                <j2seproject3:testng-debug-impl testClass="@{testClass}" testMethod="@{testMethod}">
++                    <customize2>
++                        <syspropertyset>
++                            <propertyref prefix="test-sys-prop."/>
++                            <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                        </syspropertyset>
++                    </customize2>
++                </j2seproject3:testng-debug-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-test-debug-junit,-init-macrodef-test-debug-testng" name="-init-macrodef-test-debug"/>
++    <!--
++                pre NB7.2 profiling section; consider it deprecated
++            -->
++    <target depends="-profile-pre-init, init, -profile-post-init, -profile-init-macrodef-profile, -profile-init-check" if="profiler.info.jvmargs.agent" name="profile-init"/>
++    <target if="profiler.info.jvmargs.agent" name="-profile-pre-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="profiler.info.jvmargs.agent" name="-profile-post-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="profiler.info.jvmargs.agent" name="-profile-init-macrodef-profile">
++        <macrodef name="resolve">
++            <attribute name="name"/>
++            <attribute name="value"/>
++            <sequential>
++                <property name="@{name}" value="${env.@{value}}"/>
++            </sequential>
++        </macrodef>
++        <macrodef name="profile">
++            <attribute default="${main.class}" name="classname"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property environment="env"/>
++                <resolve name="profiler.current.path" value="${profiler.info.pathvar}"/>
++                <java classname="@{classname}" dir="${profiler.info.dir}" fork="true" jvm="${profiler.info.jvm}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg value="${profiler.info.jvmargs.agent}"/>
++                    <jvmarg line="${profiler.info.jvmargs}"/>
++                    <env key="${profiler.info.pathvar}" path="${profiler.info.agentpath}:${profiler.current.path}"/>
++                    <arg line="${application.args}"/>
++                    <classpath>
++                        <path path="${run.classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-profile-pre-init, init, -profile-post-init, -profile-init-macrodef-profile" if="profiler.info.jvmargs.agent" name="-profile-init-check">
++        <fail unless="profiler.info.jvm">Must set JVM to use for profiling in profiler.info.jvm</fail>
++        <fail unless="profiler.info.jvmargs.agent">Must set profiler agent JVM arguments in profiler.info.jvmargs.agent</fail>
++    </target>
++    <!--
++                end of pre NB7.2 profiling section
++            -->
++    <target depends="-init-debug-args" name="-init-macrodef-nbjpda">
++        <macrodef name="nbjpdastart" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${main.class}" name="name"/>
++            <attribute default="${debug.classpath}" name="classpath"/>
++            <attribute default="" name="stopclassname"/>
++            <sequential>
++                <nbjpdastart addressproperty="jpda.address" name="@{name}" stopclassname="@{stopclassname}" transport="${debug-transport}">
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <bootclasspath>
++                        <path path="${platform.bootcp}"/>
++                    </bootclasspath>
++                </nbjpdastart>
++            </sequential>
++        </macrodef>
++        <macrodef name="nbjpdareload" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${build.classes.dir}" name="dir"/>
++            <sequential>
++                <nbjpdareload>
++                    <fileset dir="@{dir}" includes="${fix.classes}">
++                        <include name="${fix.includes}*.class"/>
++                    </fileset>
++                </nbjpdareload>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-debug-args">
++        <exec executable="${platform.java}" outputproperty="version-output">
++            <arg value="-version"/>
++        </exec>
++        <condition property="have-jdk-older-than-1.4">
++            <or>
++                <contains string="${version-output}" substring="java version &quot;1.0"/>
++                <contains string="${version-output}" substring="java version &quot;1.1"/>
++                <contains string="${version-output}" substring="java version &quot;1.2"/>
++                <contains string="${version-output}" substring="java version &quot;1.3"/>
++            </or>
++        </condition>
++        <condition else="-Xdebug" property="debug-args-line" value="-Xdebug -Xnoagent -Djava.compiler=none">
++            <istrue value="${have-jdk-older-than-1.4}"/>
++        </condition>
++        <condition else="dt_socket" property="debug-transport-by-os" value="dt_shmem">
++            <os family="windows"/>
++        </condition>
++        <condition else="${debug-transport-by-os}" property="debug-transport" value="${debug.transport}">
++            <isset property="debug.transport"/>
++        </condition>
++    </target>
++    <target depends="-init-debug-args" name="-init-macrodef-debug">
++        <macrodef name="debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="classname"/>
++            <attribute default="${debug.classpath}" name="classpath"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
++                    <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
++                    <jvmarg line="${run.jvmargs}"/>
++                    <jvmarg line="${run.jvmargs.ide}"/>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-java">
++        <macrodef name="java" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${main.class}" name="classname"/>
++            <attribute default="${run.classpath}" name="classpath"/>
++            <attribute default="jvm" name="jvm"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
++                    <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
++                    <jvmarg line="${run.jvmargs}"/>
++                    <jvmarg line="${run.jvmargs.ide}"/>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-copylibs">
++        <macrodef name="copylibs" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${manifest.file}" name="manifest"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
++                <pathconvert property="run.classpath.without.build.classes.dir">
++                    <path path="${run.classpath}"/>
++                    <map from="${build.classes.dir.resolved}" to=""/>
++                </pathconvert>
++                <pathconvert pathsep=" " property="jar.classpath">
++                    <path path="${run.classpath.without.build.classes.dir}"/>
++                    <chainedmapper>
++                        <flattenmapper/>
++                        <filtermapper>
++                            <replacestring from=" " to="%20"/>
++                        </filtermapper>
++                        <globmapper from="*" to="lib/*"/>
++                    </chainedmapper>
++                </pathconvert>
++                <taskdef classname="org.netbeans.modules.java.j2seproject.copylibstask.CopyLibs" classpath="${libs.CopyLibs.classpath}" name="copylibs"/>
++                <copylibs compress="${jar.compress}" excludeFromCopy="${copylibs.excludes}" index="${jar.index}" indexMetaInf="${jar.index.metainf}" jarfile="${dist.jar}" manifest="@{manifest}" rebase="${copylibs.rebase}" runtimeclasspath="${run.classpath.without.build.classes.dir}">
++                    <fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
++                    <manifest>
++                        <attribute name="Class-Path" value="${jar.classpath}"/>
++                        <customize/>
++                    </manifest>
++                </copylibs>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-presetdef-jar">
++        <presetdef name="jar" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <jar compress="${jar.compress}" index="${jar.index}" jarfile="${dist.jar}">
++                <j2seproject1:fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
++            </jar>
++        </presetdef>
++    </target>
++    <target name="-init-ap-cmdline-properties">
++        <property name="annotation.processing.enabled" value="true"/>
++        <property name="annotation.processing.processors.list" value=""/>
++        <property name="annotation.processing.processor.options" value=""/>
++        <property name="annotation.processing.run.all.processors" value="true"/>
++        <property name="javac.processorpath" value="${javac.classpath}"/>
++        <property name="javac.test.processorpath" value="${javac.test.classpath}"/>
++        <condition property="ap.supported.internal" value="true">
++            <not>
++                <matches pattern="1\.[0-5](\..*)?" string="${javac.source}"/>
++            </not>
++        </condition>
++    </target>
++    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-ap-cmdline-supported">
++        <condition else="" property="ap.processors.internal" value="-processor ${annotation.processing.processors.list}">
++            <isfalse value="${annotation.processing.run.all.processors}"/>
++        </condition>
++        <condition else="" property="ap.proc.none.internal" value="-proc:none">
++            <isfalse value="${annotation.processing.enabled}"/>
++        </condition>
++    </target>
++    <target depends="-init-ap-cmdline-properties,-init-ap-cmdline-supported" name="-init-ap-cmdline">
++        <property name="ap.cmd.line.internal" value=""/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init,-post-init,-init-check,-init-macrodef-property,-init-macrodef-javac,-init-macrodef-test,-init-macrodef-test-debug,-init-macrodef-nbjpda,-init-macrodef-debug,-init-macrodef-java,-init-presetdef-jar,-init-ap-cmdline" name="init"/>
++    <!--
++                ===================
++                COMPILATION SECTION
++                ===================
++            -->
++    <target name="-deps-jar-init" unless="built-jar.properties">
++        <property location="${build.dir}/built-jar.properties" name="built-jar.properties"/>
++        <delete file="${built-jar.properties}" quiet="true"/>
++    </target>
++    <target if="already.built.jar.${basedir}" name="-warn-already-built-jar">
++        <echo level="warn" message="Cycle detected: MapleInvalidItemIdFetcher was already built"/>
++    </target>
++    <target depends="init,-deps-jar-init" name="deps-jar" unless="no.deps">
++        <mkdir dir="${build.dir}"/>
++        <touch file="${built-jar.properties}" verbose="false"/>
++        <property file="${built-jar.properties}" prefix="already.built.jar."/>
++        <antcall target="-warn-already-built-jar"/>
++        <propertyfile file="${built-jar.properties}">
++            <entry key="${basedir}" value=""/>
++        </propertyfile>
++    </target>
++    <target depends="init,-check-automatic-build,-clean-after-automatic-build" name="-verify-automatic-build"/>
++    <target depends="init" name="-check-automatic-build">
++        <available file="${build.classes.dir}/.netbeans_automatic_build" property="netbeans.automatic.build"/>
++    </target>
++    <target depends="init" if="netbeans.automatic.build" name="-clean-after-automatic-build">
++        <antcall target="clean"/>
++    </target>
++    <target depends="init,deps-jar" name="-pre-pre-compile">
++        <mkdir dir="${build.classes.dir}"/>
++    </target>
++    <target name="-pre-compile">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="do.depend.true" name="-compile-depend">
++        <pathconvert property="build.generated.subdirs">
++            <dirset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="*"/>
++            </dirset>
++        </pathconvert>
++        <j2seproject3:depend srcdir="${src.dir}:${build.generated.subdirs}"/>
++    </target>
++    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile, -copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile">
++        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
++        <copy todir="${build.classes.dir}">
++            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target if="has.persistence.xml" name="-copy-persistence-xml">
++        <mkdir dir="${build.classes.dir}/META-INF"/>
++        <copy todir="${build.classes.dir}/META-INF">
++            <fileset dir="${meta.inf.dir}" includes="persistence.xml orm.xml"/>
++        </copy>
++    </target>
++    <target name="-post-compile">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-pre-compile,-do-compile,-post-compile" description="Compile project." name="compile"/>
++    <target name="-pre-compile-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
++        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
++        <j2seproject3:force-recompile/>
++        <j2seproject3:javac excludes="" gensrcdir="${build.generated.sources.dir}" includes="${javac.includes}" sourcepath="${src.dir}"/>
++    </target>
++    <target name="-post-compile-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-pre-compile-single,-do-compile-single,-post-compile-single" name="compile-single"/>
++    <!--
++                ====================
++                JAR BUILDING SECTION
++                ====================
++            -->
++    <target depends="init" name="-pre-pre-jar">
++        <dirname file="${dist.jar}" property="dist.jar.dir"/>
++        <mkdir dir="${dist.jar.dir}"/>
++    </target>
++    <target name="-pre-jar">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init" if="do.archive" name="-do-jar-create-manifest" unless="manifest.available">
++        <tempfile deleteonexit="true" destdir="${build.dir}" property="tmp.manifest.file"/>
++        <touch file="${tmp.manifest.file}" verbose="false"/>
++    </target>
++    <target depends="init" if="do.archive+manifest.available" name="-do-jar-copy-manifest">
++        <tempfile deleteonexit="true" destdir="${build.dir}" property="tmp.manifest.file"/>
++        <copy file="${manifest.file}" tofile="${tmp.manifest.file}"/>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+main.class.available" name="-do-jar-set-mainclass">
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="Main-Class" value="${main.class}"/>
++        </manifest>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+profile.available" name="-do-jar-set-profile">
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="Profile" value="${javac.profile}"/>
++        </manifest>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+splashscreen.available" name="-do-jar-set-splashscreen">
++        <basename file="${application.splash}" property="splashscreen.basename"/>
++        <mkdir dir="${build.classes.dir}/META-INF"/>
++        <copy failonerror="false" file="${application.splash}" todir="${build.classes.dir}/META-INF"/>
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="SplashScreen-Image" value="META-INF/${splashscreen.basename}"/>
++        </manifest>
++    </target>
++    <target depends="init,-init-macrodef-copylibs,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen" if="do.mkdist" name="-do-jar-copylibs">
++        <j2seproject3:copylibs manifest="${tmp.manifest.file}"/>
++        <echo level="info">To run this application from the command line without Ant, try:</echo>
++        <property location="${dist.jar}" name="dist.jar.resolved"/>
++        <echo level="info">${platform.java} -jar "${dist.jar.resolved}"</echo>
++    </target>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen" if="do.archive" name="-do-jar-jar" unless="do.mkdist">
++        <j2seproject1:jar manifest="${tmp.manifest.file}"/>
++        <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
++        <property location="${dist.jar}" name="dist.jar.resolved"/>
++        <pathconvert property="run.classpath.with.dist.jar">
++            <path path="${run.classpath}"/>
++            <map from="${build.classes.dir.resolved}" to="${dist.jar.resolved}"/>
++        </pathconvert>
++        <condition else="" property="jar.usage.message" value="To run this application from the command line without Ant, try:${line.separator}${platform.java} -cp ${run.classpath.with.dist.jar} ${main.class}">
++            <isset property="main.class.available"/>
++        </condition>
++        <condition else="debug" property="jar.usage.level" value="info">
++            <isset property="main.class.available"/>
++        </condition>
++        <echo level="${jar.usage.level}" message="${jar.usage.message}"/>
++    </target>
++    <target depends="-do-jar-copylibs" if="do.archive" name="-do-jar-delete-manifest">
++        <delete>
++            <fileset file="${tmp.manifest.file}"/>
++        </delete>
++    </target>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen,-do-jar-jar,-do-jar-delete-manifest" name="-do-jar-without-libraries"/>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen,-do-jar-copylibs,-do-jar-delete-manifest" name="-do-jar-with-libraries"/>
++    <target name="-post-jar">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-jar,-do-jar-without-libraries,-do-jar-with-libraries,-post-jar" name="-do-jar"/>
++    <target depends="init,compile,-pre-jar,-do-jar,-post-jar" description="Build JAR." name="jar"/>
++    <!--
++                =================
++                EXECUTION SECTION
++                =================
++            -->
++    <target depends="init,compile" description="Run a main class." name="run">
++        <j2seproject1:java>
++            <customize>
++                <arg line="${application.args}"/>
++            </customize>
++        </j2seproject1:java>
++    </target>
++    <target name="-do-not-recompile">
++        <property name="javac.includes.binary" value=""/>
++    </target>
++    <target depends="init,compile-single" name="run-single">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <j2seproject1:java classname="${run.class}"/>
++    </target>
++    <target depends="init,compile-test-single" name="run-test-with-main">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <j2seproject1:java classname="${run.class}" classpath="${run.test.classpath}"/>
++    </target>
++    <!--
++                =================
++                DEBUGGING SECTION
++                =================
++            -->
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger">
++        <j2seproject1:nbjpdastart name="${debug.class}"/>
++    </target>
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger-main-test">
++        <j2seproject1:nbjpdastart classpath="${debug.test.classpath}" name="${debug.class}"/>
++    </target>
++    <target depends="init,compile" name="-debug-start-debuggee">
++        <j2seproject3:debug>
++            <customize>
++                <arg line="${application.args}"/>
++            </customize>
++        </j2seproject3:debug>
++    </target>
++    <target depends="init,compile,-debug-start-debugger,-debug-start-debuggee" description="Debug project in IDE." if="netbeans.home" name="debug"/>
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger-stepinto">
++        <j2seproject1:nbjpdastart stopclassname="${main.class}"/>
++    </target>
++    <target depends="init,compile,-debug-start-debugger-stepinto,-debug-start-debuggee" if="netbeans.home" name="debug-stepinto"/>
++    <target depends="init,compile-single" if="netbeans.home" name="-debug-start-debuggee-single">
++        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
++        <j2seproject3:debug classname="${debug.class}"/>
++    </target>
++    <target depends="init,compile-single,-debug-start-debugger,-debug-start-debuggee-single" if="netbeans.home" name="debug-single"/>
++    <target depends="init,compile-test-single" if="netbeans.home" name="-debug-start-debuggee-main-test">
++        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
++        <j2seproject3:debug classname="${debug.class}" classpath="${debug.test.classpath}"/>
++    </target>
++    <target depends="init,compile-test-single,-debug-start-debugger-main-test,-debug-start-debuggee-main-test" if="netbeans.home" name="debug-test-with-main"/>
++    <target depends="init" name="-pre-debug-fix">
++        <fail unless="fix.includes">Must set fix.includes</fail>
++        <property name="javac.includes" value="${fix.includes}.java"/>
++    </target>
++    <target depends="init,-pre-debug-fix,compile-single" if="netbeans.home" name="-do-debug-fix">
++        <j2seproject1:nbjpdareload/>
++    </target>
++    <target depends="init,-pre-debug-fix,-do-debug-fix" if="netbeans.home" name="debug-fix"/>
++    <!--
++                =================
++                PROFILING SECTION
++                =================
++            -->
++    <!--
++                pre NB7.2 profiler integration
++            -->
++    <target depends="profile-init,compile" description="Profile a project in the IDE." if="profiler.info.jvmargs.agent" name="-profile-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile/>
++    </target>
++    <target depends="profile-init,compile-single" description="Profile a selected class in the IDE." if="profiler.info.jvmargs.agent" name="-profile-single-pre72">
++        <fail unless="profile.class">Must select one file in the IDE or set profile.class</fail>
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile classname="${profile.class}"/>
++    </target>
++    <target depends="profile-init,compile-single" if="profiler.info.jvmargs.agent" name="-profile-applet-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </profile>
++    </target>
++    <target depends="profile-init,compile-test-single" if="profiler.info.jvmargs.agent" name="-profile-test-single-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.test.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <junit dir="${profiler.info.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" jvm="${profiler.info.jvm}" showoutput="true">
++            <env key="${profiler.info.pathvar}" path="${profiler.info.agentpath}:${profiler.current.path}"/>
++            <jvmarg value="${profiler.info.jvmargs.agent}"/>
++            <jvmarg line="${profiler.info.jvmargs}"/>
++            <test name="${profile.class}"/>
++            <classpath>
++                <path path="${run.test.classpath}"/>
++            </classpath>
++            <syspropertyset>
++                <propertyref prefix="test-sys-prop."/>
++                <mapper from="test-sys-prop.*" to="*" type="glob"/>
++            </syspropertyset>
++            <formatter type="brief" usefile="false"/>
++            <formatter type="xml"/>
++        </junit>
++    </target>
++    <!--
++                end of pre NB72 profiling section
++            -->
++    <target if="netbeans.home" name="-profile-check">
++        <condition property="profiler.configured">
++            <or>
++                <contains casesensitive="true" string="${run.jvmargs.ide}" substring="-agentpath:"/>
++                <contains casesensitive="true" string="${run.jvmargs.ide}" substring="-javaagent:"/>
++            </or>
++        </condition>
++    </target>
++    <target depends="-profile-check,-profile-pre72" description="Profile a project in the IDE." if="profiler.configured" name="profile" unless="profiler.info.jvmargs.agent">
++        <startprofiler/>
++        <antcall target="run"/>
++    </target>
++    <target depends="-profile-check,-profile-single-pre72" description="Profile a selected class in the IDE." if="profiler.configured" name="profile-single" unless="profiler.info.jvmargs.agent">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <startprofiler/>
++        <antcall target="run-single"/>
++    </target>
++    <target depends="-profile-test-single-pre72" description="Profile a selected test in the IDE." name="profile-test-single"/>
++    <target depends="-profile-check" description="Profile a selected test in the IDE." if="profiler.configured" name="profile-test" unless="profiler.info.jvmargs">
++        <fail unless="test.includes">Must select some files in the IDE or set test.includes</fail>
++        <startprofiler/>
++        <antcall target="test-single"/>
++    </target>
++    <target depends="-profile-check" description="Profile a selected class in the IDE." if="profiler.configured" name="profile-test-with-main">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <startprofiler/>
++        <antcal target="run-test-with-main"/>
++    </target>
++    <target depends="-profile-check,-profile-applet-pre72" if="profiler.configured" name="profile-applet" unless="profiler.info.jvmargs.agent">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <startprofiler/>
++        <antcall target="run-applet"/>
++    </target>
++    <!--
++                ===============
++                JAVADOC SECTION
++                ===============
++            -->
++    <target depends="init" if="have.sources" name="-javadoc-build">
++        <mkdir dir="${dist.javadoc.dir}"/>
++        <condition else="" property="javadoc.endorsed.classpath.cmd.line.arg" value="-J${endorsed.classpath.cmd.line.arg}">
++            <and>
++                <isset property="endorsed.classpath.cmd.line.arg"/>
++                <not>
++                    <equals arg1="${endorsed.classpath.cmd.line.arg}" arg2=""/>
++                </not>
++            </and>
++        </condition>
++        <exec executable="${platform.java}" failonerror="false" outputproperty="platform.version.output">
++            <arg value="-version"/>
++        </exec>
++        <condition else="" property="bug5101868workaround" value="*.java">
++            <matches multiline="true" pattern="1\.[56](\..*)?" string="${platform.version.output}"/>
++        </condition>
++        <javadoc additionalparam="-J-Dfile.encoding=${file.encoding} ${javadoc.additionalparam}" author="${javadoc.author}" charset="UTF-8" destdir="${dist.javadoc.dir}" docencoding="UTF-8" encoding="${javadoc.encoding.used}" executable="${platform.javadoc}" failonerror="true" noindex="${javadoc.noindex}" nonavbar="${javadoc.nonavbar}" notree="${javadoc.notree}" private="${javadoc.private}" source="${javac.source}" splitindex="${javadoc.splitindex}" use="${javadoc.use}" useexternalfile="true" version="${javadoc.version}" windowtitle="${javadoc.windowtitle}">
++            <classpath>
++                <path path="${javac.classpath}"/>
++            </classpath>
++            <fileset dir="${src.dir}" excludes="${bug5101868workaround},${excludes}" includes="${includes}">
++                <filename name="**/*.java"/>
++            </fileset>
++            <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="**/*.java"/>
++                <exclude name="*.java"/>
++            </fileset>
++            <arg line="${javadoc.endorsed.classpath.cmd.line.arg}"/>
++        </javadoc>
++        <copy todir="${dist.javadoc.dir}">
++            <fileset dir="${src.dir}" excludes="${excludes}" includes="${includes}">
++                <filename name="**/doc-files/**"/>
++            </fileset>
++            <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="**/doc-files/**"/>
++            </fileset>
++        </copy>
++    </target>
++    <target depends="init,-javadoc-build" if="netbeans.home" name="-javadoc-browse" unless="no.javadoc.preview">
++        <nbbrowse file="${dist.javadoc.dir}/index.html"/>
++    </target>
++    <target depends="init,-javadoc-build,-javadoc-browse" description="Build Javadoc." name="javadoc"/>
++    <!--
++                =========================
++                TEST COMPILATION SECTION
++                =========================
++            -->
++    <target depends="init,compile" if="have.tests" name="-pre-pre-compile-test">
++        <mkdir dir="${build.test.classes.dir}"/>
++    </target>
++    <target name="-pre-compile-test">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="do.depend.true" name="-compile-test-depend">
++        <j2seproject3:depend classpath="${javac.test.classpath}" destdir="${build.test.classes.dir}" srcdir="${test.src.dir}"/>
++    </target>
++    <target depends="init,deps-jar,compile,-pre-pre-compile-test,-pre-compile-test,-compile-test-depend" if="have.tests" name="-do-compile-test">
++        <j2seproject3:javac apgeneratedsrcdir="${build.test.classes.dir}" classpath="${javac.test.classpath}" debug="true" destdir="${build.test.classes.dir}" processorpath="${javac.test.processorpath}" srcdir="${test.src.dir}"/>
++        <copy todir="${build.test.classes.dir}">
++            <fileset dir="${test.src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target name="-post-compile-test">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test,-do-compile-test,-post-compile-test" name="compile-test"/>
++    <target name="-pre-compile-test-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,compile,-pre-pre-compile-test,-pre-compile-test-single" if="have.tests" name="-do-compile-test-single">
++        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
++        <j2seproject3:force-recompile destdir="${build.test.classes.dir}"/>
++        <j2seproject3:javac apgeneratedsrcdir="${build.test.classes.dir}" classpath="${javac.test.classpath}" debug="true" destdir="${build.test.classes.dir}" excludes="" includes="${javac.includes}" processorpath="${javac.test.processorpath}" sourcepath="${test.src.dir}" srcdir="${test.src.dir}"/>
++        <copy todir="${build.test.classes.dir}">
++            <fileset dir="${test.src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target name="-post-compile-test-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test-single,-do-compile-test-single,-post-compile-test-single" name="compile-test-single"/>
++    <!--
++                =======================
++                TEST EXECUTION SECTION
++                =======================
++            -->
++    <target depends="init" if="have.tests" name="-pre-test-run">
++        <mkdir dir="${build.test.results.dir}"/>
++    </target>
++    <target depends="init,compile-test,-pre-test-run" if="have.tests" name="-do-test-run">
++        <j2seproject3:test includes="${includes}" testincludes="**/*Test.java"/>
++    </target>
++    <target depends="init,compile-test,-pre-test-run,-do-test-run" if="have.tests" name="-post-test-run">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init" if="have.tests" name="test-report"/>
++    <target depends="init" if="netbeans.home+have.tests" name="-test-browse"/>
++    <target depends="init,compile-test,-pre-test-run,-do-test-run,test-report,-post-test-run,-test-browse" description="Run unit tests." name="test"/>
++    <target depends="init" if="have.tests" name="-pre-test-run-single">
++        <mkdir dir="${build.test.results.dir}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-do-test-run-single">
++        <fail unless="test.includes">Must select some files in the IDE or set test.includes</fail>
++        <j2seproject3:test excludes="" includes="${test.includes}" testincludes="${test.includes}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single" if="have.tests" name="-post-test-run-single">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single,-post-test-run-single" description="Run single unit test." name="test-single"/>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-do-test-run-single-method">
++        <fail unless="test.class">Must select some files in the IDE or set test.class</fail>
++        <fail unless="test.method">Must select some method in the IDE or set test.method</fail>
++        <j2seproject3:test excludes="" includes="${javac.includes}" testincludes="${test.class}" testmethods="${test.method}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single-method" if="have.tests" name="-post-test-run-single-method">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single-method,-post-test-run-single-method" description="Run single unit test." name="test-single-method"/>
++    <!--
++                =======================
++                TEST DEBUGGING SECTION
++                =======================
++            -->
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-debug-start-debuggee-test">
++        <fail unless="test.class">Must select one file in the IDE or set test.class</fail>
++        <j2seproject3:test-debug excludes="" includes="${javac.includes}" testClass="${test.class}" testincludes="${javac.includes}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-debug-start-debuggee-test-method">
++        <fail unless="test.class">Must select one file in the IDE or set test.class</fail>
++        <fail unless="test.method">Must select some method in the IDE or set test.method</fail>
++        <j2seproject3:test-debug excludes="" includes="${javac.includes}" testClass="${test.class}" testMethod="${test.method}" testincludes="${test.class}" testmethods="${test.method}"/>
++    </target>
++    <target depends="init,compile-test" if="netbeans.home+have.tests" name="-debug-start-debugger-test">
++        <j2seproject1:nbjpdastart classpath="${debug.test.classpath}" name="${test.class}"/>
++    </target>
++    <target depends="init,compile-test-single,-debug-start-debugger-test,-debug-start-debuggee-test" name="debug-test"/>
++    <target depends="init,compile-test-single,-debug-start-debugger-test,-debug-start-debuggee-test-method" name="debug-test-method"/>
++    <target depends="init,-pre-debug-fix,compile-test-single" if="netbeans.home" name="-do-debug-fix-test">
++        <j2seproject1:nbjpdareload dir="${build.test.classes.dir}"/>
++    </target>
++    <target depends="init,-pre-debug-fix,-do-debug-fix-test" if="netbeans.home" name="debug-fix-test"/>
++    <!--
++                =========================
++                APPLET EXECUTION SECTION
++                =========================
++            -->
++    <target depends="init,compile-single" name="run-applet">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <j2seproject1:java classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </j2seproject1:java>
++    </target>
++    <!--
++                =========================
++                APPLET DEBUGGING  SECTION
++                =========================
++            -->
++    <target depends="init,compile-single" if="netbeans.home" name="-debug-start-debuggee-applet">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <j2seproject3:debug classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </j2seproject3:debug>
++    </target>
++    <target depends="init,compile-single,-debug-start-debugger,-debug-start-debuggee-applet" if="netbeans.home" name="debug-applet"/>
++    <!--
++                ===============
++                CLEANUP SECTION
++                ===============
++            -->
++    <target name="-deps-clean-init" unless="built-clean.properties">
++        <property location="${build.dir}/built-clean.properties" name="built-clean.properties"/>
++        <delete file="${built-clean.properties}" quiet="true"/>
++    </target>
++    <target if="already.built.clean.${basedir}" name="-warn-already-built-clean">
++        <echo level="warn" message="Cycle detected: MapleInvalidItemIdFetcher was already built"/>
++    </target>
++    <target depends="init,-deps-clean-init" name="deps-clean" unless="no.deps">
++        <mkdir dir="${build.dir}"/>
++        <touch file="${built-clean.properties}" verbose="false"/>
++        <property file="${built-clean.properties}" prefix="already.built.clean."/>
++        <antcall target="-warn-already-built-clean"/>
++        <propertyfile file="${built-clean.properties}">
++            <entry key="${basedir}" value=""/>
++        </propertyfile>
++    </target>
++    <target depends="init" name="-do-clean">
++        <delete dir="${build.dir}"/>
++        <delete dir="${dist.dir}" followsymlinks="false" includeemptydirs="true"/>
++    </target>
++    <target name="-post-clean">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-clean,-do-clean,-post-clean" description="Clean build products." name="clean"/>
++    <target name="-check-call-dep">
++        <property file="${call.built.properties}" prefix="already.built."/>
++        <condition property="should.call.dep">
++            <and>
++                <not>
++                    <isset property="already.built.${call.subproject}"/>
++                </not>
++                <available file="${call.script}"/>
++            </and>
++        </condition>
++    </target>
++    <target depends="-check-call-dep" if="should.call.dep" name="-maybe-call-dep">
++        <ant antfile="${call.script}" inheritall="false" target="${call.target}">
++            <propertyset>
++                <propertyref prefix="transfer."/>
++                <mapper from="transfer.*" to="*" type="glob"/>
++            </propertyset>
++        </ant>
++    </target>
++</project>
+diff --git a/tools/MapleInvalidItemIdFetcher/nbproject/genfiles.properties b/tools/MapleInvalidItemIdFetcher/nbproject/genfiles.properties
+new file mode 100644
+index 000000000..cbd9b38c4
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/nbproject/genfiles.properties
+@@ -0,0 +1,8 @@
++build.xml.data.CRC32=00ad4c76
++build.xml.script.CRC32=c56709d2
++build.xml.stylesheet.CRC32=8064a381@1.75.2.48
++# This file is used by a NetBeans-based IDE to track changes in generated files such as build-impl.xml.
++# Do not edit this file. You may delete it but then the IDE will never regenerate such files for you.
++nbproject/build-impl.xml.data.CRC32=00ad4c76
++nbproject/build-impl.xml.script.CRC32=07c7055b
++nbproject/build-impl.xml.stylesheet.CRC32=876e7a8f@1.75.2.48
+diff --git a/tools/MapleInvalidItemIdFetcher/nbproject/project.properties b/tools/MapleInvalidItemIdFetcher/nbproject/project.properties
+new file mode 100644
+index 000000000..c3cd7345c
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/nbproject/project.properties
+@@ -0,0 +1,77 @@
++annotation.processing.enabled=true
++annotation.processing.enabled.in.editor=false
++annotation.processing.processors.list=
++annotation.processing.run.all.processors=true
++annotation.processing.source.output=${build.generated.sources.dir}/ap-source-output
++application.title=MapleInvalidItemIdFetcher
++application.vendor=RonanLana
++build.classes.dir=${build.dir}/classes
++build.classes.excludes=**/*.java,**/*.form
++# This directory is removed when the project is cleaned:
++build.dir=build
++build.generated.dir=${build.dir}/generated
++build.generated.sources.dir=${build.dir}/generated-sources
++# Only compile against the classpath explicitly listed here:
++build.sysclasspath=ignore
++build.test.classes.dir=${build.dir}/test/classes
++build.test.results.dir=${build.dir}/test/results
++# Uncomment to specify the preferred debugger connection transport:
++#debug.transport=dt_socket
++debug.classpath=\
++    ${run.classpath}
++debug.test.classpath=\
++    ${run.test.classpath}
++# Os arquivos em build.classes.dir que devem ser exclu\u00eddos do jar de distribui\u00e7\u00e3o
++dist.archive.excludes=
++# This directory is removed when the project is cleaned:
++dist.dir=dist
++dist.jar=${dist.dir}/MapleInvalidItemIdFetcher.jar
++dist.javadoc.dir=${dist.dir}/javadoc
++endorsed.classpath=
++excludes=
++file.reference.mysql-connector-java-bin.jar=lib/mysql-connector-java-bin.jar
++includes=**
++jar.compress=false
++javac.classpath=\
++    ${file.reference.mysql-connector-java-bin.jar}
++# Space-separated list of extra javac options
++javac.compilerargs=
++javac.deprecation=false
++javac.processorpath=\
++    ${javac.classpath}
++javac.source=1.7
++javac.target=1.7
++javac.test.classpath=\
++    ${javac.classpath}:\
++    ${build.classes.dir}
++javac.test.processorpath=\
++    ${javac.test.classpath}
++javadoc.additionalparam=
++javadoc.author=false
++javadoc.encoding=${source.encoding}
++javadoc.noindex=false
++javadoc.nonavbar=false
++javadoc.notree=false
++javadoc.private=false
++javadoc.splitindex=true
++javadoc.use=true
++javadoc.version=false
++javadoc.windowtitle=
++main.class=maplenoitemidfetcher.MapleNoItemIdFetcher
++manifest.file=manifest.mf
++meta.inf.dir=${src.dir}/META-INF
++mkdist.disabled=false
++platform.active=JDK_1.7
++run.classpath=\
++    ${javac.classpath}:\
++    ${build.classes.dir}
++# Space-separated list of JVM arguments used when running the project.
++# You may also define separate properties like run-sys-prop.name=value instead of -Dname=value.
++# To set system properties for unit tests define test-sys-prop.name=value:
++run.jvmargs=
++run.test.classpath=\
++    ${javac.test.classpath}:\
++    ${build.test.classes.dir}
++source.encoding=UTF-8
++src.dir=src
++test.src.dir=test
+diff --git a/tools/MapleInvalidItemIdFetcher/nbproject/project.xml b/tools/MapleInvalidItemIdFetcher/nbproject/project.xml
+new file mode 100644
+index 000000000..8b85c66cf
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/nbproject/project.xml
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project xmlns="http://www.netbeans.org/ns/project/1">
++    <type>org.netbeans.modules.java.j2seproject</type>
++    <configuration>
++        <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
++            <name>MapleInvalidItemIdFetcher</name>
++            <explicit-platform explicit-source-supported="true"/>
++            <source-roots>
++                <root id="src.dir"/>
++            </source-roots>
++            <test-roots>
++                <root id="test.src.dir"/>
++            </test-roots>
++        </data>
++    </configuration>
++</project>
+diff --git a/tools/MapleInvalidItemIdFetcher/src/maplenoitemidfetcher/MapleNoItemIdFetcher.java b/tools/MapleInvalidItemIdFetcher/src/maplenoitemidfetcher/MapleNoItemIdFetcher.java
+new file mode 100644
+index 000000000..585015e69
+--- /dev/null
++++ b/tools/MapleInvalidItemIdFetcher/src/maplenoitemidfetcher/MapleNoItemIdFetcher.java
+@@ -0,0 +1,274 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package maplenoitemidfetcher;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.io.PrintWriter;
++import java.sql.Connection;
++import java.sql.DriverManager;
++import java.sql.PreparedStatement;
++import java.sql.ResultSet;
++import java.sql.SQLException;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++
++/**
++ *
++ * @author RonanLana
++ * 
++ * This application finds inexistent itemids within the drop data from
++ * the Maplestory database specified by the URL below. This program
++ * assumes all itemids haves at most 7 digits.
++ * 
++ * A file is generated listing all the inexistent ids.
++ */
++public class MapleNoItemIdFetcher {
++    static String host = "jdbc:mysql://localhost:3306/heavenms";
++    static String driver = "com.mysql.jdbc.Driver";
++    static String username = "root";
++    static String password = "";
++
++    static String wzPath = "../../wz";
++    static String newFile = "lib/result.txt";
++
++    static Connection con = null;
++    static PrintWriter printWriter = null;
++    static InputStreamReader fileReader = null;
++    static BufferedReader bufferedReader = null;
++    static byte status = 0;
++    static int itemId = -1;
++    
++    static Set<Integer> existingIds = new HashSet<>();
++    static Set<Integer> nonExistingIds = new HashSet<>();
++
++    private static String getName(String token) {
++        int i, j;
++        char[] dest;
++        String d;
++
++        i = token.lastIndexOf("name");
++        i = token.indexOf("\"", i) + 1; //lower bound of the string
++        j = token.indexOf("\"", i);     //upper bound
++
++        dest = new char[100];
++        token.getChars(i, j, dest, 0);
++
++        d = new String(dest);
++        return(d);
++    }
++
++    private static void forwardCursor(int st) {
++        String line = null;
++
++        try {
++            while(status >= st && (line = bufferedReader.readLine()) != null) {
++                simpleToken(line);
++            }
++        }
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    private static void simpleToken(String token) {
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            status += 1;
++        }
++    }
++
++    private static void translateToken(String token) {
++        String d;
++        
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            if(status == 1) {           //getting ItemId
++                d = getName(token);
++                itemId = Integer.parseInt(d.substring(1, 8));
++                
++                existingIds.add(itemId);
++                forwardCursor(status);
++            }
++
++            status += 1;
++        }
++    }
++
++    private static void readItemDataFile(File file) {
++        // This will reference one line at a time
++        String line = null;
++
++        try {            
++            fileReader = new InputStreamReader(new FileInputStream(file), "UTF-8");
++            bufferedReader = new BufferedReader(fileReader);
++            
++            status = 0;
++            try {
++                while((line = bufferedReader.readLine()) != null) {
++                    translateToken(line);
++                }
++            } catch(NumberFormatException npe) {
++                // second criteria, itemid is on the name of the file
++                
++                try {
++                    itemId = Integer.parseInt(file.getName().substring(0, 7));
++                    existingIds.add(itemId);
++                } catch(NumberFormatException npe2) {}
++            }
++
++            bufferedReader.close();
++            fileReader.close();
++        }
++
++        catch(FileNotFoundException ex) {
++            System.out.println("Unable to open file '" + file.getName() + "'");
++        }
++        catch(IOException ex) {
++            System.out.println("Error reading file '" + file.getName() + "'");
++        }
++    }
++    
++    private static void readEquipDataDirectory(String dirPath) {
++        File[] folders = new File(dirPath).listFiles();
++        //If this pathname does not denote a directory, then listFiles() returns null.
++
++        for (File folder : folders) {   // enter all subfolders
++            if (folder.isDirectory()) {
++                System.out.println("Reading '" + dirPath + "/" + folder.getName() + "'...");
++            
++                try {
++                    File[] files = folder.listFiles();
++                    
++                    for (File file : files) {   // enter all XML files under subfolders
++                        if (file.isFile()) {
++                            itemId = Integer.parseInt(file.getName().substring(0, 8));
++                            existingIds.add(itemId);
++                        }
++                    }
++                } catch (NumberFormatException nfe) {}
++            }
++        }
++    }
++    
++    private static void readItemDataDirectory(String dirPath) {
++        File[] folders = new File(dirPath).listFiles();
++        //If this pathname does not denote a directory, then listFiles() returns null.
++
++        for (File folder : folders) {   // enter all subfolders
++            if (folder.isDirectory()) {
++                System.out.println("Reading '" + dirPath + "/" + folder.getName() + "'...");
++            
++                File[] files = folder.listFiles();
++                
++                for (File file : files) {   // enter all XML files under subfolders
++                    if (file.isFile()) {
++                        readItemDataFile(file);
++                    }
++                }
++            }
++        }
++    }
++    
++    private static void evaluateDropsFromTable(String table) throws SQLException {
++        PreparedStatement ps = con.prepareStatement("SELECT DISTINCT itemid FROM " + table + ";");
++        ResultSet rs = ps.executeQuery();
++
++        while(rs.next()) {
++            if(!existingIds.contains(rs.getInt(1))) {
++                nonExistingIds.add(rs.getInt(1));
++            }
++        }
++
++        rs.close();
++        ps.close();
++    }
++    
++    private static void evaluateDropsFromDb() {
++        try {
++            System.out.println("Evaluating item data on DB...");
++            
++            Class.forName(driver).newInstance();
++            con = DriverManager.getConnection(host, username, password);
++            
++            evaluateDropsFromTable("drop_data");
++            evaluateDropsFromTable("reactordrops");
++            
++            if(!nonExistingIds.isEmpty()) {
++                List<Integer> list = new ArrayList<>(nonExistingIds);
++                Collections.sort(list);
++                
++                for(Integer i : list) {
++                    printWriter.println(i);
++                }
++            }
++            
++            System.out.println("Inexistent itemid count: " + nonExistingIds.size());
++            System.out.println("Total itemid count: " + existingIds.size());
++            
++            con.close();
++        }
++        
++        catch(ClassNotFoundException e) {
++            System.out.println("Error: could not find class");
++            System.out.println(e.getMessage());
++        }
++
++        catch(InstantiationException e) {
++            System.out.println("Error: instantiation failure");
++            System.out.println(e.getMessage());
++        }
++        
++        catch(SQLException e) {
++            e.printStackTrace();
++        }
++        
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    public static void main(String[] args) {
++        try {
++            printWriter = new PrintWriter(newFile, "UTF-8");
++        
++            existingIds.add(0); // meso itemid
++            readEquipDataDirectory(wzPath + "/Character.wz");
++            readItemDataDirectory(wzPath + "/Item.wz");
++            
++            evaluateDropsFromDb();
++            
++            printWriter.close();
++        } catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++}
+diff --git a/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml b/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
+index 0ed21ccd2..d9d0ef932 100644
+--- a/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
++++ b/tools/MapleMobBookUpdate/lib/MonsterBook_updated.img.xml
+@@ -3926,14 +3926,15 @@
+       <int name="6" value="2000003" />
+       <int name="7" value="2040001" />
+       <int name="8" value="2044102" />
+-      <int name="9" value="4000359" />
+-      <int name="10" value="4004002" />
+-      <int name="11" value="4006001" />
+-      <int name="12" value="4007001" />
+-      <int name="13" value="4007006" />
+-      <int name="14" value="4020000" />
+-      <int name="15" value="4020006" />
+-      <int name="16" value="4130012" />
++      <int name="9" value="2383007" />
++      <int name="10" value="4000359" />
++      <int name="11" value="4004002" />
++      <int name="12" value="4006001" />
++      <int name="13" value="4007001" />
++      <int name="14" value="4007006" />
++      <int name="15" value="4020000" />
++      <int name="16" value="4020006" />
++      <int name="17" value="4130012" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  47\nForm : Enchanted\n\nA mechanical machinery that offers more functions as its mainly composed of mithril as opposed to steel. The person who has made this discovery is the president of Alcadno, Maed. Thanks to his experiments and research, many alchemists are now able to easily master the metal work process." />
+   </imgdir>
+@@ -12330,24 +12331,23 @@
+       <int name="28" value="2040702" />
+       <int name="29" value="2040802" />
+       <int name="30" value="2290087" />
+-      <int name="31" value="2290109" />
+-      <int name="32" value="2387001" />
+-      <int name="33" value="4000152" />
+-      <int name="34" value="4001112" />
+-      <int name="35" value="4004004" />
+-      <int name="36" value="4006001" />
+-      <int name="37" value="4010004" />
+-      <int name="38" value="4010005" />
+-      <int name="39" value="4020008" />
+-      <int name="40" value="4031170" />
+-      <int name="41" value="4031171" />
+-      <int name="42" value="4031172" />
+-      <int name="43" value="4031175" />
+-      <int name="44" value="4031453" />
+-      <int name="45" value="4031458" />
+-      <int name="46" value="4130001" />
+-      <int name="47" value="4130003" />
+-      <int name="48" value="4130008" />
++      <int name="31" value="2387001" />
++      <int name="32" value="4000152" />
++      <int name="33" value="4001112" />
++      <int name="34" value="4004004" />
++      <int name="35" value="4006001" />
++      <int name="36" value="4010004" />
++      <int name="37" value="4010005" />
++      <int name="38" value="4020008" />
++      <int name="39" value="4031170" />
++      <int name="40" value="4031171" />
++      <int name="41" value="4031172" />
++      <int name="42" value="4031175" />
++      <int name="43" value="4031453" />
++      <int name="44" value="4031458" />
++      <int name="45" value="4130001" />
++      <int name="46" value="4130003" />
++      <int name="47" value="4130008" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  108\nForm : Devil\nSpecial Trait : Vulnerable to Sanctity Attribute Attacks. -50% Ice Attribute Damage.\n\nA creature of an alternate dimension that Papulatus summoned to prevent any form of intrusion into the operation room of the Clocktower. It is a wizard of another dimension linked to the Dimensional Schism which attacks intruders using its magic skills." />
+   </imgdir>
+@@ -13044,17 +13044,16 @@
+       <int name="11" value="2044101" />
+       <int name="12" value="2044501" />
+       <int name="13" value="2290006" />
+-      <int name="14" value="2290109" />
+-      <int name="15" value="2290133" />
+-      <int name="16" value="2330004" />
+-      <int name="17" value="2387009" />
+-      <int name="18" value="4000453" />
+-      <int name="19" value="4000459" />
+-      <int name="20" value="4004000" />
+-      <int name="21" value="4010005" />
+-      <int name="22" value="4020005" />
+-      <int name="23" value="4020009" />
+-      <int name="24" value="4130008" />
++      <int name="14" value="2290133" />
++      <int name="15" value="2330004" />
++      <int name="16" value="2387009" />
++      <int name="17" value="4000453" />
++      <int name="18" value="4000459" />
++      <int name="19" value="4004000" />
++      <int name="20" value="4010005" />
++      <int name="21" value="4020005" />
++      <int name="22" value="4020009" />
++      <int name="23" value="4130008" />
+     </imgdir>
+     <string name="episode" value="Level : Lv.116\nForm : Spirit\n\nThe chief of the Qualm Guardians stands at the Road of Regrets, beyond the Gate of the Past, inside the Temple of Time.  Its sole purpose is to protect Rhinne, the Goddess of Time.  Compared to other guardians, its armor seems more sturdy and brilliantly decorated.  It once was a human knight, but throughout the many years of protecting the goddess inside the temple, it has cast off its humanness.  Now it only exists to serve the goddess.  The only evidence left of its lost humanity is its hardened heart that contains all its bitter memories." />
+   </imgdir>
+@@ -13619,8 +13618,7 @@
+       <int name="28" value="2044501" />
+       <int name="29" value="2044601" />
+       <int name="30" value="2044701" />
+-      <int name="31" value="2290109" />
+-      <int name="32" value="2388054" />
++      <int name="31" value="2388054" />
+     </imgdir>
+     <string name="episode" value="ë ë²¨ : Lv.85\níí : ë¬´ê¸°ë¬¼í\n\në¹í ë¦¬ìì¤ìëì ì ê°ë¯¸êµ´ê´ì¥ìë ì ëªí ë¸ì ìì¸ì´ ìë¤. íì§ë§ ê·¸ ë³´ë¤ ë ê¹ì ëì ì ê°ëì© ì ì²´ë¶ëªì í¬ì¥ë§ì°¨ê° ë¬¸ì ì°ë¤ëë°... ë í¹ì´í ì ì ì´ í¬ì¥ë§ì°¨ìì ë¬¼ê±´ì ì¬ ë³¸ ì¬ëì ìì§ í ëªë ìë¤ë ê²ì´ë¤. ê·¸ ì´ì ë ê°ê¹ì´ ë¤ê°ê°ê¸°ë§ íë©´ ê°ìê¸° íëê° 180ë  ë¬ë¼ì§ê¸° ëë¬¸ì´ë¼ëë°... ê°ë¯¸êµ´ ê´ì¥ì ë¸ì ìì¸ì ê²½ììì ì¶íì ì¬ê¸°ê° ë¶í¸íê² ê°ë¤." />
+   </imgdir>
+diff --git a/wz/String.wz/MonsterBook.img.xml b/wz/String.wz/MonsterBook.img.xml
+index 0ed21ccd2..d9d0ef932 100644
+--- a/wz/String.wz/MonsterBook.img.xml
++++ b/wz/String.wz/MonsterBook.img.xml
+@@ -3926,14 +3926,15 @@
+       <int name="6" value="2000003" />
+       <int name="7" value="2040001" />
+       <int name="8" value="2044102" />
+-      <int name="9" value="4000359" />
+-      <int name="10" value="4004002" />
+-      <int name="11" value="4006001" />
+-      <int name="12" value="4007001" />
+-      <int name="13" value="4007006" />
+-      <int name="14" value="4020000" />
+-      <int name="15" value="4020006" />
+-      <int name="16" value="4130012" />
++      <int name="9" value="2383007" />
++      <int name="10" value="4000359" />
++      <int name="11" value="4004002" />
++      <int name="12" value="4006001" />
++      <int name="13" value="4007001" />
++      <int name="14" value="4007006" />
++      <int name="15" value="4020000" />
++      <int name="16" value="4020006" />
++      <int name="17" value="4130012" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  47\nForm : Enchanted\n\nA mechanical machinery that offers more functions as its mainly composed of mithril as opposed to steel. The person who has made this discovery is the president of Alcadno, Maed. Thanks to his experiments and research, many alchemists are now able to easily master the metal work process." />
+   </imgdir>
+@@ -12330,24 +12331,23 @@
+       <int name="28" value="2040702" />
+       <int name="29" value="2040802" />
+       <int name="30" value="2290087" />
+-      <int name="31" value="2290109" />
+-      <int name="32" value="2387001" />
+-      <int name="33" value="4000152" />
+-      <int name="34" value="4001112" />
+-      <int name="35" value="4004004" />
+-      <int name="36" value="4006001" />
+-      <int name="37" value="4010004" />
+-      <int name="38" value="4010005" />
+-      <int name="39" value="4020008" />
+-      <int name="40" value="4031170" />
+-      <int name="41" value="4031171" />
+-      <int name="42" value="4031172" />
+-      <int name="43" value="4031175" />
+-      <int name="44" value="4031453" />
+-      <int name="45" value="4031458" />
+-      <int name="46" value="4130001" />
+-      <int name="47" value="4130003" />
+-      <int name="48" value="4130008" />
++      <int name="31" value="2387001" />
++      <int name="32" value="4000152" />
++      <int name="33" value="4001112" />
++      <int name="34" value="4004004" />
++      <int name="35" value="4006001" />
++      <int name="36" value="4010004" />
++      <int name="37" value="4010005" />
++      <int name="38" value="4020008" />
++      <int name="39" value="4031170" />
++      <int name="40" value="4031171" />
++      <int name="41" value="4031172" />
++      <int name="42" value="4031175" />
++      <int name="43" value="4031453" />
++      <int name="44" value="4031458" />
++      <int name="45" value="4130001" />
++      <int name="46" value="4130003" />
++      <int name="47" value="4130008" />
+     </imgdir>
+     <string name="episode" value=" Lv. :  108\nForm : Devil\nSpecial Trait : Vulnerable to Sanctity Attribute Attacks. -50% Ice Attribute Damage.\n\nA creature of an alternate dimension that Papulatus summoned to prevent any form of intrusion into the operation room of the Clocktower. It is a wizard of another dimension linked to the Dimensional Schism which attacks intruders using its magic skills." />
+   </imgdir>
+@@ -13044,17 +13044,16 @@
+       <int name="11" value="2044101" />
+       <int name="12" value="2044501" />
+       <int name="13" value="2290006" />
+-      <int name="14" value="2290109" />
+-      <int name="15" value="2290133" />
+-      <int name="16" value="2330004" />
+-      <int name="17" value="2387009" />
+-      <int name="18" value="4000453" />
+-      <int name="19" value="4000459" />
+-      <int name="20" value="4004000" />
+-      <int name="21" value="4010005" />
+-      <int name="22" value="4020005" />
+-      <int name="23" value="4020009" />
+-      <int name="24" value="4130008" />
++      <int name="14" value="2290133" />
++      <int name="15" value="2330004" />
++      <int name="16" value="2387009" />
++      <int name="17" value="4000453" />
++      <int name="18" value="4000459" />
++      <int name="19" value="4004000" />
++      <int name="20" value="4010005" />
++      <int name="21" value="4020005" />
++      <int name="22" value="4020009" />
++      <int name="23" value="4130008" />
+     </imgdir>
+     <string name="episode" value="Level : Lv.116\nForm : Spirit\n\nThe chief of the Qualm Guardians stands at the Road of Regrets, beyond the Gate of the Past, inside the Temple of Time.  Its sole purpose is to protect Rhinne, the Goddess of Time.  Compared to other guardians, its armor seems more sturdy and brilliantly decorated.  It once was a human knight, but throughout the many years of protecting the goddess inside the temple, it has cast off its humanness.  Now it only exists to serve the goddess.  The only evidence left of its lost humanity is its hardened heart that contains all its bitter memories." />
+   </imgdir>
+@@ -13619,8 +13618,7 @@
+       <int name="28" value="2044501" />
+       <int name="29" value="2044601" />
+       <int name="30" value="2044701" />
+-      <int name="31" value="2290109" />
+-      <int name="32" value="2388054" />
++      <int name="31" value="2388054" />
+     </imgdir>
+     <string name="episode" value="ë ë²¨ : Lv.85\níí : ë¬´ê¸°ë¬¼í\n\në¹í ë¦¬ìì¤ìëì ì ê°ë¯¸êµ´ê´ì¥ìë ì ëªí ë¸ì ìì¸ì´ ìë¤. íì§ë§ ê·¸ ë³´ë¤ ë ê¹ì ëì ì ê°ëì© ì ì²´ë¶ëªì í¬ì¥ë§ì°¨ê° ë¬¸ì ì°ë¤ëë°... ë í¹ì´í ì ì ì´ í¬ì¥ë§ì°¨ìì ë¬¼ê±´ì ì¬ ë³¸ ì¬ëì ìì§ í ëªë ìë¤ë ê²ì´ë¤. ê·¸ ì´ì ë ê°ê¹ì´ ë¤ê°ê°ê¸°ë§ íë©´ ê°ìê¸° íëê° 180ë  ë¬ë¼ì§ê¸° ëë¬¸ì´ë¼ëë°... ê°ë¯¸êµ´ ê´ì¥ì ë¸ì ìì¸ì ê²½ììì ì¶íì ì¬ê¸°ê° ë¶í¸íê² ê°ë¤." />
+   </imgdir>

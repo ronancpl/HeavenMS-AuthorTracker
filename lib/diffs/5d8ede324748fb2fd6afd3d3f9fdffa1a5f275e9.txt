@@ -1,0 +1,2406 @@
+diff --git a/.gitignore b/.gitignore
+index 4b64dd716..c477dc6a5 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -11,6 +11,10 @@
+ /tools/MapleArrowFetcher/dist/
+ /tools/MapleArrowFetcher/nbproject/private/
+ 
++/tools/MapleBossHpBarFetcher/nbproject/private/
++/tools/MapleBossHpBarFetcher/build/
++/tools/MapleBossHpBarFetcher/dist/
++
+ /tools/MapleCouponInstaller/build/
+ /tools/MapleCouponInstaller/dist/
+ /tools/MapleCouponInstaller/nbproject/private/
+@@ -39,6 +43,10 @@
+ /tools/MapleMobBookUpdate/dist/
+ /tools/MapleMobBookUpdate/nbproject/private/
+ 
++/tools/MapleQuestItemCountFetcher/nbproject/private/
++/tools/MapleQuestItemCountFetcher/build/
++/tools/MapleQuestItemCountFetcher/dist/
++
+ /tools/MapleQuestItemFetcher/build/
+ /tools/MapleQuestItemFetcher/dist/
+ /tools/MapleQuestItemFetcher/nbproject/private/
+@@ -56,12 +64,3 @@
+ /tools/MapleSkillMakerReagentIndexer/nbproject/private/
+ 
+ /out
+-/tools/MapleQuestItemQuantityFetcher/nbproject/private/
+-/tools/MapleQuestItemQuantityFetcher/build/
+-/tools/MapleQuestItemQuantityFetcher/dist/
+-/tools/MapleQuestItemCountFetcher/nbproject/private/
+-/tools/MapleQuestItemCountFetcher/build/
+-/tools/MapleQuestItemCountFetcher/dist/
+-/tools/MapleBossHpBarFetcher/nbproject/private/
+-/tools/MapleBossHpBarFetcher/build/
+-/tools/MapleBossHpBarFetcher/dist/
+\ No newline at end of file
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 47aa8d556..bf98f38b6 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -848,4 +848,9 @@ Adicionado drop data para Flaming Racoon e Big Cloud Fox.
+ Adicionado ganho de EXP em várias quests da região de Zipangu.
+ Adicionado sistema de bonus para expedição de Showa, atingível se nenhum jogador morrer no evento.
+ Nova ferramenta: MapleBossHpBarFetcher. Localiza no Mob.wz ids de mobs que possuem um boss hp bar mas não são labelados como "boss".
+-Incrementado quiz de 3rd job, agora utilizando um pool de 40 perguntas com escolha arbitrária.
+\ No newline at end of file
++Incrementado quiz de 3rd job, agora utilizando um pool de 40 perguntas com escolha arbitrária.
++
++05 - 10 Março 2018,
++Corrigido diseases não sendo removidas corretamente no cliente quando tentando trocar de canal/entrar Cash Shop, permitindo-as ficar no jogador infinitamente.
++Corrigido Holy Symbol atuando de forma inesperada no cenário com somente um jogador.
++Corrigido Summon Sack lv. 9 lançando mob com id inexistente.
+\ No newline at end of file
+diff --git a/scripts/npc/2030006.js b/scripts/npc/2030006.js
+index 6b9e1792e..7912e09d8 100644
+--- a/scripts/npc/2030006.js
++++ b/scripts/npc/2030006.js
+@@ -77,8 +77,8 @@ var questionTree = [
+ var status;
+ var question;
+ 
+-var unusedQuestions;
+-var unusedQuestionsCursor;
++var questionPool;
++var questionPoolCursor;
+ 
+ function start() {
+     status = -1;
+@@ -105,8 +105,6 @@ function action(mode, type, selection) {
+                         cm.sendNext("Have a free ETC slot available before accepting this trial.");
+                         cm.dispose();
+                     } else {
+-                        instantiateUnusedQuestions();
+-                        
+                         cm.sendNext("Alright... I'll be testing out your wisdom here. Answer all the questions correctly, and you will pass the test BUT, if you even lie to me once, then you'll have to start over again ok, here we go.");
+                     }
+                 } else {
+@@ -118,6 +116,7 @@ function action(mode, type, selection) {
+             }
+         } else if(status == 1) {
+             cm.gainItem(4005004, -1);
++            instantiateQuestionPool();
+             
+             question = fetchNextQuestion();
+             var questionHead = generateQuestionHeading();
+@@ -172,25 +171,25 @@ function shuffleArray(array) {
+     }
+ }
+ 
+-function instantiateUnusedQuestions() {
+-    unusedQuestions = [];
++function instantiateQuestionPool() {
++    questionPool = [];
+     
+     for(var i = 0; i < questionTree.length; i++) {
+-        unusedQuestions.push(i);
++        questionPool.push(i);
+     }
+     
+-    shuffleArray(unusedQuestions);
+-    unusedQuestionsCursor = 0;
++    shuffleArray(questionPool);
++    questionPoolCursor = 0;
+ }
+ 
+ function fetchNextQuestion() {
+-    var next = unusedQuestions[unusedQuestionsCursor];
+-    unusedQuestionsCursor++;
++    var next = questionPool[questionPoolCursor];
++    questionPoolCursor++;
+     
+     return next;
+ }
+ 
+-function generateSelectionMenu(array) {     // nice tool for generating a string for the sendSimple functionality
++function generateSelectionMenu(array) {
+     var menu = "";
+     for (var i = 0; i < array.length; i++) {
+         menu += "#L" + i + "#" + array[i] + "#l\r\n";
+diff --git a/scripts/npc/9201043.js b/scripts/npc/9201043.js
+index a2731e441..a1de5f920 100644
+--- a/scripts/npc/9201043.js
++++ b/scripts/npc/9201043.js
+@@ -45,11 +45,11 @@ function action(mode, type, selection) {
+         else
+             status--;
+         if (status == 1 && selection == 0) {
+-            if (cm.haveItem(4031592, 1)/* && cm.isMarried()==1*/) {
++            if (cm.haveItem(4031592, 1)) {
+                 cm.sendYesNo("So you would like to enter the #bEntrance#k?");
+                 MySelection = selection;
+             } else {
+-                cm.sendOk("You must have an Entrance Ticket to enter, and you have to be married.");
++                cm.sendOk("You must have an Entrance Ticket to enter.");
+                 cm.dispose();
+             }
+         } else if (status == 1 && selection == 1) {
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index a1a611005..732d22a94 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2019,6 +2019,40 @@ public final int getDiseasesSize() {
+         }
+     }
+ 
++    public Map<MapleDisease, Long> getAllDiseases() {
++        chrLock.lock();
++        try {
++            long curtime = System.currentTimeMillis();
++            Map<MapleDisease, Long> ret = new LinkedHashMap<>();
++            
++            for(Entry<MapleDisease, Long> de : diseaseExpires.entrySet()) {
++                MapleDiseaseValueHolder mdvh = diseases.get(de.getKey());
++                
++                ret.put(de.getKey(), mdvh.length - (curtime - mdvh.startTime));
++            }
++            
++            return ret;
++        } finally {
++            chrLock.unlock();
++        }
++    }
++    
++    public void silentApplyDiseases(Map<MapleDisease, Long> diseaseMap) {
++        chrLock.lock();
++        try {
++            long curTime = System.currentTimeMillis();
++            
++            for(Entry<MapleDisease, Long> di : diseaseMap.entrySet()) {
++                long expTime = curTime + di.getValue();
++                
++                diseaseExpires.put(di.getKey(), expTime);
++                diseases.put(di.getKey(), new MapleDiseaseValueHolder(curTime, expTime));
++            }
++        } finally {
++            chrLock.unlock();
++        }
++    }
++    
+     public void giveDebuff(final MapleDisease disease, MobSkill skill) {
+         if (!hasDisease(disease) && getDiseasesSize() < 2) {
+             if (!(disease == MapleDisease.SEDUCE || disease == MapleDisease.STUN)) {
+@@ -2071,6 +2105,7 @@ public void cancelAllDebuffs() {
+         chrLock.lock();
+         try {
+             diseases.clear();
++            diseaseExpires.clear();
+         } finally {
+             chrLock.unlock();
+         }
+@@ -3834,6 +3869,10 @@ public boolean haveItemWithId(int itemid, boolean checkEquipped) {
+         (checkEquipped && inventory[MapleInventoryType.EQUIPPED.ordinal()].findById(itemid) != null);
+     }
+     
++    public boolean haveItemEquipped(int itemid) {
++        return (inventory[MapleInventoryType.EQUIPPED.ordinal()].findById(itemid) != null);
++    }
++    
+     public int getItemQuantity(int itemid, boolean checkEquipped) {
+         int possesed = inventory[ItemConstants.getInventoryType(itemid).ordinal()].countById(itemid);
+         if (checkEquipped) {
+@@ -4744,8 +4783,12 @@ public void increaseGuildCapacity() { //hopefully nothing is null
+             dropMessage(1, "You don't have enough mesos.");
+             return;
+         }
+-        Server.getInstance().increaseGuildCapacity(guildid);
+-        gainMeso(-MapleGuild.getIncreaseGuildCost(getGuild().getCapacity()), true, false, false);
++        
++        if(Server.getInstance().increaseGuildCapacity(guildid)) {
++            gainMeso(-MapleGuild.getIncreaseGuildCost(getGuild().getCapacity()), true, false, false);
++        } else {
++            dropMessage(1, "You guild already reached the maximum capacity of players.");
++        }
+     }
+ 
+     public boolean isActiveBuffedValue(int skillid) {
+@@ -5367,7 +5410,9 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                     }
+                     continue;
+                 }
+-                if (item.getRight().equals(MapleInventoryType.EQUIP) || item.getRight().equals(MapleInventoryType.EQUIPPED)) {
++                
++                MapleInventoryType mit = item.getRight();
++                if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
+                     Equip equip = (Equip) item.getLeft();
+                     if (equip.getRingId() > -1) {
+                         MapleRing ring = MapleRing.loadFromDb(equip.getRingId());
+@@ -5426,7 +5471,8 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 }
+                 ret.setPosition(portal.getPosition());
+                 int partyid = rs.getInt("party");
+-                MapleParty party = Server.getInstance().getWorld(ret.world).getParty(partyid);
++                World wserv = Server.getInstance().getWorld(ret.world);
++                MapleParty party = wserv.getParty(partyid);
+                 if (party != null) {
+                     ret.mpc = party.getMemberById(ret.id);
+                     if (ret.mpc != null) {
+@@ -5437,7 +5483,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 int messengerid = rs.getInt("messengerid");
+                 int position = rs.getInt("messengerposition");
+                 if (messengerid > 0 && position < 4 && position > -1) {
+-                    MapleMessenger messenger = Server.getInstance().getWorld(ret.world).getMessenger(messengerid);
++                    MapleMessenger messenger = wserv.getMessenger(messengerid);
+                     if (messenger != null) {
+                         ret.messenger = messenger;
+                         ret.messengerposition = position;
+@@ -5501,7 +5547,6 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ps.close();
+             ret.cashshop = new CashShop(ret.accountid, ret.id, ret.getJobType());
+             ret.autoban = new AutobanManager(ret);
+-            ret.marriageRing = null; //for now
+             ps = con.prepareStatement("SELECT name, level FROM characters WHERE accountid = ? AND id != ? ORDER BY level DESC limit 1");
+             ps.setInt(1, ret.accountid);
+             ps.setInt(2, charid);
+@@ -7161,10 +7206,11 @@ private int standaloneSell(MapleClient c, MapleItemInformationProvider ii, Maple
+         if (quantity <= iQuant && iQuant > 0) {
+             MapleInventoryManipulator.removeFromSlot(c, type, (byte) slot, quantity, false);
+             double price;
+-            if (ItemConstants.isRechargable(item.getItemId())) {
+-            	price = ii.getWholePrice(item.getItemId()) / (double) ii.getSlotMax(c, item.getItemId());
++            int itemid = item.getItemId();
++            if (ItemConstants.isRechargable(itemid)) {
++            	price = ii.getWholePrice(itemid) / (double) ii.getSlotMax(c, itemid);
+             } else {
+-                price = ii.getPrice(item.getItemId());
++                price = ii.getPrice(itemid);
+             }
+             
+             int recvMesos = (int) Math.max(Math.ceil(price * quantity), 0);
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 9082436d3..dfa40da1d 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -746,6 +746,7 @@ public int getLoginState() {  // 0 = LOGIN_NOTLOGGEDIN, 1= LOGIN_SERVER_TRANSITI
+ 			}
+ 			int state = rs.getInt("loggedin");
+ 			if (state == LOGIN_SERVER_TRANSITION) {
++                                // Arnah's note: lastlogin is a date-type, in case of login and game servers being of different timezones this becomes broken
+ 				if (rs.getTimestamp("lastlogin").getTime() + 30000 < System.currentTimeMillis()) {
+ 					state = LOGIN_NOTLOGGEDIN;
+ 					updateLoginState(LOGIN_NOTLOGGEDIN);
+@@ -1293,8 +1294,10 @@ public void changeChannel(int channel) {
+ 		}
+                 player.unregisterChairBuff();
+ 		server.getPlayerBuffStorage().addBuffsToStorage(player.getId(), player.getAllBuffs());
++                server.getPlayerBuffStorage().addDiseasesToStorage(player.getId(), player.getAllDiseases());
+                 player.setAwayFromWorld(true);
+ 		player.cancelAllBuffs(true);
++                player.cancelAllDebuffs();
+                 player.cancelBuffExpireTask();
+                 player.cancelDiseaseExpireTask();
+                 player.cancelSkillCooldownTask();
+diff --git a/src/client/MapleDisease.java b/src/client/MapleDisease.java
+index 7e5c375c3..e6cd16a7c 100644
+--- a/src/client/MapleDisease.java
++++ b/src/client/MapleDisease.java
+@@ -52,8 +52,8 @@ public long getValue() {
+         return i;
+     }
+ 
+-	public boolean isFirst() {
+-		return first;
+-	}
++    public boolean isFirst() {
++            return first;
++    }
+ 	
+ }
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 17d57310c..5c9518228 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -23,6 +23,8 @@
+ 
+ import java.io.IOException;
+ import java.text.SimpleDateFormat;
++import java.util.Set;
++import java.util.HashSet;
+ import java.util.Calendar;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
+@@ -41,6 +43,7 @@
+ import tools.data.input.SeekableLittleEndianAccessor;
+ import client.MapleClient;
+ import constants.ServerConstants;
++import java.util.Arrays;
+ 
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
+@@ -53,7 +56,8 @@
+ import tools.locks.MonitoredLockType;
+ 
+ public class MapleServerHandler extends IoHandlerAdapter {
+-
++    private final static Set<Short> ignoredDebugRecvPackets = new HashSet<>(Arrays.asList((short) 167, (short) 197, (short) 89, (short) 91, (short) 41));
++    
+     private PacketProcessor processor;
+     private int world = -1, channel = -1;
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+@@ -151,7 +155,7 @@ public void messageReceived(IoSession session, Object message) {
+         short packetId = slea.readShort();
+         MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+         
+-        if(ServerConstants.USE_DEBUG_SHOW_RCVD_PACKET) System.out.println("Received packet id " + packetId);
++        if(ServerConstants.USE_DEBUG_SHOW_RCVD_PACKET && !ignoredDebugRecvPackets.contains(packetId)) System.out.println("Received packet id " + packetId);
+         final MaplePacketHandler packetHandler = processor.getHandler(packetId);
+         if (packetHandler != null && packetHandler.validateState(client)) {
+             try {
+diff --git a/src/net/server/PlayerBuffStorage.java b/src/net/server/PlayerBuffStorage.java
+index b33a38cea..40dbdc85a 100644
+--- a/src/net/server/PlayerBuffStorage.java
++++ b/src/net/server/PlayerBuffStorage.java
+@@ -21,6 +21,7 @@
+ */
+ package net.server;
+ 
++import client.MapleDisease;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+@@ -31,11 +32,13 @@
+ /**
+  *
+  * @author Danny//changed to map :3
++ * @author Ronan//debuffs to storage as well
+  */
+ public class PlayerBuffStorage {
+     private int id = (int) (Math.random() * 100);
+     private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.BUFF_STORAGE, true);    
+     private Map<Integer, List<PlayerBuffValueHolder>> buffs = new HashMap<>();
++    private Map<Integer, Map<MapleDisease, Long>> diseases = new HashMap<>();
+ 
+     public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+         lock.lock();
+@@ -52,7 +55,25 @@ public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+             return buffs.remove(chrid);
+         } finally {
+             lock.unlock();
+-        }        
++        }
++    }
++    
++    public void addDiseasesToStorage(int chrid, Map<MapleDisease, Long> toStore) {
++        lock.lock();
++        try {
++            diseases.put(chrid, toStore);
++        } finally {
++            lock.unlock();
++        }
++    }
++
++    public Map<MapleDisease, Long> getDiseasesFromStorage(int chrid) {
++        lock.lock();
++        try {
++            return diseases.remove(chrid);
++        } finally {
++            lock.unlock();
++        }
+     }
+ 
+     @Override
+diff --git a/src/net/server/channel/handlers/DueyHandler.java b/src/net/server/channel/handlers/DueyHandler.java
+index c089c5f5c..620cfdd94 100644
+--- a/src/net/server/channel/handlers/DueyHandler.java
++++ b/src/net/server/channel/handlers/DueyHandler.java
+@@ -252,11 +252,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         }
+     }
+ 
+-    private void addMesoToDB(int mesos, String sName, int recipientID) {
++    private static void addMesoToDB(int mesos, String sName, int recipientID) {
+         addItemToDB(null, 1, mesos, sName, recipientID);
+     }
+ 
+-    private void addItemToDB(Item item, int quantity, int mesos, String sName, int recipientID) {
++    public static void addItemToDB(Item item, int quantity, int mesos, String sName, int recipientID) {
+         Connection con = null;
+         try {
+             con = DatabaseConnection.getConnection();
+@@ -344,7 +344,7 @@ private void addItemToDB(Item item, int quantity, int mesos, String sName, int r
+         }
+     }
+ 
+-    private String getCurrentDate() {
++    private static String getCurrentDate() {
+         String date = "";
+         Calendar cal = Calendar.getInstance();
+         int day = cal.get(Calendar.DATE) - 1; // instant duey ?
+@@ -373,7 +373,7 @@ private static int getFee(int meso) {
+         return fee;
+     }
+ 
+-    private void removeItemFromDB(int packageid) {
++    private static void removeItemFromDB(int packageid) {
+         Connection con = null;
+         try {
+             con = DatabaseConnection.getConnection();
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index 268034ccb..c1008e583 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -59,8 +59,10 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+ 
+             mc.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(mc.getId(), mc.getAllBuffs());
++            Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(mc.getId(), mc.getAllDiseases());
+             mc.setAwayFromWorld(true);
+             mc.cancelAllBuffs(true);
++            mc.cancelAllDebuffs();
+             mc.cancelBuffExpireTask();
+             mc.cancelDiseaseExpireTask();
+             mc.cancelSkillCooldownTask();
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index c40bf00ca..8fac19a21 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -68,8 +68,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         
+         chr.unregisterChairBuff();
+         Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(chr.getId(), chr.getAllBuffs());
++        Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(chr.getId(), chr.getAllDiseases());
+         chr.setAwayFromWorld(true);
+         chr.cancelAllBuffs(true);
++        chr.cancelAllDebuffs();
+         chr.cancelBuffExpireTask();
+         chr.cancelDiseaseExpireTask();
+         chr.cancelSkillCooldownTask();
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index b2f6238a5..11dd88b90 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -46,6 +46,7 @@
+ import client.CharacterNameAndId;
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleDisease;
+ import client.MapleFamily;
+ import client.SkillFactory;
+ import client.inventory.MapleInventoryType;
+@@ -54,6 +55,7 @@
+ import constants.ServerConstants;
+ import java.util.Collections;
+ import java.util.Comparator;
++import java.util.Map;
+ 
+ public final class PlayerLoggedinHandler extends AbstractMaplePacketHandler {
+ 
+@@ -115,6 +117,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             player.silentGiveBuffs(timedBuffs);
+         }
+         
++        Map<MapleDisease, Long> diseases = server.getPlayerBuffStorage().getDiseasesFromStorage(cid);
++        if (diseases != null) {
++            player.silentApplyDiseases(diseases);
++        }
++        
+         c.announce(MaplePacketCreator.getCharInfo(player));
+         if (!player.isHidden()) {
+             player.toggleHide(true);
+diff --git a/src/net/server/channel/handlers/ReactorHitHandler.java b/src/net/server/channel/handlers/ReactorHitHandler.java
+index 629d9c7cb..ccf97e8f4 100644
+--- a/src/net/server/channel/handlers/ReactorHitHandler.java
++++ b/src/net/server/channel/handlers/ReactorHitHandler.java
+@@ -30,6 +30,7 @@
+  * @author Lerk
+  */
+ public final class ReactorHitHandler extends AbstractMaplePacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+     	//System.out.println(slea); //To see if there are any differences with packets
+         //CD 00 6B 00 00 00 01 00 00 00 03 00 00 00 20 03 F7 03 00 00
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index cda2088ec..970adb8b4 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -177,6 +177,10 @@ public EventInstanceManager getEventInstance() {
+ 		return getPlayer().getEventInstance();
+ 	}
+         
++        public MapleInventory getInventory(int type) {
++                return getPlayer().getInventory(MapleInventoryType.getByType((byte) type));
++        }
++        
+         public MapleInventory getInventory(MapleInventoryType type) {
+                 return getPlayer().getInventory(type);
+         }
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 53eca1fc6..6d89b9606 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -425,6 +425,16 @@ public int getPlayerCount() {
+                         rL.unlock();
+                 }
+ 	}
++        
++        public MapleCharacter getPlayerById(int id) {
++                rL.lock();
++                try {
++                        return chars.get(id);
++                }
++                finally {
++                        rL.unlock();
++                }
++	}
+ 
+ 	public List<MapleCharacter> getPlayers() {
+                 rL.lock();
+@@ -1331,6 +1341,15 @@ public final int gridCheck(MapleCharacter chr) {
+                 }
+         }
+         
++        public final int gridSize() {
++                rL.lock();
++                try {
++                        return playerGrid.size();
++                } finally {
++                        rL.unlock();
++                }
++        }
++        
+         public final void gridClear() {
+                 wL.lock();
+                 try {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 62af84306..f8ae17165 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -436,13 +436,8 @@ public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKille
+                     partyExp = (int) (personalExp * partyModifier * ServerConstants.PARTY_BONUS_EXP_RATE);
+                 }
+                 Integer holySymbol = attacker.getBuffedValue(MapleBuffStat.HOLY_SYMBOL);
+-                boolean GMHolySymbol = attacker.getBuffSource(MapleBuffStat.HOLY_SYMBOL) == SuperGM.HOLY_SYMBOL;
+                 if (holySymbol != null) {
+-                    if (numExpSharers == 1 && !GMHolySymbol) {
+-                        personalExp *= 1.0 + (holySymbol.doubleValue() / 500.0);
+-                    } else {
+-                        personalExp *= 1.0 + (holySymbol.doubleValue() / 100.0);
+-                    }
++                    personalExp *= 1.0 + (holySymbol.doubleValue() / 100.0);
+                 }
+                 
+                 statiLock.lock();
+diff --git a/wz/Item.wz/Consume/0210.img.xml b/wz/Item.wz/Consume/0210.img.xml
+index bd98116ae..1cf9d01c9 100644
+--- a/wz/Item.wz/Consume/0210.img.xml
++++ b/wz/Item.wz/Consume/0210.img.xml
+@@ -1509,7 +1509,7 @@
+         <int name="prob" value="100"/>
+       </imgdir>
+       <imgdir name="3">
+-        <int name="id" value="8130200"/>
++        <int name="id" value="9420538"/>
+         <int name="prob" value="100"/>
+       </imgdir>
+       <imgdir name="4">
+diff --git a/wz/Item.wz/Etc/0400.img.xml b/wz/Item.wz/Etc/0400.img.xml
+index f0f30a2fa..7951de70e 100644
+--- a/wz/Item.wz/Etc/0400.img.xml
++++ b/wz/Item.wz/Etc/0400.img.xml
+@@ -4157,6 +4157,7 @@
+       </canvas>
+       <int name="price" value="100"/>
+       <int name="slotMax" value="200"/>
++      <int name="pquest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04000324">
+diff --git a/wz/Item.wz/Etc/0403.img.xml b/wz/Item.wz/Etc/0403.img.xml
+index 12e942053..8de57c044 100644
+--- a/wz/Item.wz/Etc/0403.img.xml
++++ b/wz/Item.wz/Etc/0403.img.xml
+@@ -2865,7 +2865,7 @@
+         <vector name="origin" x="0" y="33"/>
+       </canvas>
+       <int name="price" value="1"/>
+-      <int name="quest" value="1"/>
++      <int name="pquest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04031218">
+diff --git a/wz/Map.wz/Map/Map6/680000110.img.xml b/wz/Map.wz/Map/Map6/680000110.img.xml
+index 1f63e90cc..5425edcbf 100644
+--- a/wz/Map.wz/Map/Map6/680000110.img.xml
++++ b/wz/Map.wz/Map/Map6/680000110.img.xml
+@@ -1,311 +1,312 @@
+ <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="680000110.img">
+   <imgdir name="info">
+-    <int name="version" value="10"/>
++    <string name="bgm" value=""/>
+     <int name="cloud" value="0"/>
+-    <int name="town" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="returnMap" value="680000500"/>
+     <int name="forcedReturn" value="680000500"/>
+-    <float name="mobRate" value="1.0"/>
+-    <string name="mapMark" value="Wedding"/>
+     <int name="hideMinimap" value="1"/>
+-    <int name="fieldType" value="60"/>
++    <string name="mapMark" value="Wedding"/>
++    <float name="mobRate" value="1.0"/>
++    <int name="returnMap" value="680000500"/>
++    <int name="town" value="1"/>
++    <int name="version" value="10"/>
+     <int name="fieldLimit" value="131326"/>
+-    <int name="VRTop" value="-300"/>
++    <int name="fieldType" value="60"/>
+     <int name="VRLeft" value="-400"/>
+-    <int name="VRBottom" value="300"/>
+     <int name="VRRight" value="400"/>
+-    <string name="bgm" value=""/>
+-  </imgdir>
+-  <imgdir name="back">
+-    <imgdir name="0">
+-      <string name="bS" value=""/>
+-      <int name="front" value="0"/>
+-      <int name="ani" value="0"/>
+-      <int name="no" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="x" value="0"/>
+-      <int name="y" value="0"/>
+-      <int name="rx" value="0"/>
+-      <int name="ry" value="0"/>
+-      <int name="type" value="0"/>
+-      <int name="cx" value="0"/>
+-      <int name="cy" value="0"/>
+-      <int name="a" value="255"/>
+-    </imgdir>
+-  </imgdir>
+-  <imgdir name="life">
+-    <imgdir name="1">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201009"/>
+-      <int name="x" value="262"/>
+-      <int name="y" value="204"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="17"/>
+-      <int name="cy" value="209"/>
+-      <int name="rx0" value="212"/>
+-      <int name="rx1" value="312"/>
+-    </imgdir>
+-    <imgdir name="0">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201011"/>
+-      <int name="x" value="-319"/>
+-      <int name="y" value="178"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="18"/>
+-      <int name="cy" value="187"/>
+-      <int name="rx0" value="-369"/>
+-      <int name="rx1" value="-269"/>
+-    </imgdir>
+-    <imgdir name="2">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201010"/>
+-      <int name="x" value="296"/>
+-      <int name="y" value="-43"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="1"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="10"/>
+-      <int name="cy" value="-35"/>
+-      <int name="rx0" value="246"/>
+-      <int name="rx1" value="346"/>
+-    </imgdir>
+-  </imgdir>
+-  <imgdir name="reactor">
++    <int name="VRTop" value="-300"/>
++    <int name="VRBottom" value="300"/>
+   </imgdir>
+   <imgdir name="0">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="0"/>
++        <int name="y" value="0"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="0"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="basic"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="0"/>
+-        <int name="y" value="0"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="0"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="1">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="0"/>
++        <int name="y" value="0"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="basic"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="0"/>
+-        <int name="y" value="0"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="1">
++        <int name="x" value="66"/>
++        <int name="y" value="-12"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="66"/>
+-        <int name="y" value="-12"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="2">
++        <int name="x" value="200"/>
++        <int name="y" value="-12"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="200"/>
+-        <int name="y" value="-12"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="3">
++        <int name="x" value="100"/>
++        <int name="y" value="-56"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="100"/>
+-        <int name="y" value="-56"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="4">
++        <int name="x" value="233"/>
++        <int name="y" value="-56"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="233"/>
+-        <int name="y" value="-56"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="5">
++        <int name="x" value="134"/>
++        <int name="y" value="-100"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="134"/>
+-        <int name="y" value="-100"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="6">
++        <int name="x" value="268"/>
++        <int name="y" value="-100"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="268"/>
+-        <int name="y" value="-100"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="7">
++        <int name="x" value="350"/>
++        <int name="y" value="-56"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="2"/>
+-        <int name="x" value="350"/>
+-        <int name="y" value="-56"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="8">
++        <int name="x" value="367"/>
++        <int name="y" value="-100"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="3"/>
+-        <int name="x" value="367"/>
+-        <int name="y" value="-100"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+       <imgdir name="9">
++        <int name="x" value="336"/>
++        <int name="y" value="-12"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="1"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="336"/>
+-        <int name="y" value="-12"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="1"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="2">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="3">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="174"/>
++        <int name="y" value="102"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="2"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="front"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="174"/>
+-        <int name="y" value="102"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="2"/>
+       </imgdir>
+       <imgdir name="1">
++        <int name="x" value="2"/>
++        <int name="y" value="-179"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="5"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="ani"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="2"/>
+-        <int name="y" value="-179"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="5"/>
+       </imgdir>
+       <imgdir name="2">
++        <int name="x" value="-15"/>
++        <int name="y" value="-33"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="3"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="ani"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="-15"/>
+-        <int name="y" value="-33"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="3"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="4">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="7"/>
++        <int name="y" value="-260"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="4"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside5"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="4"/>
+-        <int name="x" value="7"/>
+-        <int name="y" value="-260"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="4"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="5">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="6">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="7">
+     <imgdir name="info">
+     </imgdir>
++    <imgdir name="obj">
++    </imgdir>
+     <imgdir name="tile">
+     </imgdir>
+-    <imgdir name="obj">
++  </imgdir>
++  <imgdir name="ladderRope">
++  </imgdir>
++  <imgdir name="seat">
++    <vector name="0" x="21" y="6"/>
++    <vector name="1" x="54" y="6"/>
++    <vector name="2" x="55" y="-38"/>
++    <vector name="3" x="88" y="-38"/>
++    <vector name="4" x="89" y="-82"/>
++    <vector name="5" x="90" y="6"/>
++    <vector name="6" x="122" y="-82"/>
++    <vector name="7" x="124" y="-38"/>
++    <vector name="8" x="155" y="6"/>
++    <vector name="9" x="158" y="-82"/>
++    <vector name="10" x="188" y="-38"/>
++    <vector name="11" x="188" y="6"/>
++    <vector name="12" x="221" y="-38"/>
++    <vector name="13" x="223" y="-82"/>
++    <vector name="14" x="224" y="6"/>
++    <vector name="15" x="256" y="-82"/>
++    <vector name="16" x="257" y="-38"/>
++    <vector name="17" x="291" y="6"/>
++    <vector name="18" x="292" y="-82"/>
++    <vector name="19" x="322" y="-38"/>
++    <vector name="20" x="324" y="6"/>
++    <vector name="21" x="349" y="-82"/>
++    <vector name="22" x="353" y="-38"/>
++    <vector name="23" x="360" y="6"/>
++    <vector name="24" x="366" y="-82"/>
++    <vector name="25" x="383" y="-82"/>
++    <vector name="26" x="383" y="-38"/>
++  </imgdir>
++  <imgdir name="portal">
++    <imgdir name="0">
++      <int name="x" value="126"/>
++      <int name="y" value="-115"/>
++      <int name="pt" value="0"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value=""/>
++      <string name="pn" value="sp"/>
+     </imgdir>
++    <imgdir name="1">
++      <int name="x" value="333"/>
++      <int name="y" value="-131"/>
++      <int name="pt" value="0"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value=""/>
++      <string name="pn" value="sp"/>
++    </imgdir>
++    <imgdir name="2">
++      <int name="x" value="308"/>
++      <int name="y" value="213"/>
++      <int name="pt" value="1"/>
++      <int name="tm" value="680000110"/>
++      <string name="tn" value="we00"/>
++      <string name="pn" value="we00"/>
++    </imgdir>
++  </imgdir>
++  <imgdir name="reactor">
++  </imgdir>
++  <imgdir name="back">
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="1">
+@@ -324,33 +325,49 @@
+           <int name="x2" value="-218"/>
+           <int name="y2" value="212"/>
+           <int name="prev" value="1"/>
+-          <int name="next" value="3"/>
++          <int name="next" value="4"/>
+         </imgdir>
+         <imgdir name="3">
++          <int name="x1" value="-356"/>
++          <int name="y1" value="187"/>
++          <int name="x2" value="-293"/>
++          <int name="y2" value="187"/>
++          <int name="prev" value="0"/>
++          <int name="next" value="0"/>
++        </imgdir>
++        <imgdir name="4">
+           <int name="x1" value="-218"/>
+           <int name="y1" value="212"/>
+           <int name="x2" value="-214"/>
+           <int name="y2" value="209"/>
+           <int name="prev" value="2"/>
+-          <int name="next" value="4"/>
++          <int name="next" value="5"/>
+         </imgdir>
+-        <imgdir name="4">
++        <imgdir name="5">
+           <int name="x1" value="-214"/>
+           <int name="y1" value="209"/>
+           <int name="x2" value="-171"/>
+           <int name="y2" value="209"/>
+-          <int name="prev" value="3"/>
+-          <int name="next" value="17"/>
++          <int name="prev" value="4"/>
++          <int name="next" value="7"/>
+         </imgdir>
+-        <imgdir name="5">
+-          <int name="x1" value="396"/>
++        <imgdir name="6">
++          <int name="x1" value="-171"/>
++          <int name="y1" value="-300"/>
++          <int name="x2" value="-171"/>
++          <int name="y2" value="209"/>
++          <int name="prev" value="0"/>
++          <int name="next" value="7"/>
++        </imgdir>
++        <imgdir name="7">
++          <int name="x1" value="-171"/>
+           <int name="y1" value="209"/>
+           <int name="x2" value="396"/>
+-          <int name="y2" value="29"/>
+-          <int name="prev" value="17"/>
+-          <int name="next" value="0"/>
++          <int name="y2" value="209"/>
++          <int name="prev" value="6"/>
++          <int name="next" value="14"/>
+         </imgdir>
+-        <imgdir name="6">
++        <imgdir name="8">
+           <int name="x1" value="-168"/>
+           <int name="y1" value="187"/>
+           <int name="x2" value="-121"/>
+@@ -358,45 +375,33 @@
+           <int name="prev" value="0"/>
+           <int name="next" value="0"/>
+         </imgdir>
+-        <imgdir name="7">
++        <imgdir name="9">
+           <int name="x1" value="-4"/>
+           <int name="y1" value="-288"/>
+           <int name="x2" value="-4"/>
+           <int name="y2" value="19"/>
+           <int name="prev" value="0"/>
+-          <int name="next" value="8"/>
++          <int name="next" value="10"/>
++          <int name="cantThrough" value="1"/>
++          <int name="forbidFallDown" value="1"/>
+         </imgdir>
+-        <imgdir name="8">
++        <imgdir name="10">
+           <int name="x1" value="-4"/>
+           <int name="y1" value="19"/>
+           <int name="x2" value="401"/>
+           <int name="y2" value="19"/>
+-          <int name="prev" value="7"/>
+-          <int name="next" value="9"/>
+-        </imgdir>
+-        <imgdir name="9">
+-          <int name="x1" value="401"/>
+-          <int name="y1" value="19"/>
+-          <int name="x2" value="401"/>
+-          <int name="y2" value="-35"/>
+-          <int name="prev" value="8"/>
+-          <int name="next" value="11"/>
++          <int name="prev" value="9"/>
++          <int name="next" value="18"/>
++          <int name="cantThrough" value="1"/>
++          <int name="forbidFallDown" value="1"/>
+         </imgdir>
+-        <imgdir name="10">
++        <imgdir name="11">
+           <int name="x1" value="13"/>
+           <int name="y1" value="-35"/>
+           <int name="x2" value="401"/>
+           <int name="y2" value="-35"/>
+           <int name="prev" value="0"/>
+-          <int name="next" value="11"/>
+-        </imgdir>
+-        <imgdir name="11">
+-          <int name="x1" value="401"/>
+-          <int name="y1" value="-35"/>
+-          <int name="x2" value="401"/>
+-          <int name="y2" value="-79"/>
+-          <int name="prev" value="10"/>
+-          <int name="next" value="13"/>
++          <int name="next" value="17"/>
+         </imgdir>
+         <imgdir name="12">
+           <int name="x1" value="47"/>
+@@ -404,17 +409,9 @@
+           <int name="x2" value="401"/>
+           <int name="y2" value="-79"/>
+           <int name="prev" value="0"/>
+-          <int name="next" value="13"/>
++          <int name="next" value="16"/>
+         </imgdir>
+         <imgdir name="13">
+-          <int name="x1" value="401"/>
+-          <int name="y1" value="-79"/>
+-          <int name="x2" value="401"/>
+-          <int name="y2" value="-123"/>
+-          <int name="prev" value="12"/>
+-          <int name="next" value="15"/>
+-        </imgdir>
+-        <imgdir name="14">
+           <int name="x1" value="81"/>
+           <int name="y1" value="-123"/>
+           <int name="x2" value="401"/>
+@@ -422,96 +419,85 @@
+           <int name="prev" value="0"/>
+           <int name="next" value="15"/>
+         </imgdir>
++        <imgdir name="14">
++          <int name="x1" value="396"/>
++          <int name="y1" value="209"/>
++          <int name="x2" value="396"/>
++          <int name="y2" value="29"/>
++          <int name="prev" value="7"/>
++          <int name="next" value="0"/>
++        </imgdir>
+         <imgdir name="15">
+           <int name="x1" value="401"/>
+           <int name="y1" value="-123"/>
+           <int name="x2" value="401"/>
+           <int name="y2" value="-288"/>
+-          <int name="prev" value="14"/>
++          <int name="prev" value="13"/>
+           <int name="next" value="0"/>
+         </imgdir>
+         <imgdir name="16">
+-          <int name="x1" value="-171"/>
+-          <int name="y1" value="-300"/>
+-          <int name="x2" value="-171"/>
+-          <int name="y2" value="209"/>
+-          <int name="prev" value="0"/>
+-          <int name="next" value="17"/>
++          <int name="x1" value="401"/>
++          <int name="y1" value="-79"/>
++          <int name="x2" value="401"/>
++          <int name="y2" value="-123"/>
++          <int name="prev" value="12"/>
++          <int name="next" value="15"/>
+         </imgdir>
+         <imgdir name="17">
+-          <int name="x1" value="-171"/>
+-          <int name="y1" value="209"/>
+-          <int name="x2" value="396"/>
+-          <int name="y2" value="209"/>
+-          <int name="prev" value="16"/>
+-          <int name="next" value="5"/>
++          <int name="x1" value="401"/>
++          <int name="y1" value="-35"/>
++          <int name="x2" value="401"/>
++          <int name="y2" value="-79"/>
++          <int name="prev" value="11"/>
++          <int name="next" value="16"/>
+         </imgdir>
+         <imgdir name="18">
+-          <int name="x1" value="-356"/>
+-          <int name="y1" value="187"/>
+-          <int name="x2" value="-293"/>
+-          <int name="y2" value="187"/>
+-          <int name="prev" value="0"/>
+-          <int name="next" value="0"/>
++          <int name="x1" value="401"/>
++          <int name="y1" value="19"/>
++          <int name="x2" value="401"/>
++          <int name="y2" value="-35"/>
++          <int name="prev" value="10"/>
++          <int name="next" value="17"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+   </imgdir>
+-  <imgdir name="ladderRope">
+-  </imgdir>
+-  <imgdir name="seat">
+-    <vector name="0" x="21" y="6"/>
+-    <vector name="1" x="54" y="6"/>
+-    <vector name="2" x="90" y="6"/>
+-    <vector name="3" x="155" y="6"/>
+-    <vector name="4" x="188" y="6"/>
+-    <vector name="5" x="224" y="6"/>
+-    <vector name="6" x="55" y="-38"/>
+-    <vector name="7" x="88" y="-38"/>
+-    <vector name="8" x="124" y="-38"/>
+-    <vector name="9" x="188" y="-38"/>
+-    <vector name="10" x="221" y="-38"/>
+-    <vector name="11" x="257" y="-38"/>
+-    <vector name="12" x="89" y="-82"/>
+-    <vector name="13" x="122" y="-82"/>
+-    <vector name="14" x="158" y="-82"/>
+-    <vector name="15" x="223" y="-82"/>
+-    <vector name="16" x="256" y="-82"/>
+-    <vector name="17" x="292" y="-82"/>
+-    <vector name="18" x="322" y="-38"/>
+-    <vector name="19" x="353" y="-38"/>
+-    <vector name="20" x="383" y="-38"/>
+-    <vector name="21" x="349" y="-82"/>
+-    <vector name="22" x="366" y="-82"/>
+-    <vector name="23" x="383" y="-82"/>
+-    <vector name="24" x="291" y="6"/>
+-    <vector name="25" x="324" y="6"/>
+-    <vector name="26" x="360" y="6"/>
+-  </imgdir>
+-  <imgdir name="portal">
++  <imgdir name="life">
+     <imgdir name="0">
+-      <string name="pn" value="sp"/>
+-      <int name="pt" value="0"/>
+-      <int name="x" value="126"/>
+-      <int name="y" value="-115"/>
+-      <int name="tm" value="999999999"/>
+-      <string name="tn" value=""/>
++      <string name="id" value="9201009"/>
++      <int name="x" value="262"/>
++      <int name="y" value="204"/>
++      <int name="cy" value="209"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="212"/>
++      <int name="rx1" value="312"/>
++      <int name="f" value="0"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="7"/>
+     </imgdir>
+     <imgdir name="1">
+-      <string name="pn" value="sp"/>
+-      <int name="pt" value="0"/>
+-      <int name="x" value="333"/>
+-      <int name="y" value="-131"/>
+-      <int name="tm" value="999999999"/>
+-      <string name="tn" value=""/>
++      <string name="id" value="9201011"/>
++      <int name="x" value="-319"/>
++      <int name="y" value="178"/>
++      <int name="cy" value="187"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="-369"/>
++      <int name="rx1" value="-269"/>
++      <int name="f" value="0"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="3"/>
+     </imgdir>
+     <imgdir name="2">
+-      <string name="pn" value="we00"/>
+-      <int name="pt" value="1"/>
+-      <int name="x" value="308"/>
+-      <int name="y" value="213"/>
+-      <int name="tm" value="680000110"/>
+-      <string name="tn" value="we00"/>
++      <string name="id" value="9201010"/>
++      <int name="x" value="296"/>
++      <int name="y" value="-43"/>
++      <int name="cy" value="-35"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="247"/>
++      <int name="rx1" value="347"/>
++      <int name="f" value="1"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="11"/>
+     </imgdir>
+   </imgdir>
+ </imgdir>
+diff --git a/wz/Map.wz/Map/Map6/680000210.img.xml b/wz/Map.wz/Map/Map6/680000210.img.xml
+index a4f85f6e9..3a743cd16 100644
+--- a/wz/Map.wz/Map/Map6/680000210.img.xml
++++ b/wz/Map.wz/Map/Map6/680000210.img.xml
+@@ -1,431 +1,415 @@
+ <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="680000210.img">
+   <imgdir name="info">
+-    <int name="fieldType" value="60"/>
+-    <int name="version" value="10"/>
++    <string name="bgm" value=""/>
+     <int name="cloud" value="0"/>
+-    <int name="town" value="1"/>
+     <int name="swim" value="0"/>
+-    <int name="returnMap" value="680000500"/>
+     <int name="forcedReturn" value="680000500"/>
+-    <float name="mobRate" value="1.0"/>
+-    <string name="mapMark" value="Wedding"/>
+     <int name="hideMinimap" value="1"/>
++    <string name="mapMark" value="Wedding"/>
++    <float name="mobRate" value="1.0"/>
++    <int name="returnMap" value="680000500"/>
++    <int name="town" value="1"/>
++    <int name="version" value="10"/>
+     <int name="fieldLimit" value="131326"/>
+-    <int name="VRTop" value="-197"/>
++    <int name="fieldType" value="60"/>
+     <int name="VRLeft" value="-672"/>
+-    <int name="VRBottom" value="412"/>
+     <int name="VRRight" value="532"/>
+-    <string name="bgm" value=""/>
+-  </imgdir>
+-  <imgdir name="back">
+-    <imgdir name="0">
+-      <string name="bS" value=""/>
+-      <int name="front" value="0"/>
+-      <int name="ani" value="0"/>
+-      <int name="no" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="x" value="0"/>
+-      <int name="y" value="0"/>
+-      <int name="rx" value="0"/>
+-      <int name="ry" value="0"/>
+-      <int name="type" value="0"/>
+-      <int name="cx" value="0"/>
+-      <int name="cy" value="0"/>
+-      <int name="a" value="255"/>
+-    </imgdir>
+-  </imgdir>
+-  <imgdir name="life">
+-    <imgdir name="1">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201007"/>
+-      <int name="x" value="199"/>
+-      <int name="y" value="299"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="8"/>
+-      <int name="cy" value="305"/>
+-      <int name="rx0" value="149"/>
+-      <int name="rx1" value="249"/>
+-    </imgdir>
+-    <imgdir name="0">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201006"/>
+-      <int name="x" value="258"/>
+-      <int name="y" value="33"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="13"/>
+-      <int name="cy" value="34"/>
+-      <int name="rx0" value="208"/>
+-      <int name="rx1" value="308"/>
+-    </imgdir>
+-    <imgdir name="2">
+-      <string name="type" value="n"/>
+-      <string name="id" value="9201002"/>
+-      <int name="x" value="-424"/>
+-      <int name="y" value="238"/>
+-      <int name="mobTime" value="0"/>
+-      <int name="f" value="1"/>
+-      <int name="hide" value="0"/>
+-      <int name="fh" value="2"/>
+-      <int name="cy" value="243"/>
+-      <int name="rx0" value="-474"/>
+-      <int name="rx1" value="-374"/>
+-    </imgdir>
++    <int name="VRTop" value="-197"/>
++    <int name="VRBottom" value="412"/>
+   </imgdir>
+-  <imgdir name="reactor">
++  <imgdir name="miniMap">
++    <canvas name="canvas" width="98" height="62">
++    </canvas>
++    <int name="width" value="1574"/>
++    <int name="height" value="1007"/>
++    <int name="centerX" value="854"/>
++    <int name="centerY" value="531"/>
++    <int name="mag" value="4"/>
+   </imgdir>
+   <imgdir name="0">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="1">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="2">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="3">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
+-        <string name="oS" value="insideWGL"/>
+-        <string name="l0" value="inside4"/>
+-        <string name="l1" value="basic"/>
+-        <string name="l2" value="1"/>
+         <int name="x" value="-638"/>
+         <int name="y" value="51"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="1"/>
+-      </imgdir>
+-      <imgdir name="1">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="basic"/>
+         <string name="l2" value="1"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="1">
+         <int name="x" value="-301"/>
+         <int name="y" value="52"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="0"/>
+-      </imgdir>
+-      <imgdir name="2">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="basic"/>
+         <string name="l2" value="1"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="2">
+         <int name="x" value="35"/>
+         <int name="y" value="52"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="0"/>
++        <string name="oS" value="insideWGL"/>
++        <string name="l0" value="inside4"/>
++        <string name="l1" value="basic"/>
++        <string name="l2" value="1"/>
++        <int name="f" value="0"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="4">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
+-        <string name="oS" value="insideWGL"/>
+-        <string name="l0" value="inside4"/>
+-        <string name="l1" value="basic"/>
+-        <string name="l2" value="0"/>
+         <int name="x" value="-67"/>
+         <int name="y" value="-32"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="2">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+-        <string name="l1" value="acc"/>
+-        <string name="l2" value="6"/>
++        <string name="l1" value="basic"/>
++        <string name="l2" value="0"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="1">
+         <int name="x" value="-4"/>
+         <int name="y" value="11"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="3">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="5"/>
++        <string name="l2" value="6"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="2">
+         <int name="x" value="174"/>
+         <int name="y" value="11"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="1">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="5"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="3">
+         <int name="x" value="350"/>
+         <int name="y" value="11"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="4">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="6"/>
++        <string name="l2" value="5"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="4">
+         <int name="x" value="105"/>
+         <int name="y" value="-39"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="5">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="5"/>
++        <string name="l2" value="6"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="5">
+         <int name="x" value="283"/>
+         <int name="y" value="-39"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="6">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="3"/>
++        <string name="l2" value="5"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="6">
+         <int name="x" value="448"/>
+         <int name="y" value="-39"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="7">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="6"/>
++        <string name="l2" value="3"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="7">
+         <int name="x" value="215"/>
+         <int name="y" value="-89"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="8">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="5"/>
++        <string name="l2" value="6"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="8">
+         <int name="x" value="392"/>
+         <int name="y" value="-89"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="9">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="4"/>
++        <string name="l2" value="5"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="9">
+         <int name="x" value="502"/>
+         <int name="y" value="-89"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
+-      </imgdir>
+-      <imgdir name="10">
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+-        <string name="l2" value="2"/>
++        <string name="l2" value="4"/>
++        <int name="f" value="0"/>
++      </imgdir>
++      <imgdir name="10">
+         <int name="x" value="482"/>
+         <int name="y" value="11"/>
+         <int name="z" value="9"/>
+-        <int name="f" value="0"/>
+         <int name="zM" value="3"/>
++        <string name="oS" value="insideWGL"/>
++        <string name="l0" value="inside4"/>
++        <string name="l1" value="acc"/>
++        <string name="l2" value="2"/>
++        <int name="f" value="0"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="5">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="-70"/>
++        <int name="y" value="353"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="2"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="0"/>
+-        <int name="x" value="-70"/>
+-        <int name="y" value="353"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="2"/>
+       </imgdir>
+       <imgdir name="1">
++        <int name="x" value="-40"/>
++        <int name="y" value="532"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="4"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="front"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="-40"/>
+-        <int name="y" value="532"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="4"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="6">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
+   </imgdir>
+   <imgdir name="7">
+     <imgdir name="info">
+     </imgdir>
+-    <imgdir name="tile">
+-    </imgdir>
+     <imgdir name="obj">
+       <imgdir name="0">
++        <int name="x" value="137"/>
++        <int name="y" value="102"/>
++        <int name="z" value="9"/>
++        <int name="zM" value="5"/>
+         <string name="oS" value="insideWGL"/>
+         <string name="l0" value="inside4"/>
+         <string name="l1" value="acc"/>
+         <string name="l2" value="1"/>
+-        <int name="x" value="137"/>
+-        <int name="y" value="102"/>
+-        <int name="z" value="9"/>
+         <int name="f" value="0"/>
+-        <int name="zM" value="5"/>
+       </imgdir>
+     </imgdir>
++    <imgdir name="tile">
++    </imgdir>
++  </imgdir>
++  <imgdir name="ladderRope">
+   </imgdir>
+   <imgdir name="seat">
+-    <vector name="0" x="320" y="30"/>
+-    <vector name="1" x="348" y="30"/>
+-    <vector name="2" x="335" y="30"/>
+-    <vector name="3" x="361" y="30"/>
+-    <vector name="4" x="307" y="30"/>
+-    <vector name="5" x="293" y="30"/>
+-    <vector name="6" x="281" y="30"/>
+-    <vector name="7" x="270" y="30"/>
+-    <vector name="8" x="374" y="30"/>
+-    <vector name="9" x="386" y="30"/>
+-    <vector name="10" x="398" y="30"/>
+-    <vector name="11" x="411" y="30"/>
+-    <vector name="12" x="-34" y="30"/>
+-    <vector name="13" x="-6" y="30"/>
+-    <vector name="14" x="-19" y="30"/>
+-    <vector name="15" x="7" y="30"/>
+-    <vector name="16" x="-47" y="30"/>
+-    <vector name="17" x="-61" y="30"/>
+-    <vector name="18" x="-73" y="30"/>
+-    <vector name="19" x="-84" y="30"/>
+-    <vector name="20" x="20" y="30"/>
+-    <vector name="21" x="32" y="30"/>
+-    <vector name="22" x="44" y="30"/>
+-    <vector name="23" x="57" y="30"/>
+-    <vector name="24" x="144" y="30"/>
+-    <vector name="25" x="172" y="30"/>
+-    <vector name="26" x="159" y="30"/>
+-    <vector name="27" x="185" y="30"/>
+-    <vector name="28" x="131" y="30"/>
+-    <vector name="29" x="117" y="30"/>
+-    <vector name="30" x="105" y="30"/>
+-    <vector name="31" x="94" y="30"/>
+-    <vector name="32" x="198" y="30"/>
+-    <vector name="33" x="210" y="30"/>
+-    <vector name="34" x="222" y="30"/>
+-    <vector name="35" x="235" y="30"/>
+-    <vector name="36" x="75" y="-20"/>
+-    <vector name="37" x="103" y="-20"/>
+-    <vector name="38" x="90" y="-20"/>
+-    <vector name="39" x="116" y="-20"/>
+-    <vector name="40" x="62" y="-20"/>
+-    <vector name="41" x="48" y="-20"/>
+-    <vector name="42" x="36" y="-20"/>
+-    <vector name="43" x="25" y="-20"/>
+-    <vector name="44" x="129" y="-20"/>
+-    <vector name="45" x="141" y="-20"/>
+-    <vector name="46" x="153" y="-20"/>
+-    <vector name="47" x="166" y="-20"/>
+-    <vector name="48" x="253" y="-20"/>
+-    <vector name="49" x="281" y="-20"/>
+-    <vector name="50" x="268" y="-20"/>
+-    <vector name="51" x="294" y="-20"/>
+-    <vector name="52" x="240" y="-20"/>
+-    <vector name="53" x="226" y="-20"/>
+-    <vector name="54" x="214" y="-20"/>
+-    <vector name="55" x="203" y="-20"/>
+-    <vector name="56" x="307" y="-20"/>
+-    <vector name="57" x="319" y="-20"/>
+-    <vector name="58" x="331" y="-20"/>
+-    <vector name="59" x="344" y="-20"/>
+-    <vector name="60" x="418" y="-20"/>
+-    <vector name="61" x="446" y="-20"/>
+-    <vector name="62" x="433" y="-20"/>
+-    <vector name="63" x="459" y="-20"/>
+-    <vector name="64" x="405" y="-20"/>
+-    <vector name="65" x="391" y="-20"/>
+-    <vector name="66" x="379" y="-20"/>
+-    <vector name="67" x="185" y="-70"/>
+-    <vector name="68" x="213" y="-70"/>
+-    <vector name="69" x="200" y="-70"/>
+-    <vector name="70" x="226" y="-70"/>
+-    <vector name="71" x="172" y="-70"/>
+-    <vector name="72" x="158" y="-70"/>
+-    <vector name="73" x="146" y="-70"/>
+-    <vector name="74" x="135" y="-70"/>
+-    <vector name="75" x="239" y="-70"/>
+-    <vector name="76" x="251" y="-70"/>
+-    <vector name="77" x="263" y="-70"/>
+-    <vector name="78" x="276" y="-70"/>
+-    <vector name="79" x="362" y="-70"/>
+-    <vector name="80" x="390" y="-70"/>
+-    <vector name="81" x="377" y="-70"/>
+-    <vector name="82" x="403" y="-70"/>
+-    <vector name="83" x="349" y="-70"/>
+-    <vector name="84" x="335" y="-70"/>
+-    <vector name="85" x="323" y="-70"/>
+-    <vector name="86" x="312" y="-70"/>
+-    <vector name="87" x="416" y="-70"/>
+-    <vector name="88" x="428" y="-70"/>
+-    <vector name="89" x="440" y="-70"/>
+-    <vector name="90" x="453" y="-70"/>
+-    <vector name="91" x="452" y="30"/>
+-    <vector name="92" x="480" y="30"/>
++    <vector name="0" x="-84" y="30"/>
++    <vector name="1" x="-73" y="30"/>
++    <vector name="2" x="-61" y="30"/>
++    <vector name="3" x="-47" y="30"/>
++    <vector name="4" x="-34" y="30"/>
++    <vector name="5" x="-19" y="30"/>
++    <vector name="6" x="-6" y="30"/>
++    <vector name="7" x="7" y="30"/>
++    <vector name="8" x="20" y="30"/>
++    <vector name="9" x="25" y="-20"/>
++    <vector name="10" x="32" y="30"/>
++    <vector name="11" x="36" y="-20"/>
++    <vector name="12" x="44" y="30"/>
++    <vector name="13" x="48" y="-20"/>
++    <vector name="14" x="57" y="30"/>
++    <vector name="15" x="62" y="-20"/>
++    <vector name="16" x="75" y="-20"/>
++    <vector name="17" x="90" y="-20"/>
++    <vector name="18" x="94" y="30"/>
++    <vector name="19" x="103" y="-20"/>
++    <vector name="20" x="105" y="30"/>
++    <vector name="21" x="116" y="-20"/>
++    <vector name="22" x="117" y="30"/>
++    <vector name="23" x="129" y="-20"/>
++    <vector name="24" x="131" y="30"/>
++    <vector name="25" x="135" y="-70"/>
++    <vector name="26" x="141" y="-20"/>
++    <vector name="27" x="144" y="30"/>
++    <vector name="28" x="146" y="-70"/>
++    <vector name="29" x="153" y="-20"/>
++    <vector name="30" x="158" y="-70"/>
++    <vector name="31" x="159" y="30"/>
++    <vector name="32" x="166" y="-20"/>
++    <vector name="33" x="172" y="-70"/>
++    <vector name="34" x="172" y="30"/>
++    <vector name="35" x="185" y="-70"/>
++    <vector name="36" x="185" y="30"/>
++    <vector name="37" x="198" y="30"/>
++    <vector name="38" x="200" y="-70"/>
++    <vector name="39" x="203" y="-20"/>
++    <vector name="40" x="210" y="30"/>
++    <vector name="41" x="213" y="-70"/>
++    <vector name="42" x="214" y="-20"/>
++    <vector name="43" x="222" y="30"/>
++    <vector name="44" x="226" y="-70"/>
++    <vector name="45" x="226" y="-20"/>
++    <vector name="46" x="235" y="30"/>
++    <vector name="47" x="239" y="-70"/>
++    <vector name="48" x="240" y="-20"/>
++    <vector name="49" x="251" y="-70"/>
++    <vector name="50" x="253" y="-20"/>
++    <vector name="51" x="263" y="-70"/>
++    <vector name="52" x="268" y="-20"/>
++    <vector name="53" x="270" y="30"/>
++    <vector name="54" x="276" y="-70"/>
++    <vector name="55" x="281" y="-20"/>
++    <vector name="56" x="281" y="30"/>
++    <vector name="57" x="293" y="30"/>
++    <vector name="58" x="294" y="-20"/>
++    <vector name="59" x="307" y="-20"/>
++    <vector name="60" x="307" y="30"/>
++    <vector name="61" x="312" y="-70"/>
++    <vector name="62" x="319" y="-20"/>
++    <vector name="63" x="320" y="30"/>
++    <vector name="64" x="323" y="-70"/>
++    <vector name="65" x="331" y="-20"/>
++    <vector name="66" x="335" y="-70"/>
++    <vector name="67" x="335" y="30"/>
++    <vector name="68" x="344" y="-20"/>
++    <vector name="69" x="348" y="30"/>
++    <vector name="70" x="349" y="-70"/>
++    <vector name="71" x="361" y="30"/>
++    <vector name="72" x="362" y="-70"/>
++    <vector name="73" x="374" y="30"/>
++    <vector name="74" x="377" y="-70"/>
++    <vector name="75" x="379" y="-20"/>
++    <vector name="76" x="386" y="30"/>
++    <vector name="77" x="390" y="-70"/>
++    <vector name="78" x="391" y="-20"/>
++    <vector name="79" x="398" y="30"/>
++    <vector name="80" x="403" y="-70"/>
++    <vector name="81" x="405" y="-20"/>
++    <vector name="82" x="411" y="30"/>
++    <vector name="83" x="416" y="-70"/>
++    <vector name="84" x="418" y="-20"/>
++    <vector name="85" x="428" y="-70"/>
++    <vector name="86" x="433" y="-20"/>
++    <vector name="87" x="439" y="30"/>
++    <vector name="88" x="440" y="-70"/>
++    <vector name="89" x="446" y="-20"/>
++    <vector name="90" x="452" y="30"/>
++    <vector name="91" x="453" y="-70"/>
++    <vector name="92" x="459" y="-20"/>
+     <vector name="93" x="467" y="30"/>
+-    <vector name="94" x="493" y="30"/>
+-    <vector name="95" x="439" y="30"/>
++    <vector name="94" x="480" y="30"/>
++    <vector name="95" x="493" y="30"/>
++  </imgdir>
++  <imgdir name="portal">
++    <imgdir name="0">
++      <int name="x" value="322"/>
++      <int name="y" value="-137"/>
++      <int name="pt" value="0"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value=""/>
++      <string name="pn" value="sp"/>
++    </imgdir>
++    <imgdir name="1">
++      <int name="x" value="432"/>
++      <int name="y" value="-135"/>
++      <int name="pt" value="0"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value=""/>
++      <string name="pn" value="sp"/>
++    </imgdir>
++    <imgdir name="2">
++      <int name="x" value="406"/>
++      <int name="y" value="304"/>
++      <int name="pt" value="1"/>
++      <int name="tm" value="999999999"/>
++      <string name="tn" value="N/A"/>
++      <string name="pn" value="we00"/>
++      <string name="script" value=""/>
++      <int name="delay" value="0"/>
++      <int name="hideTooltip" value="0"/>
++    </imgdir>
++  </imgdir>
++  <imgdir name="reactor">
++  </imgdir>
++  <imgdir name="back">
+   </imgdir>
+   <imgdir name="foothold">
+     <imgdir name="4">
+@@ -444,87 +428,91 @@
+           <int name="x2" value="-389"/>
+           <int name="y2" value="243"/>
+           <int name="prev" value="1"/>
+-          <int name="next" value="18"/>
++          <int name="next" value="4"/>
+         </imgdir>
+         <imgdir name="3">
++          <int name="x1" value="-389"/>
++          <int name="y1" value="-369"/>
++          <int name="x2" value="-389"/>
++          <int name="y2" value="243"/>
++          <int name="prev" value="0"/>
++          <int name="next" value="4"/>
++        </imgdir>
++        <imgdir name="4">
++          <int name="x1" value="-389"/>
++          <int name="y1" value="243"/>
++          <int name="x2" value="-293"/>
++          <int name="y2" value="243"/>
++          <int name="prev" value="3"/>
++          <int name="next" value="5"/>
++        </imgdir>
++        <imgdir name="5">
+           <int name="x1" value="-293"/>
+           <int name="y1" value="243"/>
+           <int name="x2" value="-293"/>
+           <int name="y2" value="262"/>
+-          <int name="prev" value="18"/>
+-          <int name="next" value="4"/>
++          <int name="prev" value="4"/>
++          <int name="next" value="6"/>
+         </imgdir>
+-        <imgdir name="4">
++        <imgdir name="6">
+           <int name="x1" value="-293"/>
+           <int name="y1" value="262"/>
+           <int name="x2" value="-270"/>
+           <int name="y2" value="262"/>
+-          <int name="prev" value="3"/>
+-          <int name="next" value="5"/>
++          <int name="prev" value="5"/>
++          <int name="next" value="7"/>
+         </imgdir>
+-        <imgdir name="5">
++        <imgdir name="7">
+           <int name="x1" value="-270"/>
+           <int name="y1" value="262"/>
+           <int name="x2" value="-270"/>
+           <int name="y2" value="282"/>
+-          <int name="prev" value="4"/>
+-          <int name="next" value="6"/>
++          <int name="prev" value="6"/>
++          <int name="next" value="8"/>
+         </imgdir>
+-        <imgdir name="6">
++        <imgdir name="8">
+           <int name="x1" value="-270"/>
+           <int name="y1" value="282"/>
+           <int name="x2" value="-245"/>
+           <int name="y2" value="282"/>
+-          <int name="prev" value="5"/>
+-          <int name="next" value="7"/>
++          <int name="prev" value="7"/>
++          <int name="next" value="9"/>
+         </imgdir>
+-        <imgdir name="7">
++        <imgdir name="9">
+           <int name="x1" value="-245"/>
+           <int name="y1" value="282"/>
+           <int name="x2" value="-245"/>
+           <int name="y2" value="305"/>
+-          <int name="prev" value="6"/>
+-          <int name="next" value="8"/>
++          <int name="prev" value="8"/>
++          <int name="next" value="10"/>
+         </imgdir>
+-        <imgdir name="8">
++        <imgdir name="10">
+           <int name="x1" value="-245"/>
+           <int name="y1" value="305"/>
+           <int name="x2" value="532"/>
+           <int name="y2" value="305"/>
+-          <int name="prev" value="7"/>
+-          <int name="next" value="9"/>
++          <int name="prev" value="9"/>
++          <int name="next" value="17"/>
+         </imgdir>
+-        <imgdir name="9">
+-          <int name="x1" value="532"/>
+-          <int name="y1" value="305"/>
+-          <int name="x2" value="533"/>
+-          <int name="y2" value="88"/>
+-          <int name="prev" value="8"/>
+-          <int name="next" value="0"/>
+-        </imgdir>
+-        <imgdir name="10">
++        <imgdir name="11">
+           <int name="x1" value="-160"/>
+           <int name="y1" value="-381"/>
+           <int name="x2" value="-160"/>
+           <int name="y2" value="85"/>
+           <int name="prev" value="0"/>
+-          <int name="next" value="11"/>
+-        </imgdir>
+-        <imgdir name="11">
+-          <int name="x1" value="-160"/>
+-          <int name="y1" value="85"/>
+-          <int name="x2" value="534"/>
+-          <int name="y2" value="85"/>
+-          <int name="prev" value="10"/>
+           <int name="next" value="12"/>
++          <int name="cantThrough" value="1"/>
++          <int name="forbidFallDown" value="1"/>
+         </imgdir>
+         <imgdir name="12">
+-          <int name="x1" value="534"/>
++          <int name="x1" value="-160"/>
+           <int name="y1" value="85"/>
+           <int name="x2" value="534"/>
+-          <int name="y2" value="-381"/>
++          <int name="y2" value="85"/>
+           <int name="prev" value="11"/>
+-          <int name="next" value="0"/>
++          <int name="next" value="18"/>
++          <int name="cantThrough" value="1"/>
++          <int name="forbidFallDown" value="1"/>
+         </imgdir>
+         <imgdir name="13">
+           <int name="x1" value="-110"/>
+@@ -559,62 +547,62 @@
+           <int name="next" value="0"/>
+         </imgdir>
+         <imgdir name="17">
+-          <int name="x1" value="-389"/>
+-          <int name="y1" value="-369"/>
+-          <int name="x2" value="-389"/>
+-          <int name="y2" value="243"/>
+-          <int name="prev" value="0"/>
+-          <int name="next" value="18"/>
++          <int name="x1" value="532"/>
++          <int name="y1" value="305"/>
++          <int name="x2" value="533"/>
++          <int name="y2" value="88"/>
++          <int name="prev" value="10"/>
++          <int name="next" value="0"/>
+         </imgdir>
+         <imgdir name="18">
+-          <int name="x1" value="-389"/>
+-          <int name="y1" value="243"/>
+-          <int name="x2" value="-293"/>
+-          <int name="y2" value="243"/>
+-          <int name="prev" value="17"/>
+-          <int name="next" value="3"/>
++          <int name="x1" value="534"/>
++          <int name="y1" value="85"/>
++          <int name="x2" value="534"/>
++          <int name="y2" value="-381"/>
++          <int name="prev" value="12"/>
++          <int name="next" value="0"/>
++          <int name="cantThrough" value="1"/>
++          <int name="forbidFallDown" value="1"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+   </imgdir>
+-  <imgdir name="ladderRope">
+-  </imgdir>
+-  <imgdir name="miniMap">
+-    <canvas name="canvas" width="98" height="62">
+-    </canvas>
+-    <int name="width" value="1574"/>
+-    <int name="height" value="1007"/>
+-    <int name="centerX" value="854"/>
+-    <int name="centerY" value="531"/>
+-    <int name="mag" value="4"/>
+-  </imgdir>
+-  <imgdir name="portal">
++  <imgdir name="life">
+     <imgdir name="0">
+-      <string name="pn" value="sp"/>
+-      <int name="pt" value="0"/>
+-      <int name="x" value="322"/>
+-      <int name="y" value="-137"/>
+-      <int name="tm" value="999999999"/>
+-      <string name="tn" value=""/>
++      <string name="id" value="9201007"/>
++      <int name="x" value="199"/>
++      <int name="y" value="299"/>
++      <int name="cy" value="305"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="149"/>
++      <int name="rx1" value="249"/>
++      <int name="f" value="0"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="10"/>
+     </imgdir>
+     <imgdir name="1">
+-      <string name="pn" value="sp"/>
+-      <int name="pt" value="0"/>
+-      <int name="x" value="432"/>
+-      <int name="y" value="-135"/>
+-      <int name="tm" value="999999999"/>
+-      <string name="tn" value=""/>
++      <string name="id" value="9201006"/>
++      <int name="x" value="258"/>
++      <int name="y" value="33"/>
++      <int name="cy" value="34"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="208"/>
++      <int name="rx1" value="308"/>
++      <int name="f" value="0"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="13"/>
+     </imgdir>
+     <imgdir name="2">
+-      <string name="pn" value="we00"/>
+-      <int name="pt" value="1"/>
+-      <int name="x" value="406"/>
+-      <int name="y" value="304"/>
+-      <int name="tm" value="999999999"/>
+-      <string name="tn" value="N/A"/>
+-      <string name="script" value=""/>
+-      <int name="hideTooltip" value="0"/>
+-      <int name="delay" value="0"/>
++      <string name="id" value="9201002"/>
++      <int name="x" value="-424"/>
++      <int name="y" value="238"/>
++      <int name="cy" value="243"/>
++      <int name="mobTime" value="0"/>
++      <int name="rx0" value="-474"/>
++      <int name="rx1" value="-374"/>
++      <int name="f" value="1"/>
++      <string name="type" value="n"/>
++      <int name="fh" value="2"/>
+     </imgdir>
+   </imgdir>
+ </imgdir>
+diff --git a/wz/Map.wz/Map/Map6/680000401.img.xml b/wz/Map.wz/Map/Map6/680000401.img.xml
+index 2944b9af1..5e078597a 100644
+--- a/wz/Map.wz/Map/Map6/680000401.img.xml
++++ b/wz/Map.wz/Map/Map6/680000401.img.xml
+@@ -54,7 +54,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="-2"/>
+       <int name="y" value="-76"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -62,7 +61,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="174"/>
+       <int name="y" value="-104"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -70,7 +68,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="-258"/>
+       <int name="y" value="35"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -78,7 +75,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="317"/>
+       <int name="y" value="75"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -86,7 +82,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="-13"/>
+       <int name="y" value="93"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -94,7 +89,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="-312"/>
+       <int name="y" value="156"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -102,7 +96,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="209"/>
+       <int name="y" value="142"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -110,7 +103,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="-160"/>
+       <int name="y" value="147"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -118,7 +110,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="75"/>
+       <int name="y" value="207"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -126,7 +117,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="-91"/>
+       <int name="y" value="207"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="0"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -134,7 +124,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="308"/>
+       <int name="y" value="205"/>
+-      <int name="reactorTime" value="0"/>
+       <int name="f" value="1"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -142,7 +131,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="206"/>
+       <int name="y" value="83"/>
+-      <int name="reactorTime" value="0"/>
+       <int name="f" value="1"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -150,7 +138,6 @@
+       <string name="id" value="6802000"/>
+       <int name="x" value="-157"/>
+       <int name="y" value="26"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="1"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -158,7 +145,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="-73"/>
+       <int name="y" value="68"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="1"/>
+       <string name="name" value=""/>
+     </imgdir>
+@@ -166,7 +152,6 @@
+       <string name="id" value="6802001"/>
+       <int name="x" value="183"/>
+       <int name="y" value="203"/>
+-      <int name="reactorTime" value="1"/>
+       <int name="f" value="1"/>
+       <string name="name" value=""/>
+     </imgdir>

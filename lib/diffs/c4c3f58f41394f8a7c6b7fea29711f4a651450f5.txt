@@ -1,0 +1,365 @@
+diff --git a/README.md b/README.md
+index fb5801b24..96ad54208 100644
+--- a/README.md
++++ b/README.md
+@@ -111,7 +111,9 @@ The client's set-up is quite straightforward:
+ 1. From "ManagerMsv83.exe", install MapleStory on your folder of preference (e.g. "C:\Nexon\MapleStory") and follow their instructions.
+ 2. Once done, erase these files: "HShield" (folder), "ASPLauncher.exe", "MapleStory.exe" and "patcher.exe".
+ 3. Extract into the client folder the "localhost.exe" from the provided link.
+-4. Overwrite the original WZ files with the ones provided from "client_wz" folder on the Google Drive.
++4. Overwrite the original WZ files with the ones provided from either one of those folders on the Google Drive:
++	- "rev???_wz" (last published RELEASE, source update of same number).
++	- "current_wz" (latest source update).
+ 
+ If you are not using "localhost" as the target IP on the server's config file, you will need to HEX-EDIT "localhost.exe" to fetch your IP. Track down all IP locations by searching for "Text String" "127.0.0.1", and applying the changes wherever it fits.
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 03f01ad35..c14670866 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -751,4 +751,8 @@ Adicionado Ereve na lista de plataformas de Orbis.
+ Corrigido AP reset modificando stats de forma errônea.
+ 
+ 03 Janeiro 2018,
+-Corrigido item megafone permitindo o display de equipamentos não-comercializáveis, mesmo marcados como Untradeable.
+\ No newline at end of file
++Corrigido item megafone permitindo o display de equipamentos não-comercializáveis, mesmo marcados como Untradeable.
++
++10 - 11 Janeiro 2018,
++Incrementado portal de MK Castle agora permitindo uso dos 2 itens possíveis.
++Resolvido alguns logs de erros disparados por mapas nulos no código-fonte.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 38574f5d9..3287222d2 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -2,14 +2,6 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="2"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/constants/skills/Legend.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/server/MapleInventoryManipulator.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/net/server/channel/handlers/MessengerHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/net/server/channel/handlers/UseCashItemHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/client/SkillFactory.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/client/MapleCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/src/server/MapleItemInformationProvider.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>
+diff --git a/scripts/portal/enterFirstDH.js b/scripts/portal/enterFirstDH.js
+index eae678d95..7d5225f30 100644
+--- a/scripts/portal/enterFirstDH.js
++++ b/scripts/portal/enterFirstDH.js
+@@ -11,8 +11,7 @@ function enter(pi) {
+     if (map > 0) {
+ 	if (pi.getPlayerCount(map) == 0) {
+ 	    var mapp = pi.getMap(map);
+-	    mapp.resetFully();
+-	    mapp.respawn(true);
++	    mapp.resetPQ();
+             
+             pi.playPortalSound();
+ 	    pi.warp(map, 0);
+diff --git a/scripts/portal/obstacle.js b/scripts/portal/obstacle.js
+index 133c27ce8..59b5abfd2 100644
+--- a/scripts/portal/obstacle.js
++++ b/scripts/portal/obstacle.js
+@@ -1,18 +1,26 @@
+ /*
+- 	Author: Kevin
++ 	Author: Ronan
+  	Map: Mushroom Castle - Deep Inside Mushroom Forest (106020300)
+  	Right Portal
+  */
+  
+  function enter(pi){
+- 	if (pi.isQuestCompleted(2316)){
+- 		if (pi.hasItem(2430014)){
++ 	if (pi.isQuestCompleted(2316)) {
++ 		if (pi.hasItem(2430014)) {
+  			pi.gainItem(2430014, -1 * pi.getPlayer().getItemQuantity(2430014, false));
++                        pi.message("You have used the Killer Mushroom Spore to open the way.");
+  		}
+  
+  		pi.warp(106020400, 2);
+  		return true;
+- 	}
+- 
++ 	} else if (pi.hasItem(2430015)) {
++                pi.gainItem(2430015, -1 * pi.getPlayer().getItemQuantity(2430015, false));
++                pi.message("You have used the Thorn Remover to clean the way.");
++                
++                pi.warp(106020400, 2);
++                return true;
++        }
++
++        pi.message("The overgrown vines is blocking the way.");
+  	return false;
+  } 
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 42d4ed28d..aefef35aa 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19958,7 +19958,11 @@ USE `heavenms`;
+ (9300154, 4031781, 1, 1, 0, 400000),
+ (9300154, 4031782, 1, 1, 0, 400000),
+ (9300154, 4031783, 1, 1, 0, 400000),
+-(9300154, 4031784, 1, 1, 0, 400000);
++(9300154, 4031784, 1, 1, 0, 400000),
++(1110100, 4032317, 1, 1, 21717, 20000),
++(1110130, 4032317, 1, 1, 21717, 20000),
++(1110100, 4032318, 1, 1, 21718, 20000),
++(1110130, 4032318, 1, 1, 21718, 20000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index e6c2663de..33278fa63 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -3858,12 +3858,13 @@ public int getLuk() {
+     }
+ 
+     public int getFh() {
+-		Point pos = this.getPosition();
+-		pos.y -= 6;
+-        if (getMap().getFootholds().findBelow(pos) == null) {
++        Point pos = this.getPosition();
++        pos.y -= 6;
++        
++        if (map.getFootholds().findBelow(pos) == null) {
+             return 0;
+         } else {
+-            return getMap().getFootholds().findBelow(pos).getY1();
++            return map.getFootholds().findBelow(pos).getY1();
+         }
+     }
+ 
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 8b4f02aae..a204cf795 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -240,16 +240,16 @@ public void run() {
+                     if(attack.skill == Aran.COMBO_SMASH || attack.skill == Aran.BODY_PRESSURE)
+                         distanceToDetect += 40000;
+                     
+-                    if(attack.skill == Bishop.GENESIS || attack.skill == ILArchMage.BLIZZARD || attack.skill == FPArchMage.METEOR_SHOWER)
++                    else if(attack.skill == Bishop.GENESIS || attack.skill == ILArchMage.BLIZZARD || attack.skill == FPArchMage.METEOR_SHOWER)
+                         distanceToDetect += 275000;
+                     
+-                    if(attack.skill == Hero.BRANDISH || attack.skill == DragonKnight.SPEAR_CRUSHER || attack.skill == DragonKnight.POLE_ARM_CRUSHER);
++                    else if(attack.skill == Hero.BRANDISH || attack.skill == DragonKnight.SPEAR_CRUSHER || attack.skill == DragonKnight.POLE_ARM_CRUSHER)
+                         distanceToDetect += 40000;
+                     
+-                    if(attack.skill == DragonKnight.DRAGON_ROAR || attack.skill == SuperGM.SUPER_DRAGON_ROAR)
++                    else if(attack.skill == DragonKnight.DRAGON_ROAR || attack.skill == SuperGM.SUPER_DRAGON_ROAR)
+                         distanceToDetect += 250000;
+                     
+-                    if(attack.skill == Shadower.BOOMERANG_STEP)
++                    else if(attack.skill == Shadower.BOOMERANG_STEP)
+                         distanceToDetect += 60000;
+                     
+                     if(distance > distanceToDetect) {
+diff --git a/src/net/server/channel/handlers/AutoAggroHandler.java b/src/net/server/channel/handlers/AutoAggroHandler.java
+index 19d50c193..085fac30d 100644
+--- a/src/net/server/channel/handlers/AutoAggroHandler.java
++++ b/src/net/server/channel/handlers/AutoAggroHandler.java
+@@ -24,30 +24,34 @@
+ import client.MapleClient;
+ import net.AbstractMaplePacketHandler;
+ import server.life.MapleMonster;
++import server.maps.MapleMap;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class AutoAggroHandler extends AbstractMaplePacketHandler {
+ 
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-        int oid = slea.readInt();
+-        MapleMonster monster = c.getPlayer().getMap().getMonsterByOid(oid);
+-        
+         if(c.getPlayer().isHidden())
+             return; // Don't auto aggro GM's in hide...
+         
+-        if (monster != null && monster.getController() != null) {
+-            if (!monster.isControllerHasAggro()) {
+-                if (c.getPlayer().getMap().getCharacterById(monster.getController().getId()) == null) {
++        MapleMap map = c.getPlayer().getMap();
++        int oid = slea.readInt();
++        
++        try {
++            MapleMonster monster = map.getMonsterByOid(oid);
++            if (monster != null && monster.getController() != null) {
++                if (!monster.isControllerHasAggro()) {
++                    if (map.getCharacterById(monster.getController().getId()) == null) {
++                        monster.switchController(c.getPlayer(), true);
++                    } else {
++                        monster.switchController(monster.getController(), true);
++                    }
++                } else if (map.getCharacterById(monster.getController().getId()) == null) {
+                     monster.switchController(c.getPlayer(), true);
+-                } else {
+-                    monster.switchController(monster.getController(), true);
+                 }
+-            } else if (c.getPlayer().getMap().getCharacterById(monster.getController().getId()) == null) {
++            } else if (monster != null && monster.getController() == null) {
+                 monster.switchController(c.getPlayer(), true);
+             }
+-        } else if (monster != null && monster.getController() == null) {
+-            monster.switchController(c.getPlayer(), true);
+-        }
++        } catch(NullPointerException npe) {}
+     }
+ }
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index e60825105..c251de036 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -29,6 +29,7 @@
+ import server.life.MapleMonster;
+ import server.life.MobSkill;
+ import server.life.MobSkillFactory;
++import server.maps.MapleMap;
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
+ import server.movement.LifeMovementFragment;
+@@ -40,72 +41,76 @@
+ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
++        MapleMap map = c.getPlayer().getMap();
+         List<MapleCharacter> banishPlayers = new ArrayList<>();
+         
+         int objectid = slea.readInt();
+         short moveid = slea.readShort();
+-        MapleMapObject mmo = c.getPlayer().getMap().getMapObject(objectid);
+-        if (mmo == null || mmo.getType() != MapleMapObjectType.MONSTER) {
+-            return;
+-        }
+-        MapleMonster monster = (MapleMonster) mmo;
+-        List<LifeMovementFragment> res;
+-        byte skillByte = slea.readByte();
+-        byte skill = slea.readByte();
+-        int skill_1 = slea.readByte() & 0xFF;
+-        byte skill_2 = slea.readByte();
+-        byte skill_3 = slea.readByte();
+-        byte skill_4 = slea.readByte();
+-        slea.read(8);
+-        MobSkill toUse = null;
+-        if (skillByte == 1 && monster.getNoSkills() > 0) {
+-            int random = Randomizer.nextInt(monster.getNoSkills());
+-            Pair<Integer, Integer> skillToUse = monster.getSkills().get(random);
+-            toUse = MobSkillFactory.getMobSkill(skillToUse.getLeft(), skillToUse.getRight());
+-            int percHpLeft = (monster.getHp() / monster.getMaxHp()) * 100;
+-            if (toUse.getHP() < percHpLeft || !monster.canUseSkill(toUse)) {
+-                toUse = null;
++        
++        try {
++            MapleMapObject mmo = map.getMapObject(objectid);
++            if (mmo == null || mmo.getType() != MapleMapObjectType.MONSTER) {
++                return;
++            }
++            MapleMonster monster = (MapleMonster) mmo;
++            List<LifeMovementFragment> res;
++            byte skillByte = slea.readByte();
++            byte skill = slea.readByte();
++            int skill_1 = slea.readByte() & 0xFF;
++            byte skill_2 = slea.readByte();
++            byte skill_3 = slea.readByte();
++            byte skill_4 = slea.readByte();
++            slea.read(8);
++            MobSkill toUse = null;
++            if (skillByte == 1 && monster.getNoSkills() > 0) {
++                int random = Randomizer.nextInt(monster.getNoSkills());
++                Pair<Integer, Integer> skillToUse = monster.getSkills().get(random);
++                toUse = MobSkillFactory.getMobSkill(skillToUse.getLeft(), skillToUse.getRight());
++                int percHpLeft = (monster.getHp() / monster.getMaxHp()) * 100;
++                if (toUse.getHP() < percHpLeft || !monster.canUseSkill(toUse)) {
++                    toUse = null;
++                }
+             }
+-        }
+-        if ((skill_1 >= 100 && skill_1 <= 200) && monster.hasSkill(skill_1, skill_2)) {
+-            MobSkill skillData = MobSkillFactory.getMobSkill(skill_1, skill_2);
+-            if (skillData != null && monster.canUseSkill(skillData)) {
+-                skillData.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++            if ((skill_1 >= 100 && skill_1 <= 200) && monster.hasSkill(skill_1, skill_2)) {
++                MobSkill skillData = MobSkillFactory.getMobSkill(skill_1, skill_2);
++                if (skillData != null && monster.canUseSkill(skillData)) {
++                    skillData.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++                }
+             }
+-        }
+-        slea.readByte();
+-        slea.readInt(); // whatever
+-        short start_x = slea.readShort(); // hmm.. startpos?
+-        short start_y = slea.readShort(); // hmm...
+-        Point startPos = new Point(start_x, start_y);
+-        res = parseMovement(slea);
+-        if (monster.getController() != c.getPlayer()) {
+-            if (monster.isAttackedBy(c.getPlayer())) {// aggro and controller change
+-                monster.switchController(c.getPlayer(), true);
++            slea.readByte();
++            slea.readInt(); // whatever
++            short start_x = slea.readShort(); // hmm.. startpos?
++            short start_y = slea.readShort(); // hmm...
++            Point startPos = new Point(start_x, start_y);
++            res = parseMovement(slea);
++            if (monster.getController() != c.getPlayer()) {
++                if (monster.isAttackedBy(c.getPlayer())) {// aggro and controller change
++                    monster.switchController(c.getPlayer(), true);
++                } else {
++                    return;
++                }
++            } else if (skill == -1 && monster.isControllerKnowsAboutAggro() && !monster.isMobile() && !monster.isFirstAttack()) {
++                monster.setControllerHasAggro(false);
++                monster.setControllerKnowsAboutAggro(false);
++            }
++            boolean aggro = monster.isControllerHasAggro();
++            if (toUse != null) {
++                    c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, monster.getMp(), aggro, toUse.getSkillId(), toUse.getSkillLevel()));
+             } else {
+-                return;
++                c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, monster.getMp(), aggro));
+             }
+-        } else if (skill == -1 && monster.isControllerKnowsAboutAggro() && !monster.isMobile() && !monster.isFirstAttack()) {
+-            monster.setControllerHasAggro(false);
+-            monster.setControllerKnowsAboutAggro(false);
+-        }
+-        boolean aggro = monster.isControllerHasAggro();
+-        if (toUse != null) {
+-        	c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, monster.getMp(), aggro, toUse.getSkillId(), toUse.getSkillLevel()));
+-        } else {
+-            c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, monster.getMp(), aggro));
+-        }
+-        if (aggro) {
+-            monster.setControllerKnowsAboutAggro(true);
+-        }
+-        if (res != null) {
+-            c.getPlayer().getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.moveMonster(skillByte, skill, skill_1, skill_2, skill_3, skill_4, objectid, startPos, res), monster.getPosition());
+-            updatePosition(res, monster, -1);
+-            c.getPlayer().getMap().moveMonster(monster, monster.getPosition());
+-        }
+-        
+-        for (MapleCharacter chr : banishPlayers) {
+-            chr.changeMapBanish(monster.getBanish().getMap(), monster.getBanish().getPortal(), monster.getBanish().getMsg());
+-        }
++            if (aggro) {
++                monster.setControllerKnowsAboutAggro(true);
++            }
++            if (res != null) {
++                map.broadcastMessage(c.getPlayer(), MaplePacketCreator.moveMonster(skillByte, skill, skill_1, skill_2, skill_3, skill_4, objectid, startPos, res), monster.getPosition());
++                updatePosition(res, monster, -1);
++                map.moveMonster(monster, monster.getPosition());
++            }
++
++            for (MapleCharacter chr : banishPlayers) {
++                chr.changeMapBanish(monster.getBanish().getMap(), monster.getBanish().getPortal(), monster.getBanish().getMsg());
++            }
++        } catch(NullPointerException npe) {}
+     }
+ }

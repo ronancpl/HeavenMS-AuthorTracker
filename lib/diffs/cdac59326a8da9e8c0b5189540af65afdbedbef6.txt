@@ -1,0 +1,1369 @@
+diff --git a/README.md b/README.md
+index d42d808d5..a9ac5aba6 100644
+--- a/README.md
++++ b/README.md
+@@ -67,9 +67,11 @@ If you REALLY liked what you have seen on the project, please feel free to donat
+ 
+ Paypal: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=3K8KVTWRLFBQ4
+ 
+-### Note about public server
++### Disclaimer
+ 
+-HeavenMS staff has __no current intention__ to publicly open a server with this source, if that ever comes to happen this note will be lifted. __Don't be scammed!__
++* HeavenMS staff has __no current intention__ to publicly open a server with this source, if that ever comes to happen this note will be lifted. __Don't be scammed!__
++
++* This server source is __NOT intended to be stable__ as is. Proper deadlock review and other maintenance checks are needed in order to make it stable for production use.
+ 
+ ---
+ ### Preparing the ambient 
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 88cb30718..5ad8868ef 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -115,6 +115,7 @@ Player potentials:
+ * All Equipment levels up.
+ * Player level rates.
+ * Gain fame by quests.
++* Pet evolutions functional (not GMS-like).
+ 
+ Server potentials:
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index c0ed89412..041c1ddaf 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1000,7 +1000,7 @@ Corrigido marriage ring sendo destruído indevidamente ao usar certos pergaminho
+ Edição de localhost: removido bloqueio de uso de AP para jogadores novatos.
+ Adicionado server flag que permite mecânica de statup para jogadores novatos com level menor que 11. Necessário uso do localhost editado.
+ 
+-01 - 04 Maio 2018,
++01 - 04 Junho 2018,
+ Corrigido NPC de recrutamento para CafePQ não atuando corretamente com a flag que permite estilo do old-GMS PQ NPCs.
+ Corrigido mensagem de anúncio de Strategy Time para todas as guilds que estiverem se registrando quando a fila está vazia (mesmo que outra guild já esteja nessa etapa).
+ Edição de localhost: removido bloqueio de uso de gemas para WATK/MATK em equipamentos que não são weapons.
+@@ -1010,4 +1010,13 @@ Retirado aspecto aleatório de ganho de closeness em pets ao usar o Pet Food, ad
+ Corrigido script da Arwen não retirando itens ao gerar certos itens.
+ Corrigido script de viagem para Florina levando jogadores a Lith Harbor mesmo quando entrando por outras regiões.
+ Corrigido Stance, Berserk, Ninja Storm, Concentrate, Mage skills and other 4th job skills questlines.
+-Novo release: Light.
+\ No newline at end of file
++Novo release: Light.
++
++05 - 06 Junho 2018,
++Modificado storage para pegar taxas de transação de itens do WZ.
++Corrigido buff system retirando certos stats incoerentemente ao usar itens que atuam em diversos stats.
++Corrigido hired merchants agora removendo visitantes e dono quando expira.
++Item maker agora puxa itemid de catalisadores do WZ.
++Corrigido sistema de evolução de pets passando valor de expiração com overflow pro novo pet, que resultava em pet inativo.
++Melhorado proteção contra acesso concorrente em mais algumas seções de código de player shop e hired merchants.
++Adicionado comportamento de substituição de itens ao expirar, cortesia do GabrielSin.
+\ No newline at end of file
+diff --git a/scripts/event/WeddingCathedral.js b/scripts/event/WeddingCathedral.js
+index b641984ad..cd7b87185 100644
+--- a/scripts/event/WeddingCathedral.js
++++ b/scripts/event/WeddingCathedral.js
+@@ -1,3 +1,23 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
+ /**
+  * @author: Ronan
+  * @event: Cathedral Wedding
+diff --git a/scripts/event/WeddingChapel.js b/scripts/event/WeddingChapel.js
+index e5f41a056..fbf147bad 100644
+--- a/scripts/event/WeddingChapel.js
++++ b/scripts/event/WeddingChapel.js
+@@ -1,3 +1,23 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
+ /**
+  * @author: Ronan
+  * @event: Chapel Wedding
+diff --git a/scripts/npc/1032102.js b/scripts/npc/1032102.js
+index 3b742188e..fc5020fa6 100644
+--- a/scripts/npc/1032102.js
++++ b/scripts/npc/1032102.js
+@@ -100,7 +100,7 @@ function action(mode, type, selection) {
+ 				cm.gainItem(5380000, -1);
+ 				cm.evolvePet(i, after);
+                                 
+-				cm.sendOk("Your dragon has now evolved!! It used to be a #i" + id + "##t" + id + "#, and now it's a #i" + after + "##t" + after + "#!");
++				cm.sendOk("Your dragon has now evolved!! It used to be a #i" + id + "# #t" + id + "#, and now it's a #i" + after + "# #t" + after + "#!");
+ 				cm.dispose();
+ 			}
+ 		} else if (status == 2) {
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index 5accc4c84..5f21a7940 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -39,7 +39,7 @@ function addFeature(feature) {
+ }
+ 
+ function writeFeatureTab_PQs() {
+-        addFeature("HPQ/KPQ/LPQ/LMPQ/OPQ/EllinPQ/PiratePQ/AmoriaPQ.");
++        addFeature("HPQ/KPQ/LPQ/LMPQ/OPQ/APQ/EllinPQ/PiratePQ.");
+         addFeature("MagatiaPQ/HorntailPQ/TreasurePQ/ElnathPQ.");
+         addFeature("CWKPQ as Expedition-based event.");
+         addFeature("Scarga/Horntail/Showa/Balrog/Zakum/Pinkbean.");
+@@ -75,6 +75,7 @@ function writeFeatureTab_PlayerSocialNetwork() {
+         addFeature("Proper item pickup cooldown on non-owned items.");
+         addFeature("Improved ranking system, with daily movement.");
+         addFeature("Automated support for Player NPCs and Hall of Fame.");
++        addFeature("Engagement & Wedding system.");
+ }
+ 
+ function writeFeatureTab_CashItems() {
+@@ -127,6 +128,7 @@ function writeFeatureTab_Playerpotentials() {
+         addFeature("All Equipment levels up.");
+         addFeature("Player level rates.");
+         addFeature("Gain fame by quests.");
++        addFeature("Pet evolutions functional (not GMS-like).");
+ }
+ 
+ function writeFeatureTab_Serverpotentials() {
+@@ -165,7 +167,7 @@ function writeFeatureTab_Localhostedits() {
+         addFeature("Removed party blocks for novices under level 10.");
+         addFeature("Set a much more higher cap for SPEED.");
+         addFeature("Removed AP usage block for novices.");
+-        addFeature("Removed attack gem block on defensiver gear w/ Maker.");
++        addFeature("Removed attack gem block on non-weapons w/ Maker.");
+         addFeature("Removed AP excess popup - thanks kevintjuh93!");
+         addFeature("Removed 'GMs can't attack' - thanks kevintjuh93!");
+         addFeature("Removed 'Gained a level!' - thanks PrinceReborn!");
+diff --git a/scripts/quest/4659.js b/scripts/quest/4659.js
+index 3a9f87d9d..b2d3bb6c2 100644
+--- a/scripts/quest/4659.js
++++ b/scripts/quest/4659.js
+@@ -72,6 +72,12 @@ function end(mode, type, selection) {
+             }
+             
+             var closeness = pet.getCloseness();
++            if(closeness < 1642) {
++                qm.sendOk("It looks like your pet is not grown enough to be evolved yet. Train it a bit more, util it reaches #blevel 15#k.");
++                qm.dispose();
++                return;
++            }
++            
+             var level = pet.getLevel();
+             var fullness = pet.getFullness();
+             var name = pet.getName();
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 3479c2e19..226f3f70c 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2558,10 +2558,28 @@ public void run() {
+                                 }
+                             }
+                         }
+-                        for (Item item : toberemove) {
+-                            MapleInventoryManipulator.removeFromSlot(client, inv.getType(), item.getPosition(), item.getQuantity(), true);
++                        
++                        if(!toberemove.isEmpty()) {
++                            for (Item item : toberemove) {
++                                MapleInventoryManipulator.removeFromSlot(client, inv.getType(), item.getPosition(), item.getQuantity(), true);
++                            }
++
++                            MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                            for (Item item : toberemove) {
++                                List<Integer> toadd = new ArrayList<>();
++                                Pair<Integer, String> replace = ii.getReplaceOnExpire(item.getItemId());
++                                if (replace.left > 0) {
++                                    toadd.add(replace.left);
++                                    if (replace.right != null)
++                                        dropMessage(replace.right);
++                                }
++                                for (Integer itemid : toadd) {
++                                    MapleInventoryManipulator.addById(client, itemid, (short) 1);
++                                }
++                            }
++
++                            toberemove.clear();
+                         }
+-                        toberemove.clear();
+                         
+                         if(deletedCoupon) {
+                             updateCouponRates();
+@@ -2911,11 +2929,10 @@ public boolean hasBuffFromSourceid(int sourceid) {
+         List<Pair<MapleBuffStat, Integer>> ret = new ArrayList<>();
+         
+         for(Entry<MapleBuffStat, MapleBuffStatValueHolder> bel : buffEffects.get(sourceid).entrySet()) {
+-            Integer bsrcid = bel.getValue().effect.getBuffSourceId();
+             MapleBuffStat mbs = bel.getKey();
+-            
+             MapleBuffStatValueHolder mbsvh = effects.get(bel.getKey());
+-            if(mbsvh != null && mbsvh.effect.getBuffSourceId() == bsrcid) {
++            
++            if(mbsvh != null) {
+                 ret.add(new Pair<>(mbs, mbsvh.value));
+             } else {
+                 ret.add(new Pair<>(mbs, 0));
+@@ -2982,15 +2999,18 @@ private void dropWorstEffectFromItemEffectHolder(MapleBuffStat mbs) {
+     }
+     
+     private MapleBuffStatValueHolder fetchBestEffectFromItemEffectHolder(MapleBuffStat mbs) {
+-        Integer max = Integer.MIN_VALUE;
++        Pair<Integer, Integer> max = new Pair<>(Integer.MIN_VALUE, 0);
+         MapleBuffStatValueHolder mbsvh = null;
+         for(Entry<Integer, Map<MapleBuffStat, MapleBuffStatValueHolder>> bpl: buffEffects.entrySet()) {
+             MapleBuffStatValueHolder mbsvhi = bpl.getValue().get(mbs);
+             if(mbsvhi != null) {
+-                if(mbsvhi.value > max) {
+-                    max = mbsvhi.value;
++                if(mbsvhi.value > max.left) {
++                    max = new Pair<>(mbsvhi.value, mbsvhi.effect.getStatups().size());
++                    mbsvh = mbsvhi;
++                } else if(mbsvhi.value == max.left && mbsvhi.effect.getStatups().size() > max.right) {
++                    max = new Pair<>(mbsvhi.value, mbsvhi.effect.getStatups().size());
+                     mbsvh = mbsvhi;
+-                }    
++                }
+             }
+         }
+         
+@@ -3021,6 +3041,11 @@ private void debugListAllBuffs() {
+                 System.out.println();
+             }
+             System.out.println("-------------------");
++            
++            System.out.println("IN ACTION:");
++            for(Entry<MapleBuffStat, MapleBuffStatValueHolder> bpl : effects.entrySet()) {
++                System.out.println(bpl.getKey().name() + " -> " + MapleItemInformationProvider.getInstance().getName(bpl.getValue().effect.getSourceId()));
++            }
+         } finally {
+             chrLock.unlock();
+             effLock.unlock();
+@@ -3211,16 +3236,22 @@ private void updateEffects(Set<MapleBuffStat> removedStats) {
+             }
+             
+             Map<Integer, Pair<MapleStatEffect, Long>> bestEffects = new LinkedHashMap<>();
++            Set<MapleBuffStat> retrievedStats = new LinkedHashSet<>();
+             for(Entry<MapleBuffStat, Pair<Integer, Integer>> lmsee: maxStatups.entrySet()) {
++                if(isSingletonStatup(lmsee.getKey())) continue;
++                
+                 Integer srcid = lmsee.getValue().getLeft();
+                 if(!bestEffects.containsKey(srcid)) {
+-                    bestEffects.put(srcid, retrievedEffects.get(srcid));
++                    Pair<MapleStatEffect, Long> msel = retrievedEffects.get(srcid);
++                    
++                    bestEffects.put(srcid, msel);
++                    for(Pair<MapleBuffStat, Integer> mbsi : msel.getLeft().getStatups()) {
++                        retrievedStats.add(mbsi.getLeft());
++                    }
+                 }
+             }
+             
+-            for(Entry<Integer, Pair<MapleStatEffect, Long>> lmse: bestEffects.entrySet()) {
+-                lmse.getValue().getLeft().updateBuffEffect(this, getActiveStatupsFromSourceid(lmse.getKey()), lmse.getValue().getRight());
+-            }
++            propagateBuffEffectUpdates(bestEffects, retrievedStats);
+         } finally {
+             chrLock.unlock();
+         }
+@@ -3437,6 +3468,103 @@ public void cancelBuffStats(MapleBuffStat stat) {
+         return extractedStatBuffs;
+     }
+     
++    private void propagateBuffEffectUpdates(Map<Integer, Pair<MapleStatEffect, Long>> retrievedEffects, Set<MapleBuffStat> retrievedStats) {
++        if(retrievedStats.isEmpty()) return;
++        
++        Map<MapleBuffStat, Pair<Integer, MapleStatEffect>> maxBuffValue = new LinkedHashMap<>();
++        for(MapleBuffStat mbs : retrievedStats) {
++            MapleBuffStatValueHolder mbsvh = effects.get(mbs);
++            if(mbsvh != null) {
++                retrievedEffects.put(mbsvh.effect.getBuffSourceId(), new Pair<>(mbsvh.effect, mbsvh.startTime));
++            }
++            
++            maxBuffValue.put(mbs, new Pair<>(Integer.MIN_VALUE, (MapleStatEffect) null));
++        }
++        
++        Map<MapleStatEffect, Pair<Integer, Integer>> updateEffects = new LinkedHashMap<>();
++        
++        List<MapleStatEffect> recalcMseList = new LinkedList<>();
++        for(Entry<Integer, Pair<MapleStatEffect, Long>> re : retrievedEffects.entrySet()) {
++            recalcMseList.add(re.getValue().getLeft());
++        }
++        
++        boolean mageJob = this.getJobStyle() == MapleJob.MAGICIAN;
++        do {
++            List<MapleStatEffect> mseList = recalcMseList;
++            recalcMseList = new LinkedList<>();
++            
++            for(MapleStatEffect mse : mseList) {
++                int mseAmount = 0;
++                int maxEffectiveStatup = Integer.MIN_VALUE;
++                for(Pair<MapleBuffStat, Integer> st : mse.getStatups()) {
++                    MapleBuffStat mbs = st.getLeft();
++                    
++                    boolean relevantStatup = true;
++                    if(mbs == MapleBuffStat.WATK) {  // not relevant for mages
++                        if(mageJob) relevantStatup = false;
++                    } else if(mbs == MapleBuffStat.MATK) { // not relevant for non-mages
++                        if(!mageJob) relevantStatup = false;
++                    }
++                    
++                    Pair<Integer, MapleStatEffect> mbv = maxBuffValue.get(mbs);
++                    if(mbv == null) {
++                        continue;
++                    }
++                    
++                    if(mbv.getLeft() < st.getRight()) {
++                        MapleStatEffect msbe = mbv.getRight();
++                        if(msbe != null) {
++                            recalcMseList.add(msbe);
++                        }
++                        
++                        maxBuffValue.put(mbs, new Pair<>(st.getRight(), mse));
++                        
++                        if(relevantStatup) {
++                            if(maxEffectiveStatup < st.getRight()) {
++                                maxEffectiveStatup = st.getRight();
++                            }
++                        }
++                    }
++                    
++                    if(relevantStatup) {
++                        mseAmount += st.getRight();
++                    }
++                }
++                
++                updateEffects.put(mse, new Pair<>(maxEffectiveStatup, mseAmount));
++            }
++        } while(!recalcMseList.isEmpty());
++        
++        List<Pair<MapleStatEffect, Pair<Integer, Integer>>> updateEffectsList = new ArrayList<>();
++        for(Entry<MapleStatEffect, Pair<Integer, Integer>> ue : updateEffects.entrySet()) {
++            updateEffectsList.add(new Pair<>(ue.getKey(), ue.getValue()));
++        }
++        
++        Collections.sort(updateEffectsList, new Comparator<Pair<MapleStatEffect, Pair<Integer, Integer>>>()
++            {
++                @Override
++                public int compare( Pair<MapleStatEffect, Pair<Integer, Integer>> o1, Pair<MapleStatEffect, Pair<Integer, Integer>> o2 )
++                {
++                    if(o1.getRight().getLeft().equals(o2.getRight().getLeft())) {
++                        return o1.getRight().getRight().compareTo(o2.getRight().getRight());
++                    } else {
++                        return o1.getRight().getLeft().compareTo(o2.getRight().getLeft());
++                    }
++                }
++            });
++        
++        List<Pair<Integer, Pair<MapleStatEffect, Long>>> toUpdateEffects = new LinkedList<>();
++        for(Pair<MapleStatEffect, Pair<Integer, Integer>> msep : updateEffectsList) {
++            MapleStatEffect mse = msep.getLeft();
++            toUpdateEffects.add(new Pair<>(mse.getBuffSourceId(), retrievedEffects.get(mse.getBuffSourceId())));
++        }
++        
++        for(Pair<Integer, Pair<MapleStatEffect, Long>> lmse: toUpdateEffects) {
++            Pair<MapleStatEffect, Long> msel = lmse.getRight();
++            msel.getLeft().updateBuffEffect(this, getActiveStatupsFromSourceid(lmse.getLeft()), msel.getRight());
++        }
++    }
++    
+     private static MapleBuffStat getSingletonStatupFromEffect(MapleStatEffect mse) {
+         for(Pair<MapleBuffStat, Integer> mbs : mse.getStatups()) {
+             if(isSingletonStatup(mbs.getLeft())) {
+@@ -3583,13 +3711,21 @@ public void run() {
+             if(ServerConstants.USE_BUFF_MOST_SIGNIFICANT) {
+                 toDeploy = new LinkedHashMap<>();
+                 Map<Integer, Pair<MapleStatEffect, Long>> retrievedEffects = new LinkedHashMap<>();
++                Set<MapleBuffStat> retrievedStats = new LinkedHashSet<>();
+                 
+                 for (Entry<MapleBuffStat, MapleBuffStatValueHolder> statup : appliedStatups.entrySet()) {
+                     MapleBuffStatValueHolder mbsvh = effects.get(statup.getKey());
+-                    if(mbsvh == null || mbsvh.value <= statup.getValue().value) {
+-                        toDeploy.put(statup.getKey(), statup.getValue());
++                    MapleBuffStatValueHolder statMbsvh = statup.getValue();
++                    
++                    if(mbsvh == null || mbsvh.value < statMbsvh.value || (mbsvh.value == statMbsvh.value && mbsvh.effect.getStatups().size() < statMbsvh.effect.getStatups().size())) {
++                        toDeploy.put(statup.getKey(), statMbsvh);
+                     } else {
+-                        retrievedEffects.put(mbsvh.effect.getBuffSourceId(), new Pair<>(mbsvh.effect, mbsvh.startTime));
++                        if(!isSingletonStatup(statup.getKey())) {
++                            retrievedEffects.put(mbsvh.effect.getBuffSourceId(), new Pair<>(mbsvh.effect, mbsvh.startTime));
++                            for(Pair<MapleBuffStat, Integer> mbs : mbsvh.effect.getStatups()) {
++                                retrievedStats.add(mbs.getLeft());
++                            }
++                        }
+                     }
+                     
+                     Byte val = buffEffectsCount.get(statup.getKey());
+@@ -3600,9 +3736,13 @@ public void run() {
+                 }
+                 
+                 if(!isSilent) {
+-                    for(Entry<Integer, Pair<MapleStatEffect, Long>> lmse: retrievedEffects.entrySet()) {
+-                        lmse.getValue().getLeft().updateBuffEffect(this, getActiveStatupsFromSourceid(lmse.getKey()), lmse.getValue().getRight());
++                    addItemEffectHolder(sourceid, expirationtime, appliedStatups);
++                    for (Entry<MapleBuffStat, MapleBuffStatValueHolder> statup : toDeploy.entrySet()) {
++                        effects.put(statup.getKey(), statup.getValue());
+                     }
++                    
++                    retrievedEffects.put(sourceid, new Pair<>(effect, starttime));
++                    propagateBuffEffectUpdates(retrievedEffects, retrievedStats);
+                 }
+             } else {
+                 for (Entry<MapleBuffStat, MapleBuffStatValueHolder> statup : appliedStatups.entrySet()) {
+@@ -3617,7 +3757,6 @@ public void run() {
+             }
+             
+             addItemEffectHolder(sourceid, expirationtime, appliedStatups);
+-            
+             for (Entry<MapleBuffStat, MapleBuffStatValueHolder> statup : toDeploy.entrySet()) {
+                 effects.put(statup.getKey(), statup.getValue());
+             }
+@@ -4482,8 +4621,7 @@ public void closeHiredMerchant(boolean closeMerchant) {
+         if(closeMerchant) {
+             merchant.removeVisitor(this);
+             this.setHiredMerchant(null);
+-        }
+-        else {
++        } else {
+             if (merchant.isOwner(this)) {
+                 merchant.setOpen(true);
+             } else {
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 2dd2324dd..e820def8b 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1262,7 +1262,7 @@ public synchronized void announceBossHpBar(MapleMonster mm, final int mobHash, f
+                 }
+ 	}
+         
+-	public synchronized void announce(final byte[] packet) {//MINA CORE IS A FUCKING BITCH AND I HATE IT <3
++        public synchronized void announce(final byte[] packet) {//MINA CORE IS A FUCKING BITCH AND I HATE IT <3
+                 session.write(packet);
+ 	}
+ 
+diff --git a/src/client/processor/MakerProcessor.java b/src/client/processor/MakerProcessor.java
+index ce6d414f8..c8a3fc98d 100644
+--- a/src/client/processor/MakerProcessor.java
++++ b/src/client/processor/MakerProcessor.java
+@@ -90,7 +90,7 @@ public static void makerAction(SeekableLittleEndianAccessor slea, MapleClient c)
+             } else {
+                 if(ItemConstants.isEquipment(toCreate)) {   // only equips uses stimulant and reagents
+                     if(slea.readByte() != 0) {  // stimulant
+-                        stimulantid = getMakerStimulant(toCreate);
++                        stimulantid = ii.getMakerStimulant(toCreate);
+                         if(!c.getAbstractPlayerInteraction().haveItem(stimulantid)) {
+                             stimulantid = -1;
+                         }
+@@ -270,84 +270,6 @@ private static int getMakerReagentSlots(int itemId) {
+         }
+     }
+     
+-    private static int getMakerStimulant(int itemId) {
+-        EquipType et = EquipType.getEquipTypeById(itemId);
+-        
+-        switch(et) {
+-            case GLOVES:
+-                return 4130000;
+-            
+-            case SHOES:
+-                return 4130001;
+-            
+-            case SWORD:
+-                return 4130002;
+-            
+-            case AXE:
+-                return 4130003;
+-                
+-            case MACE:
+-                return 4130004;
+-            
+-            case SWORD_2H:
+-                return 4130005;
+-            
+-            case AXE_2H:
+-                return 4130006;
+-            
+-            case MACE_2H:
+-                return 4130007;
+-            
+-            case SPEAR:
+-                return 4130008;
+-            
+-            case POLEARM:
+-                return 4130009;
+-            
+-            case WAND:
+-                return 4130010;
+-                
+-            case STAFF:
+-                return 4130011;
+-                    
+-            case BOW:
+-                return 4130012;
+-                        
+-            case CROSSBOW:
+-                return 4130013;
+-                            
+-            case DAGGER:
+-                return 4130014;
+-                                
+-            case CLAW:
+-                return 4130015;
+-                                    
+-            case KNUCKLER:
+-                return 4130016;
+-                                        
+-            case PISTOL:
+-                return 4130017;
+-            
+-            case CAP:
+-                return 4130018;
+-                
+-            case COAT:
+-                return 4130019;
+-                
+-            case PANTS:
+-                return 4130020;
+-                
+-            case LONGCOAT:
+-                return 4130021;
+-                
+-            case SHIELD:
+-                return 4130022;
+-                
+-            default:
+-                return -1;
+-        }
+-    }
+-    
+     private static Pair<Integer, Integer> generateDisassemblyInfo(int itemId) {
+         int recvFee = ii.getMakerDisassembledFee(itemId);
+         if(recvFee > -1) {
+diff --git a/src/client/processor/StorageProcessor.java b/src/client/processor/StorageProcessor.java
+index 38e847505..c722a47c6 100644
+--- a/src/client/processor/StorageProcessor.java
++++ b/src/client/processor/StorageProcessor.java
+@@ -72,14 +72,15 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                                 c.announce(MaplePacketCreator.getStorageError((byte) 0x0C));
+                                                 return;
+                                         }
+-                                        if (chr.getMap().getId() == 910000000) {
+-                                                if (chr.getMeso() < 1000) {
+-                                                        c.announce(MaplePacketCreator.getStorageError((byte) 0x0B));
+-                                                        return;
+-                                                } else {
+-                                                        chr.gainMeso(-1000, false);
+-                                                }
+-                                        }           
++                                        
++                                        int takeoutFee = storage.getTakeOutFee();
++                                        if (chr.getMeso() < takeoutFee) {
++                                                c.announce(MaplePacketCreator.getStorageError((byte) 0x0B));
++                                                return;
++                                        } else {
++                                                chr.gainMeso(-takeoutFee, false);
++                                        }
++                                        
+                                         if (MapleInventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {                
+                                                 item = storage.takeOut(slot);//actually the same but idc
+                                                 String itemName = MapleItemInformationProvider.getInstance().getName(item.getItemId());
+@@ -112,17 +113,19 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                         c.announce(MaplePacketCreator.getStorageError((byte) 0x11));
+                                         return;
+                                 }
+-                                short meso = (short) (chr.getMap().getId() == 910000000 ? -500 : -100);
+-                                if (chr.getMeso() < meso) {
++                                
++                                int storeFee = storage.getStoreFee();
++                                if (chr.getMeso() < storeFee) {
+                                         c.announce(MaplePacketCreator.getStorageError((byte) 0x0B));
+                                 } else {
+                                         MapleInventoryType invType = ItemConstants.getInventoryType(itemId);
+                                         Item item = chr.getInventory(invType).getItem(slot).copy();
+-                                        if (item.getItemId() == itemId && (item.getQuantity() >= quantity || ItemConstants.isRechargeable(itemId))) {
++                                        if (item != null && item.getItemId() == itemId && (item.getQuantity() >= quantity || ItemConstants.isRechargeable(itemId))) {
+                                                 if (ItemConstants.isRechargeable(itemId)) {
+                                                         quantity = item.getQuantity();
+                                                 }
+-                                                chr.gainMeso(meso, false, true, false);
++                                                
++                                                chr.gainMeso(-storeFee, false, true, false);
+                                                 MapleKarmaManipulator.toggleKarmaFlagToUntradeable(item);
+                                                 MapleInventoryManipulator.removeFromSlot(c, invType, slot, quantity, false);
+                                                 item.setQuantity(quantity);
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 16d0e80aa..8c1ac8692 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -5,7 +5,7 @@
+ 
+ public class ServerConstants {
+     //Thread Tracker Configuration
+-    public static final boolean USE_THREAD_TRACKER = false;     //[SEVERE] This deadlock auditing thing will bloat the memory as fast as the time frame one takes to lose track of a raindrop on a tempesting day. Only for debugging purposes.
++    public static final boolean USE_THREAD_TRACKER = true;      //[SEVERE] This deadlock auditing thing will bloat the memory as fast as the time frame one takes to lose track of a raindrop on a tempesting day. Only for debugging purposes.
+     
+     //Database Configuration
+     public static String DB_URL = "";
+@@ -20,12 +20,12 @@
+     public static final int CHANNEL_LOAD = 100;                 //Max players per channel (limit actually used to calculate the World server capacity).
+     
+     public static final long RESPAWN_INTERVAL = 10 * 1000;	//10 seconds, 10000.
+-    public static final long PURGING_INTERVAL =  5 * 60 * 1000;
++    public static final long PURGING_INTERVAL = 5 * 60 * 1000;
+     public static final long RANKING_INTERVAL = 60 * 60 * 1000;	//60 minutes, 3600000.
+     public static final long  COUPON_INTERVAL = 60 * 60 * 1000;	//60 minutes, 3600000.
+     
+-    public static final boolean ENABLE_PIC = true;              //Pick true/false to enable or disable Pic. Delete character needs this feature ENABLED.
+-    public static final boolean ENABLE_PIN = true;              //Pick true/false to enable or disable Pin.
++    public static final boolean ENABLE_PIC = false;             //Pick true/false to enable or disable Pic. Delete character needs this feature ENABLED.
++    public static final boolean ENABLE_PIN = false;             //Pick true/false to enable or disable Pin.
+     
+     public static final boolean AUTOMATIC_REGISTER = true;      //Automatically register players when they login with a nonexistent username.
+     public static final boolean BCRYPT_MIGRATION = true;        //Performs a migration from old SHA-1 and SHA-512 password to bcrypt.
+@@ -38,7 +38,7 @@
+     public static boolean SHUTDOWNHOOK;
+     
+     //Server Flags
+-    public static final boolean USE_CUSTOM_KEYSET = false;          //Enables auto-setup of the HeavenMS's custom keybindings when creating characters.
++    public static final boolean USE_CUSTOM_KEYSET = true;           //Enables auto-setup of the HeavenMS's custom keybindings when creating characters.
+     public static final boolean USE_DEBUG = false;                  //Will enable some text prints on the client, oriented for debugging purposes.
+     public static final boolean USE_DEBUG_SHOW_RCVD_PACKET = false; //Prints on the cmd all received packet ids.
+     public static final boolean USE_DEBUG_SHOW_INFO_EQPEXP = false; //Prints on the cmd all equip exp gain info.
+@@ -46,8 +46,8 @@
+     public static final boolean USE_MAXRANGE_ECHO_OF_HERO = true;
+     public static final boolean USE_MAXRANGE = true;                //Will send and receive packets from all events on a map, rather than those of only view range.
+     public static final boolean USE_MTS = false;
+-    public static final boolean USE_AUTOHIDE_GM = true;            //When enabled, GMs are automatically hidden when joining. Thanks to Steven Deblois (steven1152).
+-    public static final boolean USE_BUYBACK_SYSTEM = false;         //Enables the HeavenMS-builtin buyback system, to be used by dead players when clicking the MTS button.
++    public static final boolean USE_AUTOHIDE_GM = false;            //When enabled, GMs are automatically hidden when joining. Thanks to Steven Deblois (steven1152).
++    public static final boolean USE_BUYBACK_SYSTEM = true;          //Enables the HeavenMS-builtin buyback system, to be used by dead players when clicking the MTS button.
+     public static final boolean USE_FAMILY_SYSTEM = false;
+     public static final boolean USE_DUEY = true;
+     public static final boolean USE_RANDOMIZE_HPMP_GAIN = true;     //Enables randomizing on MaxHP/MaxMP gains and INT accounting for the MaxMP gain.
+@@ -55,13 +55,13 @@
+     public static final boolean USE_ITEM_SORT = true;               //Enables inventory "Item Sort/Merge" feature.
+     public static final boolean USE_ITEM_SORT_BY_NAME = false;      //Item sorting based on name rather than id.
+     public static final boolean USE_PARTY_SEARCH = false;
+-    public static final boolean USE_PARTY_FOR_STARTERS = false;     //Players level 10 or below can create/invite other players on the given level range.
+-    public static final boolean USE_AUTOASSIGN_STARTERS_AP = true;  //Beginners level 10 or below have their AP autoassigned (they can't choose to levelup a stat). Set true if the localhost doesn't support AP assigning for beginners level 10 or below.
++    public static final boolean USE_PARTY_FOR_STARTERS = true;      //Players level 10 or below can create/invite other players on the given level range.
++    public static final boolean USE_AUTOASSIGN_STARTERS_AP = false; //Beginners level 10 or below have their AP autoassigned (they can't choose to levelup a stat). Set true if the localhost doesn't support AP assigning for beginners level 10 or below.
+     public static final boolean USE_AUTOBAN = false;                //Commands the server to detect infractors automatically.
+     public static final boolean USE_AUTOSAVE = true;                //Enables server autosaving feature (saves characters to DB each 1 hour).
+-    public static final boolean USE_SERVER_AUTOASSIGNER = false;    //HeavenMS-builtin autoassigner, uses algorithm based on distributing AP accordingly with required secondary stat on equipments.
++    public static final boolean USE_SERVER_AUTOASSIGNER = true;     //HeavenMS-builtin autoassigner, uses algorithm based on distributing AP accordingly with required secondary stat on equipments.
+     public static final boolean USE_REFRESH_RANK_MOVE = true;
+-    public static final boolean USE_ENFORCE_HPMP_SWAP = true;       //Forces players to reuse stats (via AP Resetting) located on HP/MP pool only inside the HP/MP stats.
++    public static final boolean USE_ENFORCE_HPMP_SWAP = false;      //Forces players to reuse stats (via AP Resetting) located on HP/MP pool only inside the HP/MP stats.
+     public static final boolean USE_ENFORCE_MOB_LEVEL_RANGE = true; //Players N levels below the killed mob will gain no experience from defeating it.
+     public static final boolean USE_ENFORCE_JOB_LEVEL_RANGE = false;//Caps the player level on the minimum required to advance their current jobs.
+     public static final boolean USE_ENFORCE_OWL_SUGGESTIONS = false;//Forces the Owl of Minerva to always display the defined item array on GameConstants.OWL_DATA instead of those featured by the players.
+@@ -73,26 +73,26 @@
+     public static final boolean USE_BUFF_MOST_SIGNIFICANT = true;   //When applying buffs, the player will stick with the highest stat boost among the listed, rather than overwriting stats.
+     public static final boolean USE_QUEST_RATE = false;             //Exp/Meso gained by quests uses fixed server exp/meso rate times quest rate as multiplier, instead of player rates.
+     public static final boolean USE_MULTIPLE_SAME_EQUIP_DROP = true;//Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
+-    public static final boolean USE_BANISHABLE_TOWN_SCROLL = false; //Enables town scrolls to act as if it's a "player banish", rendering the antibanish scroll effect available.
++    public static final boolean USE_BANISHABLE_TOWN_SCROLL = true;  //Enables town scrolls to act as if it's a "player banish", rendering the antibanish scroll effect available.
+     public static final boolean USE_OLD_GMS_STYLED_PQ_NPCS = true;  //Enables PQ NPCs with similar behaviour to old GMS style, that skips info about the PQs and immediately tries to register the party in.
+     
+     //Announcement Configuration
+     public static final boolean USE_ANNOUNCE_SHOPITEMSOLD = false;  //Automatic message sent to owner when an item from the Player Shop or Hired Merchant is sold.
+     public static final boolean USE_ANNOUNCE_CHANGEJOB = false;     //Automatic message sent to acquantainces when changing jobs.
+-
++    
+     //Maker Configuration
+-    public static final boolean USE_MAKER_PERMISSIVE_ATKUP = false; //Allows players to use attack-based strengthening gems on non-weapon items.
++    public static final boolean USE_MAKER_PERMISSIVE_ATKUP = true;  //Allows players to use attack-based strengthening gems on non-weapon items.
+     public static final boolean USE_MAKER_FEE_HEURISTICS = true;    //Apply compiled values for stimulants and reagents into the Maker fee calculations (max error revolves around 50k mesos). Set false to use basic constant values instead (results are never higher than requested by the client-side).
+     
+     //Commands Configuration
+     public static final boolean BLOCK_GENERATE_CASH_ITEM = false;   //Prevents creation of cash items with the item/drop command.
+     
+     //Server Rates And Experience
+-    public static final int EXP_RATE = 1;
+-    public static final int MESO_RATE = 1;
+-    public static final int DROP_RATE = 1;
+-    public static final int TRAVEL_RATE = 1;                        //Means of transportation rides/departs using 1/N of the default time.
+-    public static final int QUEST_RATE = 1;                         //Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
++    public static final int EXP_RATE = 10;
++    public static final int MESO_RATE = 10;
++    public static final int DROP_RATE = 10;
++    public static final int TRAVEL_RATE = 10;                       //Means of transportation rides/departs using 1/N of the default time.
++    public static final int QUEST_RATE = 5;                         //Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
+     public static final double EQUIP_EXP_RATE = 1.0;                //Rate for equipment exp gain, grows linearly. Set 1.0 for default (about 100~200 same-level range mobs killed to pass equip from level 1 to 2).
+     
+     public static final double PARTY_BONUS_EXP_RATE = 1.0;          //Rate for the party exp reward.
+@@ -102,7 +102,7 @@
+     
+     //Miscellaneous Configuration
+     public static String TIMEZONE = "-GMT3";
+-    public static boolean USE_DISPLAY_NUMBERS_WITH_COMMA = true;        //Enforce comma on displayed strings (use this when USE_UNITPRICE_WITH_COMMA is active and you still want to display comma-separated thousands).
++    public static boolean USE_DISPLAY_NUMBERS_WITH_COMMA = true;        //Enforce comma on displayed strings (use this when USE_UNITPRICE_WITH_COMMA is active and you still want to display comma-separated values).
+     public static boolean USE_UNITPRICE_WITH_COMMA = true;              //Set this accordingly with the layout of the unitPrices on Item.wz XML's, whether it's using commas or dots to represent fractions.
+     public static final byte MIN_UNDERLEVEL_TO_EXP_GAIN = 5;            //Characters are unable to get EXP from a mob if their level are under this threshold, only if "USE_ENFORCE_MOB_LEVEL_RANGE" is enabled. For bosses, this attribute is doubled.
+     public static final byte MAX_MONITORED_BUFFSTATS = 5;               //Limits accounting for "dormant" buff effects, that should take place when stronger stat buffs expires.
+@@ -111,7 +111,7 @@
+     public static final long BLOCK_NPC_RACE_CONDT = (long)(0.5 * 1000); //Time the player client must wait before reopening a conversation with an NPC.
+     public static final long PET_LOOT_UPON_ATTACK = (long)(0.7 * 1000); //Time the pet must wait before trying to pick items up.
+     public static final int TOT_MOB_QUEST_REQUIREMENT = 0;              //Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
+-    public static final int MOB_REACTOR_REFRESH_TIME = 0;               //Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
++    public static final int MOB_REACTOR_REFRESH_TIME = 30 * 1000;       //Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
+     
+     //Dangling Items/Locks Configuration
+     public static final int ITEM_EXPIRE_TIME  = 3 * 60 * 1000;  //Time before items start disappearing. Recommended to be set up to 3 minutes.
+@@ -124,37 +124,37 @@
+     
+     //Some Gameplay Enhancing Configurations
+     //Scroll Configuration
+-    public static final boolean USE_PERFECT_GM_SCROLL = false;  //Scrolls from GMs never uses up slots nor fails.
+-    public static final boolean USE_PERFECT_SCROLLING = false;  //Scrolls doesn't use slots upon failure.
+-    public static final boolean USE_ENHANCED_CHSCROLL = false;  //Equips even more powerful with chaos upgrade.
+-    public static final boolean USE_ENHANCED_CRAFTING = false;  //Apply chaos scroll on every equip crafted.
+-    public static final int SCROLL_CHANCE_RATE = 0;             //Number of rolls for success on a scroll, set 0 for default.
+-    public static final int CHSCROLL_STAT_RATE = 1;             //Number of rolls of stat upgrade on a successfully applied chaos scroll, set 1 for default.
++    public static final boolean USE_PERFECT_GM_SCROLL = true;   //Scrolls from GMs never uses up slots nor fails.
++    public static final boolean USE_PERFECT_SCROLLING = true;   //Scrolls doesn't use slots upon failure.
++    public static final boolean USE_ENHANCED_CHSCROLL = true;   //Equips even more powerful with chaos upgrade.
++    public static final boolean USE_ENHANCED_CRAFTING = true;   //Apply chaos scroll on every equip crafted.
++    public static final int SCROLL_CHANCE_RATE = 10;            //Number of rolls for success on a scroll, set 0 for default.
++    public static final int CHSCROLL_STAT_RATE = 3;             //Number of rolls of stat upgrade on a successfully applied chaos scroll, set 1 for default.
+     public static final int CHSCROLL_STAT_RANGE = 6;            //Stat upgrade range (-N, N) on chaos scrolls.
+     
+     //Beginner Skills Configuration
+-    public static final boolean USE_ULTRA_NIMBLE_FEET = false;  //Haste-like speed & jump upgrade.
+-    public static final boolean USE_ULTRA_RECOVERY = false;     //Massive recovery amounts overtime.
+-    public static final boolean USE_ULTRA_THREE_SNAILS = false; //Massive damage on shell toss.
++    public static final boolean USE_ULTRA_NIMBLE_FEET = true;   //Haste-like speed & jump upgrade.
++    public static final boolean USE_ULTRA_RECOVERY = true;      //Massive recovery amounts overtime.
++    public static final boolean USE_ULTRA_THREE_SNAILS = true;  //Massive damage on shell toss.
+     
+     //Character Configuration
+-    public static final boolean USE_ADD_SLOTS_BY_LEVEL = false; //Slots are added each 20 levels.
+-    public static final boolean USE_ADD_RATES_BY_LEVEL = false; //Rates are added each 20 levels.
+-    public static final boolean USE_STACK_COUPON_RATES = false; //Multiple coupons effects builds up together.
+-    public static final boolean USE_PERFECT_PITCH = false;      //For lvl 30 or above, each lvlup grants player 1 perfect pitch.
+-    public static final int FAME_GAIN_BY_QUEST = 0;             //Fame gain each N quest completes, set 0 to disable.
++    public static final boolean USE_ADD_SLOTS_BY_LEVEL = true;  //Slots are added each 20 levels.
++    public static final boolean USE_ADD_RATES_BY_LEVEL = true;  //Rates are added each 20 levels.
++    public static final boolean USE_STACK_COUPON_RATES = true;  //Multiple coupons effects builds up together.
++    public static final boolean USE_PERFECT_PITCH = true;       //For lvl 30 or above, each lvlup grants player 1 perfect pitch.
++    public static final int FAME_GAIN_BY_QUEST = 4;             //Fame gain each N quest completes, set 0 to disable.
+     
+     //Guild Configuration
+     public static final int CREATE_GUILD_COST = 1500000;
+     public static final int CHANGE_EMBLEM_COST = 5000000;
+ 
+     //Equipment Configuration
+-    public static final boolean USE_EQUIPMNT_LVLUP_SLOTS = false;//Equips can upgrade slots at level up.
+-    public static final boolean USE_EQUIPMNT_LVLUP_POWER = false;//Enable more powerful stat upgrades at equip level up.
+-    public static final boolean USE_SPIKES_AVOID_BANISH = false; //Shoes equipped with spikes prevents mobs from banishing wearer.
++    public static final boolean USE_EQUIPMNT_LVLUP_SLOTS = true;//Equips can upgrade slots at level up.
++    public static final boolean USE_EQUIPMNT_LVLUP_POWER = true;//Enable more powerful stat upgrades at equip level up.
++    public static final boolean USE_SPIKES_AVOID_BANISH = true; //Shoes equipped with spikes prevents mobs from banishing wearer.
+     public static final int MAX_EQUIPMNT_LVLUP_STAT_UP = 10000; //Max stat upgrade an equipment can have on a levelup.
+     public static final int MAX_EQUIPMNT_STAT = 32767;          //Max stat on an equipment by leveling up.
+-    public static final int USE_EQUIPMNT_LVLUP = 1;             //All equips lvlup at max level of N, set 1 to disable.
++    public static final int USE_EQUIPMNT_LVLUP = 7;             //All equips lvlup at max level of N, set 1 to disable.
+     
+     //Map-Chair Configuration
+     public static final boolean USE_CHAIR_EXTRAHEAL = true;     //Enable map chairs to further recover player's HP and MP (player must have the Chair Mastery skill).
+@@ -188,7 +188,7 @@
+     public static final long EVENT_LOBBY_DELAY = 10;            //Cooldown duration in seconds before reopening an event lobby.
+     
+     //Dojo Configuration
+-    public static final boolean USE_DEADLY_DOJO = true;         //Should bosses really use 1HP,1MP attacks in dojo?
++    public static final boolean USE_DEADLY_DOJO = false;        //Should bosses really use 1HP,1MP attacks in dojo?
+     public static final int DOJO_ENERGY_ATK = 100;              //Dojo energy gain when deal attack
+     public static final int DOJO_ENERGY_DMG =  20;              //Dojo energy gain when recv attack
+     
+@@ -200,10 +200,10 @@
+     public static final boolean WEDDING_BLESSER_SHOWFX = true;  //Pops bubble sprite effect on players blessing the couple. Setting this false shows the blessing effect on the couple instead.
+ 
+     //Buyback Configuration
+-    public static final boolean USE_BUYBACK_WITH_MESOS = false; //Enables usage of either mesos or NX for the buyback fee.
++    public static final boolean USE_BUYBACK_WITH_MESOS = true;  //Enables usage of either mesos or NX for the buyback fee.
+     public static final int BUYBACK_FEE = 7770;                 //Sets the amount needed to buyback.
+     public static final int BUYBACK_MESO_MULTIPLIER = 1000;     //Sets a multiplier for the fee when using meso as the charge unit.
+-    public static final int BUYBACK_RETURN_MINUTES = 1;         //Sets the maximum amount of time the player must wait before decide to buyback.
++    public static final int BUYBACK_RETURN_MINUTES = 1;         //Sets the maximum amount of time the player can wait before decide to buyback.
+     public static final int BUYBACK_COOLDOWN_MINUTES = 7;       //Sets the time the player must wait before using buyback again.
+     
+     //Event End Timestamp
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index a04297734..6886a1649 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -240,21 +240,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+                 } else if (ob instanceof MapleHiredMerchant && chr.getHiredMerchant() == null) {
+                     MapleHiredMerchant merchant = (MapleHiredMerchant) ob;
+-                    if (merchant.isOwner(chr)) {
+-                        merchant.setOpen(false);
+-                        merchant.removeAllVisitors();
+-                        
+-                        c.announce(MaplePacketCreator.getHiredMerchant(chr, merchant, false));
+-                    } else if (!merchant.isOpen()) {
+-                        chr.getClient().announce(MaplePacketCreator.getMiniRoomError(18));
+-                        return;
+-                    } else if (!merchant.addVisitor(chr)) {
+-                        chr.getClient().announce(MaplePacketCreator.getMiniRoomError(2));
+-                        return;
+-                    } else {
+-                        c.announce(MaplePacketCreator.getHiredMerchant(chr, merchant, false));
+-                    }
+-                    chr.setHiredMerchant(merchant);
++                    merchant.visitShop(chr);
+                 }
+             }
+         } else if (mode == Action.CHAT.getCode()) { // chat lol
+@@ -527,10 +513,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             merchant.clearInexistentItems();
+             
+             if (merchant.getItems().isEmpty()) {
+-                c.announce(MaplePacketCreator.hiredMerchantOwnerLeave());
+-                c.announce(MaplePacketCreator.leaveHiredMerchant(0x00, 0x03));
+-                merchant.closeShop(c, false);
+-                chr.setHasMerchant(false);
++                merchant.closeOwnerMerchant(chr);
+                 return;
+             }
+             c.announce(MaplePacketCreator.updateHiredMerchant(merchant, chr));
+@@ -579,11 +562,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (isTradeOpen(chr)) return;
+             
+             MapleHiredMerchant merchant = chr.getHiredMerchant();
+-            if (merchant != null && merchant.isOwner(chr)) {
+-                c.announce(MaplePacketCreator.hiredMerchantOwnerLeave());
+-                c.announce(MaplePacketCreator.leaveHiredMerchant(0x00, 0x03));
+-                merchant.closeShop(c, false);
+-                chr.setHasMerchant(false);
++            if (merchant != null) {
++                merchant.closeOwnerMerchant(chr);
+             }
+         } else if (mode == Action.MAINTENANCE_OFF.getCode()) {
+             if (isTradeOpen(chr)) return;
+diff --git a/src/net/server/channel/handlers/RemoteStoreHandler.java b/src/net/server/channel/handlers/RemoteStoreHandler.java
+index cec72139e..2c74a687c 100644
+--- a/src/net/server/channel/handlers/RemoteStoreHandler.java
++++ b/src/net/server/channel/handlers/RemoteStoreHandler.java
+@@ -38,13 +38,9 @@
+     public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter chr = c.getPlayer();
+         MapleHiredMerchant hm = getMerchant(c);
+-        if (chr.hasMerchant() && hm != null) {
++        if (hm != null && hm.isOwner(chr)) {
+             if (hm.getChannel() == chr.getClient().getChannel()) {
+-                hm.setOpen(false);
+-                hm.removeAllVisitors();
+-                chr.setHiredMerchant(hm);
+-                
+-                chr.announce(MaplePacketCreator.getHiredMerchant(chr, hm, false));
++                hm.visitShop(chr);
+             } else {
+                 c.announce(MaplePacketCreator.remoteChannelChange((byte) (hm.getChannel() - 1)));
+             }
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 1dba33b4e..7b71198af 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -372,7 +372,7 @@ public Item evolvePet(byte slot, int afterId) {
+             MaplePet evolved = null;
+             MaplePet target;
+             
+-            long period = 90 * 24 * 60 * 60 * 1000;    //refreshes expiration date: 90 days
++            long period = (long) 90 * 24 * 60 * 60 * 1000;    //refreshes expiration date: 90 days
+             
+             target = getPlayer().getPet(slot);
+             if(target == null) {
+@@ -437,8 +437,8 @@ public Item gainItem(int id, short quantity, boolean randomStats, boolean showMe
+ 		Item item = null;
+                 MaplePet evolved;
+                 int petId = -1;
+-		
+-		if (quantity >= 0) {
++                
++                if (quantity >= 0) {
+                         if (ItemConstants.isPet(id)) {
+                                 petId = MaplePet.createPet(id);
+ 
+@@ -456,6 +456,7 @@ public Item gainItem(int id, short quantity, boolean randomStats, boolean showMe
+                                     evolved.setCloseness(from.getCloseness());
+                                     evolved.setFullness(from.getFullness());
+                                     evolved.setLevel(from.getLevel());
++                                    evolved.setExpiration(System.currentTimeMillis() + expires);
+                                     evolved.saveToDb();
+                                 }
+ 
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 9344e61ac..edcaf3661 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -69,6 +69,7 @@
+ import server.MakerItemFactory.MakerItemCreateEntry;
+ import server.life.MapleMonsterInformationProvider;
+ import server.life.MapleLifeFactory;
++import tools.StringUtil;
+ 
+ /**
+  *
+@@ -81,6 +82,7 @@
+     protected MapleDataProvider itemData;
+     protected MapleDataProvider equipData;
+     protected MapleDataProvider stringData;
++    protected MapleDataProvider etcData;
+     protected MapleData cashStringData;
+     protected MapleData consumeStringData;
+     protected MapleData eqpStringData;
+@@ -112,17 +114,20 @@
+     protected Map<Integer, Boolean> consumeOnPickupCache = new HashMap<>();
+     protected Map<Integer, Boolean> isQuestItemCache = new HashMap<>();
+     protected Map<Integer, Boolean> isPartyQuestItemCache = new HashMap<>();
++    protected Map<Integer, Pair<Integer, String>> replaceOnExpireCache = new HashMap<>();
+     protected Map<Integer, String> equipmentSlotCache = new HashMap<>();
+     protected Map<Integer, Boolean> noCancelMouseCache = new HashMap<>();
+     protected Map<Integer, Integer> mobCrystalMakerCache = new HashMap<>();
+     protected Map<Integer, Pair<String, Integer>> statUpgradeMakerCache = new HashMap<>();
+     protected Map<Integer, MakerItemFactory.MakerItemCreateEntry> makerItemCache = new HashMap<>();
++    protected Map<Integer, Integer> makerCatalystCache = new HashMap<>();
+ 
+     private MapleItemInformationProvider() {
+         loadCardIdData();
+         itemData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Item.wz"));
+         equipData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Character.wz"));
+         stringData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/String.wz"));
++        etcData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Etc.wz"));
+         cashStringData = stringData.getData("Cash.img");
+         consumeStringData = stringData.getData("Consume.img");
+         eqpStringData = stringData.getData("Eqp.img");
+@@ -515,6 +520,20 @@ public int getPrice(int itemId, int quantity) {
+         return retPrice;
+     }
+     
++    public Pair<Integer, String> getReplaceOnExpire(int itemId) {   // thanks to GabrielSin
++        if (replaceOnExpireCache.containsKey(itemId)) {
++            return replaceOnExpireCache.get(itemId);
++        }
++ 
++        int itemReplacement = MapleDataTool.getInt("info/replace/itemid", getItemData(itemId), 0);
++        String msg = MapleDataTool.getString("info/replace/msg", getItemData(itemId));
++ 
++        Pair<Integer, String> ret = new Pair<>(itemReplacement, msg);
++        replaceOnExpireCache.put(itemId, ret);
++ 
++        return ret;
++    }
++    
+     protected String getEquipmentSlot(int itemId) {
+         if (equipmentSlotCache.containsKey(itemId)) {
+             return equipmentSlotCache.get(itemId);
+@@ -1869,6 +1888,26 @@ public int getMakerDisassembledFee(Integer itemId) {
+         return fee;
+     }
+     
++    public int getMakerStimulant(int itemId) {  // thanks to Arnah
++        Integer itemid = makerCatalystCache.get(itemId);
++        if(itemid != null) {
++            return itemid;
++        }
++
++        itemid = -1;
++        for(MapleData md : etcData.getData("ItemMake.img").getChildren()) {
++            MapleData me = md.getChildByPath(StringUtil.getLeftPaddedStr(Integer.toString(itemId), '0', 8));
++
++            if(me != null) {
++                itemid = MapleDataTool.getInt(me.getChildByPath("catalyst"), -1);
++                break;
++            }
++        }
++
++        makerCatalystCache.put(itemId, itemid);
++        return itemid;
++    }
++    
+     public Set<String> getWhoDrops(Integer itemId) {
+         Set<String> list = new HashSet<>();
+         Connection con = null;
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index 7b3bdf655..3decf252a 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -22,6 +22,7 @@
+ import client.inventory.Item;
+ import client.inventory.ItemFactory;
+ import client.inventory.MapleInventoryType;
++import java.io.File;
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+@@ -34,6 +35,10 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
++import provider.MapleData;
++import provider.MapleDataProvider;
++import provider.MapleDataProviderFactory;
++import provider.MapleDataTool;
+ import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+@@ -45,8 +50,11 @@
+  * @author Matze
+  */
+ public class MapleStorage {
+-
++    private static Map<Integer, Integer> trunkGetCache = new HashMap<>();
++    private static Map<Integer, Integer> trunkPutCache = new HashMap<>();
++    
+     private int id;
++    private int currentNpcid;
+     private int meso;
+     private byte slots;
+     private Map<MapleInventoryType, List<Item>> typeItems = new HashMap<>();
+@@ -247,6 +255,8 @@ public int compare(Item o1, Item o2) {
+             for (MapleInventoryType type : MapleInventoryType.values()) {
+                 typeItems.put(type, new ArrayList<>(storageItems));
+             }
++            
++            currentNpcid = npcId;
+             c.announce(MaplePacketCreator.getStorage(npcId, slots, storageItems, meso));
+         } finally {
+             lock.unlock();
+@@ -302,6 +312,42 @@ public void setMeso(int meso) {
+     public void sendMeso(MapleClient c) {
+         c.announce(MaplePacketCreator.mesoStorage(slots, meso));
+     }
++    
++    public int getStoreFee() {  // thanks to GabrielSin
++        int npcId = currentNpcid;
++        Integer fee = trunkPutCache.get(npcId);
++        if(fee == null) {
++            fee = 100;
++            
++            MapleDataProvider npc = MapleDataProviderFactory.getDataProvider(new File("wz/Npc.wz"));
++            MapleData npcData = npc.getData(npcId + ".img");
++            if(npcData != null) {
++                fee = MapleDataTool.getIntConvert("info/trunkPut", npcData, 100);
++            }
++            
++            trunkPutCache.put(npcId, fee);
++        }
++        
++        return fee;
++    }
++    
++    public int getTakeOutFee() {
++        int npcId = currentNpcid;
++        Integer fee = trunkGetCache.get(npcId);
++        if(fee == null) {
++            fee = 0;
++            
++            MapleDataProvider npc = MapleDataProviderFactory.getDataProvider(new File("wz/Npc.wz"));
++            MapleData npcData = npc.getData(npcId + ".img");
++            if(npcData != null) {
++                fee = MapleDataTool.getIntConvert("info/trunkGet", npcData, 0);
++            }
++            
++            trunkGetCache.put(npcId, fee);
++        }
++        
++        return fee;
++    }
+ 
+     public boolean isFull() {
+         lock.lock();
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index db726acf0..d4ba11293 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -147,7 +147,7 @@ private int getVisitorSlot(MapleCharacter visitor) {
+         return -1; //Actually 0 because of the +1's.
+     }
+ 
+-    public void removeAllVisitors() {
++    private void removeAllVisitors() {
+         visitorLock.lock();
+         try {
+             for (int i = 0; i < 3; i++) {
+@@ -271,6 +271,24 @@ private void announceItemSold(Item item, int mesos) {
+     }
+ 
+     public void forceClose() {
++        //Server.getInstance().getChannel(world, channel).removeHiredMerchant(ownerId);
++        map.broadcastMessage(MaplePacketCreator.destroyHiredMerchant(getOwnerId()));
++        map.removeMapObject(this);
++        
++        MapleCharacter owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
++        
++        visitorLock.lock();
++        try {
++            setOpen(false);
++            removeAllVisitors();
++            
++            if(owner != null && owner.isLoggedinWorld() && this == owner.getHiredMerchant()) {
++                closeOwnerMerchant(owner);
++            }
++        } finally {
++            visitorLock.unlock();
++        }
++        
+         Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
+         
+         try {
+@@ -281,11 +299,7 @@ public void forceClose() {
+         } catch (SQLException ex) {
+             ex.printStackTrace();
+         }
+-        //Server.getInstance().getChannel(world, channel).removeHiredMerchant(ownerId);
+-        map.broadcastMessage(MaplePacketCreator.destroyHiredMerchant(getOwnerId()));
+-
+-        map.removeMapObject(this);
+-		
++	
+         MapleCharacter player = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
+         if(player != null) {
+                 player.setHasMerchant(false);
+@@ -306,55 +320,87 @@ public void forceClose() {
+         map = null;
+     }
+ 
+-	public void closeShop(MapleClient c, boolean timeout) {
+-            map.removeMapObject(this);
+-            map.broadcastMessage(MaplePacketCreator.destroyHiredMerchant(ownerId));
+-            c.getChannelServer().removeHiredMerchant(ownerId);
+-            
+-            try {
+-                MapleCharacter player = c.getWorldServer().getPlayerStorage().getCharacterById(ownerId);
+-                if(player != null) {
+-                        player.setHasMerchant(false);
+-                } else {
+-                        Connection con = DatabaseConnection.getConnection();
+-                        try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET HasMerchant = 0 WHERE id = ?", Statement.RETURN_GENERATED_KEYS)) {
+-                                ps.setInt(1, ownerId);
+-                                ps.executeUpdate();
+-                        }
+-                        con.close();
+-                }
++    public void closeOwnerMerchant(MapleCharacter chr) {
++        if(this.isOwner(chr)) {
++            chr.announce(MaplePacketCreator.hiredMerchantOwnerLeave());
++            chr.announce(MaplePacketCreator.leaveHiredMerchant(0x00, 0x03));
++            this.closeShop(chr.getClient(), false);
++            chr.setHasMerchant(false);
++        }
++    }
++    
++    public void closeShop(MapleClient c, boolean timeout) {
++        map.removeMapObject(this);
++        map.broadcastMessage(MaplePacketCreator.destroyHiredMerchant(ownerId));
++        c.getChannelServer().removeHiredMerchant(ownerId);
+ 
+-                List<MaplePlayerShopItem> copyItems = getItems();
+-                if (check(c.getPlayer(), copyItems) && !timeout) {
+-                    for (MaplePlayerShopItem mpsi : copyItems) {
+-                        if(mpsi.isExist()) {
+-                            if (mpsi.getItem().getInventoryType().equals(MapleInventoryType.EQUIP)) {
+-                                MapleInventoryManipulator.addFromDrop(c, mpsi.getItem(), false);
+-                            } else {
+-                                MapleInventoryManipulator.addById(c, mpsi.getItem().getItemId(), (short) (mpsi.getBundles() * mpsi.getItem().getQuantity()), null, -1, mpsi.getItem().getFlag(), mpsi.getItem().getExpiration());
+-                            }
+-                        }
+-                    }
+-                    
+-                    synchronized (items) {
+-                        items.clear();
++        try {
++            MapleCharacter player = c.getWorldServer().getPlayerStorage().getCharacterById(ownerId);
++            if(player != null) {
++                    player.setHasMerchant(false);
++            } else {
++                    Connection con = DatabaseConnection.getConnection();
++                    try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET HasMerchant = 0 WHERE id = ?", Statement.RETURN_GENERATED_KEYS)) {
++                            ps.setInt(1, ownerId);
++                            ps.executeUpdate();
+                     }
+-                }
++                    con.close();
++            }
+ 
+-                try {
+-                    this.saveItems(timeout);
+-                } catch (Exception e) {
+-                    e.printStackTrace();
++            List<MaplePlayerShopItem> copyItems = getItems();
++            if (check(c.getPlayer(), copyItems) && !timeout) {
++                for (MaplePlayerShopItem mpsi : copyItems) {
++                    if(mpsi.isExist()) {
++                        if (mpsi.getItem().getInventoryType().equals(MapleInventoryType.EQUIP)) {
++                            MapleInventoryManipulator.addFromDrop(c, mpsi.getItem(), false);
++                        } else {
++                            MapleInventoryManipulator.addById(c, mpsi.getItem().getItemId(), (short) (mpsi.getBundles() * mpsi.getItem().getQuantity()), null, -1, mpsi.getItem().getFlag(), mpsi.getItem().getExpiration());
++                        }
++                    }
+                 }
+ 
+                 synchronized (items) {
+                     items.clear();
+                 }
++            }
++
++            try {
++                this.saveItems(timeout);
+             } catch (Exception e) {
+                 e.printStackTrace();
+             }
+-            
+-            Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
++
++            synchronized (items) {
++                items.clear();
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++
++        Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
++    }
++    
++    public synchronized void visitShop(MapleCharacter chr) {
++        visitorLock.lock();
++        try {
++            if (this.isOwner(chr)) {
++                this.setOpen(false);
++                this.removeAllVisitors();
++
++                chr.announce(MaplePacketCreator.getHiredMerchant(chr, this, false));
++            } else if (!this.isOpen()) {
++                chr.announce(MaplePacketCreator.getMiniRoomError(18));
++                return;
++            } else if (!this.addVisitor(chr)) {
++                chr.announce(MaplePacketCreator.getMiniRoomError(2));
++                return;
++            } else {
++                chr.announce(MaplePacketCreator.getHiredMerchant(chr, this, false));
++            }
++            chr.setHiredMerchant(this);
++        } finally {
++            visitorLock.unlock();
++        }
+     }
+ 
+     public String getOwner() {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 81b1948e2..39309144e 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -1732,7 +1732,7 @@ public void spawnFakeMonsterOnGroundBelow(MapleMonster mob, Point pos) {
+     }
+ 
+     public Point getGroundBelow(Point pos) {
+-        Point spos = new Point(pos.x, pos.y - 7); // Using -7 fixes spawning pets causing a lot of issues.
++        Point spos = new Point(pos.x, pos.y - 14); // Using -14 fixes spawning pets causing a lot of issues.
+         spos = calcPointBelow(spos);
+         spos.y--;//shouldn't be null!
+         return spos;
+diff --git a/src/server/maps/MaplePlayerShop.java b/src/server/maps/MaplePlayerShop.java
+index 984c2c819..7e3b45c5f 100644
+--- a/src/server/maps/MaplePlayerShop.java
++++ b/src/server/maps/MaplePlayerShop.java
+@@ -99,20 +99,15 @@ public boolean isOwner(MapleCharacter c) {
+     }
+ 
+     private void addVisitor(MapleCharacter visitor) {
+-        visitorLock.lock();
+-        try {
+-            for (int i = 0; i < 3; i++) {
+-                if (visitors[i] == null) {
+-                    visitors[i] = visitor;
+-                    visitor.setSlot(i);
+-                    this.broadcast(MaplePacketCreator.getPlayerShopNewVisitor(visitor, i + 1));
+-                    
+-                    if(i == 2) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(owner, 1));
+-                    break;
+-                }
++        for (int i = 0; i < 3; i++) {
++            if (visitors[i] == null) {
++                visitors[i] = visitor;
++                visitor.setSlot(i);
++                this.broadcast(MaplePacketCreator.getPlayerShopNewVisitor(visitor, i + 1));
++
++                if(i == 2) visitor.getMap().broadcastMessage(MaplePacketCreator.addCharBox(owner, 1));
++                break;
+             }
+-        } finally {
+-            visitorLock.unlock();
+         }
+     }
+ 
+@@ -490,11 +485,6 @@ public boolean isBanned(String name) {
+     }
+     
+     public synchronized boolean visitShop(MapleCharacter chr) {
+-        if(!open.get()) {
+-            chr.dropMessage(1, "This store is not yet open.");
+-            return false;
+-        }
+-        
+         if (this.isBanned(chr.getName())) {
+             chr.dropMessage(1, "You have been banned from this store.");
+             return false;
+@@ -502,6 +492,11 @@ public synchronized boolean visitShop(MapleCharacter chr) {
+         
+         visitorLock.lock();
+         try {
++            if(!open.get()) {
++                chr.dropMessage(1, "This store is not yet open.");
++                return false;
++            }
++            
+             if (this.hasFreeSlot() && !this.isVisitor(chr)) {
+                 this.addVisitor(chr);
+                 chr.setPlayerShop(this);
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index f3f45a978..e1cac2e83 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -51761,7 +51761,6 @@
+   <imgdir name="4659">
+     <imgdir name="0">
+       <int name="npc" value="9102001"/>
+-      <int name="pettamenessmin" value="1642"/>
+       <int name="interval" value="0"/>
+       <imgdir name="pet">
+         <imgdir name="0">
+@@ -51770,7 +51769,6 @@
+       </imgdir>
+     </imgdir>
+     <imgdir name="1">
+-      <int name="pettamenessmin" value="1642"/>
+       <string name="endscript" value="q4659e"/>
+       <imgdir name="pet">
+         <imgdir name="0">

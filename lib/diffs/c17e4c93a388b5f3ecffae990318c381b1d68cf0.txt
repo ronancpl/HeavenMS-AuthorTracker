@@ -1,0 +1,753 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index cab8a4306..8e87b39dc 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -151,4 +151,7 @@ Adi
+ Adição de expedições PiratePQ e EllinPQ.
+ 
+ 11 - 12 Abril 2017,
+-Implementação do PiratePQ.
+\ No newline at end of file
++Implementação do PiratePQ.
++
++17 Abril 2017,
++Correção de bugs envolvendo reactors no PiratePQ, e potencialmente em outros pontos também.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 9b44440cf..bf7c8c57d 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,6 +3,21 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/reactor/ReactorActionManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/reactor/2519003.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/data/output/GenericLittleEndianWriter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/reactor/2519002.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/reactor/2519001.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMapFactory.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/tools/MaplePacketCreator.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/reactor/2519000.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/life/SpawnPoint.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleReactorStats.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/reactor/ReactorScriptManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/constants/ServerConstants.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleReactor.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
+         </group>
+     </open-files>
+diff --git a/scripts/reactor/2519000.js b/scripts/reactor/2519000.js
+index 6594d0d79..2c1afd8b2 100644
+--- a/scripts/reactor/2519000.js
++++ b/scripts/reactor/2519000.js
+@@ -23,6 +23,13 @@
+  *@author Ronan
+  */
+  
++importPackage(Packages.tools);
++importPackage(java.awt);
++ 
+ function act() {
+-    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
+-}
++    var denyWidth = 320, denyHeight = 150;
++    var denyPos = rm.getReactor().getPosition();
++    var denyArea = new Rectangle(denyPos.getX() - denyWidth / 2, denyPos.getY() - denyHeight / 2, denyWidth, denyHeight);
++    
++    rm.getReactor().getMap().setAllowSpawnPointInBox(false, denyArea);
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2519001.js b/scripts/reactor/2519001.js
+index adeb31212..4694f1bd6 100644
+--- a/scripts/reactor/2519001.js
++++ b/scripts/reactor/2519001.js
+@@ -23,6 +23,13 @@
+  *@author Ronan
+  */
+  
++importPackage(Packages.tools);
++importPackage(java.awt);
++ 
+ function act() {
+-    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++    var denyWidth = 320, denyHeight = 150;
++    var denyPos = rm.getReactor().getPosition();
++    var denyArea = new Rectangle(denyPos.getX() - denyWidth / 2, denyPos.getY() - denyHeight / 2, denyWidth, denyHeight);
++    
++    rm.getReactor().getMap().setAllowSpawnPointInBox(false, denyArea);
+ }
+diff --git a/scripts/reactor/2519002.js b/scripts/reactor/2519002.js
+index 08f81b873..c62b1807c 100644
+--- a/scripts/reactor/2519002.js
++++ b/scripts/reactor/2519002.js
+@@ -23,6 +23,13 @@
+  *@author Ronan
+  */
+  
++importPackage(Packages.tools);
++importPackage(java.awt);
++ 
+ function act() {
+-    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++    var denyWidth = 320, denyHeight = 150;
++    var denyPos = rm.getReactor().getPosition();
++    var denyArea = new Rectangle(denyPos.getX() - denyWidth / 2, denyPos.getY() - denyHeight / 2, denyWidth, denyHeight);
++    
++    rm.getReactor().getMap().setAllowSpawnPointInBox(false, denyArea);
+ }
+diff --git a/scripts/reactor/2519003.js b/scripts/reactor/2519003.js
+index c8f630189..792cc9528 100644
+--- a/scripts/reactor/2519003.js
++++ b/scripts/reactor/2519003.js
+@@ -23,6 +23,13 @@
+  *@author Ronan
+  */
+  
++importPackage(Packages.tools);
++importPackage(java.awt);
++ 
+ function act() {
+-    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++    var denyWidth = 320, denyHeight = 150;
++    var denyPos = rm.getReactor().getPosition();
++    var denyArea = new Rectangle(denyPos.getX() - denyWidth / 2, denyPos.getY() - denyHeight / 2, denyWidth, denyHeight);
++    
++    rm.getReactor().getMap().setAllowSpawnPointInBox(false, denyArea);
+ }
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index a94253c54..4c075230b 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -315,7 +315,7 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 			return false;
+ 		}
+ 		switch (sub[0]) {
+-		case "help":
++                case "help":
+ 		case "commands":
+ 			player.yellowMessage("After you vote, talk to Rooney to get a leaf and redeem it for prizes!");
+ 			player.message("@dispose: Fixes your character if it is stuck.");
+@@ -636,6 +636,14 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 				}
+ 			}
+ 			break;
++                    
++                //debug only
++                case "map":
++                        if(ServerConstants.USE_DEBUG) {
++                            player.dropMessage("Current map position: (" + player.getPosition().getX() + ", " + player.getPosition().getY() + ").");
++                            break;
++                        }
++                    
+ 		default:
+ 			if (player.gmLevel() == 0) {
+ 				player.yellowMessage("Player Command " + heading + sub[0] + " does not exist, see @help for a list of commands.");
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 6030f596d..670f58cd1 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -24,7 +24,7 @@
+     public static boolean JAVA_8;
+     public static boolean SHUTDOWNHOOK;
+     //Gameplay Configurations
+-    public static final boolean USE_MAXRANGE = true;            //will send and receive packets from all events of a map.
++    public static final boolean USE_MAXRANGE = true;        //will send and receive packets from all events of a map, rather than those of only view range.
+     public static final boolean USE_DEBUG = true;
+     public static final boolean USE_MTS = false;
+     public static final boolean USE_FAMILY_SYSTEM = false;
+diff --git a/src/net/server/channel/handlers/ReactorHitHandler.java b/src/net/server/channel/handlers/ReactorHitHandler.java
+index d8a29b834..d502ee464 100644
+--- a/src/net/server/channel/handlers/ReactorHitHandler.java
++++ b/src/net/server/channel/handlers/ReactorHitHandler.java
+@@ -41,7 +41,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         int skillid = slea.readInt();
+         MapleReactor reactor = c.getPlayer().getMap().getReactorByOid(oid);
+         if (reactor != null && reactor.isAlive()) {
+-            reactor.hitReactor(charPos, stance, skillid,c);
++            reactor.hitReactor(charPos, stance, skillid, c, false);
+         }
+     }
+ }
+diff --git a/src/server/life/SpawnPoint.java b/src/server/life/SpawnPoint.java
+index 71872c070..3288dd69d 100644
+--- a/src/server/life/SpawnPoint.java
++++ b/src/server/life/SpawnPoint.java
+@@ -31,7 +31,7 @@
+     private long nextPossibleSpawn;
+     private int mobInterval = 5000;
+     private AtomicInteger spawnedMonsters = new AtomicInteger(0);
+-    private boolean immobile;
++    private boolean immobile, denySpawn = false;
+ 
+     public SpawnPoint(final MapleMonster monster, Point pos, boolean immobile, int mobTime, int mobInterval, int team) {
+         this.monster = monster.getId();
+@@ -50,11 +50,15 @@ public int getSpawned() {
+     }
+     
+     public void setDenySpawn(boolean val) {
+-        spawnedMonsters.set((val == false) ? 0 : 1);
++        denySpawn = val;
++    }
++    
++    public boolean getDenySpawn() {
++        return denySpawn;
+     }
+ 
+     public boolean shouldSpawn() {
+-    	if (mobTime < 0 || spawnedMonsters.get() > 0) {
++    	if (denySpawn || mobTime < 0 || spawnedMonsters.get() > 0) {
+             return false;
+         }
+        
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index cf85327c1..7bd34c961 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -290,7 +290,7 @@ private void spawnAndAddRangedMapObject(MapleMapObject mapobject, DelayedPacketC
+             this.mapobjects.put(curOID, mapobject);
+             for (MapleCharacter chr : characters) {
+                 if (condition == null || condition.canSpawn(chr)) {
+-                    if (chr.getPosition().distanceSq(mapobject.getPosition()) <= 722500) {
++                    if (chr.getPosition().distanceSq(mapobject.getPosition()) <= getRangedDistance()) {
+                         packetbakery.sendPackets(chr.getClient());
+                         chr.addVisibleMapObject(mapobject);
+                     }
+@@ -310,7 +310,7 @@ private void spawnRangedMapObject(MapleMapObject mapobject, DelayedPacketCreatio
+             mapobject.setObjectId(curOID);
+             for (MapleCharacter chr : characters) {
+                 if (condition == null || condition.canSpawn(chr)) {
+-                    if (chr.getPosition().distanceSq(mapobject.getPosition()) <= 722500) {
++                    if (chr.getPosition().distanceSq(mapobject.getPosition()) <= getRangedDistance()) {
+                         packetbakery.sendPackets(chr.getClient());
+                         chr.addVisibleMapObject(mapobject);
+                     }
+@@ -796,7 +796,14 @@ public void destroyReactor(int oid) {
+         broadcastMessage(MaplePacketCreator.destroyReactor(reactor));
+         reactor.setAlive(false);
+         removeMapObject(reactor);
+-        reactor.setTimerActive(false);
++        
++        reactor.lockReactor();
++        try {
++            reactor.setShouldCollect(true);
++        } finally {
++            reactor.unlockReactor();
++        }
++        
+         if (reactor.getDelay() > 0) {
+             tMan.schedule(new Runnable() {
+                 @Override
+@@ -814,7 +821,14 @@ public void resetReactors() {
+                 if (o.getType() == MapleMapObjectType.REACTOR) {
+                     final MapleReactor r = ((MapleReactor) o);
+                     r.setState((byte) 0);
+-                    r.setTimerActive(false);
++                    
++                    r.lockReactor();
++                    try {
++                        r.setShouldCollect(true);
++                    } finally {
++                        r.unlockReactor();
++                    }
++                    
+                     broadcastMessage(MaplePacketCreator.triggerReactor(r, 0));
+                 }
+             }
+@@ -1314,11 +1328,8 @@ private void activateItemReactors(final MapleMapItem drop, final MapleClient c)
+                 if (react.getReactItem((byte) 0).getLeft() == item.getItemId() && react.getReactItem((byte) 0).getRight() == item.getQuantity()) {
+ 
+                     if (react.getArea().contains(drop.getPosition())) {
+-                        if (!react.isTimerActive()) {
+-                            TimerManager.getInstance().schedule(new ActivateItemReactor(drop, react, c), 5000);
+-                            react.setTimerActive(true);
+-                            break;
+-                        }
++                        TimerManager.getInstance().schedule(new ActivateItemReactor(drop, react, c), 5000);
++                        break;
+                     }
+                 }
+             }
+@@ -1633,7 +1644,7 @@ public void removePlayer(MapleCharacter chr) {
+     public void broadcastMessage(final byte[] packet) {
+         broadcastMessage(null, packet, Double.POSITIVE_INFINITY, null);
+     }
+-
++    
+     public void broadcastGMMessage(final byte[] packet) {
+         broadcastGMMessage(null, packet, Double.POSITIVE_INFINITY, null);
+     }
+@@ -1658,7 +1669,7 @@ public void broadcastMessage(MapleCharacter source, final byte[] packet, boolean
+      * @param ranged
+      */
+     public void broadcastMessage(MapleCharacter source, final byte[] packet, boolean repeatToSource, boolean ranged) {
+-        broadcastMessage(repeatToSource ? null : source, packet, ranged ? 722500 : Double.POSITIVE_INFINITY, source.getPosition());
++        broadcastMessage(repeatToSource ? null : source, packet, ranged ? getRangedDistance() : Double.POSITIVE_INFINITY, source.getPosition());
+     }
+ 
+     /**
+@@ -1878,11 +1889,11 @@ public MapleCharacter getCharacterById(int id) {
+ 
+     private void updateMapObjectVisibility(MapleCharacter chr, MapleMapObject mo) {
+         if (!chr.isMapObjectVisible(mo)) { // monster entered view range
+-            if (mo.getType() == MapleMapObjectType.SUMMON || mo.getPosition().distanceSq(chr.getPosition()) <= 722500) {
++            if (mo.getType() == MapleMapObjectType.SUMMON || mo.getPosition().distanceSq(chr.getPosition()) <= getRangedDistance()) {
+                 chr.addVisibleMapObject(mo);
+                 mo.sendSpawnData(chr.getClient());
+             }
+-        } else if (mo.getType() != MapleMapObjectType.SUMMON && mo.getPosition().distanceSq(chr.getPosition()) > 722500) {
++        } else if (mo.getType() != MapleMapObjectType.SUMMON && mo.getPosition().distanceSq(chr.getPosition()) > getRangedDistance()) {
+             chr.removeVisibleMapObject(mo);
+             mo.sendDestroyData(chr.getClient());
+         }
+@@ -2081,30 +2092,38 @@ public ActivateItemReactor(MapleMapItem mapitem, MapleReactor reactor, MapleClie
+ 
+         @Override
+         public void run() {
+-            if (mapitem != null && mapitem == getMapObject(mapitem.getObjectId())) {
+-                mapitem.itemLock.lock();
+-                try {
+-                    TimerManager tMan = TimerManager.getInstance();
+-                    if (mapitem.isPickedUp()) {
+-                        return;
+-                    }
+-                    MapleMap.this.broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 0, 0), mapitem.getPosition());
+-                    MapleMap.this.removeMapObject(mapitem);
+-                    reactor.hitReactor(c);
+-                    reactor.setTimerActive(false);
+-                    if (reactor.getDelay() > 0) {
+-                        tMan.schedule(new Runnable() {
+-                            @Override
+-                            public void run() {
+-                                reactor.setState((byte) 0);
+-                                broadcastMessage(MaplePacketCreator.triggerReactor(reactor, 0));
+-                            }
+-                        }, reactor.getDelay());
++            reactor.lockReactor();
++            try {
++                if (reactor.getShouldCollect() == true && mapitem != null && mapitem == getMapObject(mapitem.getObjectId())) {
++                    mapitem.itemLock.lock();
++                    try {
++                        TimerManager tMan = TimerManager.getInstance();
++                        if (mapitem.isPickedUp()) {
++                            return;
++                        }
++
++                        reactor.setShouldCollect(false);
++                        MapleMap.this.broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 0, 0), mapitem.getPosition());
++                        MapleMap.this.removeMapObject(mapitem);
++                        reactor.hitReactor(c, true);
++
++                        if (reactor.getDelay() > 0) {
++                            tMan.schedule(new Runnable() {
++                                @Override
++                                public void run() {
++                                    reactor.setState((byte) 0);
++                                    broadcastMessage(MaplePacketCreator.triggerReactor(reactor, 0));
++                                }
++                            }, reactor.getDelay());
++                        }
++                    } finally {
++                        mapitem.itemLock.unlock();
+                     }
+-                } finally {
+-                    mapitem.itemLock.unlock();
+                 }
+             }
++            finally {
++                reactor.unlockReactor();
++            }
+         }
+     }
+     
+@@ -2168,6 +2187,15 @@ public void respawn() {
+             chrRLock.unlock();
+         }
+         
++        /*
++        System.out.println("----------------------------------");
++        for (SpawnPoint spawnPoint : monsterSpawn) {
++            System.out.println("sp " + spawnPoint.getPosition().getX() + ", " + spawnPoint.getPosition().getY() + ": " + spawnPoint.getDenySpawn());
++        }
++        System.out.println("try " + monsterSpawn.size() + " - " + spawnedMonstersOnMap.get());
++        System.out.println("----------------------------------");
++        */
++        
+         short numShouldSpawn = (short) ((monsterSpawn.size() - spawnedMonstersOnMap.get()));//Fking lol'd
+         if (numShouldSpawn > 0) {
+             List<SpawnPoint> randomSpawn = new ArrayList<>(monsterSpawn);
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index febc21dd7..9f840d353 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -26,6 +26,8 @@
+ 
+ import java.awt.Rectangle;
+ import java.util.List;
++import java.util.concurrent.locks.Lock;
++import java.util.concurrent.locks.ReentrantLock;
+ 
+ import scripting.reactor.ReactorScriptManager;
+ import server.TimerManager;
+@@ -43,21 +45,30 @@
+     private int delay;
+     private MapleMap map;
+     private String name;
+-    private boolean timerActive;
+     private boolean alive;
++    private boolean shouldCollect = true;
++    private Lock reactorLock = new ReentrantLock(true);
+ 
+     public MapleReactor(MapleReactorStats stats, int rid) {
+         this.stats = stats;
+         this.rid = rid;
+         alive = true;
+     }
+-
+-    public void setTimerActive(boolean active) {
+-        this.timerActive = active;
++    
++    public void setShouldCollect(boolean collect) {
++        this.shouldCollect = collect;
+     }
+-
+-    public boolean isTimerActive() {
+-        return timerActive;
++    
++    public boolean getShouldCollect() {
++        return shouldCollect;
++    }
++    
++    public void lockReactor() {
++        reactorLock.lock();
++    }
++    
++    public void unlockReactor() {
++        reactorLock.unlock();
+     }
+ 
+     public void setState(byte state) {
+@@ -67,6 +78,10 @@ public void setState(byte state) {
+     public byte getState() {
+         return state;
+     }
++    
++    public MapleReactorStats getStats() {
++        return stats;
++    }
+ 
+     public int getId() {
+         return rid;
+@@ -129,7 +144,13 @@ public void sendSpawnData(MapleClient client) {
+ 
+     public void forceHitReactor(final byte newState) {
+         setState((byte) newState);
+-        setTimerActive(false);
++        try {
++            this.lockReactor();
++            this.setShouldCollect(true);
++        }
++        finally {
++            this.unlockReactor();
++        }
+         map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
+     }
+     
+@@ -137,59 +158,61 @@ public void delayedHitReactor(final MapleClient c, long delay) {
+         TimerManager.getInstance().schedule(new Runnable() {
+             @Override
+             public void run() {
+-                hitReactor(c);
++                hitReactor(c, false);
+             }
+         }, delay);
+     }
+ 
+-    public void hitReactor(MapleClient c) {
+-        hitReactor(0, (short) 0, 0, c);
++    public void hitReactor(MapleClient c, boolean itemDrop) {
++        hitReactor(0, (short) 0, 0, c, itemDrop);
+     }
+-
+-    public synchronized void hitReactor(int charPos, short stance, int skillid, MapleClient c) {
+-            try {
+-                    if(!this.isAlive()) {
+-                            return;
+-                    }
+-                    if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid);
+-                    if (stats.getType(state) < 999 && stats.getType(state) != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
+-                        if (!(stats.getType(state) == 2 && (stance == 0 || stance == 2))) { //get next state	
+-                                    for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
+-                                            List<Integer> activeSkills = stats.getActiveSkills(state, b);
+-                                            if (activeSkills != null) {
+-                                                    if (!activeSkills.contains(skillid)) continue;
+-                                            }
+-                                            state = stats.getNextState(state, b);
+-                                            if (stats.getNextState(state, b) == -1) {//end of reactor
+-                                                    if (stats.getType(state) < 100) {//reactor broken
+-                                                            if (delay > 0) {
+-                                                                    map.destroyReactor(getObjectId());
+-                                                            } else {//trigger as normal
+-                                                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                                                            }
+-                                                    } else {//item-triggered on final step
+-                                                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                                                    }
+-
+-                                                    if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "REACTOR " + this.getId() + " activated");
+-                                                    ReactorScriptManager.getInstance().act(c, this);
+-                                            } else { //reactor not broken yet
+-                                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-                                                    if (state == stats.getNextState(state, b)) {//current state = next state, looping reactor
+-                                                            ReactorScriptManager.getInstance().act(c, this);
+-                                                    }
+-                                            }
+-                                            break;
+-                                    }
++    
++    public synchronized void hitReactor(int charPos, short stance, int skillid, MapleClient c, boolean itemDrop) {
++        try {
++            if(!this.isAlive()) {
++                return;
++            }
++            if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid + " , STATE " + stats.getType(state) + " STATESIZE " + stats.getStateSize(state));
++            int reactorType = stats.getType(state);
++            
++            if (reactorType < 999 && reactorType != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
++                if (!(reactorType == 2 && (stance == 0 || stance == 2))) { //get next state
++                    for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
++                        List<Integer> activeSkills = stats.getActiveSkills(state, b);
++                        if (activeSkills != null) {
++                            if (!activeSkills.contains(skillid)) continue;
++                        }
++                        state = stats.getNextState(state, b);
++                        if (stats.getNextState(state, b) == -1) {//end of reactor
++                            if (reactorType < 100) {//reactor broken
++                                if (delay > 0) {
++                                    map.destroyReactor(getObjectId());
++                                } else {//trigger as normal
++                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                }
++                            } else {//item-triggered on final step
++                                map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+                             }
+-                    } else {
+-                            state++;
+-                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                            
+                             ReactorScriptManager.getInstance().act(c, this);
++                        } else { //reactor not broken yet
++                            if (itemDrop) state++; // Duh, if the reactor is triggered by itemdrop, go directly to next state (in this case, instead of staying at 1, it goes to 2)! :)
++                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                            if (state == stats.getNextState(state, b) || itemDrop) {//current state = next state, looping reactor
++                                ReactorScriptManager.getInstance().act(c, this);
++                            }
++                        }
++                        break;
+                     }
+-            } catch(Exception e) {
+-                    e.printStackTrace();
++                }
++            } else {
++                state++;
++                map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                ReactorScriptManager.getInstance().act(c, this);
+             }
++        } catch(Exception e) {
++            e.printStackTrace();
++        }
+     }
+ 
+     public Rectangle getArea() {
+diff --git a/wz/Reactor.wz/2519000.img.xml b/wz/Reactor.wz/2519000.img.xml
+index 5144bda5a..a6ce2db85 100644
+--- a/wz/Reactor.wz/2519000.img.xml
++++ b/wz/Reactor.wz/2519000.img.xml
+@@ -67,8 +67,8 @@
+     </imgdir>
+   </imgdir>
+   <imgdir name="1">
+-    <canvas name="0" width="1" height="1">
+-      <vector name="origin" x="0" y="0"/>
++    <canvas name="0" width="100" height="121">
++      <vector name="origin" x="49" y="121"/>
+     </canvas>
+   </imgdir>
+   <string name="action" value="davyScript0"/>
+diff --git a/wz/Reactor.wz/2519001.img.xml b/wz/Reactor.wz/2519001.img.xml
+index 0aa134376..9596befad 100644
+--- a/wz/Reactor.wz/2519001.img.xml
++++ b/wz/Reactor.wz/2519001.img.xml
+@@ -67,8 +67,8 @@
+     </imgdir>
+   </imgdir>
+   <imgdir name="1">
+-    <canvas name="0" width="1" height="1">
+-      <vector name="origin" x="0" y="0"/>
++    <canvas name="0" width="92" height="124">
++      <vector name="origin" x="47" y="124"/>
+     </canvas>
+   </imgdir>
+   <string name="action" value="davyScript1"/>
+diff --git a/wz/Reactor.wz/2519002.img.xml b/wz/Reactor.wz/2519002.img.xml
+index 405c52b82..7fc97417e 100644
+--- a/wz/Reactor.wz/2519002.img.xml
++++ b/wz/Reactor.wz/2519002.img.xml
+@@ -2,7 +2,74 @@
+ <imgdir name="2519002.img">
+   <imgdir name="info">
+     <string name="info" value="í´ì ì  ë¬¸"/>
+-    <string name="link" value="2519000"/>
+   </imgdir>
+   <string name="action" value="davyScript2"/>
++  <imgdir name="0">
++    <canvas name="0" width="100" height="121">
++      <vector name="origin" x="49" y="121"/>
++      <int name="z" value="0"/>
++    </canvas>
++    <imgdir name="event">
++      <imgdir name="0">
++        <int name="type" value="100"/>
++        <int name="state" value="1"/>
++        <string name="0" value="4001117"/>
++        <int name="1" value="1"/>
++        <vector name="lt" x="-27" y="-21"/>
++        <vector name="rb" x="31" y="7"/>
++      </imgdir>
++    </imgdir>
++    <imgdir name="hit">
++      <canvas name="0" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="1" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="2" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="3" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="4" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="5" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="6" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="7" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++      <canvas name="8" width="100" height="121">
++        <vector name="origin" x="49" y="121"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="130"/>
++      </canvas>
++    </imgdir>
++  </imgdir>
++  <imgdir name="1">
++    <canvas name="0" width="100" height="121">
++      <vector name="origin" x="49" y="121"/>
++    </canvas>
++  </imgdir>
+ </imgdir>
+diff --git a/wz/Reactor.wz/2519003.img.xml b/wz/Reactor.wz/2519003.img.xml
+index 847a37312..257d7a6eb 100644
+--- a/wz/Reactor.wz/2519003.img.xml
++++ b/wz/Reactor.wz/2519003.img.xml
+@@ -2,7 +2,74 @@
+ <imgdir name="2519003.img">
+   <imgdir name="info">
+     <string name="info" value="í´ì ì  ë¬¸"/>
+-    <string name="link" value="2519001"/>
+   </imgdir>
+   <string name="action" value="davyScript3"/>
++  <imgdir name="0">
++    <canvas name="0" width="92" height="124">
++      <vector name="origin" x="47" y="124"/>
++      <int name="z" value="0"/>
++    </canvas>
++    <imgdir name="event">
++      <imgdir name="0">
++        <int name="type" value="100"/>
++        <int name="state" value="1"/>
++        <string name="0" value="4001117"/>
++        <int name="1" value="1"/>
++        <vector name="lt" x="-27" y="-21"/>
++        <vector name="rb" x="31" y="7"/>
++      </imgdir>
++    </imgdir>
++    <imgdir name="hit">
++      <canvas name="0" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="1" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="2" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="3" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="4" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="5" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="6" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="7" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++      <canvas name="8" width="92" height="124">
++        <vector name="origin" x="47" y="124"/>
++        <int name="z" value="0"/>
++        <int name="delay" value="100"/>
++      </canvas>
++    </imgdir>
++  </imgdir>
++  <imgdir name="1">
++    <canvas name="0" width="92" height="124">
++      <vector name="origin" x="47" y="124"/>
++    </canvas>
++  </imgdir>
+ </imgdir>

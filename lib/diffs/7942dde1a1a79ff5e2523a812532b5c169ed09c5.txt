@@ -1,0 +1,37 @@
+diff --git a/src/net/server/channel/handlers/QuestActionHandler.java b/src/net/server/channel/handlers/QuestActionHandler.java
+index cc1b7c2c1..150addaee 100644
+--- a/src/net/server/channel/handlers/QuestActionHandler.java
++++ b/src/net/server/channel/handlers/QuestActionHandler.java
+@@ -26,6 +26,7 @@
+ import net.AbstractMaplePacketHandler;
+ import scripting.quest.QuestScriptManager;
+ import server.quest.MapleQuest;
++import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+@@ -67,6 +68,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             slea.readInt();
+ 			if(quest.canComplete(player, npc)) {
+ 				QuestScriptManager.getInstance().end(c, questid, npc);
++                                player.getClient().getSession().write(MaplePacketCreator.showSpecialEffect(9)); //show effect when completion 
++                                player.getMap().broadcastMessage(player, MaplePacketCreator.showForeignEffect(player.getId(), 9));//show effect around players I guess
+ 			}
+         }
+     }
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 8bb0ddb71..01f57d3cc 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -223,9 +223,8 @@ public void complete(MapleCharacter c, int npc, Integer selection) {
+ 		        a.run(c, selection);
+ 		    }
+                     
+-                    //dont seems to work...
+-                    //c.getClient().getSession().write(MaplePacketCreator.showForeignEffect(12)); // Quest completion
+-                    //c.getMap().broadcastMessage(c, MaplePacketCreator.showForeignEffect(c.getId(), 12), false);
++                    c.getClient().getSession().write(MaplePacketCreator.showForeignEffect(9)); // Quest completion
++                    c.getMap().broadcastMessage(c, MaplePacketCreator.showForeignEffect(c.getId(), 9), false); //use 9 instead of 12 for both
+ 		}
+     }
+ 

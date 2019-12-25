@@ -1,0 +1,1482 @@
+diff --git a/README.md b/README.md
+index b08159397..187491f2e 100644
+--- a/README.md
++++ b/README.md
+@@ -53,7 +53,7 @@ Recommended localhost: https://hostr.co/m2bVtnizCtmD
+ 
+ Status: <span style="color:green">__Released__</span>.
+ 
+-HeavenMS development achieved an acceptable state-of-art and will get into a halt. A heartfelt thanks for everyone that contributed in some way for the progress of this server!
++HeavenMS development achieved an acceptable state-of-the-art and will get into a halt. A heartfelt thanks for everyone that contributed in some way for the progress of this server!
+ 
+ Although development is halted, support for fixing features that were implemented here is still up. You can still actively help us improve the server by issuing pull requests with informative details about what's changing.
+ 
+@@ -153,7 +153,7 @@ The client's set-up is quite straightforward:
+ 2. Once done, erase these files: "HShield" (folder), "ASPLauncher.exe", "MapleStory.exe" and "patcher.exe".
+ 3. Extract into the client folder the "localhost.exe" from the provided link.
+ 4. Overwrite the original WZ files with the ones provided from either one of those folders on the Google Drive:
+-	- "rev???_wz" (last published RELEASE, referring to commit of same number).
++	- "commit???_wz" (last published RELEASE, referring to commit of same number).
+ 	- "current_wz" (latest source update).
+ 
+ #### Editing localhost IP target
+diff --git a/docs/fieldlimits.txt b/docs/fieldlimits.txt
+new file mode 100644
+index 000000000..f51a54bc6
+--- /dev/null
++++ b/docs/fieldlimits.txt
+@@ -0,0 +1,27 @@
++Provided by Arnah, source: http://forum.ragezone.com/f702/release-harepacker-resurrected-1149521/index2.html
++
++Field limits (v95):
++FIELDOPT_MOVELIMIT = 0x1,  
++FIELDOPT_SKILLLIMIT = 0x2,  
++FIELDOPT_SUMMONLIMIT = 0x4,  
++FIELDOPT_MYSTICDOORLIMIT = 0x8,  
++FIELDOPT_MIGRATELIMIT = 0x10,  
++FIELDOPT_PORTALSCROLLLIMIT = 0x20,  
++FIELDOPT_TELEPORTITEMLIMIT = 0x40,  
++FIELDOPT_MINIGAMELIMIT = 0x80,  
++FIELDOPT_SPECIFICPORTALSCROLLLIMIT = 0x100,  
++FIELDOPT_TAMINGMOBLIMIT = 0x200,  
++FIELDOPT_STATCHANGEITEMCONSUMELIMIT = 0x400,  
++FIELDOPT_PARTYBOSSCHANGELIMIT = 0x800,  
++FIELDOPT_NOMOBCAPACITYLIMIT = 0x1000,  
++FIELDOPT_WEDDINGINVITATIONLIMIT = 0x2000,  
++FIELDOPT_CASHWEATHERCONSUMELIMIT = 0x4000,  
++FIELDOPT_NOPET = 0x8000,  
++FIELDOPT_ANTIMACROLIMIT = 0x10000,  
++FIELDOPT_FALLDOWNLIMIT = 0x20000,  
++FIELDOPT_SUMMONNPCLIMIT = 0x40000,  
++FIELDOPT_NOEXPDECREASE = 0x80000,  
++FIELDOPT_NODAMAGEONFALLING = 0x100000,  
++FIELDOPT_PARCELOPENLIMIT = 0x200000, 
++FIELDOPT_DROPLIMIT = 0x400000,  
++FIELDOPT_ROCKETBOOSTER_LIMIT = 0x800000,
+\ No newline at end of file
+diff --git a/docs/issues.txt b/docs/issues.txt
+index abb0fd94e..6f68216c1 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -12,6 +12,7 @@ Known issues:
+ - Deadlocks may start appearing if the server stays online long enough with many players logged in.
+ - If there are multiple bosses that shows HPBar on the map, if a player hits more than one the HPBar may start flickering on the screen.
+ - Sometimes battleship may behave oddly with the enhanced buff system, making the character d/c in certain scenarios.
++- Dragon Roar doesn't show the stun effect to players.
+ ---------------------------
+ 
+ ---------------------------
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 2b9d973b3..e8afa71c5 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1049,4 +1049,17 @@ Corrigido Heaven's Hammer e Combo Tempest não mostrando dano aos jogadores.
+ Corrigido exploit onde jogadores poderiam criar minirooms em certos casos onde os mesmos não poderiam fazê-lo.
+ Quest itens dropados de mobs que não visíveis pelo jogador atacante agora são mostrados mais nas pontas, de forma que o conjunto de drops agora aparente não ter espaço com itens invisíveis no meio.
+ Corrigido Horntail não atruibuindo quest progress corretamente para a quest The Last Hour of Horntail.
+-Removido skill books agora desnecessários do drop data, uma vez que já foi implementado as quests para conseguir elas.
+\ No newline at end of file
++Removido skill books agora desnecessários do drop data, uma vez que já foi implementado as quests para conseguir elas.
++
++16 Junho 2018,
++Corrigido Trade não podendo ser realizado dentro de PQ, problema ocorrendo devido a uma mudança feita no último commit.
++Refatorado minigames, agora utilizando enums ao invés de strings.
++Corrigido Transformations não recebendo stat buffs corretamente.
++Corrigido skills Crash agora atuando dentro de suas respectivas repartições.
++Adicionado server flag para permitir skills Crash retirar invencibilidades do mob.
++Corrigido Shark Wave não realizando contabilização de charges ao aplicar dano.
++Dragon Roar agora aplica stun em mobs (efeito de stun aparentemente não está sendo mostrado aos jogadores).
++
++22 Junho 2018,
++Refatorado método de empty em MapleCharacter, agora verificando e liberando mais recursos.
++Corrigido exploit onde pacotes referentes à chairs poderiam ser processados e reenviados aos outros em casos onde o personagem está fora do world server.
+\ No newline at end of file
+diff --git a/scripts/npc/2020008.js b/scripts/npc/2020008.js
+index 41f43aa71..79679a672 100644
+--- a/scripts/npc/2020008.js
++++ b/scripts/npc/2020008.js
+@@ -56,8 +56,8 @@ function start() {
+     
+     var jobBase = parseInt(cm.getJobId() / 100);
+     var jobStyle = 1;
+-    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
+-        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle && cm.getJobId() % 10 == 0)){
++        if(cm.getPlayer().getLevel() >= 50 && jobBase % 10 == jobStyle) {
+             status++;
+             action(1, 0, 1);
+             return;
+diff --git a/scripts/npc/2020009.js b/scripts/npc/2020009.js
+index a118b1a7b..0ed7c4747 100644
+--- a/scripts/npc/2020009.js
++++ b/scripts/npc/2020009.js
+@@ -28,8 +28,8 @@ actionx = {"Mental" : false, "Physical" : false};
+ function start() {
+     var jobBase = parseInt(cm.getJobId() / 100);
+     var jobStyle = 2;
+-    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
+-        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle && cm.getJobId() % 10 == 0)){
++        if(cm.getPlayer().getLevel() >= 50 && jobBase % 10 == jobStyle) {
+             status++;
+             action(1, 0, 1);
+             return;
+diff --git a/scripts/npc/2020010.js b/scripts/npc/2020010.js
+index ad882702c..8cadcdca1 100644
+--- a/scripts/npc/2020010.js
++++ b/scripts/npc/2020010.js
+@@ -30,8 +30,8 @@ actionx = {"Mental" : false, "Physical" : false};
+ function start() {
+     var jobBase = parseInt(cm.getJobId() / 100);
+     var jobStyle = 3;
+-    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
+-        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle && cm.getJobId() % 10 == 0)){
++        if(cm.getPlayer().getLevel() >= 50 && jobBase % 10 == jobStyle) {
+             status++;
+             action(1, 0, 1);
+             return;
+diff --git a/scripts/npc/2020011.js b/scripts/npc/2020011.js
+index 44d0e6203..980ec018d 100644
+--- a/scripts/npc/2020011.js
++++ b/scripts/npc/2020011.js
+@@ -28,8 +28,8 @@ actionx = {"Mental" : false, "Physical" : false};
+ function start() {
+     var jobBase = parseInt(cm.getJobId() / 100);
+     var jobStyle = 4;
+-    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
+-        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle && cm.getJobId() % 10 == 0)){
++        if(cm.getPlayer().getLevel() >= 50 && jobBase % 10 == jobStyle) {
+             status++;
+             action(1, 0, 1);
+             return;
+diff --git a/scripts/npc/2020013.js b/scripts/npc/2020013.js
+index 7658c22e9..d8c6615f5 100644
+--- a/scripts/npc/2020013.js
++++ b/scripts/npc/2020013.js
+@@ -28,8 +28,8 @@ actionx = {"Mental" : false, "Physical" : false};
+ function start() {
+     var jobBase = parseInt(cm.getJobId() / 100);
+     var jobStyle = 5;
+-    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
+-        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle && cm.getJobId() % 10 == 0)){
++        if(cm.getPlayer().getLevel() >= 50 && jobBase % 10 == jobStyle) {
+             status++;
+             action(1, 0, 1);
+             return;
+diff --git a/scripts/npc/2080000.js b/scripts/npc/2080000.js
+index c8e4a92ee..d063cc6ca 100644
+--- a/scripts/npc/2080000.js
++++ b/scripts/npc/2080000.js
+@@ -40,9 +40,8 @@ function start() {
+     var options = new Array("What's a stimulator?","Create a Warrior weapon","Create a Bowman weapon","Create a Magician weapon","Create a Thief weapon","Create a Pirate Weapon",
+         "Create a Warrior weapon with a Stimulator","Create a Bowman weapon with a Stimulator","Create a Magician weapon with a Stimulator","Create a Thief weapon with a Stimulator","Create a Pirate Weapon with a Stimulator");
+         
+-    if(cm.isQuestStarted(7301)) options.push("Make #t4001078#");
++    if(cm.isQuestStarted(7301) || cm.isQuestStarted(7303)) options.push("Make #t4001078#");
+     
+-        
+     for (var i = 0; i < options.length; i++){
+         selStr += "\r\n#L" + i + "# " + options[i] + "#l";
+     }
+diff --git a/scripts/npc/credits.js b/scripts/npc/credits.js
+index 716f82e74..3dda183df 100644
+--- a/scripts/npc/credits.js
++++ b/scripts/npc/credits.js
+@@ -11,7 +11,8 @@ var name_tree = [];
+ var role_tree = [];
+ var name_cursor, role_cursor;
+ 
+-// make sure the server names are lexicograffically EQUALS to the correspondent function.
++// new server names are to be appended at the start of the name stack, building up the chronology.
++// make sure the server names are lexicograffically equivalent to their correspondent function.
+ var servers = ["HeavenMS", "MapleSolaxia", "MoopleDEV", "MetroMS", "BubblesDEV", "ThePackII", "OdinMS", "Contributors"];
+ var servers_history = [];
+ 
+@@ -24,6 +25,14 @@ function setHistory(from, to) {
+         servers_history.push([from, to]);
+ }
+ 
++/*
++function writeServerStaff_MapleNext() {
++        addPerson("John Doe", "The role");
++
++        setHistory(INITIAL_YEAR [, CURRENT_YEAR]);
++}
++*/
++
+ function writeServerStaff_HeavenMS() {
+         addPerson("Ronan", "Developer");
+         addPerson("Vcoc", "Freelance Developer");
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index d29aa46de..4516ec5b8 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -88,6 +88,7 @@
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
+ import server.maps.MapleMiniGame;
++import server.maps.MapleMiniGame.MiniGameResult;
+ import server.maps.MaplePlayerShop;
+ import server.maps.MaplePlayerShopItem;
+ import server.maps.MapleSummon;
+@@ -3600,9 +3601,18 @@ public int compare( Pair<MapleStatEffect, Pair<Integer, Integer>> o1, Pair<Maple
+             toUpdateEffects.add(new Pair<>(mse.getBuffSourceId(), retrievedEffects.get(mse.getBuffSourceId())));
+         }
+         
++        List<Pair<MapleBuffStat, Integer>> activeStatups = new LinkedList<>();
+         for(Pair<Integer, Pair<MapleStatEffect, Long>> lmse: toUpdateEffects) {
+             Pair<MapleStatEffect, Long> msel = lmse.getRight();
+-            msel.getLeft().updateBuffEffect(this, getActiveStatupsFromSourceid(lmse.getLeft()), msel.getRight());
++            
++            for(Pair<MapleBuffStat, Integer> statup : getActiveStatupsFromSourceid(lmse.getLeft())) {
++                if(!isSingletonStatup(statup.getLeft())) {
++                    activeStatups.add(statup);
++                }
++            }
++            
++            msel.getLeft().updateBuffEffect(this, activeStatups, msel.getRight());
++            activeStatups.clear();
+         }
+         
+         if (this.isRidingBattleship()) {
+@@ -4450,21 +4460,21 @@ public MapleMiniGame getMiniGame() {
+         return miniGame;
+     }
+ 
+-    public int getMiniGamePoints(String type, boolean omok) {
++    public int getMiniGamePoints(MiniGameResult type, boolean omok) {
+         if (omok) {
+             switch (type) {
+-                case "wins":
++                case WIN:
+                     return omokwins;
+-                case "losses":
++                case LOSS:
+                     return omoklosses;
+                 default:
+                     return omokties;
+             }
+         } else {
+             switch (type) {
+-                case "wins":
++                case WIN:
+                     return matchcardwins;
+-                case "losses":
++                case LOSS:
+                     return matchcardlosses;
+                 default:
+                     return matchcardties;
+@@ -5460,7 +5470,7 @@ public void levelUp(boolean takeexp) {
+                 this.yellowMessage("You reached level " + level + ". Congratulations! As a token of your success, your inventory has been expanded a little bit.");
+             }            
+         }
+-        if (level % 20 == 0 && ServerConstants.USE_ADD_RATES_BY_LEVEL == true) { //For the drop & meso rate
++        if (level % 20 == 0 && ServerConstants.USE_ADD_RATES_BY_LEVEL == true) { //For the rate upgrade
+             revertLastPlayerRates();
+             setPlayerRates();
+             this.yellowMessage("You managed to get level " + level + "! Getting experience and items seems a little easier now, huh?");
+@@ -8613,33 +8623,42 @@ public void setPartyQuest(PartyQuest pq) {
+     }
+ 
+     public final void empty(final boolean remove) {
+-        if (dragonBloodSchedule != null) {
+-            dragonBloodSchedule.cancel(false);
+-        }
+-        if (hpDecreaseTask != null) {
+-            hpDecreaseTask.cancel(false);
+-        }
+-        if (beholderHealingSchedule != null) {
+-            beholderHealingSchedule.cancel(false);
+-        }
+-        if (beholderBuffSchedule != null) {
+-            beholderBuffSchedule.cancel(false);
+-        }
+-        if (berserkSchedule != null) {
+-            berserkSchedule.cancel(false);
+-        }
+-        if (recoveryTask != null) {
+-            recoveryTask.cancel(false);
+-        }
+-        if (extraRecoveryTask != null) {
+-            extraRecoveryTask.cancel(false);
+-        }
+-        
++        if (dragonBloodSchedule != null) { dragonBloodSchedule.cancel(true); }
++        dragonBloodSchedule = null;
++
++        if (hpDecreaseTask != null) { hpDecreaseTask.cancel(true); }
++        hpDecreaseTask = null;
++
++        if (beholderHealingSchedule != null) { beholderHealingSchedule.cancel(true); }
++        beholderHealingSchedule = null;
++
++        if (beholderBuffSchedule != null) { beholderBuffSchedule.cancel(true); }
++        beholderBuffSchedule = null;
++
++        if (berserkSchedule != null) { berserkSchedule.cancel(true); }
++        berserkSchedule = null;
++
+         unregisterChairBuff();
+         cancelBuffExpireTask();
+         cancelDiseaseExpireTask();
+         cancelSkillCooldownTask();
+         cancelExpirationTask();
++
++        if (questExpireTask != null) { questExpireTask.cancel(true); }
++        questExpireTask = null;
++
++        if (recoveryTask != null) { recoveryTask.cancel(true); }
++        recoveryTask = null;
++
++        if (extraRecoveryTask != null) { extraRecoveryTask.cancel(true); }
++        extraRecoveryTask = null;
++
++        // already done on unregisterChairBuff
++        /* if (chairRecoveryTask != null) { chairRecoveryTask.cancel(true); }
++        chairRecoveryTask = null; */
++
++        if (pendantOfSpirit != null) { pendantOfSpirit.cancel(true); }
++        pendantOfSpirit = null;
+         
+         petLock.lock();
+         try {
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 35cfa9b0a..1831e1fac 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -843,7 +843,7 @@ public final synchronized void disconnect(boolean shutdown, boolean cashshop) {/
+                                 player.saveCooldowns();
+                                 player.saveToDB(true);
+                             
+-				player = null;
++                                clear();
+ 				return;
+ 			}
+                         
+@@ -935,25 +935,32 @@ public final synchronized void disconnect(boolean shutdown, boolean cashshop) {/
+                                         player.saveCooldowns();
+                                         player.saveToDB();
+                                 }
+-                                player = null;
+ 			}
+ 		}
+ 		if (!serverTransition && isLoggedIn()) {
+ 			updateLoginState(MapleClient.LOGIN_NOTLOGGEDIN);
+ 			session.removeAttribute(MapleClient.CLIENT_KEY); // prevents double dcing during login
+ 			session.close(false);
+-		}
+-		engines.clear();
++                        
++                        clear();
++		} else {
++                        engines.clear();
++                }
+ 	}
+ 
+ 	private void clear() {  //usable when defining client = null shortly after
++                // player hard reference removal thanks to Steve (kaito1410)
++                if (this.player != null) {
++                    this.player.empty(true); // clears schedules and stuff
++                }
++            
+                 Server.getInstance().unregisterLoginState(this);
+             
+ 		this.accountName = null;
+ 		this.macs = null;
+ 		this.hwid = null;
+ 		this.birthday = null;
+-		//this.engines = null;
++		this.engines = null;
+ 		this.player = null;
+ 		this.receive = null;
+ 		this.send = null;
+diff --git a/src/client/MapleJob.java b/src/client/MapleJob.java
+index 2bbc5ec4a..60cc28f57 100644
+--- a/src/client/MapleJob.java
++++ b/src/client/MapleJob.java
+@@ -120,8 +120,9 @@ public boolean isBeginner(MapleJob beginners) {
+     			|| DAWNWARRIOR1 == beginners || NIGHTWALKER1 == beginners || BLAZEWIZARD1 == beginners;
+      }
+     
+-    public boolean isA(MapleJob basejob) {        
+-        return getId() >= basejob.getId() && getId() / 100 == basejob.getId() / 100;
++    public boolean isA(MapleJob basejob) {  // thanks Steve (kaito1410) for pointing out an improvement here
++        int basebranch = basejob.getId() / 10;
++        return (getId() / 10 == basebranch && getId() >= basejob.getId()) || (basebranch % 10 == 0 && getId() / 100 == basejob.getId() / 100);
+     }
+     
+     public int getJobNiche() {
+diff --git a/src/constants/CharsetConstants.java b/src/constants/CharsetConstants.java
+new file mode 100644
+index 000000000..a9a3cd697
+--- /dev/null
++++ b/src/constants/CharsetConstants.java
+@@ -0,0 +1,48 @@
++/*
++ * To change this license header, choose License Headers in Project Properties.
++ * To change this template file, choose Tools | Templates
++ * and open the template in the editor.
++ */
++ 
++package constants;
++ 
++/*
++ * Courtesy of GabrielSin (gabrielsin@playellin.net)
++ * Ellin
++ * MapleStory Server
++ * CharsetConstants
++ */
++ 
++public class CharsetConstants {
++   
++    public static MapleLanguageType MAPLE_TYPE = MapleLanguageType.LANGUAGE_PT_BR;
++   
++    public enum MapleLanguageType {
++        LANGUAGE_PT_BR(1, "ISO-8859-1"),
++        LANGUAGE_US(2, "US-ASCII");
++        final byte type;
++        final String ascii;
++ 
++        private MapleLanguageType(int type, String ascii) {
++            this.type = (byte) type;
++            this.ascii = ascii;
++        }
++ 
++        public String getAscii() {
++            return ascii;
++        }
++ 
++        public byte getType() {
++            return type;
++        }
++ 
++        public static MapleLanguageType getByType(byte type) {
++            for (MapleLanguageType l : MapleLanguageType.values()) {
++                if (l.getType() == type) {
++                    return l;
++                }
++            }
++            return LANGUAGE_PT_BR;
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 435bb8894..8761c07d6 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -140,6 +140,7 @@
+     
+     //Other Skills Configuration
+     public static final boolean USE_FAST_REUSE_HERO_WILL = true;//Greatly reduce cooldown on Hero's Will.
++    public static final boolean USE_ANTI_IMMUNITY_CRASH = true; //Crash skills additionally removes the mob's invincibility buffs.
+     
+     //Character Configuration
+     public static final boolean USE_ADD_SLOTS_BY_LEVEL = true;  //Slots are added each 20 levels.
+diff --git a/src/constants/skills/ThunderBreaker.java b/src/constants/skills/ThunderBreaker.java
+index e54d6e880..1558680b8 100644
+--- a/src/constants/skills/ThunderBreaker.java
++++ b/src/constants/skills/ThunderBreaker.java
+@@ -38,4 +38,5 @@
+     public static final int TRANSFORMATION = 15111002;
+     public static final int SPEED_INFUSION = 15111005;
+     public static final int SPARK = 15111006;
++    public static final int SHARK_WAVE = 15111007;
+ }
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index 852fa9987..c3bb66ce5 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -21,6 +21,7 @@
+ */
+ package net.server;
+ 
++import client.MapleClient;
+ import client.MapleCharacter;
+ import java.util.Collection;
+ import java.util.Iterator;
+@@ -93,7 +94,11 @@ public final void disconnectAll() {
+ 	try {	    
+             final Iterator<MapleCharacter> chrit = storage.values().iterator();
+ 	    while (chrit.hasNext()) {
+-                chrit.next().getClient().disconnect(true, false);
++                MapleClient client = chrit.next().getClient();
++                if(client != null) {
++                    client.disconnect(true, false);
++                }
++                
+                 chrit.remove();
+             }
+ 	} finally {
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 99210b695..d8bb3416b 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -29,7 +29,6 @@
+ import java.util.Map;
+ 
+ import net.AbstractMaplePacketHandler;
+-import server.MapleItemInformationProvider;
+ import server.MapleStatEffect;
+ import server.TimerManager;
+ import server.life.Element;
+@@ -43,7 +42,6 @@
+ import server.maps.MapleMapItem;
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
+-import server.partyquest.Pyramid;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
+@@ -55,13 +53,9 @@
+ import client.Skill;
+ import client.SkillFactory;
+ import client.autoban.AutobanFactory;
+-import client.inventory.Equip;
+-import client.inventory.Item;
+-import client.inventory.MapleInventoryType;
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+ import constants.GameConstants;
+-import constants.ItemConstants;
+ import constants.ServerConstants;
+ import constants.skills.Aran;
+ import constants.skills.Assassin;
+@@ -304,7 +298,7 @@ public void run() {
+                         }
+                     } else if (attack.skill == Marauder.ENERGY_DRAIN || attack.skill == ThunderBreaker.ENERGY_DRAIN || attack.skill == NightWalker.VAMPIRE || attack.skill == Assassin.DRAIN) {
+                         player.addHP(Math.min(monster.getMaxHp(), Math.min((int) ((double) totDamage * (double) SkillFactory.getSkill(attack.skill).getEffect(player.getSkillLevel(SkillFactory.getSkill(attack.skill))).getX() / 100.0), player.getMaxHp() / 2)));
+-                    } else if (attack.skill == Bandit.STEAL) {                    	
++                    } else if (attack.skill == Bandit.STEAL) {
+                         Skill steal = SkillFactory.getSkill(Bandit.STEAL);
+                         if (monster.getStolen().size() < 1) { // One steal per mob <3
+                             if (steal.getEffect(player.getSkillLevel(steal)).makeChanceResult()) {
+@@ -480,9 +474,12 @@ public void run() {
+                             }
+                         }
+                     }
+-                    if (totDamageToOneMonster > 0 && attackEffect != null && attackEffect.getMonsterStati().size() > 0) {
+-                        if (attackEffect.makeChanceResult()) {
+-                            monster.applyStatus(player, new MonsterStatusEffect(attackEffect.getMonsterStati(), theSkill, null, false), attackEffect.isPoison(), attackEffect.getDuration());
++                    if (totDamageToOneMonster > 0 && attackEffect != null) {
++                        Map<MonsterStatus, Integer> attackEffectStati = attackEffect.getMonsterStati();
++                        if(!attackEffectStati.isEmpty()) {
++                            if (attackEffect.makeChanceResult()) {
++                                monster.applyStatus(player, new MonsterStatusEffect(attackEffectStati, theSkill, null, false), attackEffect.isPoison(), attackEffect.getDuration());
++                            }
+                         }
+                     }
+                     if (attack.skill == Paladin.HEAVENS_HAMMER) {
+diff --git a/src/net/server/channel/handlers/CancelChairHandler.java b/src/net/server/channel/handlers/CancelChairHandler.java
+index f048f62ba..e226841e1 100644
+--- a/src/net/server/channel/handlers/CancelChairHandler.java
++++ b/src/net/server/channel/handlers/CancelChairHandler.java
+@@ -33,6 +33,7 @@
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         int id = slea.readShort();
+         MapleCharacter mc = c.getPlayer();
++        if(!mc.isLoggedinWorld()) return;
+         
+         if (id == -1) { // Cancel Chair
+             mc.setChair(0);
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index 728292d78..f6d58f54c 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -31,8 +31,6 @@
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ 
+-import java.util.Arrays;
+-
+ import net.AbstractMaplePacketHandler;
+ import server.MapleItemInformationProvider;
+ import server.MapleTrade;
+@@ -40,8 +38,8 @@
+ import server.maps.FieldLimit;
+ import server.maps.MapleHiredMerchant;
+ import server.maps.MapleMapObject;
+-import server.maps.MapleMapObjectType;
+ import server.maps.MapleMiniGame;
++import server.maps.MapleMiniGame.MiniGameType;
+ import server.maps.MaplePlayerShop;
+ import server.maps.MaplePlayerShopItem;
+ import tools.FilePrinter;
+@@ -111,6 +109,22 @@ public byte getCode() {
+         }
+     }
+ 
++    private static int estabilishMiniroomStatus(MapleCharacter chr, boolean isMinigame) {
++        if (isMinigame && FieldLimit.CANNOTMINIGAME.check(chr.getMap().getFieldLimit())) {
++            return 11;
++        }
++
++        if (chr.getChalkboard() != null) {
++            return 13;
++        }
++
++        if(chr.getEventInstance() != null) {
++            return 5;
++        }
++        
++        return 0;
++    }
++    
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         byte mode = slea.readByte();
+@@ -122,17 +136,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 return;
+             }
+             
+-            if(chr.getEventInstance() != null) {
+-                chr.getClient().announce(MaplePacketCreator.getMiniRoomError(5));
+-                return;
+-            }
+-            
+             byte createType = slea.readByte();
+             if (createType == 3) {// trade
+                 MapleTrade.startTrade(chr);
+             } else if (createType == 1) { // omok mini game
+-                if (chr.getChalkboard() != null || FieldLimit.CANNOTMINIGAME.check(chr.getMap().getFieldLimit())) {
+-                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(11));
++                int status = estabilishMiniroomStatus(chr, true);
++                if (status > 0) {
++                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(status));
+                     return;
+                 }
+                 
+@@ -143,13 +153,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 MapleMiniGame game = new MapleMiniGame(chr, desc, pw);
+                 chr.setMiniGame(game);
+                 game.setPieceType(type);
+-                game.setGameType("omok");
++                game.setGameType(MiniGameType.OMOK);
+                 chr.getMap().addMapObject(game);
+                 chr.getMap().broadcastMessage(MaplePacketCreator.addOmokBox(chr, 1, 0));
+                 game.sendOmok(c, type);
+             } else if (createType == 2) { // matchcard
+-                if (chr.getChalkboard() != null || FieldLimit.CANNOTMINIGAME.check(chr.getMap().getFieldLimit())) {
+-                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(11));
++                int status = estabilishMiniroomStatus(chr, true);
++                if (status > 0) {
++                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(status));
+                     return;
+                 }
+                 
+@@ -166,16 +177,23 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 } else if (type == 2) {
+                     game.setMatchesToWin(15);
+                 }
+-                game.setGameType("matchcard");
++                game.setGameType(MiniGameType.MATCH_CARD);
+                 chr.setMiniGame(game);
+                 chr.getMap().addMapObject(game);
+                 chr.getMap().broadcastMessage(MaplePacketCreator.addMatchCardBox(chr, 1, 0));
+                 game.sendMatchCard(c, type);
+             } else if (createType == 4 || createType == 5) { // shop
+-                if (!chr.getMap().getMapObjectsInRange(chr.getPosition(), 23000, Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.HIRED_MERCHANT)).isEmpty()) {
+-                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(14));
++                if(!GameConstants.isFreeMarketRoom(chr.getMapId())) {
++                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(15));
+                     return;
+                 }
++                
++                int status = estabilishMiniroomStatus(chr, false);
++                if (status > 0) {
++                    chr.getClient().announce(MaplePacketCreator.getMiniRoomError(status));
++                    return;
++                }
++                
+                 String desc = slea.readMapleAsciiString();
+                 slea.skip(3);
+                 int itemId = slea.readInt();
+@@ -184,7 +202,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     return;
+                 }
+ 
+-                if (GameConstants.isFreeMarketRoom(chr.getMapId()) || itemId > 5030000 && itemId < 5030012 || itemId > 5140000 && itemId < 5140006) {
++                if (itemId > 5030000 && itemId < 5030012 || itemId > 5140000 && itemId < 5140006) {
+                     if (createType == 4) {
+                         MaplePlayerShop shop = new MaplePlayerShop(chr, desc);
+                         chr.setPlayerShop(shop);
+@@ -230,15 +248,15 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     String pw = slea.available() > 1 ? slea.readMapleAsciiString() : "";
+                     
+                     MapleMiniGame game = (MapleMiniGame) ob;
+-                    if(game.checkPassword(pw) || game.checkPassword(chr.getName())) {
++                    if(game.checkPassword(pw)) {
+                         if (game.hasFreeSlot() && !game.isVisitor(chr)) {
+                             game.addVisitor(chr);
+                             chr.setMiniGame(game);
+                             switch (game.getGameType()) {
+-                                case "omok":
++                                case OMOK:
+                                     game.sendOmok(c, game.getPieceType());
+                                     break;
+-                                case "matchcard":
++                                case MATCH_CARD:
+                                     game.sendMatchCard(c, game.getPieceType());
+                                     break;
+                             }
+diff --git a/src/net/server/channel/handlers/RangedAttackHandler.java b/src/net/server/channel/handlers/RangedAttackHandler.java
+index 2deb447c7..73ba52fa2 100644
+--- a/src/net/server/channel/handlers/RangedAttackHandler.java
++++ b/src/net/server/channel/handlers/RangedAttackHandler.java
+@@ -30,6 +30,7 @@
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
++import client.MapleJob;
+ import client.Skill;
+ import client.SkillFactory;
+ import client.inventory.Item;
+@@ -77,6 +78,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (attack.skill == Buccaneer.ENERGY_ORB || attack.skill == ThunderBreaker.SPARK || attack.skill == Shadower.TAUNT || attack.skill == NightLord.TAUNT) {
+             chr.getMap().broadcastMessage(chr, MaplePacketCreator.rangedAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, 0, attack.allDamage, attack.speed, attack.direction, attack.display), false);
+             applyAttack(attack, chr, 1);
++        } else if (attack.skill == ThunderBreaker.SHARK_WAVE && chr.getSkillLevel(ThunderBreaker.SHARK_WAVE) > 0) {
++            chr.getMap().broadcastMessage(chr, MaplePacketCreator.rangedAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, 0, attack.allDamage, attack.speed, attack.direction, attack.display), false);
++            applyAttack(attack, chr, 1);
++            
++            for (int i = 0; i < attack.numAttacked; i++) {
++                chr.handleEnergyChargeGain();
++            }
+         } else if (attack.skill == Aran.COMBO_SMASH || attack.skill == Aran.COMBO_FENRIR || attack.skill == Aran.COMBO_TEMPEST) {
+             chr.getMap().broadcastMessage(chr, MaplePacketCreator.rangedAttack(chr, attack.skill, attack.skilllevel, attack.stance, attack.numAttackedAndDamage, 0, attack.allDamage, attack.speed, attack.direction, attack.display), false);
+             if (attack.skill == Aran.COMBO_SMASH && chr.getCombo() >= 30) {
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 7ca91b32e..f82e506ec 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -376,9 +376,6 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+                 case DragonKnight.DRAGON_BLOOD:
+                     statups.add(new Pair<>(MapleBuffStat.DRAGONBLOOD, Integer.valueOf(ret.x)));
+                     break;
+-                case DragonKnight.DRAGON_ROAR:
+-                    ret.hpR = -x / 100.0;
+-                    break;
+                 case Hero.STANCE:
+                 case Paladin.STANCE:
+                 case DarkKnight.STANCE:
+@@ -571,7 +568,7 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+                 case Crusader.ARMOR_CRASH:
+                 case DragonKnight.POWER_CRASH:
+                 case WhiteKnight.MAGIC_CRASH:
+-                    monsterStatus.put(MonsterStatus.SEAL_SKILL,  Integer.valueOf(1));
++                    monsterStatus.put(MonsterStatus.SEAL_SKILL, Integer.valueOf(1));
+                     break;
+                 case Rogue.DISORDER:
+                     monsterStatus.put(MonsterStatus.WATK, Integer.valueOf(ret.x));
+@@ -588,6 +585,10 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+                     monsterStatus.put(MonsterStatus.WATK, Integer.valueOf(ret.x));
+                     monsterStatus.put(MonsterStatus.WDEF, Integer.valueOf(ret.y));
+                     break;
++                case DragonKnight.DRAGON_ROAR:
++                    ret.hpR = -x / 100.0;
++                    monsterStatus.put(MonsterStatus.STUN, Integer.valueOf(1));
++                    break;
+                 case Crusader.AXE_COMA:
+                 case Crusader.SWORD_COMA:
+                 case Crusader.SHOUT:
+@@ -1007,7 +1008,7 @@ public void silentApplyBuff(MapleCharacter chr, long localStartTime) {
+ 
+     public final void applyComboBuff(final MapleCharacter applyto, int combo) {
+         final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.ARAN_COMBO, combo));
+-        applyto.getClient().announce(MaplePacketCreator.giveBuff(sourceid, 99999, stat));
++        applyto.announce(MaplePacketCreator.giveBuff(sourceid, 99999, stat));
+ 
+         final long starttime = System.currentTimeMillis();
+ //	final CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);
+@@ -1021,8 +1022,7 @@ public void updateBuffEffect(MapleCharacter target, List<Pair<MapleBuffStat, Int
+         
+         long leftDuration = (starttime + localDuration) - System.currentTimeMillis();
+         if(leftDuration > 0) {
+-            byte[] buff = MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), (int)leftDuration, activeStats);
+-            target.getClient().announce(buff);
++            target.announce(MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), (int)leftDuration, activeStats));
+         }
+     }
+ 
+@@ -1080,7 +1080,12 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+             localsourceid = ridingMountId;
+             localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.MONSTER_RIDING, 0));
+         } else if (isSkillMorph()) {
+-            localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.MORPH, getMorph(applyto)));
++            for(int i = 0; i < localstatups.size(); i++) {
++                if(localstatups.get(i).getLeft().equals(MapleBuffStat.MORPH)) {
++                    localstatups.set(i, new Pair<>(MapleBuffStat.MORPH, getMorph(applyto)));
++                    break;
++                }
++            }
+         }
+         if (primary) {
+             localDuration = alchemistModifyVal(applyfrom, localDuration, false);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 73138e6d5..5f0108bb5 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -30,11 +30,14 @@
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+ import constants.ServerConstants;
++import constants.skills.Crusader;
++import constants.skills.DragonKnight;
+ import constants.skills.FPMage;
+ import constants.skills.ILMage;
+ import constants.skills.NightLord;
+ import constants.skills.NightWalker;
+ import constants.skills.Shadower;
++import constants.skills.WhiteKnight;
+ import java.awt.Point;
+ import java.lang.ref.WeakReference;
+ import java.util.ArrayList;
+@@ -990,22 +993,35 @@ public void run() {
+         effect.setCancelTask(timerManager.schedule(cancelTask, duration));
+     }
+ 
++    private void debuffMobStat(MonsterStatus stat) {
++        if (isBuffed(stat)) {
++            final MonsterStatusEffect oldEffect = stati.get(stat);
++            byte[] packet = MaplePacketCreator.cancelMonsterStatus(getObjectId(), oldEffect.getStati());
++            map.broadcastMessage(packet, getPosition());
++
++            MapleCharacter controller = getController();
++            if (controller != null && !controller.isMapObjectVisible(MapleMonster.this)) {
++                controller.getClient().announce(packet);
++            }
++            stati.remove(stat);
++        }
++    }
++    
+     public void debuffMob(int skillid) {
+-        //skillid is not going to be used for now until I get warrior debuff working
+-        MonsterStatus[] stats = {MonsterStatus.WEAPON_ATTACK_UP, MonsterStatus.WEAPON_DEFENSE_UP, MonsterStatus.MAGIC_ATTACK_UP, MonsterStatus.MAGIC_DEFENSE_UP};
++        MonsterStatus[] stats = {MonsterStatus.WEAPON_ATTACK_UP, MonsterStatus.WEAPON_DEFENSE_UP, MonsterStatus.MAGIC_ATTACK_UP};
+         statiLock.lock();
+         try {
+-            for (int i = 0; i < stats.length; i++) {
+-                if (isBuffed(stats[i])) {
+-                    final MonsterStatusEffect oldEffect = stati.get(stats[i]);
+-                    byte[] packet = MaplePacketCreator.cancelMonsterStatus(getObjectId(), oldEffect.getStati());
+-                    map.broadcastMessage(packet, getPosition());
+-
+-                    MapleCharacter controller = getController();
+-                    if (controller != null && !controller.isMapObjectVisible(MapleMonster.this)) {
+-                        controller.getClient().announce(packet);
+-                    }
+-                    stati.remove(stats[i]);
++            int i = (skillid == Crusader.ARMOR_CRASH ? 1 : (skillid == WhiteKnight.MAGIC_CRASH ? 2 : 0));
++            debuffMobStat(stats[i]);
++            
++            if(ServerConstants.USE_ANTI_IMMUNITY_CRASH) {
++                if (skillid == Crusader.ARMOR_CRASH) {
++                    if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
++                    if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
++                } else if (skillid == WhiteKnight.MAGIC_CRASH) {
++                    if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
++                } else {
++                    if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
+                 }
+             }
+         } finally {
+diff --git a/src/server/maps/MapleMiniGame.java b/src/server/maps/MapleMiniGame.java
+index e45f4d415..507cac4a5 100644
+--- a/src/server/maps/MapleMiniGame.java
++++ b/src/server/maps/MapleMiniGame.java
+@@ -31,12 +31,13 @@
+ /**
+  *
+  * @author Matze
++ * @author Ronan (refactored String GameType to enum MiniGameType)
+  */
+ public class MapleMiniGame extends AbstractMapleMapObject {
+     private MapleCharacter owner;
+     private MapleCharacter visitor;
+     private String password;
+-    private String GameType = null;
++    private MiniGameType GameType = MiniGameType.UNDEFINED;
+     private int[] piece = new int[250];
+     private List<Integer> list4x3 = new ArrayList<>();
+     private List<Integer> list5x4 = new ArrayList<>();
+@@ -49,6 +50,23 @@
+     private int ownerpoints = 0;
+     private int matchestowin = 0;
+ 
++    public static enum MiniGameType {
++        UNDEFINED(0), OMOK(1), MATCH_CARD(2);
++        private int value = 0;
++
++        private MiniGameType(int value) {
++            this.value = value;
++        }
++        
++        public int getValue() {
++            return value;
++        }
++    }
++    
++    public static enum MiniGameResult {
++        WIN, LOSS, TIE;
++    }
++    
+     public MapleMiniGame(MapleCharacter owner, String description, String password) {
+         this.owner = owner;
+         this.description = description;
+@@ -70,16 +88,16 @@ public boolean hasFreeSlot() {
+     public boolean isOwner(MapleCharacter c) {
+         return owner.equals(c);
+     }
+-
++    
+     public void addVisitor(MapleCharacter challenger) {
+         visitor = challenger;
+-        if (GameType.equals("omok")) {
+-            this.getOwner().getClient().announce(MaplePacketCreator.getMiniGameNewVisitor(challenger, 1));
+-            this.getOwner().getMap().broadcastMessage(MaplePacketCreator.addOmokBox(owner, 2, 0));
+-        }
+-        if (GameType.equals("matchcard")) {
+-            this.getOwner().getClient().announce(MaplePacketCreator.getMatchCardNewVisitor(challenger, 1));
+-            this.getOwner().getMap().broadcastMessage(MaplePacketCreator.addMatchCardBox(owner, 2, 0));
++        MapleCharacter owner = this.getOwner();
++        if (GameType == MiniGameType.OMOK) {
++            owner.announce(MaplePacketCreator.getMiniGameNewVisitor(challenger, 1));
++            owner.getMap().broadcastMessage(MaplePacketCreator.addOmokBox(owner, 2, 0));
++        } else if (GameType == MiniGameType.MATCH_CARD) {
++            owner.announce(MaplePacketCreator.getMatchCardNewVisitor(challenger, 1));
++            owner.getMap().broadcastMessage(MaplePacketCreator.addMatchCardBox(owner, 2, 0));
+         }
+     }
+ 
+@@ -87,10 +105,9 @@ public void removeVisitor(MapleCharacter challenger) {
+         if (visitor == challenger) {
+             visitor = null;
+             this.getOwner().getClient().announce(MaplePacketCreator.getMiniGameRemoveVisitor());
+-            if (GameType.equals("omok")) {
++            if (GameType == MiniGameType.OMOK) {
+                 this.getOwner().getMap().broadcastMessage(MaplePacketCreator.addOmokBox(owner, 1, 0));
+-            }
+-            if (GameType.equals("matchcard")) {
++            } else if (GameType == MiniGameType.MATCH_CARD) {
+                 this.getOwner().getMap().broadcastMessage(MaplePacketCreator.addMatchCardBox(owner, 1, 0));
+             }
+         }
+@@ -156,9 +173,9 @@ public int getPieceType() {
+         return piecetype;
+     }
+ 
+-    public void setGameType(String game) {
++    public void setGameType(MiniGameType game) {
+         GameType = game;
+-        if (game.equals("matchcard")) {
++        if (GameType == MiniGameType.MATCH_CARD) {
+             if (matchestowin == 6) {
+                 for (int i = 0; i < 6; i++) {
+                     list4x3.add(i);
+@@ -178,7 +195,7 @@ public void setGameType(String game) {
+         }
+     }
+ 
+-    public String getGameType() {
++    public MiniGameType getGameType() {
+         return GameType;
+     }
+ 
+@@ -217,8 +234,9 @@ public int getLoser() {
+     }
+ 
+     public void broadcast(final byte[] packet) {
+-        if (owner.getClient() != null && owner.getClient().getSession() != null) {
+-            owner.getClient().announce(packet);
++        MapleClient c = owner.getClient();
++        if (c != null && c.getSession() != null) {
++            c.announce(packet);
+         }
+         broadcastToVisitor(packet);
+     }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 0cfcae201..7db90e26e 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -68,6 +68,7 @@
+ import server.maps.MapleMapItem;
+ import server.maps.MapleMist;
+ import server.maps.MapleMiniGame;
++import server.maps.MapleMiniGame.MiniGameResult;
+ import server.maps.MaplePlayerShop;
+ import server.maps.MaplePlayerShopItem;
+ import server.maps.MapleReactor;
+@@ -672,7 +673,6 @@ private static void addMonsterBookInfo(final MaplePacketLittleEndianWriter mplew
+          * Gets a successful authentication packet.
+          *
+          * @param c
+-         * @param account The account name.
+          * @return the successful authentication packet
+          */
+         public static byte[] getAuthSuccess(MapleClient c) {
+@@ -683,9 +683,8 @@ private static void addMonsterBookInfo(final MaplePacketLittleEndianWriter mplew
+                 mplew.writeInt(c.getAccID());
+                 mplew.write(c.getGender());
+                 
+-                mplew.writeBool(c.getGMLevel() > 0);
+-                
+-                mplew.write((c.getGMLevel() > 0 && Server.getInstance().canFly(c.getAccID())) ? 0x80 : 0); // Admin Byte. 0x80,0x40,0x20.. Rubbish.
++                mplew.writeBool(c.getGMLevel() > 1);    // thanks Steve(kaito1410) for pointing this out
++                mplew.write((c.getGMLevel() > 1 && Server.getInstance().canFly(c.getAccID())) ? 0x80 : 0); // Admin Byte. 0x80,0x40,0x20.. Rubbish.
+                 mplew.write(0); // Country Code.
+                 
+                 mplew.writeMapleAsciiString(c.getAccountName());
+@@ -1967,9 +1966,9 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+                         MapleMiniGame miniGame = chr.getMiniGame();
+                         if (miniGame != null && miniGame.isOwner(chr)) {
+                                 if (miniGame.hasFreeSlot()) {
+-                                        spawnAnnounceBox(mplew, miniGame, 1, 0, 1, 0);
++                                        spawnAnnounceBox(mplew, miniGame, 0, 1, 0);
+                                 } else {
+-                                        spawnAnnounceBox(mplew, miniGame, 1, 0, 2, 1);
++                                        spawnAnnounceBox(mplew, miniGame, 0, 2, 1);
+                                 }
+                         } else {
+                                 mplew.write(0);
+@@ -2141,8 +2140,8 @@ private static void addAnnounceBox(final MaplePacketLittleEndianWriter mplew, Ma
+                 mplew.write(0);
+         }
+ 
+-        private static void addAnnounceBox(final MaplePacketLittleEndianWriter mplew, MapleMiniGame game, int gametype, int type, int ammount, int joinable) {
+-                mplew.write(gametype);
++        private static void addAnnounceBox(final MaplePacketLittleEndianWriter mplew, MapleMiniGame game, int type, int ammount, int joinable) {
++                mplew.write(game.getGameType().getValue());
+                 mplew.writeInt(game.getObjectId()); // gameid/shopid
+                 mplew.writeMapleAsciiString(game.getDescription()); // desc
+                 mplew.writeMapleAsciiString(game.getPassword());
+@@ -2152,14 +2151,14 @@ private static void addAnnounceBox(final MaplePacketLittleEndianWriter mplew, Ma
+                 mplew.write(joinable);
+         }
+         
+-        private static void spawnAnnounceBox(final MaplePacketLittleEndianWriter mplew, MapleMiniGame game, int gametype, int type, int ammount, int joinable) {
+-                mplew.write(gametype);
++        private static void spawnAnnounceBox(final MaplePacketLittleEndianWriter mplew, MapleMiniGame game, int type, int ammount, int joinable) {
++                mplew.write(game.getGameType().getValue());
+                 mplew.writeInt(game.getObjectId()); // gameid/shopid
+                 mplew.writeMapleAsciiString(game.getDescription()); // desc
+-                mplew.write(0);
++                mplew.writeBool(!game.getPassword().isEmpty());    // password here, thanks GabrielSin!
+                 mplew.write(type);
+                 mplew.write(ammount);
+-                mplew.write(2);
++                mplew.write(2);         //player capacity
+                 mplew.write(joinable);
+         }
+         
+@@ -4937,17 +4936,17 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 mplew.write(0xFF);
+                 mplew.write(0);
+                 mplew.writeInt(1);
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("wins", true));
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("ties", true));
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("losses", true));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.WIN, true));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.TIE, true));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.LOSS, true));
+                 mplew.writeInt(2000);
+                 if (minigame.getVisitor() != null) {
+                         MapleCharacter visitor = minigame.getVisitor();
+                         mplew.write(1);
+                         mplew.writeInt(1);
+-                        mplew.writeInt(visitor.getMiniGamePoints("wins", true));
+-                        mplew.writeInt(visitor.getMiniGamePoints("ties", true));
+-                        mplew.writeInt(visitor.getMiniGamePoints("losses", true));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.WIN, true));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.TIE, true));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.LOSS, true));
+                         mplew.writeInt(2000);
+                 }
+                 mplew.write(0xFF);
+@@ -5047,9 +5046,9 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 addCharLook(mplew, c, false);
+                 mplew.writeMapleAsciiString(c.getName());
+                 mplew.writeInt(1);
+-                mplew.writeInt(c.getMiniGamePoints("wins", true));
+-                mplew.writeInt(c.getMiniGamePoints("ties", true));
+-                mplew.writeInt(c.getMiniGamePoints("losses", true));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.WIN, true));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.TIE, true));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.LOSS, true));
+                 mplew.writeInt(2000);
+                 return mplew.getPacket();
+         }
+@@ -5075,14 +5074,14 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 }
+                 mplew.write(0); // owner
+                 mplew.writeInt(1); // unknown
+-                mplew.writeInt(game.getOwner().getMiniGamePoints("wins", omok) + win); // wins
+-                mplew.writeInt(game.getOwner().getMiniGamePoints("ties", omok) + tie); // ties
+-                mplew.writeInt(game.getOwner().getMiniGamePoints("losses", omok) + lose); // losses
++                mplew.writeInt(game.getOwner().getMiniGamePoints(MiniGameResult.WIN, omok) + win); // wins
++                mplew.writeInt(game.getOwner().getMiniGamePoints(MiniGameResult.TIE, omok) + tie); // ties
++                mplew.writeInt(game.getOwner().getMiniGamePoints(MiniGameResult.LOSS, omok) + lose); // losses
+                 mplew.writeInt(2000); // points
+                 mplew.writeInt(1); // start of visitor; unknown
+-                mplew.writeInt(game.getVisitor().getMiniGamePoints("wins", omok) + lose); // wins
+-                mplew.writeInt(game.getVisitor().getMiniGamePoints("ties", omok) + tie); // ties
+-                mplew.writeInt(game.getVisitor().getMiniGamePoints("losses", omok) + win); // losses
++                mplew.writeInt(game.getVisitor().getMiniGamePoints(MiniGameResult.WIN, omok) + lose); // wins
++                mplew.writeInt(game.getVisitor().getMiniGamePoints(MiniGameResult.TIE, omok) + tie); // ties
++                mplew.writeInt(game.getVisitor().getMiniGamePoints(MiniGameResult.LOSS, omok) + win); // losses
+                 mplew.writeInt(2000); // points
+                 game.getOwner().setMiniGamePoints(game.getVisitor(), result, omok);
+                 return mplew.getPacket();
+@@ -5136,17 +5135,17 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 mplew.write(0xFF);
+                 mplew.write(0);
+                 mplew.writeInt(2);
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("wins", false));
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("ties", false));
+-                mplew.writeInt(minigame.getOwner().getMiniGamePoints("losses", false));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.WIN, false));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.TIE, false));
++                mplew.writeInt(minigame.getOwner().getMiniGamePoints(MiniGameResult.LOSS, false));
+                 mplew.writeInt(2000);
+                 if (minigame.getVisitor() != null) {
+                         MapleCharacter visitor = minigame.getVisitor();
+                         mplew.write(1);
+                         mplew.writeInt(2);
+-                        mplew.writeInt(visitor.getMiniGamePoints("wins", false));
+-                        mplew.writeInt(visitor.getMiniGamePoints("ties", false));
+-                        mplew.writeInt(visitor.getMiniGamePoints("losses", false));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.WIN, false));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.TIE, false));
++                        mplew.writeInt(visitor.getMiniGamePoints(MiniGameResult.LOSS, false));
+                         mplew.writeInt(2000);
+                 }
+                 mplew.write(0xFF);
+@@ -5182,9 +5181,9 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 addCharLook(mplew, c, false);
+                 mplew.writeMapleAsciiString(c.getName());
+                 mplew.writeInt(1);
+-                mplew.writeInt(c.getMiniGamePoints("wins", false));
+-                mplew.writeInt(c.getMiniGamePoints("ties", false));
+-                mplew.writeInt(c.getMiniGamePoints("losses", false));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.WIN, false));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.TIE, false));
++                mplew.writeInt(c.getMiniGamePoints(MiniGameResult.LOSS, false));
+                 mplew.writeInt(2000);
+                 return mplew.getPacket();
+         }
+@@ -5267,7 +5266,7 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.UPDATE_CHAR_BOX.getValue());
+                 mplew.writeInt(c.getId());
+-                addAnnounceBox(mplew, c.getMiniGame(), 1, 0, ammount, type);
++                addAnnounceBox(mplew, c.getMiniGame(), 0, ammount, type);
+                 return mplew.getPacket();
+         }
+ 
+@@ -5283,11 +5282,11 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.UPDATE_CHAR_BOX.getValue());
+                 mplew.writeInt(c.getId());
+-                addAnnounceBox(mplew, c.getMiniGame(), 2, 0, ammount, type);
++                addAnnounceBox(mplew, c.getMiniGame(), 0, ammount, type);
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] removeMatchcardBox(MapleCharacter c) {
++        public static byte[] removeMatchCardBox(MapleCharacter c) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.UPDATE_CHAR_BOX.getValue());
+                 mplew.writeInt(c.getId());
+diff --git a/src/tools/data/output/GenericLittleEndianWriter.java b/src/tools/data/output/GenericLittleEndianWriter.java
+index 560bf50cf..91779e4d5 100644
+--- a/src/tools/data/output/GenericLittleEndianWriter.java
++++ b/src/tools/data/output/GenericLittleEndianWriter.java
+@@ -23,6 +23,7 @@
+ 
+ import java.awt.Point;
+ import java.nio.charset.Charset;
++import constants.CharsetConstants.MapleLanguageType;
+ 
+ /**
+  * Provides a generic writer of a little-endian sequence of bytes.
+@@ -32,7 +33,7 @@
+  * @since Revision 323
+  */
+ public class GenericLittleEndianWriter implements LittleEndianWriter {
+-    private static Charset ASCII = Charset.forName("US-ASCII");
++    private static Charset ASCII = Charset.forName(MapleLanguageType.LANGUAGE_US.getAscii());
+     private ByteOutputStream bos;
+ 
+     /**
+diff --git a/wz/Item.wz/Consume/0202.img.xml b/wz/Item.wz/Consume/0202.img.xml
+index 1a7597047..000d0fbdf 100644
+--- a/wz/Item.wz/Consume/0202.img.xml
++++ b/wz/Item.wz/Consume/0202.img.xml
+@@ -2125,7 +2125,7 @@
+       <int name="mp" value="100"/>
+       <int name="hp" value="100"/>
+       <int name="pad" value="120"/>
+-      <int name="pdd" value="100"/>
++      <int name="pdd" value="120"/>
+       <int name="acc" value="30"/>
+       <int name="eva" value="30"/>
+       <int name="speed" value="10"/>
+diff --git a/wz/Skill.wz/131.img.xml b/wz/Skill.wz/131.img.xml
+index 032e147e6..e55bf5efa 100644
+--- a/wz/Skill.wz/131.img.xml
++++ b/wz/Skill.wz/131.img.xml
+@@ -1702,6 +1702,7 @@
+           <vector name="lt" x="-110" y="-132"/>
+           <vector name="rb" x="110" y="33"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="2">
+           <string name="hs" value="h2"/>
+@@ -1712,6 +1713,7 @@
+           <vector name="lt" x="-120" y="-140"/>
+           <vector name="rb" x="120" y="40"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="3">
+           <string name="hs" value="h3"/>
+@@ -1722,6 +1724,7 @@
+           <vector name="lt" x="-130" y="-147"/>
+           <vector name="rb" x="130" y="48"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="4">
+           <string name="hs" value="h4"/>
+@@ -1732,6 +1735,7 @@
+           <vector name="lt" x="-140" y="-155"/>
+           <vector name="rb" x="140" y="55"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="5">
+           <string name="hs" value="h5"/>
+@@ -1742,6 +1746,7 @@
+           <vector name="lt" x="-150" y="-162"/>
+           <vector name="rb" x="150" y="63"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="6">
+           <string name="hs" value="h6"/>
+@@ -1752,6 +1757,7 @@
+           <vector name="lt" x="-160" y="-170"/>
+           <vector name="rb" x="160" y="70"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="7">
+           <string name="hs" value="h7"/>
+@@ -1762,6 +1768,7 @@
+           <vector name="lt" x="-170" y="-177"/>
+           <vector name="rb" x="170" y="78"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="8">
+           <string name="hs" value="h8"/>
+@@ -1772,6 +1779,7 @@
+           <vector name="lt" x="-180" y="-185"/>
+           <vector name="rb" x="180" y="85"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="9">
+           <string name="hs" value="h9"/>
+@@ -1782,6 +1790,7 @@
+           <vector name="lt" x="-190" y="-192"/>
+           <vector name="rb" x="190" y="93"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="10">
+           <string name="hs" value="h10"/>
+@@ -1792,6 +1801,7 @@
+           <vector name="lt" x="-200" y="-200"/>
+           <vector name="rb" x="200" y="100"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="4"/>
+         </imgdir>
+         <imgdir name="11">
+           <string name="hs" value="h11"/>
+@@ -1802,6 +1812,7 @@
+           <vector name="lt" x="-210" y="-207"/>
+           <vector name="rb" x="210" y="108"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="12">
+           <string name="hs" value="h12"/>
+@@ -1812,6 +1823,7 @@
+           <vector name="lt" x="-220" y="-215"/>
+           <vector name="rb" x="220" y="115"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="13">
+           <string name="hs" value="h13"/>
+@@ -1822,6 +1834,7 @@
+           <vector name="lt" x="-230" y="-222"/>
+           <vector name="rb" x="230" y="123"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="14">
+           <string name="hs" value="h14"/>
+@@ -1832,6 +1845,7 @@
+           <vector name="lt" x="-240" y="-230"/>
+           <vector name="rb" x="240" y="130"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="15">
+           <string name="hs" value="h15"/>
+@@ -1842,6 +1856,7 @@
+           <vector name="lt" x="-250" y="-237"/>
+           <vector name="rb" x="250" y="138"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="16">
+           <string name="hs" value="h16"/>
+@@ -1852,6 +1867,7 @@
+           <vector name="lt" x="-260" y="-245"/>
+           <vector name="rb" x="260" y="145"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="17">
+           <string name="hs" value="h17"/>
+@@ -1862,6 +1878,7 @@
+           <vector name="lt" x="-270" y="-252"/>
+           <vector name="rb" x="270" y="153"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="18">
+           <string name="hs" value="h18"/>
+@@ -1872,6 +1889,7 @@
+           <vector name="lt" x="-280" y="-260"/>
+           <vector name="rb" x="280" y="160"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="19">
+           <string name="hs" value="h19"/>
+@@ -1882,6 +1900,7 @@
+           <vector name="lt" x="-290" y="-267"/>
+           <vector name="rb" x="290" y="168"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="20">
+           <string name="hs" value="h20"/>
+@@ -1892,6 +1911,7 @@
+           <vector name="lt" x="-300" y="-275"/>
+           <vector name="rb" x="300" y="175"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="3"/>
+         </imgdir>
+         <imgdir name="21">
+           <string name="hs" value="h21"/>
+@@ -1902,6 +1922,7 @@
+           <vector name="lt" x="-310" y="-282"/>
+           <vector name="rb" x="310" y="183"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="22">
+           <string name="hs" value="h22"/>
+@@ -1912,6 +1933,7 @@
+           <vector name="lt" x="-320" y="-290"/>
+           <vector name="rb" x="320" y="190"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="23">
+           <string name="hs" value="h23"/>
+@@ -1922,6 +1944,7 @@
+           <vector name="lt" x="-330" y="-297"/>
+           <vector name="rb" x="330" y="198"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="24">
+           <string name="hs" value="h24"/>
+@@ -1932,6 +1955,7 @@
+           <vector name="lt" x="-340" y="-305"/>
+           <vector name="rb" x="340" y="205"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="25">
+           <string name="hs" value="h25"/>
+@@ -1942,6 +1966,7 @@
+           <vector name="lt" x="-350" y="-312"/>
+           <vector name="rb" x="350" y="213"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="26">
+           <string name="hs" value="h26"/>
+@@ -1952,6 +1977,7 @@
+           <vector name="lt" x="-360" y="-320"/>
+           <vector name="rb" x="360" y="220"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="27">
+           <string name="hs" value="h27"/>
+@@ -1962,6 +1988,7 @@
+           <vector name="lt" x="-370" y="-327"/>
+           <vector name="rb" x="370" y="228"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="28">
+           <string name="hs" value="h28"/>
+@@ -1972,6 +1999,7 @@
+           <vector name="lt" x="-380" y="-335"/>
+           <vector name="rb" x="380" y="235"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="29">
+           <string name="hs" value="h29"/>
+@@ -1982,6 +2010,7 @@
+           <vector name="lt" x="-390" y="-342"/>
+           <vector name="rb" x="390" y="243"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+         <imgdir name="30">
+           <string name="hs" value="h30"/>
+@@ -1992,6 +2021,7 @@
+           <vector name="lt" x="-400" y="-350"/>
+           <vector name="rb" x="400" y="250"/>
+           <int name="mobCount" value="15"/>
++          <int name="time" value="2"/>
+         </imgdir>
+       </imgdir>
+       <imgdir name="effect">
+diff --git a/wz/String.wz/Skill.img.xml b/wz/String.wz/Skill.img.xml
+index 6df695f05..f7b13e952 100644
+--- a/wz/String.wz/Skill.img.xml
++++ b/wz/String.wz/Skill.img.xml
+@@ -3215,7 +3215,7 @@
+     <string name="h7" value="Use 16 MP, 53% HP, Damage 132%, Attack Range 170%, Stun for 4 Seconds"/>
+     <string name="h8" value="Use 16 MP, 52% HP, Damage 138%, Attack Range 180%, Stun for 4 Seconds"/>
+     <string name="h9" value="Use 16 MP, 51% HP, Damage 144%, Attack Range 190%, Stun for 4 Seconds"/>
+-    <string name="h10" value="Use 24 MP, 50% HP, Damage 150%, Attack Range 200%, Stun for 3 Seconds"/>
++    <string name="h10" value="Use 24 MP, 50% HP, Damage 150%, Attack Range 200%, Stun for 4 Seconds"/>
+     <string name="h11" value="Use 24 MP, 49% HP, Damage 155%, Attack Range 210%, Stun for 3 Seconds"/>
+     <string name="h12" value="Use 24 MP, 48% HP, Damage 160%, Attack Range 220%, Stun for 3 Seconds"/>
+     <string name="h13" value="Use 24 MP, 47% HP, Damage 165%, Attack Range 230%, Stun for 3 Seconds"/>

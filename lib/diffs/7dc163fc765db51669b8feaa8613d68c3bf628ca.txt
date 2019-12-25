@@ -1,0 +1,1322 @@
+diff --git a/README_wzchanges.txt b/README_wzchanges.txt
+index ee73db2ab..21d1710bb 100644
+--- a/README_wzchanges.txt
++++ b/README_wzchanges.txt
+@@ -3,7 +3,8 @@ Changes from the original v83 WZs:
+ Map.wz/MapX/*:
+ 	Fixed entries of portals placed incorrectly.
+ 
+-Item.wz/Etc:
++Item.wz/*:
++	Fixed lacking "slotMax" properties in some items.
+ 	Set flag "Quest Item" for Springy Worm.
+ 
+ Quest.wz/*:
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 6807a2ba1..d299c6bb7 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -2,6 +2,9 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/portal/outPerrion_2.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/AbstractPlayerInteraction.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/Hak.js b/scripts/event/Hak.js
+index 25618e3db..b0a792c65 100644
+--- a/scripts/event/Hak.js
++++ b/scripts/event/Hak.js
+@@ -1,3 +1,5 @@
++importPackage(Packages.tools);
++
+ var returnTo = new Array(200000141, 250000100);
+ var rideTo = new Array(250000100, 200000141);
+ var birdRide = new Array(200090300, 200090310);
+@@ -5,28 +7,44 @@ var myRide;
+ var returnMap;
+ var map;
+ var docked;
+-
+ var timeOnRide = 60; //Seconds
++var onRide;
+ 
+ function init() {
+-    em.setProperty("isRiding","false");
+ }
+ 
+-function playerEntry(eim, player) {
+-    myRide = em.getProperty("myRide");
+-    docked = em.getChannelServer().getMapFactory().getMap(rideTo[myRide]);
+-    returnMap = em.getChannelServer().getMapFactory().getMap(returnTo[myRide]);
+-    onRide = em.getChannelServer().getMapFactory().getMap(birdRide[myRide]);
++function setup() {
++	var eim = em.newInstance("Hak_" + + em.getProperty("player"));
++	return eim;
++}
+ 
+-    em.setProperty("isRiding","true");
+-    em.schedule("timeOut", timeOnRide * 1000);
++function playerEntry(eim, player) {
++	if (player.getMapId() == returnTo[0]) {
++		myRide = 0;
++	} else {
++		myRide = 1;
++	}
++	docked = eim.getEm().getChannelServer().getMapFactory().getMap(rideTo[myRide]);
++    returnMap = eim.getMapFactory().getMap(returnTo[myRide]);
++    onRide = eim.getMapFactory().getMap(birdRide[myRide]);
+     player.changeMap(onRide, onRide.getPortal(0));
+-    player.getClient().getSession().write(tools.MaplePacketCreator.getClock(timeOnRide));
++    player.getClient().getSession().write(MaplePacketCreator.getClock(timeOnRide));
++    eim.schedule("timeOut", timeOnRide * 1000);
+ }
+ 
++function timeOut() {
++	onRide.warpEveryone(docked.getId());
++}
++
++
++
++
+ function playerDisconnected(eim, player) {
+     return 0;
+ }
+ 
+-function cancelSchedule() {
++function cancelSchedule() {}
++
++function dispose() {
++    em.cancelSchedule();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1061014.js b/scripts/npc/world0/1061014.js
+index 96bfc2ca3..c5040e229 100644
+--- a/scripts/npc/world0/1061014.js
++++ b/scripts/npc/world0/1061014.js
+@@ -30,12 +30,16 @@ var status = 0;
+ var expedition;
+ var player;
+ var em;
+-var barlog_easy = MapleExpeditionType.BALROG_EASY;
+-var barlog_hard = MapleExpeditionType.BALROG_HARD;
++//var barlog_easy = MapleExpeditionType.BALROG_EASY;
++//var barlog_hard = MapleExpeditionType.BALROG_HARD;
+ 
+ function start(){
+     status = 0;
+-    action(1, 0, 0);
++    
++    cm.sendNext("Hi there. I am #b#nMu Young#n#k, the temple Keeper. This expedition is currently unavailable.");
++    cm.dispose();
++    
++    //action(1, 0, 0);
+ }
+ 
+ function action(mode, type, selection) {
+diff --git a/scripts/npc/world0/1061016.js b/scripts/npc/world0/1061016.js
+new file mode 100644
+index 000000000..be9559919
+--- /dev/null
++++ b/scripts/npc/world0/1061016.js
+@@ -0,0 +1,34 @@
++var status = -1;
++var itemids = Array(2040728, 2040729, 2040730, 2040731, 2040732, 2040733, 2040734, 2040735, 2040736, 2040737, 2040738, 2040739);
++
++function start() {
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode != 1) {
++		cm.dispose();
++		return;
++	}
++	status++;
++	if (status == 0) {
++		cm.sendSimple("Hello, #h0#. I can exchange your Balrog Leathers.\r\n\r\n#r#L1#Redeem items#l#k");
++	} else if (status == 1) {
++		var selStr = "Well, okay. These are what you can redeem...\r\n\r\n#b";
++		for (var i = 0; i < itemids.length; i++) {
++			selStr += "#L" + i + "##i" + itemids[i] + "##z" + itemids[i] + "##l\r\n";
++		}
++		cm.sendSimple(selStr);
++	} else if (status == 2) {
++		if (!cm.canHold(itemids[selection], 1)) {
++			cm.sendOk("Please make room");
++		} else if (cm.itemQuantity(4001261) < 1) {
++			cm.sendOk("You don't have enough leathers.");
++		} else {
++			cm.gainItem(4001261, -1);
++			cm.gainItem(itemids[selection], 1);
++			cm.sendOk("Thank you for your redemption");
++		}
++		cm.dispose();
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1061018.js b/scripts/npc/world0/1061018.js
+new file mode 100644
+index 000000000..2ba01cf1a
+--- /dev/null
++++ b/scripts/npc/world0/1061018.js
+@@ -0,0 +1,10 @@
++function start() {
++    cm.sendYesNo("If you leave now, you'll have to start over. Are you sure you want to leave?");
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	cm.warp(105100301);
++    }
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2080000.js b/scripts/npc/world0/2080000.js
+index f3b81fbdc..bceb408de 100644
+--- a/scripts/npc/world0/2080000.js
++++ b/scripts/npc/world0/2080000.js
+@@ -29,11 +29,20 @@ var matQty;
+ var cost;
+ var stimID;
+ 
++var cd_item = 4001078;
++var cd_mats = new Array(4011001,4011002,4001079);
++var cd_matQty = new Array(1,1,1);
++var cd_cost = 25000;
++
+ function start() {
+     cm.getPlayer().setCS(true);
+     var selStr = "A dragon's power is not to be underestimated. If you like, I can add its power to one of your weapons. However, the weapon must be powerful enough to hold its potential...#b"
+     var options = new Array("What's a stimulator?","Create a Warrior weapon","Create a Bowman weapon","Create a Magician weapon","Create a Thief weapon","Create a Pirate Weapon",
+         "Create a Warrior weapon with a Stimulator","Create a Bowman weapon with a Stimulator","Create a Magician weapon with a Stimulator","Create a Thief weapon with a Stimulator","Create a Pirate Weapon with a Stimulator");
++        
++    if(cm.isQuestStarted(7301)) options.push("Make #t4001078#");
++    
++        
+     for (var i = 0; i < options.length; i++){
+         selStr += "\r\n#L" + i + "# " + options[i] + "#l";
+     }
+@@ -49,7 +58,7 @@ function action(mode, type, selection) {
+     }
+     if (status == 1) {
+         selectedType = selection;
+-        if (selectedType > 5) {
++        if (selectedType > 5 && selectedType < 11) {
+             stimulator = true;
+             selectedType -= 5;
+         }
+@@ -88,15 +97,20 @@ function action(mode, type, selection) {
+             }
+             cm.sendSimple(selStr);
+         } else if (selectedType == 5){ //pirate weapon
+-			var selStr = "Very well, then which Pirate weapon shall recieve a dragon's power?#b";
+-			var weapon = new Array ("Dragon Slash Claw#k - Lv. 110 Knuckle#b","Dragonfire Revolver#k - Lv. 110 Gun#b");
+-			for (var i = 0; i < weapon.length; i++){
+-				selStr += "\r\n#L" + i + "# " + weapon[i] + "#l";
+-			}
+-			cm.sendSimple(selStr);
+-	    }
++            var selStr = "Very well, then which Pirate weapon shall recieve a dragon's power?#b";
++            var weapon = new Array ("Dragon Slash Claw#k - Lv. 110 Knuckle#b","Dragonfire Revolver#k - Lv. 110 Gun#b");
++            for (var i = 0; i < weapon.length; i++){
++                    selStr += "\r\n#L" + i + "# " + weapon[i] + "#l";
++            }
++            cm.sendSimple(selStr);
++	}
++        else if (selectedType == 11){ //cornian's dagger
++            var selStr = "Oh, are you trying to sneak into these lizards to save Moira? I will support your cause wherever I can. Bring me a couple of resources and I will make you an almost identical piece of #t4001078#.";
++            cm.sendNext(selStr);
++	}
+     } else if (status == 2) {
+         selectedItem = selection;
++        
+         if (selectedType == 1){ //warrior weapon
+             var itemSet = new Array(1302059,1312031,1322052,1402036,1412026,1422028,1432038,1442045);
+             var matSet = new Array(new Array(1302056,4000244,4000245,4005000),new Array(1312030,4000244,4000245,4005000),new Array(1322045,4000244,4000245,4005000),new Array(1402035,4000244,4000245,4005000),
+@@ -135,15 +149,21 @@ function action(mode, type, selection) {
+             matQty = matQtySet[selectedItem];
+             cost = costSet[selectedItem];
+         } else if (selectedType == 5){ //pirate weapon
+-			var itemSet = new Array(1482013,1492013);
+-			var matSet = new Array(new Array(1482012,4000244,4000245,4005000,4005002),new Array(1492012,4000244,4000245,4005000,4005002));
+-			var matQtySet = new Array(new Array(1,20,25,5,3),new Array(1,20,25,3,5));
+-			var costSet = new Array(120000,120000);
+-			item = itemSet[selectedItem];
+-			mats = matSet[selectedItem];
+-			matQty = matQtySet[selectedItem];
+-			cost = costSet[selectedItem];
+-		}
++            var itemSet = new Array(1482013,1492013);
++            var matSet = new Array(new Array(1482012,4000244,4000245,4005000,4005002),new Array(1492012,4000244,4000245,4005000,4005002));
++            var matQtySet = new Array(new Array(1,20,25,5,3),new Array(1,20,25,3,5));
++            var costSet = new Array(120000,120000);
++            item = itemSet[selectedItem];
++            mats = matSet[selectedItem];
++            matQty = matQtySet[selectedItem];
++            cost = costSet[selectedItem];
++        } else if (selectedType == 11){ //cornian's dagger
++            item = cd_item;
++            mats = cd_mats;
++            matQty = cd_matQty;
++            cost = cd_cost;
++        }
++        
+         var prompt = "You want me to make a #t" + item + "#? In that case, I'm going to need specific items from you in order to make it. Make sure you have room in your inventory, though!#b";
+         if(stimulator){
+             stimID = getStimID(item);
+diff --git a/scripts/npc/world0/2083005.js b/scripts/npc/world0/2083005.js
+new file mode 100644
+index 000000000..fa19b5922
+--- /dev/null
++++ b/scripts/npc/world0/2083005.js
+@@ -0,0 +1,36 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/**
++Fountain of Life 2083005
++**/
++
++function start() {
++    if(cm.isQuestStarted(6280)) {
++        if(cm.hasItem(4031454)) {
++            cm.sendOk("(You poured some water from the fountain into the cup.)");
++            cm.gainItem(4031454, -1);
++            cm.gainItem(4031455, 1);
++        }
++    }
++    
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/2100001.js b/scripts/npc/world0/2100001.js
+index 897ab6aee..22015e332 100644
+--- a/scripts/npc/world0/2100001.js
++++ b/scripts/npc/world0/2100001.js
+@@ -200,96 +200,4 @@ function action(mode, type, selection) {
+             }
+             cm.dispose();
+         }
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        
+-        /*
+-        else if(status == 4 && mode == 1) {
+-            if (equip) {
+-                selectedItem = selection;
+-                qty = 1;
+-            }
+-            else
+-                qty = selection;
+-            
+-            var prompt = "To make #t" + item + "#s, I'll need the following materials:";
+-            
+-            if (mats instanceof Array){
+-		for(var i = 0; i < mats.length; i++){
+-			prompt += "\r\n#i"+mats[i]+"# " + matQty[i] * qty + " #t" + mats[i] + "#";
+-		}
+-            }
+-            else {
+-		prompt += "\r\n#i"+mats+"# " + matQty * qty + " #t" + mats + "#";
+-            }
+-		
+-            if (cost > 0)
+-		prompt += "\r\n#i4031138# " + cost * qty + " meso";
+-           
+-        }
+-        
+-	else if (status == 5 && mode == 1) {
+-		var complete = false;
+-			
+-		if (cm.getMeso() < cost * qty) {
+-			cm.sendOk("I'm afraid you cannot afford my services.")
+-			cm.dispose();
+-			return;
+-		}
+-		else {
+-			if (mats instanceof Array) {
+-				for (var i = 0; i < mats.length; i++) {
+-					complete = cm.haveItem(mats[i], matQty[i] * qty);
+-					if (!complete) {
+-						break;
+-					}
+-				}
+-			}
+-			else {
+-				complete = cm.haveItem(mats, matQty * qty);
+-			}	
+-        	}
+-			
+-		if (!complete) 
+-			cm.sendNext("Please check and see if you have all the necessary items with you. If so, then please check your etc. inventory and see if you have an empty space.");
+-		else {
+-			if (mats instanceof Array) {
+-				for (var i = 0; i < mats.length; i++){
+-					cm.gainItem(mats[i], -matQty[i] * qty);
+-				}
+-			}
+-			else
+-				cm.gainItem(mats, -matQty * qty);
+-					
+-			cm.gainMeso(-cost * qty);
+-			cm.gainItem(item,qty);
+-			cm.sendOk("There, finished. What do you think, a piece of art, isn't it? Well, if you need anything else, you know where to find me.");
+-		}
+-		
+-		cm.dispose();
+-	}*/
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100002.js b/scripts/npc/world0/2100002.js
+new file mode 100644
+index 000000000..c6d032441
+--- /dev/null
++++ b/scripts/npc/world0/2100002.js
+@@ -0,0 +1,11 @@
++var status = 0;
++
++function start() {
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    cm.openShopNPC(48);
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100003.js b/scripts/npc/world0/2100003.js
+new file mode 100644
+index 000000000..8e20e05d1
+--- /dev/null
++++ b/scripts/npc/world0/2100003.js
+@@ -0,0 +1,11 @@
++var status = 0;
++
++function start() {
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    cm.openShopNPC(52);
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100005.js b/scripts/npc/world0/2100005.js
+new file mode 100644
+index 000000000..2c0172b49
+--- /dev/null
++++ b/scripts/npc/world0/2100005.js
+@@ -0,0 +1,83 @@
++/* Author: aaroncsn (MapleSea Like)
++	NPC Name: 		Shati
++	Map(s): 		The Burning Road: Ariant(2600000000)
++	Description: 	Assistant Hairdresser
++*/
++
++var status = 0;
++var beauty = 0;
++var mhair = Array(30250, 30350, 30270, 30150, 30300, 30600, 30160, 30700, 30720, 30420);
++var fhair = Array(31040, 31250, 31310, 31220, 31300, 31680, 31160, 31030, 31230, 31690, 31210, 31170, 31450);
++var hairnew = Array();
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++		if (mode == 0 && status >= 0) {
++			cm.sendNext("I guess you aren't ready to make the change yet. Let me know when you are!");
++			cm.dispose();
++			return;
++		}
++		if (mode == 1)
++			status++;
++		else
++			status--;
++		if (status == 0) {
++			cm.sendSimple("Hey there! I'm Shatti, and I'm Mazra's apprentice. If you have #bAriant hair style coupon(REG)#k or #bAriant hair color coupon(REG)#k with you, how about allowing me to work on your hair? \r\n#L0##bChange Hairstyle (Reg Coupon) \r\n#L1##bDye Hair(Reg. coupon)");
++		} else if (status == 1) {
++			if (selection == 0) {
++				beauty = 1;
++				hairnew = Array();
++				if (cm.getChar().getGender() == 0) {
++					for(var i = 0; i < mhair.length; i++) {
++						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair()
++ % 10));
++					}
++				} 
++				if (cm.getChar().getGender() == 1) {
++					for(var i = 0; i < fhair.length; i++) {
++						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair()
++ % 10));
++					}
++				}
++				cm.sendYesNo("If you use the Reg. coupon, your hairstyle will be changed to a random new look. You'll also have access to new hairstyles I worked on that's not available for VIP coupons. Would you like to use #bAriant hair style coupon(REG)#k for a fabulous new look?");
++			} else if (selection == 1) {
++				beauty = 2;
++				haircolor = Array();
++				var current = parseInt(cm.getChar().getHair()
++/10)*10;
++				for(var i = 0; i < 8; i++) {
++					haircolor.push(current + i);
++				}
++				cm.sendYesNo("If you use the regular coupon, your hair color will change to a random new color. Are you sure you want to use #b#t5151021##k and randomly change your hair color?");
++			}
++		}
++		else if (status == 2){
++			cm.dispose();
++			if (beauty == 1){
++				if (cm.haveItem(5150026) == true){
++					cm.gainItem(5150026, -1);
++					cm.setHair(hairnew[Math.floor(Math.random() * hairnew.length)]);
++					cm.sendOk("Enjoy your new and improved hairstyle!");
++				} else {
++					cm.sendNext("I can only change your hairstyle if you bring me the coupon. You didn't forget that, did you?");
++				}
++			}
++			if (beauty == 2){
++				if (cm.haveItem(5151021) == true){
++					cm.gainItem(5151021, -1);
++					cm.setHair(haircolor[Math.floor(Math.random() * haircolor.length)]);
++					cm.sendOk("Enjoy your new and improved haircolor!");
++				} else {
++					cm.sendNext("I can only change your hairstyle if you bring me the coupon. You didn't forget that, did you?");
++				}
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100006.js b/scripts/npc/world0/2100006.js
+new file mode 100644
+index 000000000..d30760107
+--- /dev/null
++++ b/scripts/npc/world0/2100006.js
+@@ -0,0 +1,84 @@
++/* Author: aaroncsn (MapleSea Like)
++	NPC Name: 		Mazra
++	Map(s): 		The Burning Road: Ariant(2600000000)
++	Description: 	Hair Salon Owner
++*/
++
++var status = 0;
++var beauty = 0;
++var mhair = Array(30030, 30020, 30000, 30130, 30350, 30190, 30110, 30180, 30050, 30040, 30160);
++var fhair = Array(31050, 31040, 31000, 31060, 31090, 31020, 31130, 31120, 31140, 31330, 31010);
++var hairnew = Array();
++
++
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++		if (mode == 0 && status >= 0) {
++			cm.dispose();
++			return;
++		}
++		if (mode == 1)
++			status++;
++		else
++			status--;
++		if (status == 0) {
++			cm.sendSimple("Hahaha... it takes a lot of style and flair for someone to pay attention to his or her hairsyle in a desert. Someone like you...If you have #bAriant hair style coupon(VIP)#k or #bAriant hair color coupon(VIP)#k, I'll give your hair a fresh new look. \r\n#L0##bChange Hairstyle(VIP Coupon)#k#l \r\n#L1##bDye Hair(VIP Coupon)#k#l");
++		} else if (status == 1) {
++			if (selection == 0) {
++				beauty = 1;
++				hairnew = Array();
++				if (cm.getChar().getGender() == 0) {
++					for(var i = 0; i < mhair.length; i++) {
++						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair()
++ % 10));
++					}
++				} 
++				if (cm.getChar().getGender() == 1) {
++					for(var i = 0; i < fhair.length; i++) {
++						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair()
++ % 10));
++					}
++				}
++				cm.sendStyle("Hahaha~all you need is #bAriant hair style coupon(VIP)#k to change up your hairstyle. Choose the new style, and let me do the rest.", hairnew);
++			} else if (selection == 1) {
++				beauty = 2;
++				haircolor = Array();
++				var current = parseInt(cm.getChar().getHair()
++/10)*10;
++				for(var i = 0; i < 8; i++) {
++					haircolor.push(current + i);
++				}
++				cm.sendStyle("Every once in a while, it doesn't hurt to change up your hair color... it's fun. Allow me, the great Mazra, to dye your hair, so you just bring me #bAriant hair color coupon(VIP)#k, and choose your new hair color.", haircolor);
++			}
++		}
++		else if (status == 2){
++			cm.dispose();
++			if (beauty == 1){
++				if (cm.haveItem(5150027) == true){
++					cm.gainItem(5150027, -1);
++					cm.setHair(hairnew[selection]);
++					cm.sendOk("Enjoy your new and improved hairstyle!");
++				} else {
++					cm.sendNext("I thought I told you, you need the coupon in order for me to work magic on your hair check again.");
++				}
++			}
++			if (beauty == 2){
++				if (cm.haveItem(5151022) == true){
++					cm.gainItem(5151022, -1);
++					cm.setHair(haircolor[selection]);
++					cm.sendOk("Enjoy your new and improved haircolor!");
++				} else {
++					cm.sendNext("I thought I told you, you need the coupon in order for me to work magic on your hair check again.");
++				}
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100007.js b/scripts/npc/world0/2100007.js
+new file mode 100644
+index 000000000..89e8ecfd3
+--- /dev/null
++++ b/scripts/npc/world0/2100007.js
+@@ -0,0 +1,42 @@
++/* Author: aaroncsn (MapleSea Like)(Incomplete- Needs skin id)
++	NPC Name: 		Laila
++	Map(s): 		The Burning Road: Ariant(2600000000)
++	Description: 	Skin Care Specialist
++*/
++
++var status = 0;
++var skin = Array(0, 1, 2, 3, 4);
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++		if (mode == 0 && status >= 0) {
++			cm.dispose();
++			return;
++		}
++		if (mode == 1)
++			status++;
++		else
++			status--;
++		if (status == 0) {
++			cm.sendNext("Hohoh~ welcome welcome. Welcome to Ariant Skin Care. You have stepped into a renowned Skin Care shop that even the Queen herself frequents this place. If you have #bAriant skin care coupon#k with you, we'll take care of the rest. How about letting work on your skin today?");
++		} else if (status == 1) {
++			cm.sendStyle("With our specialized machine, you can see yourself after the treatment in advance. What kind of skin-treatment would you like to do? Choose the style of your liking...", skin);
++		} else if (status == 2){
++			cm.dispose();
++			if (cm.haveItem(5153007) == true){
++				cm.gainItem(5153007, -1);
++				cm.setSkin(skin[selection]);
++				cm.sendOk("Enjoy your new and improved skin!");
++			} else {
++				cm.sendNext("Hmmm... I don't think you have our Skin Care coupon with you. Without it, I can't give you the treatment");
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100008.js b/scripts/npc/world0/2100008.js
+new file mode 100644
+index 000000000..c9ce080a9
+--- /dev/null
++++ b/scripts/npc/world0/2100008.js
+@@ -0,0 +1,59 @@
++/* Author: aaroncsn (MapleSea Like)
++	NPC Name: 		Badr
++	Map(s): 		The Burning Road: Ariant(2600000000)
++	Description: 	Ariant Plastic Surgery
++*/
++
++var status = 0;
++var beauty = 0;
++var mface = Array(20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20008, 20012, 20014);
++var fface = Array(21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008, 21012, 21014);
++var facenew = Array();
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++		if (mode == 0 && status == 0) {
++			cm.dispose();
++			return;
++		}
++		if (mode == 1)
++			status++;
++		else
++			status--;
++		if (status == 0) {
++				facenew = Array();
++				if (cm.getChar().getGender() == 0) {
++					for(var i = 0; i < mface.length; i++) {
++						facenew.push(mface[i] + cm.getChar().getFace()
++ % 1000 - (cm.getChar().getFace()
++ % 100));
++					}
++				}
++				if (cm.getChar().getGender() == 1) {
++					for(var i = 0; i < fface.length; i++) {
++						facenew.push(fface[i] + cm.getChar().getFace()
++ % 1000 - (cm.getChar().getFace()
++ % 100));
++					}
++				}
++				cm.sendStyle("Hmmm... Face of beauty glows even under cover and burning desert. With #bAriant face coupon(VIP)#k, I can make your face so much better. Choose the face you want, and I will pull out my outstanding skill for the great make over.", facenew);
++			}
++		else if (status == 1){
++			cm.dispose();
++			if (cm.haveItem(5152030) == true){
++				cm.gainItem(5152030, -1);
++				cm.setFace(facenew[selection]);
++				cm.sendOk("Enjoy your new and improved face!");
++			} else {
++				cm.sendNext("Erm... You don't seem to have the exclusive coupon for this hospital. Without the coupon, I'm afraid I can't do it for you.");
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2100009.js b/scripts/npc/world0/2100009.js
+new file mode 100644
+index 000000000..1034d0a7c
+--- /dev/null
++++ b/scripts/npc/world0/2100009.js
+@@ -0,0 +1,60 @@
++/* Author: aaroncsn (MapleSea Like)
++	NPC Name: 		Aldin
++	Map(s): 		The Burning Road: Ariant(2600000000)
++	Description: 	Ariant Plastic Surgery
++*/
++
++var status = 0;
++var beauty = 0;
++var mface = Array(20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20008, 20012, 20014);
++var fface = Array(21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008, 21012, 21014);
++var facenew = Array();
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++		if (mode == 0 && status == 0) {
++			cm.sendNext("I see...take your time, see if you really want it. Let me know when you make up your mind.");
++			cm.dispose();
++			return;
++		}
++		if (mode == 1)
++			status++;
++		else
++			status--;
++		if (status == 0) {
++				facenew = Array();
++				if (cm.getChar().getGender() == 0) {
++					for(var i = 0; i < mface.length; i++) {
++						facenew.push(mface[i] + cm.getChar().getFace()
++ % 1000 - (cm.getChar().getFace()
++ % 100));
++					}
++				}
++				if (cm.getChar().getGender() == 1) {
++					for(var i = 0; i < fface.length; i++) {
++						facenew.push(fface[i] + cm.getChar().getFace()
++ % 1000 - (cm.getChar().getFace()
++ % 100));
++					}
++				}
++				cm.sendYesNo("If you use the regular coupon, your face may transform into a random new look...do you still want to do it using #b#t5152029##k?");
++			}
++		else if (status == 1){	
++			cm.dispose();
++			if (cm.haveItem(5152029) == true){
++				cm.gainItem(5152029, -1);
++				cm.setFace(facenew[Math.floor(Math.random() * facenew.length)]);
++				cm.sendOk("Enjoy your new and improved face!");
++			} else {
++				cm.sendNext("Um ... it looks like you don't have the coupon specifically for this place...sorry to say this, but without the coupon, there's no plastic surgery for you.");
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2101002.js b/scripts/npc/world0/2101002.js
+new file mode 100644
+index 000000000..de3e4f049
+--- /dev/null
++++ b/scripts/npc/world0/2101002.js
+@@ -0,0 +1,12 @@
++/* 	Eleska
++	Ariant	
++*/
++
++
++function start() {
++    cm.sendOk("Stay away from me, if you don't want any danger.");
++}
++
++function action() {
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2101003.js b/scripts/npc/world0/2101003.js
+new file mode 100644
+index 000000000..52f384ad1
+--- /dev/null
++++ b/scripts/npc/world0/2101003.js
+@@ -0,0 +1,12 @@
++/* 	Ardin
++	Ariant	
++*/
++
++
++function start() {
++    cm.sendNext ("Hey hey, don't try to start trouble with anyone. I want nothing to do with you.");
++}
++
++function action() {
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2101013.js b/scripts/npc/world0/2101013.js
+new file mode 100644
+index 000000000..9d88b2e76
+--- /dev/null
++++ b/scripts/npc/world0/2101013.js
+@@ -0,0 +1,42 @@
++/* Author: aaroncsn(MapleSea Like)
++	NPC Name: 		Karcasa
++	Map(s): 		The Burning Sands: Tents of the Entertainers(260010600)
++	Description: 		Warps to Victoria Island
++*/
++var towns = new Array(100000000,101000000,102000000,103000000,104000000);
++
++function start() {
++	status = -1;
++	action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++	if (mode == -1) {
++		cm.dispose();
++	} else {
++	if (status == 0 && mode == 0) {
++		cm.sendNext("Aye...are you scared of speed or heights? You can't trust my flying skills? Trust me, I've worked out all the kinks!");
++		cm.dispose();
++		return;
++	}
++	if (mode == 1)
++		status++;
++	else
++		status--;
++	if(status == 0){
++		cm.sendAcceptDecline("I don't know how you found out about this, but you came to the right place! For those that wandered around Nihal Desert and are getting homesick, I am offering a flight straight to Victorial Island, non-stop! Don't worry about the flying ship--it's only fallen once or twice! Don't you feel claustrophobic being in a long flight on that small ship? What do you think? Are you willing to take the offer on this direct flight?");
++	} else if(status == 1){
++		cm.sendAcceptDecline("Please remember two things. One, this line is actually for overseas shipping, so #rI cannot gurantee exactly which town you'll land#k. Two, since I am putting you in this special flight, it'll be a bit expensive. The service charge is #e#b10,000 mesos#n#k. There's a flight thats about to take off. Are you interested?");
++	} else if(status == 2){
++		cm.sendNext("Okay, ready to takeoff~");
++	} else if(status == 3){
++		if(cm.getMeso() >= 10000){
++			cm.gainMeso(-10000);
++			cm.warp(towns[Math.floor(Math.random() * towns.length)]);
++		} else{
++			cm.sendNextPrev("Hey, are you short on cash? I told you you'll need #b10,000#k mesos to get on this.");
++			cm.dispose();
++			}
++		}
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/portal/balogTemple.js b/scripts/portal/balogTemple.js
+new file mode 100644
+index 000000000..1b9e69139
+--- /dev/null
++++ b/scripts/portal/balogTemple.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++    pi.warp(105100000, 2);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/balog_end.js b/scripts/portal/balog_end.js
+new file mode 100644
+index 000000000..b392201b8
+--- /dev/null
++++ b/scripts/portal/balog_end.js
+@@ -0,0 +1,9 @@
++function enter(pi) {
++	if (!pi.canHold(4001261,1)) {
++		pi.playerMessage(5, "Please make 1 ETC room.");
++		return false;
++	}
++	pi.gainItem(4001261,1);
++	pi.warp(105100100,0);
++	return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/inNix1.js b/scripts/portal/inNix1.js
+new file mode 100644
+index 000000000..c0168eba8
+--- /dev/null
++++ b/scripts/portal/inNix1.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++	pi.warp(240020600,"out00");
++        return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/inNix2.js b/scripts/portal/inNix2.js
+new file mode 100644
+index 000000000..424159f7b
+--- /dev/null
++++ b/scripts/portal/inNix2.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++	pi.warp(240020600,"out01");
++        return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/outNix1.js b/scripts/portal/outNix1.js
+new file mode 100644
+index 000000000..38e79512b
+--- /dev/null
++++ b/scripts/portal/outNix1.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++	pi.warp(240020101,"in00");
++        return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/outNix2.js b/scripts/portal/outNix2.js
+new file mode 100644
+index 000000000..8ba1f4a5b
+--- /dev/null
++++ b/scripts/portal/outNix2.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++	pi.warp(240020401,"in00");
++        return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/outPerrion_1.js b/scripts/portal/outPerrion_1.js
+new file mode 100644
+index 000000000..920c03fe4
+--- /dev/null
++++ b/scripts/portal/outPerrion_1.js
+@@ -0,0 +1,5 @@
++function enter(pi) {
++    pi.message("You found a shortcut to the start of the underground temple.");
++    pi.warp(105100000, 2);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/outPerrion_2.js b/scripts/portal/outPerrion_2.js
+new file mode 100644
+index 000000000..59a7f3d0f
+--- /dev/null
++++ b/scripts/portal/outPerrion_2.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++    pi.warp(105100000);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/tristanEnter.js b/scripts/portal/tristanEnter.js
+new file mode 100644
+index 000000000..32eaf5bb3
+--- /dev/null
++++ b/scripts/portal/tristanEnter.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++    pi.warp(105100101, "in00");
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/1052001.js b/scripts/reactor/1052001.js
+new file mode 100644
+index 000000000..c06753da3
+--- /dev/null
++++ b/scripts/reactor/1052001.js
+@@ -0,0 +1,3 @@
++function act() {
++	rm.dropItems();
++}
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index af01c5493..75c3c295f 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18845,6 +18845,7 @@
+   UPDATE drop_data SET chance=0 WHERE itemid=2050099;
+   UPDATE drop_data SET chance=40000 WHERE itemid=4031991;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
++  UPDATE drop_data SET questid=6190 WHERE itemid=4001111;
+ 
+   # two items named "Sparta": remove the entries where lv100 Sparta is being dropped by low-level mobs.
+   UPDATE IGNORE drop_data SET itemid=1402011 WHERE itemid=1302056 AND dropperid < 8000000;
+diff --git a/src/net/server/channel/handlers/SkillBookHandler.java b/src/net/server/channel/handlers/SkillBookHandler.java
+index 488cf5513..d816d451a 100644
+--- a/src/net/server/channel/handlers/SkillBookHandler.java
++++ b/src/net/server/channel/handlers/SkillBookHandler.java
+@@ -64,13 +64,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 canuse = false;
+             } else if ((player.getSkillLevel(skill2) >= skilldata.get("reqSkillLevel") || skilldata.get("reqSkillLevel") == 0) && player.getMasterLevel(skill2) < skilldata.get("masterLevel")) {
+                 canuse = true;
+-                if (Randomizer.nextInt(101) < skilldata.get("success") && skilldata.get("success") != 0) {
++                if (MapleItemInformationProvider.rollSuccessChance(skilldata.get("success"))) {
+                     success = true;
+-                    
+                     player.changeSkillLevel(skill2, player.getSkillLevel(skill2), Math.max(skilldata.get("masterLevel"), player.getMasterLevel(skill2)), -1);
+                 } else {
+                     success = false;
+-                    player.dropMessage("The skill book lights up, but the skill winds up as if nothing happened.");
++                    //player.dropMessage("The skill book lights up, but the skill winds up as if nothing happened.");
+                 }
+                 MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, (short) 1, false);
+             } else {
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index db346cf8a..409d71449 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -83,6 +83,10 @@ public MapleClient getClient() {
+ 	public MapleCharacter getPlayer() {
+ 		return c.getPlayer();
+ 	}
++        
++        public MapleCharacter getChar() {
++		return c.getPlayer();
++	}
+ 
+ 	public void warp(int map) {
+ 		getPlayer().changeMap(getWarpMap(map), getWarpMap(map).getPortal(0));
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index f96d84565..538a987a1 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -511,7 +511,7 @@ private boolean isCleanSlate(int scrollId) {
+         return scrollId > 2048999 && scrollId < 2049004;
+     }
+ 
+-    private double testYourLuck() {
++    private static double testYourLuck() {
+         double result = 100.0, rolled;
+         int i, j = ServerConstants.SCROLL_CHANCE_RATE;
+         
+@@ -524,6 +524,9 @@ private double testYourLuck() {
+         return(result);
+     }
+     
++    public static boolean rollSuccessChance(double prop) {
++        return(testYourLuck() <= prop && prop > 0.0);
++    }
+     
+     public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll, boolean isGM) {
+         if (equip instanceof Equip) {
+@@ -534,7 +537,7 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+             
+             System.out.println("GM: " + isGM + "\tWS: " + usingWhiteScroll + "\tITEM: " + scrollId);
+             if (((nEquip.getUpgradeSlots() > 0 || isCleanSlate(scrollId))) || isGM) {
+-                if(isGM || testYourLuck() <= stats.get("success")) {
++                if(isGM || rollSuccessChance((double)stats.get("success"))) {
+                     short flag = nEquip.getFlag();
+                     switch (scrollId) {
+                         case 2040727:
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index dceccf960..cea59069d 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -250,19 +250,14 @@ public boolean isAttackedBy(MapleCharacter chr) {
+ 
+     private void distributeExperienceToParty(int pid, int exp, int killer, Map<Integer, Integer> expDist) {
+         LinkedList<MapleCharacter> members = new LinkedList<>();
+-
+-        map.getCharacterReadLock().lock();
+         Collection<MapleCharacter> chrs = map.getCharacters();
+-        try {
+-            for (MapleCharacter mc : chrs) {
+-                if (mc.getPartyId() == pid) {
+-                    members.add(mc);
+-                }
++        
++        for (MapleCharacter mc : chrs) {
++            if (mc.getPartyId() == pid) {
++                members.add(mc);
+             }
+-        } finally {
+-            map.getCharacterReadLock().unlock();
+         }
+-
++        
+         final int minLevel = getLevel() - 5;
+ 
+         int partyLevel = 0;
+@@ -312,29 +307,26 @@ public void distributeExperience(int killerId) {
+         for (Entry<Integer, AtomicInteger> damage : takenDamage.entrySet()) {
+             expDist.put(damage.getKey(), (int) (0.80f * exp * damage.getValue().get() / totalHealth));
+         }
+-        map.getCharacterReadLock().lock(); // avoid concurrent mod
++        
+         Collection<MapleCharacter> chrs = map.getCharacters();
+-        try {
+-            for (MapleCharacter mc : chrs) {
+-                if (expDist.containsKey(mc.getId())) {
+-                    boolean isKiller = mc.getId() == killerId;
+-                    int xp = expDist.get(mc.getId());
+-                    if (isKiller) {
+-                        xp += exp / 5;
+-                    }
+-                    MapleParty p = mc.getParty();
+-                    if (p != null) {
+-                        int pID = p.getId();
+-                        int pXP = xp + (partyExp.containsKey(pID) ? partyExp.get(pID) : 0);
+-                        partyExp.put(pID, pXP);
+-                    } else {
+-                        giveExpToCharacter(mc, xp, isKiller, 1);
+-                    }
++        for (MapleCharacter mc : chrs) {
++            if (expDist.containsKey(mc.getId())) {
++                boolean isKiller = mc.getId() == killerId;
++                int xp = expDist.get(mc.getId());
++                if (isKiller) {
++                    xp += exp / 5;
++                }
++                MapleParty p = mc.getParty();
++                if (p != null) {
++                    int pID = p.getId();
++                    int pXP = xp + (partyExp.containsKey(pID) ? partyExp.get(pID) : 0);
++                    partyExp.put(pID, pXP);
++                } else {
++                    giveExpToCharacter(mc, xp, isKiller, 1);
+                 }
+             }
+-        } finally {
+-            map.getCharacterReadLock().unlock();
+         }
++        
+         for (Entry<Integer, Integer> party : partyExp.entrySet()) {
+             distributeExperienceToParty(party.getKey(), party.getValue(), killerId, expDist);
+         }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 591e84124..bbf8f2970 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -153,14 +153,6 @@ public MapleMap(int mapid, int world, int channel, int returnMapId, float monste
+         objectWLock = objectLock.writeLock();
+     }
+     
+-    public ReadLock getCharacterReadLock() {
+-        return chrRLock;
+-    }
+-    
+-    public WriteLock getCharacterWriteLock() {
+-        return chrWLock;
+-    }
+-
+     public void broadcastMessage(MapleCharacter source, final byte[] packet) {
+         chrRLock.lock();
+         try {
+@@ -1293,9 +1285,11 @@ public void run() {
+ 
+     public void addPlayer(final MapleCharacter chr) {
+         chrWLock.lock();
++        chrRLock.lock();
+         try {
+             characters.add(chr);
+         } finally {
++            chrRLock.unlock();
+             chrWLock.unlock();
+         }
+         chr.setMapId(mapid);
+@@ -1534,9 +1528,11 @@ public MaplePortal getRandomSpawnpoint() {
+ 
+     public void removePlayer(MapleCharacter chr) {
+         chrWLock.lock();
++        chrRLock.lock();
+         try {
+             characters.remove(chr);
+         } finally {
++            chrRLock.unlock();
+             chrWLock.unlock();
+         }
+         removeMapObject(chr.getObjectId());
+@@ -1794,7 +1790,13 @@ public void addAllMonsterSpawn(MapleMonster monster, int mobTime, int team) {
+     }
+ 
+     public Collection<MapleCharacter> getCharacters() {
+-        return Collections.unmodifiableCollection(this.characters);
++        chrRLock.lock();
++        try {
++            return Collections.unmodifiableCollection(this.characters);
++        }
++        finally {
++            chrRLock.unlock();
++        }
+     }
+ 
+     public MapleCharacter getCharacterById(int id) {
+@@ -2068,9 +2070,16 @@ public void restoreMapSpawnPoints() {
+     }
+ 
+     public void respawn() {
+-        if (characters.isEmpty()) {
+-            return;
++        chrRLock.lock();
++        try {
++            if (characters.isEmpty()) {
++                return;
++            }
+         }
++        finally {
++            chrRLock.unlock();
++        }
++        
+         short numShouldSpawn = (short) ((monsterSpawn.size() - spawnedMonstersOnMap.get()));//Fking lol'd
+         if (numShouldSpawn > 0) {
+             List<SpawnPoint> randomSpawn = new ArrayList<>(monsterSpawn);
+@@ -2227,6 +2236,7 @@ public void run() {
+                 if (timeLimit != 0 && timeLimit < System.currentTimeMillis()) {
+                     warpEveryone(getForcedReturnId());
+                 }
++                
+                 if (getCharacters().isEmpty()) {
+                     resetReactors();
+                     killAllMonsters();
+@@ -2263,14 +2273,8 @@ public boolean getSummonState() {
+     }
+ 
+     public void warpEveryone(int to) {
+-        List<MapleCharacter> players;
+-        chrRLock.lock();
+-        try {
+-            players = new ArrayList<>(getCharacters());
+-        } finally {
+-            chrRLock.unlock();
+-        }
+-
++        List<MapleCharacter> players = new ArrayList<>(getCharacters());
++        
+         for (MapleCharacter chr : players) {
+             chr.changeMap(to);
+         }
+@@ -2315,7 +2319,6 @@ public MapleCoconut getCoconut() {
+ 
+     public void warpOutByTeam(int team, int mapid) {
+         List<MapleCharacter> chars = new ArrayList<>(getCharacters());
+-
+         for (MapleCharacter chr : chars) {
+             if (chr != null) {
+                 if (chr.getTeam() == team) {
+diff --git a/wz/Item.wz/Etc/0400.img.xml b/wz/Item.wz/Etc/0400.img.xml
+index be90cbb40..9d13d76a6 100644
+--- a/wz/Item.wz/Etc/0400.img.xml
++++ b/wz/Item.wz/Etc/0400.img.xml
+@@ -7340,6 +7340,7 @@
+       </canvas>
+       <int name="price" value="1"/>
+       <int name="only" value="1"/>
++      <int name="quest" value="1"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04001112">
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 6ad73443b..9404edc0d 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -9994,6 +9994,12 @@
+     <imgdir name="1">
+     </imgdir>
+     <imgdir name="0">
++      <imgdir name="item">
++        <imgdir name="0">
++          <int name="id" value="4031619"/>
++          <int name="count" value="1"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="2127">
+diff --git a/wz/Quest.wz/Say.img.xml b/wz/Quest.wz/Say.img.xml
+index d46c8663c..9ae3d8374 100644
+--- a/wz/Quest.wz/Say.img.xml
++++ b/wz/Quest.wz/Say.img.xml
+@@ -37776,7 +37776,7 @@
+   </imgdir>
+   <imgdir name="6110">
+     <imgdir name="1">
+-      <string name="0" value=" Great! You eliminated 200#r#o9300087##k. Can you feel your strength growing? Now you can learn the Rush skill."/>
++      <string name="0" value="Great! You eliminated 200 #r#o9300087##k. Can you feel your strength growing? Now you can learn the Rush skill."/>
+       <string name="1" value="Look. This is #bBook of Taurospear&apos;s Rush Skill#k. It can be translated into a language humans can understand. If you&apos;re smart enough, you can learn and read it! "/>
+       <imgdir name="yes">
+         <string name="0" value=" Good! It feels great to be strong doesn&apos;t it?"/>

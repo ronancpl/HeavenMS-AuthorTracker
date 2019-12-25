@@ -1,0 +1,622 @@
+diff --git a/scripts/event/PiratePQ.js b/scripts/event/PiratePQ.js
+new file mode 100644
+index 000000000..818b48edf
+--- /dev/null
++++ b/scripts/event/PiratePQ.js
+@@ -0,0 +1,154 @@
++var minPlayers = 1;
++
++function init() {
++em.setProperty("state", "0");
++	em.setProperty("leader", "true");
++}
++
++function setup(level, leaderid) {
++em.setProperty("state", "1");
++	em.setProperty("leader", "true");
++    var eim = em.newInstance("Pirate" + leaderid);
++	em.setProperty("stage2", "0");
++	em.setProperty("stage2a", "0");
++	em.setProperty("stage3a", "0");
++	em.setProperty("stage4", "0");
++	em.setProperty("stage5", "0");
++        eim.setInstanceMap(925100000).resetPQ(level);
++	eim.setInstanceMap(925100100).resetPQ(level);
++	var map = eim.setInstanceMap(925100200);
++	map.resetPQ(level);
++	for (var i = 0; i < 5; i++) {
++		var mob = em.getMonster(9300124);
++		var mob2 = em.getMonster(9300125);
++		var mob3 = em.getMonster(9300124);
++		var mob4 = em.getMonster(9300125);
++		eim.registerMonster(mob);
++		eim.registerMonster(mob2);
++		eim.registerMonster(mob3);
++		eim.registerMonster(mob4);
++		mob.changeLevel(level);
++		mob2.changeLevel(level);
++		mob3.changeLevel(level);
++		mob4.changeLevel(level);
++		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
++		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
++		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
++		map.spawnMonsterOnGroundBelow(mob4, new java.awt.Point(1600, 238));
++	}
++	map = eim.setInstanceMap(925100201);
++	map.resetPQ(level);
++	for (var i = 0; i < 10; i++) {
++		var mob = em.getMonster(9300112);
++		var mob2 = em.getMonster(9300113);
++		eim.registerMonster(mob);
++		eim.registerMonster(mob2);
++		mob.changeLevel(level);
++		mob2.changeLevel(level);
++		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
++		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
++	}
++	eim.setInstanceMap(925100202).resetPQ(level);
++	map = eim.setInstanceMap(925100300);
++	map.resetPQ(level);
++	for (var i = 0; i < 5; i++) {
++		var mob = em.getMonster(9300124);
++		var mob2 = em.getMonster(9300125);
++		var mob3 = em.getMonster(9300124);
++		var mob4 = em.getMonster(9300125);
++		eim.registerMonster(mob);
++		eim.registerMonster(mob2);
++		eim.registerMonster(mob3);
++		eim.registerMonster(mob4);
++		mob.changeLevel(level);
++		mob2.changeLevel(level);
++		mob3.changeLevel(level);
++		mob4.changeLevel(level);
++		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
++		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
++		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
++		map.spawnMonsterOnGroundBelow(mob4, new java.awt.Point(1600, 238));
++	}
++	map = eim.setInstanceMap(925100301);
++	map.resetPQ(level);
++	for (var i = 0; i < 10; i++) {
++		var mob = em.getMonster(9300112);
++		var mob2 = em.getMonster(9300113);
++		eim.registerMonster(mob);
++		eim.registerMonster(mob2);
++		mob.changeLevel(level);
++		mob2.changeLevel(level);
++		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
++		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
++	}
++	eim.setInstanceMap(925100302).resetPQ(level);
++	eim.setInstanceMap(925100400).resetPQ(level);
++	eim.setInstanceMap(925100500).resetPQ(level);
++
++    eim.startEventTimer(1200000); //20 mins
++    return eim;
++}
++
++function playerEntry(eim, player) {
++    var map = eim.getMapInstance(0);
++    player.changeMap(map, map.getPortal(0));
++    player.tryPartyQuest(1204);
++}
++
++function playerRevive(eim, player) {
++}
++
++function scheduledTimeout(eim) {
++    end(eim);
++}
++
++function changedMap(eim, player, mapid) {
++    if (mapid < 925100000 || mapid > 925100500) {
++	eim.unregisterPlayer(player);
++
++	if (eim.disposeIfPlayerBelow(0, 0)) {
++		em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++	}
++    }
++}
++
++function playerDisconnected(eim, player) {
++    return 0;
++}
++
++function monsterValue(eim, mobId) {
++    return 1;
++}
++
++function playerExit(eim, player) {
++    eim.unregisterPlayer(player);
++
++    if (eim.disposeIfPlayerBelow(0, 0)) {
++	em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++	}
++}
++
++function end(eim) {
++    eim.disposeIfPlayerBelow(100, 925100700);
++	em.setProperty("state", "0");
++		em.setProperty("leader", "true");
++}
++
++function clearPQ(eim) {
++    end(eim);
++}
++
++function allMonstersDead(eim) {
++}
++
++function leftParty (eim, player) {
++    // If only 2 players are left, uncompletable:
++	end(eim);
++}
++function disbandParty (eim) {
++	end(eim);
++}
++function playerDead(eim, player) {}
++function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2094000.js b/scripts/npc/world0/2094000.js
+index fe56a6b31..b4c8dd037 100644
+--- a/scripts/npc/world0/2094000.js
++++ b/scripts/npc/world0/2094000.js
+@@ -61,10 +61,12 @@ function action(mode, type, selection) {
+                     next = false;
+                 else {
+                     for (var i = 0; i < party.size() && next; i++) {
+-                        if ((party.get(i).getLevel() >= minLevel) && (party.get(i).getLevel() <= maxLevel))
++                        if ((party.get(i).getLevel() >= minLevel) && (party.get(i).getLevel() <= maxLevel)) {
+                             levelValid += 1;
+-                        if (party.get(i).getMapid() == mapId)
+-                            inMap += 1;
++
++                            if (party.get(i).getMapId() == mapId)
++                                inMap += 1;
++			}
+                     }
+                     if (levelValid < minPlayers || inMap < minPlayers)
+                         next = false;
+@@ -77,7 +79,7 @@ function action(mode, type, selection) {
+                     }
+                     else {
+                         em.startInstance(cm.getParty(),cm.getPlayer().getMap());
+-                        party = cm.getPlayer().getEventInstance().getPlayers();
++                        party = cm.getParty().getMembers();
+                     }
+                     cm.dispose();
+                 }
+diff --git a/scripts/npc/world0/9000036.js b/scripts/npc/world0/9000036.js
+index 7bd2d16fa..afeb6c184 100644
+--- a/scripts/npc/world0/9000036.js
++++ b/scripts/npc/world0/9000036.js
+@@ -88,7 +88,7 @@ function action(mode, type, selection) {
+             
+         }else if (selection == 4) { //ring refine
+             var selStr = "Rings, huh? These are my specialty, go check it yourself!#b";
+-            items = [1112407, 1112408, 1112401, 1112405, 1112413, 1112414, 1112402];
++            items = [1112407, 1112408, 1112401, 1112413, 1112414, 1112405, 1112402];
+             
+             for (var i = 0; i < items.length; i++)
+                 selStr += "\r\n#L" + i + "##t" + items[i] + "##b";
+@@ -121,7 +121,7 @@ function action(mode, type, selection) {
+             var matQtySet = [[2, 5, 10], [7777, 7777]];
+             var costSet = [15000, 7777];
+         }else if (selectedType == 4) { //ring refine
+-            var matSet = [[4003001, 4001344, 4006000], [4003001, 4001344, 4006000], [4021004, 4011008], [4011008, 4001006], [1112405, 2022039], [1112413, 4000176], [4011007, 4021009]];
++            var matSet = [[4003001, 4001344, 4006000], [4003001, 4001344, 4006000], [4021004, 4011008], [4011008, 4001006], [1112413, 2022039], [1112414, 4000176], [4011007, 4021009]];
+             var matQtySet = [[2, 2, 2], [2, 2, 2], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1]];
+             var costSet = [10000, 10000, 10000, 20000, 15000, 15000, 10000];
+         }else if (selectedType == 5) { //necklace refine
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 885897856..750102536 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -12789,7 +12789,8 @@ INSERT INTO `drop_data_global` (`id`, `continent`, `dropType`, `itemid`, `minimu
+ (1, 0, 0, 4031865, 1, 1, 0, 150000, 'NX Card 100 PTS'),
+ (2, 0, 0, 4031866, 1, 1, 0, 90000, 'NX Card 250 PTS'),
+ (3, 0, 0, 4001126, 1, 2, 0, 10000, 'Maple Leaves'),
+-(4, 0, 0, 2049100, 1, 1, 0, 2000, 'Chaos Scroll 60%');
++(4, 0, 0, 2049100, 1, 1, 0, 2000, 'Chaos Scroll 60%'),
++(5, 0, 0, 4001006, 1, 1, 0, 12000, 'Flaming Feather');
+ 
+ CREATE TABLE IF NOT EXISTS `dueyitems` (
+   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index f4a0aa1e9..4f8de8542 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -3,7 +3,9 @@
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+   #-- copy+paste inside here as many drop data as possible from the spider (drop generator) files --
+ (5100004, 2383034, 1, 1, 0, 10000),
+-
++(2100108, 2381030, 1, 1, 0, 10000),
++(3230300, 2382021, 1, 1, 0, 10000),
++(3230301, 2382021, 1, 1, 0, 10000),
+ (100100, 4000019, 1, 1, 0, 200000),
+ (100100, 2000000, 1, 1, 0, 40000), 
+ (100100, 2040002, 1, 1, 0, 750), 
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 9d56cff9c..e24309df3 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -852,16 +852,21 @@ public final void disconnect(boolean shutdown, boolean cashshop) {//once per Map
+ 				FilePrinter.printError(FilePrinter.ACCOUNT_STUCK, e);
+ 			} finally {
+ 				getChannelServer().removePlayer(player);
+-				if (!this.serverTransition) {
++                                
++                                if (!this.serverTransition) {
+ 					worlda.removePlayer(player);
++                                        
++                                        player.saveCooldowns();
++                                        player.saveToDB();
+ 					if (player != null) {//no idea, occur :(
+ 						player.empty(false);
+ 					}
+ 					player.logOff();
+ 				}
+-				
+-                                player.saveCooldowns();
+-                                player.saveToDB();
++                                else {
++                                    player.saveCooldowns();
++                                    player.saveToDB();
++                                }
+                                 player = null;
+ 			}
+ 		}
+diff --git a/src/net/server/channel/handlers/ScrollHandler.java b/src/net/server/channel/handlers/ScrollHandler.java
+index 83436c626..ea33cd973 100644
+--- a/src/net/server/channel/handlers/ScrollHandler.java
++++ b/src/net/server/channel/handlers/ScrollHandler.java
+@@ -67,6 +67,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         MapleInventory useInventory = c.getPlayer().getInventory(MapleInventoryType.USE);
+         Item scroll = useInventory.getItem(slot);
+         Item wscroll = null;
++
+         if (((Equip) toScroll).getUpgradeSlots() < 1 && !isCleanSlate(scroll.getItemId())) {
+             c.announce(MaplePacketCreator.getInventoryFull());
+             return;
+@@ -82,6 +83,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 whiteScroll = false;
+             }
+         }
++
+         if (!isChaosScroll(scroll.getItemId()) && !isCleanSlate(scroll.getItemId())) {
+             if (!canScroll(scroll.getItemId(), toScroll.getItemId())) {
+                 return;
+@@ -130,6 +132,14 @@ private boolean isChaosScroll(int scrollId) {
+     }
+     
+     public boolean canScroll(int scrollid, int itemid) {
+-        return (scrollid / 100) % 100 == (itemid / 10000) % 100;
++        int sid = scrollid / 100;
++        
++        switch(sid) {
++            case 20492: //scroll for accessory (pendant, belt, ring)
++                return canScroll(2041100, itemid) || canScroll(2041200, itemid) || canScroll(2041300, itemid);
++                
++            default:
++                return (scrollid / 100) % 100 == (itemid / 10000) % 100;
++        }
+     }
+ }
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 05afa1037..74dd8e268 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -304,6 +304,11 @@ public Item gainItem(int id, short quantity, boolean randomStats, boolean showMe
+             return gainItem(id, quantity, randomStats, showMessage, expires, null);
+         }
+         
++        private boolean isAccessory(int id) {
++            int val = id / 10000;
++            return(val >= 111 && val <= 113);
++        }
++        
+ 	public Item gainItem(int id, short quantity, boolean randomStats, boolean showMessage, long expires, MaplePet from) {
+ 		Item item = null;
+                 MaplePet evolved = null;
+@@ -336,6 +341,11 @@ public Item gainItem(int id, short quantity, boolean randomStats, boolean showMe
+ 			if (ii.getInventoryType(id).equals(MapleInventoryType.EQUIP)) {
+ 				item = ii.getEquipById(id);
+                                 
++                                if(item != null) {
++                                    Equip it = (Equip)item;
++                                    if(isAccessory(item.getItemId()) && it.getUpgradeSlots() <= 0) it.setUpgradeSlots(3);
++                                }
++                                
+                                 if(ServerConstants.USE_ENHANCED_CRAFTING == true && c.getPlayer().getCS() == true)
+                                     item = MapleItemInformationProvider.getInstance().scrollEquipWithId(item, 2049100, true, c.getPlayer().isGM());
+ 			} else {
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index f74e938a1..b11108e5d 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -59,6 +59,9 @@
+ 	private long timeStarted = 0;
+ 	private long eventTime = 0;
+ 	private MapleExpedition expedition = null;
++        private List<Integer> mapIds = new LinkedList<Integer>();
++        private List<Boolean> isInstanced = new LinkedList<Boolean>();
++        private boolean disposed = false;
+ 
+ 	public EventInstanceManager(EventManager em, String name) {
+ 		this.em = em;
+@@ -322,4 +325,13 @@ public void removePlayer(MapleCharacter chr) {
+ 	public boolean isLeader(MapleCharacter chr) {
+ 		return (chr.getParty().getLeader().getId() == chr.getId());
+ 	}
++        
++        public final MapleMap setInstanceMap(final int mapid) { //gets instance map from the channelserv
++            if (disposed) {
++                return this.getMapFactory().getMap(mapid);
++            }
++            mapIds.add(mapid);
++            isInstanced.add(false);
++            return this.getMapFactory().getMap(mapid);
++        }
+ }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index ab7a84dad..2e156bedc 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -411,7 +411,12 @@ public double getPrice(int itemId) {
+             if (pData == null) {
+                 return -1;
+             }
+-            pEntry = (double) MapleDataTool.getInt(pData);
++            try {
++                pEntry = (double) MapleDataTool.getInt(pData);
++            } catch(Exception e) {
++                priceCache.put(itemId, 0.0);
++                return 0;
++            }
+         }
+         priceCache.put(itemId, pEntry);
+         return pEntry;
+@@ -522,11 +527,12 @@ private double testYourLuck() {
+     public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll, boolean isGM) {
+         if (equip instanceof Equip) {
+             Equip nEquip = (Equip) equip;
++            
+             Map<String, Integer> stats = this.getEquipStats(scrollId);
+             Map<String, Integer> eqstats = this.getEquipStats(equip.getItemId());
++            
++            System.out.println("GM: " + isGM + "\tWS: " + usingWhiteScroll + "\tITEM: " + scrollId);
+             if (((nEquip.getUpgradeSlots() > 0 || isCleanSlate(scrollId))) || isGM) {
+-                System.out.println("GM: " + isGM + "\tWS: " + usingWhiteScroll + "\tITEM: " + scrollId);
+-                
+                 if(isGM || testYourLuck() <= stats.get("success")) {
+                     short flag = nEquip.getFlag();
+                     switch (scrollId) {
+@@ -552,181 +558,183 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+                             int inc, i;
+                             
+                             if(ServerConstants.SCROLL_CHANCE_RATE > 0) {
++                                //int tempStr, tempDex, tempInt, tempLuk, tempWatk, tempWdef, tempMatk, tempMdef, tempAcc, tempAvoid, tempSpeed, tempJump, tempHp, tempMp;
+                                 int temp;
+                                 int mdStr = nEquip.getStr(), mdDex = nEquip.getDex(), mdInt = nEquip.getInt(), mdLuk = nEquip.getLuk(), mdWatk = nEquip.getWatk(), mdWdef = nEquip.getWdef(), mdMatk = nEquip.getMatk(), mdMdef = nEquip.getMdef(), mdAcc = nEquip.getAcc(), mdAvoid = nEquip.getAvoid(), mdSpeed = nEquip.getSpeed(), mdJump = nEquip.getJump(), mdHp = nEquip.getHp(), mdMp = nEquip.getMp();
+                                 
++                                inc = 1;
++                                if (Randomizer.nextInt(2) == 0) {
++                                    inc = -1;
++                                }
++                                if(ServerConstants.USE_ENHANCED_CHSCROLL == true) inc = 1;
++                                
+                                 for(i = 0; i < ServerConstants.SCROLL_CHANCE_RATE; i++) {
+-                                    inc = 1;
+-
+-                                    if (Randomizer.nextInt(2) == 0) {
+-                                        inc = -1;
+-                                    }
+                                     if (nEquip.getStr() > 0) {
+                                         temp = (nEquip.getStr() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setStr((short) Math.max(mdStr, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdStr = nEquip.getStr();
+                                         }
+                                         else {
+                                             temp = (mdStr + temp) / 2;
+-                                            if(temp > 0) mdStr = temp;
++                                            if(temp > mdStr) mdStr = temp;
+                                         }
+                                     }
+                                     if (nEquip.getDex() > 0) {
+                                         temp = (nEquip.getDex() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setDex((short) Math.max(mdDex, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdDex = nEquip.getDex();
+                                         }
+                                         else {
+                                             temp = (mdDex + temp) / 2;
+-                                            if(temp > 0) mdDex = temp;
++                                            if(temp > mdDex) mdDex = temp;
+                                         }
+                                     }
+                                     if (nEquip.getInt() > 0) {
+                                         temp = (nEquip.getInt() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setInt((short) Math.max(mdInt, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdInt = nEquip.getInt();
+                                         }
+                                         else {
+                                             temp = (mdInt + temp) / 2;
+-                                            if(temp > 0) mdInt = temp;
++                                            if(temp > mdInt) mdInt = temp;
+                                         }
+                                     }
+                                     if (nEquip.getLuk() > 0) {
+                                         temp = (nEquip.getLuk() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setLuk((short) Math.max(mdLuk, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdLuk = nEquip.getLuk();
+                                         }
+                                         else {
+                                             temp = (mdLuk + temp) / 2;
+-                                            if(temp > 0) mdLuk = temp;
++                                            if(temp > mdLuk) mdLuk = temp;
+                                         }
+                                     }
+                                     if (nEquip.getWatk() > 0) {
+                                         temp = (nEquip.getWatk() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setWatk((short) Math.max(mdWatk, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdWatk = nEquip.getWatk();
+                                         }
+                                         else {
+                                             temp = (mdWatk + temp) / 2;
+-                                            if(temp > 0) mdWatk = temp;
++                                            if(temp > mdWatk) mdWatk = temp;
+                                         }
+                                     }
+                                     if (nEquip.getWdef() > 0) {
+                                         temp = (nEquip.getWdef() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setWdef((short) Math.max(mdWdef, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdWdef = nEquip.getWdef();
+                                         }
+                                         else {
+                                             temp = (mdWdef + temp) / 2;
+-                                            if(temp > 0) mdWdef = temp;
++                                            if(temp > mdWdef) mdWdef = temp;
+                                         }
+                                     }
+                                     if (nEquip.getMatk() > 0) {
+                                         temp = (nEquip.getMatk() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setMatk((short) Math.max(mdMatk, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdMatk = nEquip.getMatk();
+                                         }
+                                         else {
+                                             temp = (mdMatk + temp) / 2;
+-                                            if(temp > 0) mdMatk = temp;
++                                            if(temp > mdMatk) mdMatk = temp;
+                                         }
+                                     }
+                                     if (nEquip.getMdef() > 0) {
+                                         temp = (nEquip.getMdef() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setMdef((short) Math.max(mdMdef, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdMdef = nEquip.getMdef();
+                                         }
+                                         else {
+                                             temp = (mdMdef + temp) / 2;
+-                                            if(temp > 0) mdMdef = temp;
++                                            if(temp > mdMdef) mdMdef = temp;
+                                         }
+                                     }
+                                     if (nEquip.getAcc() > 0) {
+                                         temp = (nEquip.getAcc() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setAcc((short) Math.max(mdAcc, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdAcc = nEquip.getAcc();
+                                         }
+                                         else {
+                                             temp = (mdAcc + temp) / 2;
+-                                            if(temp > 0) mdAcc = temp;
++                                            if(temp > mdAcc) mdAcc = temp;
+                                         }
+                                     }
+                                     if (nEquip.getAvoid() > 0) {
+                                         temp = (nEquip.getAvoid() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setAvoid((short) Math.max(mdAvoid, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdAvoid = nEquip.getAvoid();
+                                         }
+                                         else {
+                                             temp = (mdAvoid + temp) / 2;
+-                                            if(temp > 0) mdAvoid = temp;
++                                            if(temp > mdAvoid) mdAvoid = temp;
+                                         }
+                                     }
+                                     if (nEquip.getSpeed() > 0) {
+                                         temp = (nEquip.getSpeed() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setSpeed((short) Math.max(mdSpeed, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdSpeed = nEquip.getSpeed();
+                                         }
+                                         else {
+                                             temp = (mdSpeed + temp) / 2;
+-                                            if(temp > 0) mdSpeed = temp;
++                                            if(temp > mdSpeed) mdSpeed = temp;
+                                         }
+                                     }
+                                     if (nEquip.getJump() > 0) {
+                                         temp = (nEquip.getJump() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setJump((short) Math.max(mdJump, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdJump = nEquip.getJump();
+                                         }
+                                         else {
+                                             temp = (mdJump + temp) / 2;
+-                                            if(temp > 0) mdJump = temp;
++                                            if(temp > mdJump) mdJump = temp;
+                                         }
+                                     }
+                                     if (nEquip.getHp() > 0) {
+                                         temp = (nEquip.getHp() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setHp((short) Math.max(mdHp, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdHp = nEquip.getHp();
+                                         }
+                                         else {
+                                             temp = (mdHp + temp) / 2;
+-                                            if(temp > 0) mdHp = temp;
++                                            if(temp > mdHp) mdHp = temp;
+                                         }
+                                     }
+                                     if (nEquip.getMp() > 0) {
+                                         temp = (nEquip.getMp() + Randomizer.nextInt(6) * inc);
+                                         nEquip.setMp((short) Math.max(mdMp, temp));
+                                         
+-                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == false) {
++                                        if(ServerConstants.USE_ENHANCED_CHSCROLL == true) {
+                                             mdMp = nEquip.getMp();
+                                         }
+                                         else {
+                                             temp = (mdMp + temp) / 2;
+-                                            if(temp > 0) mdMp = temp;
++                                            if(temp > mdMp) mdMp = temp;
+                                         }
+                                     }
+                                 }
+@@ -738,6 +746,8 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+                                 if (Randomizer.nextInt(2) == 0) {
+                                     inc = -1;
+                                 }
++                                if(ServerConstants.USE_ENHANCED_CHSCROLL == true) inc = 1;
++                                
+                                 if (nEquip.getStr() > 0) {
+                                     if(ServerConstants.USE_ENHANCED_CHSCROLL == true) nEquip.setStr((short) Math.max(nEquip.getStr(), (nEquip.getStr() + Randomizer.nextInt(6) * inc)));
+                                     else nEquip.setStr((short) Math.max(0, (nEquip.getStr() + Randomizer.nextInt(6) * inc)));

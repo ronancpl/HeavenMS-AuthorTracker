@@ -1,0 +1,677 @@
+diff --git a/build/built-jar.properties b/build/built-jar.properties
+index 56610483c..6b2f953da 100644
+--- a/build/built-jar.properties
++++ b/build/built-jar.properties
+@@ -1,4 +1,4 @@
+-#Sun, 22 Oct 2017 01:52:47 -0200
++#Sun, 22 Oct 2017 15:23:02 -0200
+ 
+ 
+ C\:\\Nexon\\MapleSolaxia\\MapleSolaxiaV2=
+diff --git a/build/classes/client/MapleCharacter.class b/build/classes/client/MapleCharacter.class
+index 5d58d28f4..b9423ca39 100644
+Binary files a/build/classes/client/MapleCharacter.class and b/build/classes/client/MapleCharacter.class differ
+diff --git a/build/classes/client/inventory/MapleInventory.class b/build/classes/client/inventory/MapleInventory.class
+index ca4c66958..32e09704a 100644
+Binary files a/build/classes/client/inventory/MapleInventory.class and b/build/classes/client/inventory/MapleInventory.class differ
+diff --git a/build/classes/constants/ServerConstants.class b/build/classes/constants/ServerConstants.class
+index 70652c40d..76d199579 100644
+Binary files a/build/classes/constants/ServerConstants.class and b/build/classes/constants/ServerConstants.class differ
+diff --git a/build/classes/net/server/channel/handlers/CashOperationHandler.class b/build/classes/net/server/channel/handlers/CashOperationHandler.class
+index d1869aab1..114ffd674 100644
+Binary files a/build/classes/net/server/channel/handlers/CashOperationHandler.class and b/build/classes/net/server/channel/handlers/CashOperationHandler.class differ
+diff --git a/build/classes/net/server/channel/handlers/StorageHandler.class b/build/classes/net/server/channel/handlers/StorageHandler.class
+index 9cad40708..1bac9da35 100644
+Binary files a/build/classes/net/server/channel/handlers/StorageHandler.class and b/build/classes/net/server/channel/handlers/StorageHandler.class differ
+diff --git a/build/classes/server/MapleInventoryManipulator.class b/build/classes/server/MapleInventoryManipulator.class
+index fdd63aa75..fbe6ba300 100644
+Binary files a/build/classes/server/MapleInventoryManipulator.class and b/build/classes/server/MapleInventoryManipulator.class differ
+diff --git a/build/classes/server/MapleStorage$1.class b/build/classes/server/MapleStorage$1.class
+index 410ce3cfa..b5893bcb3 100644
+Binary files a/build/classes/server/MapleStorage$1.class and b/build/classes/server/MapleStorage$1.class differ
+diff --git a/build/classes/server/MapleStorage.class b/build/classes/server/MapleStorage.class
+index 1bbbb3fe6..195885c3b 100644
+Binary files a/build/classes/server/MapleStorage.class and b/build/classes/server/MapleStorage.class differ
+diff --git a/build/classes/tools/MaplePacketCreator$2.class b/build/classes/tools/MaplePacketCreator$2.class
+index 485e37832..b97d61561 100644
+Binary files a/build/classes/tools/MaplePacketCreator$2.class and b/build/classes/tools/MaplePacketCreator$2.class differ
+diff --git a/build/classes/tools/MaplePacketCreator.class b/build/classes/tools/MaplePacketCreator.class
+index ad9bbc1da..c7091612e 100644
+Binary files a/build/classes/tools/MaplePacketCreator.class and b/build/classes/tools/MaplePacketCreator.class differ
+diff --git a/dist/MapleSolaxia.jar b/dist/MapleSolaxia.jar
+index 20ec45ef8..b93b8c14a 100644
+Binary files a/dist/MapleSolaxia.jar and b/dist/MapleSolaxia.jar differ
+diff --git a/docs/feature_list.txt b/docs/feature_list.txt
+index 6009a6dd3..5acd8fae8 100644
+--- a/docs/feature_list.txt
++++ b/docs/feature_list.txt
+@@ -43,6 +43,8 @@ Cash & Items:
+ * EXP/DROP coupons now appears as a buff effect when on active time.
+ * Great deal of cash items functional.
+ * New scroll: antibanish. For use only in cases where bosses send a player back to town.
++* Inventory system properly checks for item slot free space and ownership.
++* Storage with "Arrange Items" feature functional.
+ 
+ PQ potentials:
+ * Lobby system - Multiple PQ instances on same channel.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index aef0abd80..2fd24019d 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -592,8 +592,14 @@ Adicionado contador de buscas por itens realizados pelos jogadores ao usar Owl.
+ Consertado Roaring Tiger Messenger aparecendo fora da tela ao final da animação.
+ Consertado bugs envolvendo ganho de EXP em party, para casos onde o level do mob alvo é bem maior que o do atacante/leecher.
+ 
+-21 - 22 Outubro 2017,
++20 - 21 Outubro 2017,
+ Bonus de Map chair rearranjado como uma skill, buffando jogador no momento que a codição de ativação é atingida.
+ Hired Merchant agora verifica devidamente se jogador possui slot antes de liberar a compra de um item.
+ Pequeno conserto de acesso concorrente com o Storage.
+-Corrigido Map chair não removendo task corretamente caso jogador mude de mapa inesperadamente.
+\ No newline at end of file
++Corrigido Map chair não removendo task corretamente caso jogador mude de mapa inesperadamente.
++
++22 Outubro 2017,
++Corrigido itens com ownership diferente sendo agrupados num mesmo slot, perdendo a referencia de dono.
++Implementado feature "Arrange Items" do MapleStorage. Ele faz os devidos agrupamentos de itens e organiza os itens do storage.
++Corrigido storage mesclando itens que deveriam ser únicos (que não poderiam haver mais de um num mesmo slot, ou no inventário do jogador).
++Corrigido bug onde colocar um pet equipado no Cash Inventory e voltar ao jogo causaria crash no jogador.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 3287222d2..5b4a228d8 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -2,6 +2,15 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="2"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PlayerLoggedinHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/CashOperationHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/quest/requirements/QuestRequirement.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/InventoryMergeHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleStorage.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/MapleStorageInventory.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 6c7c02468..5aff74185 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -3770,9 +3770,9 @@ public int getItemQuantity(int itemid, boolean checkEquipped) {
+     }
+     
+     public int getCleanItemQuantity(int itemid, boolean checkEquipped) {
+-        int possesed = inventory[ii.getInventoryType(itemid).ordinal()].countCleanById(itemid);
++        int possesed = inventory[ii.getInventoryType(itemid).ordinal()].countNotOwnedById(itemid);
+         if (checkEquipped) {
+-            possesed += inventory[MapleInventoryType.EQUIPPED.ordinal()].countCleanById(itemid);
++            possesed += inventory[MapleInventoryType.EQUIPPED.ordinal()].countNotOwnedById(itemid);
+         }
+         return possesed;
+     }
+@@ -4224,7 +4224,7 @@ public byte getPetIndex(int petId) {
+             petLock.unlock();
+         }
+     }
+-
++    
+     public byte getPetIndex(MaplePet pet) {
+         petLock.lock();
+         try {
+diff --git a/src/client/inventory/MapleInventory.java b/src/client/inventory/MapleInventory.java
+index c4e30c1bb..2e106ce84 100644
+--- a/src/client/inventory/MapleInventory.java
++++ b/src/client/inventory/MapleInventory.java
+@@ -104,8 +104,9 @@ public Item findById(int itemId) {
+     }
+     
+     public Item findByName(String name) {
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+         for (Item item : list()) {
+-            String itemName = MapleItemInformationProvider.getInstance().getName(item.getItemId());
++            String itemName = ii.getName(item.getItemId());
+             if(itemName == null) {
+                 FilePrinter.printError(FilePrinter.EXCEPTION, "[CRITICAL] Item "  + item.getItemId() + " has no name.");
+                 continue;
+@@ -128,7 +129,7 @@ public int countById(int itemId) {
+         return qty;
+     }
+     
+-    public int countCleanById(int itemId) {
++    public int countNotOwnedById(int itemId) {
+         int qty = 0;
+         for (Item item : list()) {
+             if (item.getItemId() == itemId && item.getOwner().equals("")) {
+@@ -199,6 +200,10 @@ public void addFromDB(Item item) {
+         addSlot(item.getPosition(), item);
+     }
+ 
++    private static boolean isSameOwner(Item source, Item target) {
++        return source.getOwner().equals(target.getOwner());
++    }
++    
+     public void move(short sSlot, short dSlot, short slotMax) {
+         lock.lock();
+         try {
+@@ -211,7 +216,7 @@ public void move(short sSlot, short dSlot, short slotMax) {
+                 source.setPosition(dSlot);
+                 inventory.put(dSlot, source);
+                 inventory.remove(sSlot);
+-            } else if (target.getItemId() == source.getItemId() && !ItemConstants.isRechargable(source.getItemId())) {
++            } else if (target.getItemId() == source.getItemId() && !ItemConstants.isRechargable(source.getItemId()) && isSameOwner(source, target)) {
+                 if (type.getType() == MapleInventoryType.EQUIP.getType() || type.getType() == MapleInventoryType.CASH.getType()) {
+                     swap(target, source);
+                 } else if (source.getQuantity() + target.getQuantity() > slotMax) {
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 771f9b438..50097135c 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -40,7 +40,8 @@
+     public static final boolean USE_MTS = false;
+     public static final boolean USE_FAMILY_SYSTEM = false;
+     public static final boolean USE_DUEY = true;
+-    public static final boolean USE_ITEM_SORT = true;
++    public static final boolean USE_STORAGE_ITEM_SORT = true;       //Enables storage "Arrange Items" feature.
++    public static final boolean USE_ITEM_SORT = true;               //Enables inventory "Item Sort/Merge" feature.
+     public static final boolean USE_ITEM_SORT_BY_NAME = false;      //Item sorting based on name rather than id.
+     public static final boolean USE_PARTY_SEARCH = false;
+     public static final boolean USE_PARTY_FOR_STARTERS = true;      //Players level 10 or below can create/invite other players on the given level range.
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index 78c94c665..0015aff6b 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -208,6 +208,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             Item item = mi.findByCashId(cashId);
+             if (item == null) {
+                 return;
++            } else if(c.getPlayer().getPetIndex(item.getPetId()) > -1) {
++                chr.getClient().announce(MaplePacketCreator.serverNotice(1, "You cannot put the pet you currently equip into the Cash Shop inventory."));
++                return;
+             }
+             cs.addToInventory(item);
+             mi.removeSlot(item.getPosition());
+diff --git a/src/net/server/channel/handlers/StorageHandler.java b/src/net/server/channel/handlers/StorageHandler.java
+index 001b328da..300439249 100644
+--- a/src/net/server/channel/handlers/StorageHandler.java
++++ b/src/net/server/channel/handlers/StorageHandler.java
+@@ -28,6 +28,7 @@
+ import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
+ import constants.ItemConstants;
++import constants.ServerConstants;
+ import net.AbstractMaplePacketHandler;
+ import server.MapleInventoryManipulator;
+ import server.MapleItemInformationProvider;
+@@ -49,7 +50,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		final MapleStorage storage = chr.getStorage();
+ 
+ 		if (chr.getLevel() < 15){
+-			chr.message("You may only use this storage once you have reached level 15.");
++			chr.message("You may only use the storage once you have reached level 15.");
+ 			return;
+ 		}
+ 		if (mode == 4) { // take out
+@@ -127,6 +128,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 					FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " stored " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")\r\n");	
+ 				}
+ 			}
++                } else if (mode == 6) { // arrange items
++                        if(ServerConstants.USE_STORAGE_ITEM_SORT) storage.arrangeItems(c);
++                        c.announce(MaplePacketCreator.enableActions());
+ 		} else if (mode == 7) { // meso
+ 			int meso = slea.readInt();
+ 			int storageMesos = storage.getMeso();
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index 5b0c4c36b..a8e4c9b2e 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -353,6 +353,10 @@ public static void removeById(MapleClient c, MapleInventoryType type, int itemId
+         }
+     }
+ 
++    private static boolean isSameOwner(Item source, Item target) {
++        return source.getOwner().equals(target.getOwner());
++    }
++    
+     public static void move(MapleClient c, MapleInventoryType type, short src, short dst) {
+         if (src < 0 || dst < 0) {
+             return;
+@@ -374,7 +378,7 @@ public static void move(MapleClient c, MapleInventoryType type, short src, short
+         short slotMax = ii.getSlotMax(c, source.getItemId());
+         c.getPlayer().getInventory(type).move(src, dst, slotMax);
+         final List<ModifyInventory> mods = new ArrayList<>();
+-        if (!(type.equals(MapleInventoryType.EQUIP) || type.equals(MapleInventoryType.CASH)) && initialTarget != null && initialTarget.getItemId() == source.getItemId() && !ItemConstants.isRechargable(source.getItemId())) {
++        if (!(type.equals(MapleInventoryType.EQUIP) || type.equals(MapleInventoryType.CASH)) && initialTarget != null && initialTarget.getItemId() == source.getItemId() && !ItemConstants.isRechargable(source.getItemId()) && isSameOwner(source, initialTarget)) {
+             if ((olddstQ + oldsrcQ) > slotMax) {
+                 mods.add(new ModifyInventory(1, source));
+                 mods.add(new ModifyInventory(1, initialTarget));
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index 83b591aa1..2acee93c4 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -27,6 +27,7 @@
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+ import java.util.ArrayList;
++import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashMap;
+@@ -266,6 +267,23 @@ public void sendTakenOut(MapleClient c, MapleInventoryType type) {
+             lock.unlock();
+         }
+     }
++    
++    public void arrangeItems(MapleClient c) {
++        lock.lock();
++        try {
++            MapleStorageInventory msi = new MapleStorageInventory(c, items);
++            msi.mergeItems();
++            items = msi.sortItems();
++            
++            for (MapleInventoryType type : MapleInventoryType.values()) {
++                typeItems.put(type, new ArrayList<>(items));
++            }
++
++            c.announce(MaplePacketCreator.arrangeStorage(slots, items));
++        } finally {
++            lock.unlock();
++        }
++    }
+ 
+     public int getMeso() {
+         return meso;
+diff --git a/src/server/MapleStorageInventory.java b/src/server/MapleStorageInventory.java
+new file mode 100644
+index 000000000..3ce1ccda4
+--- /dev/null
++++ b/src/server/MapleStorageInventory.java
+@@ -0,0 +1,355 @@
++/*
++ * To change this license header, choose License Headers in Project Properties.
++ * To change this template file, choose Tools | Templates
++ * and open the template in the editor.
++ */
++
++package server;
++
++import java.util.Collection;
++import java.util.Collections;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++
++import constants.ItemConstants;
++import constants.ServerConstants;
++
++import client.MapleClient;
++import client.inventory.Equip;
++import client.inventory.Item;
++import java.util.ArrayList;
++
++/**
++ *
++ * @author RonanLana
++ */
++
++class PairedQuicksort {
++    private int i = 0;
++    private int j = 0;
++    private final ArrayList<Integer> intersect;
++    MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++    
++    private void PartitionByItemId(int Esq, int Dir, ArrayList<Item> A) {
++        Item x, w;
++
++        i = Esq;
++        j = Dir;
++        
++        x = A.get((i + j) / 2);
++        do {
++            while (x.getItemId() > A.get(i).getItemId()) i++;
++            while (x.getItemId() < A.get(j).getItemId()) j--;
++            
++            if (i <= j) {
++                w = A.get(i);
++                A.set(i, A.get(j));
++                A.set(j, w);
++
++                i++;
++                j--;
++            }
++        } while (i <= j);
++    }
++    
++    private void PartitionByName(int Esq, int Dir, ArrayList<Item> A) {
++        Item x, w;
++
++        i = Esq;
++        j = Dir;
++        
++        x = A.get((i + j) / 2);
++        do {
++            while (ii.getName(x.getItemId()).compareTo(ii.getName(A.get(i).getItemId())) > 0) i++;
++            while (ii.getName(x.getItemId()).compareTo(ii.getName(A.get(j).getItemId())) < 0) j--;
++            
++            if (i <= j) {
++                w = A.get(i);
++                A.set(i, A.get(j));
++                A.set(j, w);
++
++                i++;
++                j--;
++            }
++        } while (i <= j);
++    }
++    
++    private void PartitionByQuantity(int Esq, int Dir, ArrayList<Item> A) {
++        Item x, w;
++
++        i = Esq;
++        j = Dir;
++        
++        x = A.get((i + j) / 2);
++        do {
++            while (x.getQuantity() > A.get(i).getQuantity()) i++;
++            while (x.getQuantity() < A.get(j).getQuantity()) j--;
++            
++            if (i <= j) {
++                w = A.get(i);
++                A.set(i, A.get(j));
++                A.set(j, w);
++
++                i++;
++                j--;
++            }
++        } while (i <= j);
++    }
++    
++    private void PartitionByLevel(int Esq, int Dir, ArrayList<Item> A) {
++        Equip x, w, eqpI, eqpJ;
++
++        i = Esq;
++        j = Dir;
++        
++        x = (Equip)(A.get((i + j) / 2));
++        
++        do {
++            eqpI = (Equip)A.get(i);
++            eqpJ = (Equip)A.get(j);
++            
++            while (x.getLevel() > eqpI.getLevel()) i++;
++            while (x.getLevel() < eqpJ.getLevel()) j--;
++            
++            if (i <= j) {
++                w = (Equip)A.get(i);
++                A.set(i, A.get(j));
++                A.set(j, (Item)w);
++
++                i++;
++                j--;
++            }
++        } while (i <= j);
++    }
++
++    void MapleQuicksort(int Esq, int Dir, ArrayList<Item> A, int sort) {
++        switch(sort) {
++            case 3:
++                PartitionByLevel(Esq, Dir, A);
++                break;
++            
++            case 2:
++                PartitionByName(Esq, Dir, A);
++                break;
++                
++            case 1:
++                PartitionByQuantity(Esq, Dir, A);
++                break;
++                    
++            default:
++                PartitionByItemId(Esq, Dir, A);
++        }
++        
++        
++        if (Esq < j) MapleQuicksort(Esq, j, A, sort);
++        if (i < Dir) MapleQuicksort(i, Dir, A, sort);
++    }
++    
++    public PairedQuicksort(ArrayList<Item> A, int primarySort, int secondarySort) {
++        intersect = new ArrayList<>();
++        
++        if(A.size() > 0) MapleQuicksort(0, A.size() - 1, A, primarySort);
++        
++        intersect.add(0);
++        for(int ind = 1; ind < A.size(); ind++) {
++            if(A.get(ind - 1).getItemId() != A.get(ind).getItemId()) {
++                intersect.add(ind);
++            }
++        }
++        intersect.add(A.size());
++        
++        for(int ind = 0; ind < intersect.size() - 1; ind++) {
++            if(intersect.get(ind + 1) > intersect.get(ind)) MapleQuicksort(intersect.get(ind), intersect.get(ind + 1) - 1, A, secondarySort);
++        }
++    }
++}
++
++public class MapleStorageInventory {
++    private MapleClient c;
++    private Map<Short, Item> inventory = new LinkedHashMap<>();
++    private byte slotLimit;
++    
++    public MapleStorageInventory(MapleClient c, List<Item> toSort) {
++        this.inventory = new LinkedHashMap<>();
++        this.slotLimit = (byte)toSort.size();
++        this.c = c;
++        
++        for(Item item : toSort) {
++            this.addItem(item);
++        }
++    }
++
++    private byte getSlotLimit() {
++        return slotLimit;
++    }
++    
++    private Collection<Item> list() {
++        return Collections.unmodifiableCollection(inventory.values());
++    }
++
++    private short addItem(Item item) {
++        short slotId = getNextFreeSlot();
++        if (slotId < 0 || item == null) {
++            return -1;
++        }
++        addSlot(slotId, item);
++        item.setPosition(slotId);
++        return slotId;
++    }
++
++    private static boolean isEquipOrCash(Item item) {
++        int type = item.getItemId() / 1000000;
++        return type == 1 || type == 5;
++    }
++    
++    private static boolean isSameOwner(Item source, Item target) {
++        return source.getOwner().equals(target.getOwner());
++    }
++    
++    private void move(short sSlot, short dSlot, short slotMax) {
++        Item source = (Item) inventory.get(sSlot);
++        Item target = (Item) inventory.get(dSlot);
++        if (source == null) {
++            return;
++        }
++        if (target == null) {
++            source.setPosition(dSlot);
++            inventory.put(dSlot, source);
++            inventory.remove(sSlot);
++        } else if (target.getItemId() == source.getItemId() && !ItemConstants.isRechargable(source.getItemId()) && !MapleItemInformationProvider.getInstance().isPickupRestricted(source.getItemId()) && isSameOwner(source, target)) {
++            if (isEquipOrCash(source)) {
++                swap(target, source);
++            } else if (source.getQuantity() + target.getQuantity() > slotMax) {
++                short rest = (short) ((source.getQuantity() + target.getQuantity()) - slotMax);
++                source.setQuantity(rest);
++                target.setQuantity(slotMax);
++            } else {
++                target.setQuantity((short) (source.getQuantity() + target.getQuantity()));
++                inventory.remove(sSlot);
++            }
++        } else {
++            swap(target, source);
++        }
++    }
++    
++    private void moveItem(short src, short dst) {
++        if (src < 0 || dst < 0) {
++            return;
++        }
++        if(dst > this.getSlotLimit()) {
++            return;
++        }
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        Item source = this.getItem(src);
++        if (source == null) {
++            return;
++        }
++        short slotMax = ii.getSlotMax(c, source.getItemId());
++        this.move(src, dst, slotMax);
++    }
++
++    private void swap(Item source, Item target) {
++        inventory.remove(source.getPosition());
++        inventory.remove(target.getPosition());
++        short swapPos = source.getPosition();
++        source.setPosition(target.getPosition());
++        target.setPosition(swapPos);
++        inventory.put(source.getPosition(), source);
++        inventory.put(target.getPosition(), target);
++    }
++
++    private Item getItem(short slot) {
++        return inventory.get(slot);
++    }
++
++    private void addSlot(short slot, Item item) {
++        inventory.put(slot, item);
++    }
++    
++    private void removeSlot(short slot) {
++        inventory.remove(slot);
++    }
++
++    private boolean isFull() {
++        return inventory.size() >= slotLimit;
++    }
++
++    private short getNextFreeSlot() {
++        if (isFull()) {
++            return -1;
++        }
++        
++        for (short i = 1; i <= slotLimit; i++) {
++            if (!inventory.containsKey(i)) {
++                return i;
++            }
++        }
++        return -1;
++    }
++
++    public void mergeItems() {
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        Item srcItem, dstItem;
++
++        for(short dst = 1; dst <= this.getSlotLimit(); dst++) {
++            dstItem = this.getItem(dst);
++            if(dstItem == null) continue;
++
++            for(short src = (short)(dst + 1); src <= this.getSlotLimit(); src++) {
++                srcItem = this.getItem(src);
++                if(srcItem == null) continue;
++
++                if(dstItem.getItemId() != srcItem.getItemId()) continue;
++                if(dstItem.getQuantity() == ii.getSlotMax(c, this.getItem(dst).getItemId())) break;
++
++                moveItem(src, dst);
++            }
++        }
++                
++        boolean sorted = false;
++
++        while (!sorted) {
++            short freeSlot = this.getNextFreeSlot();
++
++            if (freeSlot != -1) {
++                short itemSlot = -1;
++                for (short i = (short) (freeSlot + 1); i <= this.getSlotLimit(); i = (short) (i + 1)) {
++                    if (this.getItem(i) != null) {
++                        itemSlot = i;
++                        break;
++                    }
++                }
++                if (itemSlot > 0) {
++                    moveItem(itemSlot, freeSlot);
++                } else {
++                    sorted = true;
++                }
++            } else {
++                sorted = true;
++            }
++        }
++    }
++    
++    public List<Item> sortItems() {
++        ArrayList<Item> itemarray = new ArrayList<>();
++        
++        for (short i = 1; i <= this.getSlotLimit(); i++) {
++            Item item = this.getItem(i);
++            if (item != null) {
++            	itemarray.add((Item) item.copy());
++            }
++        }
++        
++        for (Item item : itemarray) {
++            this.removeSlot(item.getPosition());
++        }
++        
++        int invTypeCriteria = 1;
++        int sortCriteria = (ServerConstants.USE_ITEM_SORT_BY_NAME == true) ? 2 : 0;
++        PairedQuicksort pq = new PairedQuicksort(itemarray, sortCriteria, invTypeCriteria);
++        
++        inventory.clear();
++        return itemarray;
++    }
++}
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index f8db5a86d..d7b01e6d5 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -3177,7 +3177,23 @@ private static void writeLongMaskFromList(final MaplePacketLittleEndianWriter mp
+                 }
+                 return mplew.getPacket();
+         }
++        
++        public static byte[] arrangeStorage(byte slots, Collection<Item> items) {
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+ 
++                mplew.writeShort(SendOpcode.STORAGE.getValue());
++                mplew.write(0xF);
++                mplew.write(slots);
++                mplew.write(124);
++                for(byte i = 0; i < 10; i++) mplew.write(0);
++                mplew.write(items.size());
++                for (Item item : items) {
++                        addItemInfo(mplew, item, true);
++                }
++                mplew.write(0);
++                return mplew.getPacket();
++        }
++        
+         /**
+          *
+          * @param oid

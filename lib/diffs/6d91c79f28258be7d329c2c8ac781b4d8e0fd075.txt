@@ -1,0 +1,538 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index bf98f38b6..22dc2cf5f 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -853,4 +853,10 @@ Incrementado quiz de 3rd job, agora utilizando um pool de 40 perguntas com escol
+ 05 - 10 Março 2018,
+ Corrigido diseases não sendo removidas corretamente no cliente quando tentando trocar de canal/entrar Cash Shop, permitindo-as ficar no jogador infinitamente.
+ Corrigido Holy Symbol atuando de forma inesperada no cenário com somente um jogador.
+-Corrigido Summon Sack lv. 9 lançando mob com id inexistente.
+\ No newline at end of file
++Corrigido Summon Sack lv. 9 lançando mob com id inexistente.
++Corrigido NPC de guild tirando mesos do jogador sem efetuar a ação alguma caso o número máximo de jogadores tenha sido alcançado.
++
++11 - 12 Março 2018,
++Localhost melhorado: retirado caps de Matk, Mdef, Wdef, Acc e Avoid.
++Balanceado Ninja Ambush, agora dando uma quantidade de dano justificável.
++Implementado questline do Dyle.
+\ No newline at end of file
+diff --git a/scripts/npc/9900000.js b/scripts/npc/9900000.js
+index 2c139e494..f267914e8 100644
+--- a/scripts/npc/9900000.js
++++ b/scripts/npc/9900000.js
+@@ -40,12 +40,18 @@ var facenew = Array();
+ var colors = Array();
+ 
+ function start() {
++    if(cm.getPlayer().gmLevel() < 2) {
++        cm.sendOk("Hey wassup?");
++        cm.dispose();
++        return;
++    }
++    
+     cm.sendSimple("Hey there, I can change your look. What would you like to change?\r\n#L0#Skin#l\r\n#L1#Hair#l\r\n#L5#Female Hair#l\r\n#L2#Hair Color#l\r\n#L3#Eye#l\r\n#L6#Female Eyes#l\r\n#L4#Eye Color#l\r\n#L7#Set GM job#l");
+ }
+ 
+ function action(mode, type, selection) {
+     status++;
+-    if (mode != 1 || cm.getPlayer().gmLevel() < 1){
++    if (mode != 1 || cm.getPlayer().gmLevel() < 2){
+         cm.dispose();
+         return;
+     }
+diff --git a/scripts/npc/9900001.js b/scripts/npc/9900001.js
+index cb5ffa310..c5d17ce63 100644
+--- a/scripts/npc/9900001.js
++++ b/scripts/npc/9900001.js
+@@ -26,11 +26,12 @@
+  * @Purpose:     Levels people up.
+  */
+ function start() {
+-    cm.sendYesNo("Do you want to level up?");
++    if(cm.getPlayer().gmLevel() > 1) cm.sendYesNo("Do you want to level up?");
++    else cm.sendOk("Hey wassup?");
+ }
+ 
+ function action(i, am, pro) {
+-    if (i > 0 && cm.getPlayer().gmLevel() > 0)
++    if (i > 0 && cm.getPlayer().gmLevel() > 1)
+         cm.getPlayer().levelUp(true);
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/commands.js b/scripts/npc/commands.js
+index 45c6b0b44..20f6e5bb4 100644
+--- a/scripts/npc/commands.js
++++ b/scripts/npc/commands.js
+@@ -175,6 +175,7 @@ function writeSolaxiaCommandsLv2() {    //JrGM
+         addCommand("setstat", "");
+         addCommand("maxstat", "");
+         addCommand("maxskill", "");
++        addCommand("resetskill", "");
+         addCommand("mesos", "");
+         addCommand("search", "");
+         addCommand("jail", "");
+@@ -216,6 +217,7 @@ function writeSolaxiaCommandsLv0() {    //Common
+         addCommand("joinevent", "");
+         addCommand("leaveevent", "");
+         addCommand("bosshp", "");
++        addCommand("mobhp", "");
+         addCommand("ranks", "");
+ }
+ 
+diff --git a/scripts/quest/2214.js b/scripts/quest/2214.js
+new file mode 100644
+index 000000000..b1f2f3307
+--- /dev/null
++++ b/scripts/quest/2214.js
+@@ -0,0 +1,59 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*	
++	Author : 		Ronan
++	NPC Name: 		Knocked Trash Can
++	Map(s): 		Hut in the Swamp
++	Description: 		Quest - The Run-down Huts in the Swamp
++	Quest ID: 		2214
++*/
++
++var status = -1;
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(!qm.canHold(4031894, 1)) {
++                qm.sendNext("(Eh, I can't hold the #t4031894# right now, I need an ETC slot available.)");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("(Ah, there is a crumbled note here... Hm, it contains details about some scheme that is about to happen, that must be what #r#p1052002##k was talking about.)");
++            qm.gainItem(4031894, 1);
++            qm.gainExp(20000 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2215.js b/scripts/quest/2215.js
+new file mode 100644
+index 000000000..edb50c6a1
+--- /dev/null
++++ b/scripts/quest/2215.js
+@@ -0,0 +1,65 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*	
++	Author : 		Ronan
++	NPC Name: 		Find the Crumpled Piece of Paper Again
++	Map(s): 		Hut in the Swamp
++	Description: 		Quest - The Run-down Huts in the Swamp
++	Quest ID: 		2215
++*/
++
++var status = -1;
++
++function end(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            if(qm.getMeso() < 2000) {
++                qm.sendNext("(Oh, I don't have the combined fee amount yet.)");
++                qm.dispose();
++                return;
++            }
++            
++            if(!qm.canHold(4031894, 1)) {
++                qm.sendNext("(Eh, I can't hold the #t4031894# right now, I need an ETC slot available.)");
++                qm.dispose();
++                return;
++            }
++            
++            qm.sendNext("(Alright, now I will deposit the fee there and get the paper... That's it, yea, that's done.)");
++            qm.gainItem(4031894, 1);
++            qm.gainMeso(-2000);
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2216.js b/scripts/quest/2216.js
+new file mode 100644
+index 000000000..0daf60319
+--- /dev/null
++++ b/scripts/quest/2216.js
+@@ -0,0 +1,45 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("I've just gathered an interesting information, #rDyle looks just like regular Ligators#k, but bigger.");
++            qm.gainExp(7000 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2217.js b/scripts/quest/2217.js
+new file mode 100644
+index 000000000..3d05669b6
+--- /dev/null
++++ b/scripts/quest/2217.js
+@@ -0,0 +1,45 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Hey, did you notice already, it looks like some awful stench is emanating from the sewers... Ewww");
++            qm.gainExp(7000 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2218.js b/scripts/quest/2218.js
+new file mode 100644
+index 000000000..88dc060c7
+--- /dev/null
++++ b/scripts/quest/2218.js
+@@ -0,0 +1,45 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Hey did you see how strange #rLakelis#k has been acting these days? We should see what's going on aabout her, her actions have been so weird lately...");
++            qm.gainExp(7000 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2219.js b/scripts/quest/2219.js
+new file mode 100644
+index 000000000..15d25d730
+--- /dev/null
++++ b/scripts/quest/2219.js
+@@ -0,0 +1,45 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Did you know, they say someone from the sewers has been trying to #rdevelop a magic powder that let's one to grow#k, isn't that nice?");
++            qm.gainExp(7000 * qm.getPlayer().getExpRate());
++            qm.forceCompleteQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/sql/db_shopupdate.sql b/sql/db_shopupdate.sql
+index 3cd5ad5b7..5b4647eb1 100644
+--- a/sql/db_shopupdate.sql
++++ b/sql/db_shopupdate.sql
+@@ -255,7 +255,8 @@ INSERT INTO `shopitems` ( `shopid`, `itemid`, `price`, `position`) VALUES
+ (1337, 2043712, 1, 81),
+ (1337, 2340000, 1, 82),
+ (1337, 2040807, 1, 83),
+-(1337, 2210032, 1, 84);
++(1337, 2210032, 1, 84),
++(1337, 2050004, 1, 85);
+ 
+ # Thanks to DietStory dev team
+ INSERT INTO `shopitems` ( `shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 732d22a94..25f710924 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -5547,6 +5547,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ps.close();
+             ret.cashshop = new CashShop(ret.accountid, ret.id, ret.getJobType());
+             ret.autoban = new AutobanManager(ret);
++            ret.marriageRing = null; //for now
+             ps = con.prepareStatement("SELECT name, level FROM characters WHERE accountid = ? AND id != ? ORDER BY level DESC limit 1");
+             ps.setInt(1, ret.accountid);
+             ps.setInt(2, charid);
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 8e2fa5b4b..b3fcea7ad 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -651,6 +651,15 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+ 			} 
+ 			break;
+                     
++                case "mobhp":
++			for(MapleMonster monster : player.getMap().getMonsters()) {
++				if(monster != null && monster.getHp() > 0) {
++					player.yellowMessage(monster.getName() + " (" + monster.getId() + ") has " + monster.getHp() + " / " + monster.getMaxHp() + " HP.");
++					
++				}
++			} 
++			break;
++                    
+ 		case "ranks":
+ 			PreparedStatement ps = null;
+ 			ResultSet rs = null;
+@@ -1329,6 +1338,30 @@ else if (type.equals("cash")) {
+                         player.yellowMessage("Skills maxed out.");
+                     break;
+                     
++                case "resetskill":
++			for (MapleData skill_ : MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/" + "String.wz")).getData("Skill.img").getChildren()) {
++				try {
++					skill = SkillFactory.getSkill(Integer.parseInt(skill_.getName()));
++                                        player.changeSkillLevel(skill, (byte) 0, skill.getMaxLevel(), -1);
++				} catch (NumberFormatException nfe) {
++                                        nfe.printStackTrace();
++					break;
++				} catch (NullPointerException npe) {
++					continue;
++				}
++			}
++                        
++                        if(player.getJob().isA(MapleJob.ARAN1) || player.getJob().isA(MapleJob.LEGEND)) {
++                                skill = SkillFactory.getSkill(5001005);
++                                player.changeSkillLevel(skill, (byte) -1, -1, -1);
++                        } else {
++                                skill = SkillFactory.getSkill(21001001);
++                                player.changeSkillLevel(skill, (byte) -1, -1, -1);
++                        }
++                        
++                        player.yellowMessage("Skills reseted.");
++                    break;
++                    
+                 case "mesos":
+                         if (sub.length >= 2) {
+                                 player.gainMeso(Integer.parseInt(sub[1]), true);
+@@ -2394,8 +2427,8 @@ public static boolean executeHeavenMsCommandLv4(Channel cserv, Server srv, Maple
+                     case "cake":
+                         MapleMonster monster = MapleLifeFactory.getMonster(9400606);
+                         if(sub.length > 1) {
+-                            int newHp = Integer.parseInt(sub[1]);
+-                            if(newHp < 0) newHp = Integer.MAX_VALUE;
++                            double mobHp = Double.parseDouble(sub[1]);
++                            int newHp = (mobHp <= 0) ? Integer.MAX_VALUE : ((mobHp > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) mobHp);
+                             
+                             monster.getStats().setHp(newHp);
+                             monster.setStartingHp(newHp);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index f8ae17165..d07e56e31 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -899,7 +899,7 @@ public void run() {
+         } else if (status.getSkill().getId() == 4121004 || status.getSkill().getId() == 4221004) { // Ninja Ambush
+             final Skill skill = SkillFactory.getSkill(status.getSkill().getId());
+             final byte level = from.getSkillLevel(skill);
+-            final int damage = (int) ((from.getStr() + from.getLuk()) * (1.5 + (level * 0.05)) * skill.getEffect(level).getDamage());
++            final int damage = (int) ((from.getStr() + from.getLuk()) * ((3.7 * skill.getEffect(level).getDamage()) / 100));
+             
+             status.setValue(MonsterStatus.NINJA_AMBUSH, Integer.valueOf(damage));
+             animationTime = broadcastStatusEffect(status);
+@@ -1164,7 +1164,7 @@ public void run() {
+             }
+             if (damage > 0) {
+                 damage(chr, damage, true);
+-                if (type == 1 || type == 2) {
++                if (type == 1) {    // ninja ambush (type 2) is already displaying DOT
+                     map.broadcastMessage(MaplePacketCreator.damageMonster(getObjectId(), damage), getPosition());
+                 }
+             }

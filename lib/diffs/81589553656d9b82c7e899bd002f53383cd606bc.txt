@@ -1,0 +1,211 @@
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index 701ba30e1..bcb2c6778 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -295,7 +295,10 @@ private void registerLv3Commands() {
+         addCommand("startquest", 3, QuestStartCommand.class);
+         addCommand("completequest", 3, QuestCompleteCommand.class);
+         addCommand("resetquest", 3, QuestResetCommand.class);
+-        
++        addCommand("timer", 3, TimerCommand.class);
++        addCommand("timermap", 3, TimerMapCommand.class);
++        addCommand("timerall", 3, TimerAllCommand.class);
++
+         commandsNameDesc.add(levelCommandsCursor);
+     }
+ 
+diff --git a/src/client/command/commands/gm3/TimerAllCommand.java b/src/client/command/commands/gm3/TimerAllCommand.java
+new file mode 100644
+index 000000000..b01340694
+--- /dev/null
++++ b/src/client/command/commands/gm3/TimerAllCommand.java
+@@ -0,0 +1,59 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/*
++   @Author: MedicOP - Add clock commands
++*/
++package client.command.commands.gm3;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.command.Command;
++import tools.MaplePacketCreator;
++
++public class TimerAllCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient c, String[] params) {
++        MapleCharacter player = c.getPlayer();
++        if (params.length < 2) {
++            player.yellowMessage("Syntax: !timerall <seconds>|remove");
++            return;
++        }
++
++        if (params[1].equalsIgnoreCase("remove")) {
++            for (MapleCharacter victim : player.getWorldServer().getPlayerStorage().getAllCharacters()) {
++                victim.announce(MaplePacketCreator.removeClock());
++            }
++        } else {
++            try {
++                int seconds = Integer.parseInt(params[1]);
++                for (MapleCharacter victim : player.getWorldServer().getPlayerStorage().getAllCharacters()) {
++                    victim.announce(MaplePacketCreator.getClock(seconds));
++                }
++            } catch (NumberFormatException e) {
++                player.yellowMessage("Syntax: !timerall <seconds>|remove");
++            }
++        }
++    }
++}
+diff --git a/src/client/command/commands/gm3/TimerCommand.java b/src/client/command/commands/gm3/TimerCommand.java
+new file mode 100644
+index 000000000..1d46765d3
+--- /dev/null
++++ b/src/client/command/commands/gm3/TimerCommand.java
+@@ -0,0 +1,59 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/*
++   @Author: MedicOP - Add clock commands
++*/
++package client.command.commands.gm3;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.command.Command;
++import tools.MaplePacketCreator;
++
++public class TimerCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient c, String[] params) {
++        MapleCharacter player = c.getPlayer();
++        if (params.length < 2) {
++            player.yellowMessage("Syntax: !timer <playername> <seconds>|remove");
++            return;
++        }
++
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
++        if (victim != null) {
++            if (params[1].equalsIgnoreCase("remove")) {
++                victim.announce(MaplePacketCreator.removeClock());
++            } else {
++                try {
++                    victim.announce(MaplePacketCreator.getClock(Integer.parseInt(params[1])));
++                } catch (NumberFormatException e) {
++                    player.yellowMessage("Syntax: !timer <playername> <seconds>|remove");
++                }
++            }
++        } else {
++            player.message("Player '" + params[0] + "' could not be found.");
++        }
++    }
++}
+diff --git a/src/client/command/commands/gm3/TimerMapCommand.java b/src/client/command/commands/gm3/TimerMapCommand.java
+new file mode 100644
+index 000000000..e89c363ff
+--- /dev/null
++++ b/src/client/command/commands/gm3/TimerMapCommand.java
+@@ -0,0 +1,59 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/*
++   @Author: MedicOP - Add clock commands
++*/
++package client.command.commands.gm3;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.command.Command;
++import tools.MaplePacketCreator;
++
++public class TimerMapCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient c, String[] params) {
++        MapleCharacter player = c.getPlayer();
++        if (params.length < 2) {
++            player.yellowMessage("Syntax: !timermap <seconds>|remove");
++            return;
++        }
++
++        if (params[1].equalsIgnoreCase("remove")) {
++            for (MapleCharacter victim : player.getMap().getCharacters()) {
++                victim.announce(MaplePacketCreator.removeClock());
++            }
++        } else {
++            try {
++                int seconds = Integer.parseInt(params[1]);
++                for (MapleCharacter victim : player.getMap().getCharacters()) {
++                    victim.announce(MaplePacketCreator.getClock(seconds));
++                }
++            } catch (NumberFormatException e) {
++                player.yellowMessage("Syntax: !timermap <seconds>|remove");
++            }
++        }
++    }
++}

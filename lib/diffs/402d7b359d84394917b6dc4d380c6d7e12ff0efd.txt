@@ -1,0 +1,70 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 135190d9f..7166a46c8 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1849,4 +1849,7 @@ Corrigido caso de dupe com itens ao serem colocados no storage.
+ Adicionado sistema de "qualquer NPC scriptável", com apoio do GabrielSin.
+ Adicionado server flag para checagem de IP's ao logar jogadores.
+ Corrigido mobskills não sendo devidamente aplicados devido a um deslize anterior que tentaria aplicar indevidamente 2x "uso de skill" (uma das vezes deveria ser somente checagem de rotina).
+-Corrigido puppets de arqueiros interrompendo mob statuses para o dono ao serem lançados em campo.
+\ No newline at end of file
++Corrigido puppets de arqueiros interrompendo mob statuses para o dono ao serem lançados em campo.
++
++04 Maio 2019,
++Corrigido visão de mob statuses sendo interrompido para o novo controlador ao realizar troca de controladores.
+\ No newline at end of file
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index c0ecb3853..db3e2ae56 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -1886,7 +1886,7 @@ public void aggroSwitchController(MapleCharacter newController, boolean immediat
+             }
+             
+             this.aggroUpdatePuppetVisibility();
+-            newController.announce(MaplePacketCreator.controlMonster(this, false, immediateAggro));
++            aggroMonsterControl(newController.getClient(), this, immediateAggro);
+             newController.controlMonster(this);
+         }
+     }
+@@ -2054,7 +2054,7 @@ public void aggroMonsterDamage(MapleCharacter attacker, int damage) {
+             
+             else if (chrController != null) {
+                 chrController.announce(MaplePacketCreator.stopControllingMonster(this.getObjectId()));
+-                chrController.announce(MaplePacketCreator.controlMonster(this, false, true));
++                aggroMonsterControl(chrController.getClient(), this, true);
+             }
+             */
+         } else {
+@@ -2063,6 +2063,13 @@ else if (chrController != null) {
+         }
+     }
+     
++    private static void aggroMonsterControl(MapleClient c, MapleMonster mob, boolean immediateAggro) {
++        c.announce(MaplePacketCreator.controlMonster(mob, false, immediateAggro));
++        
++        // thanks BHB for noticing puppets disrupting mobstatuses for bowmans
++        mob.announceMonsterStatus(c);
++    }
++    
+     private void aggroRefreshPuppetVisibility(MapleCharacter chrController, MapleSummon puppet) {
+         // lame patch for client to redirect all aggro to the puppet
+         
+@@ -2080,8 +2087,7 @@ private void aggroRefreshPuppetVisibility(MapleCharacter chrController, MapleSum
+         
+         MapleClient c = chrController.getClient();
+         for (MapleMonster mob : puppetControlled) {
+-            chrController.announce(MaplePacketCreator.controlMonster(mob, false, mob.isControllerHasAggro()));
+-            mob.announceMonsterStatus(c);   // thanks BHB for noticing puppets disrupting mobstatuses for bowmans
++            aggroMonsterControl(c, mob, mob.isControllerKnowsAboutAggro());
+         }
+         chrController.announce(MaplePacketCreator.spawnSummon(puppet, false));
+     }
+@@ -2116,7 +2122,7 @@ public void run() {
+                         controllerHasPuppet = false;
+ 
+                         chrController.announce(MaplePacketCreator.stopControllingMonster(MapleMonster.this.getObjectId()));
+-                        chrController.announce(MaplePacketCreator.controlMonster(MapleMonster.this, false, MapleMonster.this.isControllerHasAggro()));
++                        aggroMonsterControl(chrController.getClient(), MapleMonster.this, MapleMonster.this.isControllerHasAggro());
+                     }
+                 } finally {
+                     availablePuppetUpdate = true;

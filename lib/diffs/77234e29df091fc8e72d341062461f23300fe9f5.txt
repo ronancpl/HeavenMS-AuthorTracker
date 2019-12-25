@@ -1,0 +1,366 @@
+diff --git a/README.md b/README.md
+index 96ad54208..e069a6028 100644
+--- a/README.md
++++ b/README.md
+@@ -25,9 +25,18 @@ Recommended localhost: https://hostr.co/r5QDmhlxpp8M
+ * MapleSilver's starting on window-mode, with some string fixes. This is a variation of Fraysa's https://hostr.co/gJbLZITRVHmv
+ 
+ ---
++### Support us
++
++Feel free to __root for us__ on our endeavour at our Discord channel, or even actively **help us improve** the server by issuing pull requests with informative details about what's changing.
++
++Also, if you liked this project, please don't forget to __star__ the repo ;) .
++
++Discord: https://discord.gg/Q7wKxHX
++
+ ### Donation
+ 
+-If you liked what you have seen on the project, donate a little something as a helping hand for my contributions towards Maple development.
++If you REALLY liked what you have seen on the project, please feel free to donate a little something as a helping hand for my contributions towards Maple development. Also remember to **support Nexon**!
++
+ Paypal: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=3K8KVTWRLFBQ4
+ 
+ ---
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index c80f1f746..5342e1078 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -821,4 +821,8 @@ Resolvido problemas com loots não diferenciando partyids de playerids, além de
+ Resolvido caso de deadlock no MapleMap (uso de broadcastMessage, que usa chrLock, após adquirido objectLock).
+ Refatorado dano/cura em mobs, agora encapsulando atomicamente as mudanças de HP. Resolvido também problemas de acesso concorrente quanto a isso.
+ Resolvido problemas com HT e danos de status poison, bagunçando as contabilizações de HP de vez em quando.
+-Nova PQ: TreasurePQ, level 140+, acessível via portal em NLC.
+\ No newline at end of file
++Nova PQ: TreasurePQ, level 140+, acessível via portal em NLC.
++
++08 Março 2018,
++Corrigido levelup contabilizando o stat INT nos ganhos de MP mesmo quando a flag USE_RANDOMIZE_HPMP_GAIN está desativada.
++Aprimorado comando de item/drop agora permitindo gerar pets.
+\ No newline at end of file
+diff --git a/scripts/npc/2013001.js b/scripts/npc/2013001.js
+index edfccef66..5ee0327ee 100644
+--- a/scripts/npc/2013001.js
++++ b/scripts/npc/2013001.js
+@@ -60,7 +60,6 @@ function action(mode, type, selection) {
+ 
+         switch(cm.getPlayer().getMapId()) {
+             case 920010000:
+-                print(eim.getIntProperty("statusStg0"));
+                 if(eim.getIntProperty("statusStg0") != 1) {
+                     eim.warpEventTeamToMapSpawnPoint(920010000, 2);
+                     eim.giveEventPlayersExp(3500);
+diff --git a/scripts/quest/4659.js b/scripts/quest/4659.js
+index e83f82e67..be734ed60 100644
+--- a/scripts/quest/4659.js
++++ b/scripts/quest/4659.js
+@@ -101,7 +101,7 @@ function end(mode, type, selection) {
+             qm.evolvePet(i, after);
+ //            var petId = MaplePet.createPet(rand + 5000049, level, closeness, fullness);
+ //            if (petId == -1) return;
+-//            MapleInventoryManipulator.addById(qm.getClient(), rand+5000049, 1, null, petId);
++//            MapleInventoryManipulator.addById(qm.getClient(), rand+5000049, 1, "", petId);
+         } else
+             qm.dropMessage(1,"Your inventory is full");
+         qm.dispose();
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 2666a31d9..da2cedfc8 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2308,23 +2308,29 @@ public void run() {
+                                 item.setExpiration(-1);
+                                 forceUpdateItem(item);   //TEST :3
+                             } else if (expiration != -1 && expiration < currenttime) {
+-                                if(!ItemConstants.isPet(item.getItemId()) || ItemConstants.isExpirablePet(item.getItemId())) {
++                                if(!ItemConstants.isPet(item.getItemId())) {
+                                     client.announce(MaplePacketCreator.itemExpired(item.getItemId()));
+                                     toberemove.add(item);
+                                     if(ItemConstants.isRateCoupon(item.getItemId())) {
+                                         deletedCoupon = true;
+                                     }
+                                 } else {
+-                                    item.setExpiration(-1);
+-                                    forceUpdateItem(item);
++                                    if(item.getPetId() > -1) {
++                                        int petIdx = getPetIndex(item.getPetId());
++                                        if(petIdx > -1) unequipPet(getPet(petIdx), true);
++                                    }
++                                    
++                                    if(ItemConstants.isExpirablePet(item.getItemId())) {
++                                        client.announce(MaplePacketCreator.itemExpired(item.getItemId()));
++                                        toberemove.add(item);
++                                    } else {
++                                        item.setExpiration(-1);
++                                        forceUpdateItem(item);
++                                    }
+                                 }
+                             }
+                         }
+                         for (Item item : toberemove) {
+-                            if(item.getPetId() > -1) {
+-                                int petIdx = getPetIndex(item.getPetId());
+-                                if(petIdx > -1) unequipPet(getPet(petIdx), true);
+-                            }
+                             MapleInventoryManipulator.removeFromSlot(client, inv.getType(), item.getPosition(), item.getQuantity(), true);
+                         }
+                         toberemove.clear();
+@@ -4880,7 +4886,15 @@ public void levelUp(boolean takeexp) {
+         if (improvingMaxMPLevel > 0 && (job.isA(MapleJob.MAGICIAN) || job.isA(MapleJob.CRUSADER) || job.isA(MapleJob.BLAZEWIZARD1))) {
+             maxmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getX();
+         }
+-        maxmp += localint_ / 10;
++        
++        if (ServerConstants.USE_RANDOMIZE_HPMP_GAIN) {
++            if (job.isA(MapleJob.MAGICIAN) || job.isA(MapleJob.BLAZEWIZARD1)) {
++                maxmp += localint_ / 20;
++            } else {
++                maxmp += localint_ / 10;
++            }
++        }
++        
+         if (takeexp) {
+             exp.addAndGet(-ExpTable.getExpNeededForLevel(level));
+             if (exp.get() < 0) {
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index ba4a20ff0..7fa53eb4b 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -474,7 +474,7 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+ 						ps.close();
+                                                 con.close();
+ 					} catch (Exception e) {
+-						player.dropMessage("There was a problem retreiving the required data. Please try again.");
++						player.dropMessage(6, "There was a problem retrieving the required data. Please try again.");
+ 						e.printStackTrace();
+ 						break;
+ 					}
+@@ -602,7 +602,7 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+ 
+ 							player.changeMap(event.getMapId());
+ 						} else {
+-							player.dropMessage("The limit of players for the event has already been reached.");
++							player.dropMessage(5, "The limit of players for the event has already been reached.");
+ 						}
+ 					} else {
+ 						player.dropMessage(5, "You are already in the event.");
+@@ -1060,7 +1060,7 @@ else if (type.equals("cash")) {
+ 						//victim.getEventInstance().registerPlayer(player);
+ 						player.changeMap(victim.getEventInstance().getMapInstance(victim.getMapId()), victim.getMap().findClosestPortal(victim.getPosition()));
+ 					} else {
+-						player.dropMessage("Please change to channel " + victim.getClient().getChannel());
++						player.dropMessage(6, "Please change to channel " + victim.getClient().getChannel());
+ 					}
+ 				} else {//If victim isn't in an event instance, just warp them.
+ 					player.changeMap(victim.getMapId(), victim.getMap().findClosestPortal(victim.getPosition()));
+@@ -1070,7 +1070,7 @@ else if (type.equals("cash")) {
+ 					player.getClient().changeChannel(victim.getClient().getChannel());
+ 				}
+ 			} else {
+-				player.dropMessage("Unknown player.");
++				player.dropMessage(6, "Unknown player.");
+ 			}
+                     break;
+                     
+@@ -1117,7 +1117,7 @@ else if (type.equals("cash")) {
+ 					victim.getClient().changeChannel(player.getClient().getChannel());
+ 				}
+ 			} else {
+-				player.dropMessage("Unknown player.");
++				player.dropMessage(6, "Unknown player.");
+ 			}
+                     break;
+                     
+@@ -1130,13 +1130,13 @@ else if (type.equals("cash")) {
+                         victim = c.getWorldServer().getPlayerStorage().getCharacterByName(sub[1]);
+                         if(victim != null && victim.isLoggedin()) {
+                                 if (player.getClient().getChannel() != victim.getClient().getChannel()) {
+-                                        player.dropMessage("Player '" + victim.getName() + "' is at channel " + victim.getClient().getChannel() + ".");
++                                        player.dropMessage(5, "Player '" + victim.getName() + "' is at channel " + victim.getClient().getChannel() + ".");
+                                 } else {
+                                         MapleMap map = victim.getMap();
+                                         player.changeMap(map, map.findClosestPortal(victim.getPosition()));
+                                 }
+                         } else {
+-                                player.dropMessage("Unknown player.");
++                                player.dropMessage(6, "Unknown player.");
+                         }
+                     break;
+                 
+@@ -1156,31 +1156,65 @@ else if (type.equals("cash")) {
+ 			}
+                         
+ 			int itemId = Integer.parseInt(sub[1]);
+-                        if(MapleItemInformationProvider.getInstance().getName(itemId) == null) {
++                        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                        
++                        if(ii.getName(itemId) == null) {
+                                 player.yellowMessage("Item id '" + sub[1] + "' does not exist.");
+                                 break;
+                         }
+                         
+-			short quantity = 1;
++                        short quantity = 1;
+                         if(sub.length >= 3) quantity = Short.parseShort(sub[2]);
+ 			
+-                        if (ItemConstants.isPet(itemId)) {
+-                                player.message("You cannot create a pet with this command.");
++                        if (ServerConstants.BLOCK_GENERATE_CASH_ITEM && ii.isCash(itemId)) {
++                                player.yellowMessage("You cannot create a cash item with this command.");
+                                 break;
+                         }
+                         
++                        if (ItemConstants.isPet(itemId)) {
++                                if (sub.length >= 3){   // thanks to istreety & TacoBell
++                                        quantity = 1;
++                                        long days = Math.max(1, Integer.parseInt(sub[2]));
++                                        long expiration = System.currentTimeMillis() + (days * 24 * 60 * 60 * 1000);
++                                        int petid = MaplePet.createPet(itemId);
++                                        
++                                        if(sub[0].equals("item")) {
++                                                MapleInventoryManipulator.addById(c, itemId, quantity, player.getName(), petid, expiration);
++                                        } else {
++                                                Item toDrop = new Item(itemId, (short) 0, quantity, petid);
++                                                toDrop.setExpiration(expiration);
++                                                
++                                                toDrop.setOwner("");
++                                                if(player.gmLevel() < 3) {
++                                                        byte b = toDrop.getFlag();
++                                                        b |= ItemConstants.ACCOUNT_SHARING;
++                                                        b |= ItemConstants.UNTRADEABLE;
++
++                                                        toDrop.setFlag(b);
++                                                }
++
++                                                c.getPlayer().getMap().spawnItemDrop(c.getPlayer(), c.getPlayer(), toDrop, c.getPlayer().getPosition(), true, true);
++                                        }
++                                        
++                                        break;
++                                } else {
++                                        player.yellowMessage("Pet Syntax: !item <itemid> <expiration>");
++                                        break;        
++                                }
++                        }
++                        
+ 			if (sub[0].equals("item")) {
+ 				byte flag = 0;
+                                 if(player.gmLevel() < 3) {
+-                                    flag |= ItemConstants.ACCOUNT_SHARING;
+-                                    flag |= ItemConstants.UNTRADEABLE;
++                                        flag |= ItemConstants.ACCOUNT_SHARING;
++                                        flag |= ItemConstants.UNTRADEABLE;
+                                 }
+                                 
+                                 MapleInventoryManipulator.addById(c, itemId, quantity, player.getName(), -1, flag, -1);
+ 			} else {
+ 				Item toDrop;
+ 				if (ItemConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+-					toDrop = MapleItemInformationProvider.getInstance().getEquipById(itemId);
++					toDrop = ii.getEquipById(itemId);
+ 				} else {
+ 					toDrop = new Item(itemId, (short) 0, quantity);
+ 				}
+@@ -1659,8 +1693,8 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 			float xpos = player.getPosition().x;
+ 			float ypos = player.getPosition().y;
+ 			float fh = player.getMap().getFootholds().findBelow(player.getPosition()).getId();
+-			player.dropMessage("Position: (" + xpos + ", " + ypos + ")");
+-			player.dropMessage("Foothold ID: " + fh);
++			player.dropMessage(6, "Position: (" + xpos + ", " + ypos + ")");
++			player.dropMessage(6, "Foothold ID: " + fh);
+                     break;
+         
+                 case "togglecoupon":
+@@ -1853,7 +1887,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                                         map.damageMonster(player, monster, Integer.MAX_VALUE);
+                                 }
+ 			}
+-			player.dropMessage("Killed " + monsters.size() + " monsters.");
++			player.dropMessage(5, "Killed " + monsters.size() + " monsters.");
+                     break;
+            
+ 		case "notice":
+@@ -2196,7 +2230,7 @@ public static boolean executeHeavenMsCommandLv4(Channel cserv, Server srv, Maple
+                                 hardsetItemStats((Equip) it, multiply);
+                                 MapleInventoryManipulator.addFromDrop(c, it);
+                         } else {
+-                                player.dropMessage("Make sure it's an equippable item.");
++                                player.dropMessage(6, "Make sure it's an equippable item.");
+                         }
+                         break;
+                     
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 37c0d5daf..7703f7998 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -84,6 +84,9 @@
+     
+     public static final int PARTY_EXPERIENCE_MOD = 1;               //Change for event stuff.
+     
++    //Commands Configuration
++    public static final boolean BLOCK_GENERATE_CASH_ITEM = false;   //Prevents creation of cash items with the item/drop command.
++    
+     //Miscellaneous Configuration
+     public static final byte MIN_UNDERLEVEL_TO_EXP_GAIN = 5;        //Characters are unable to get EXP from a mob if their level are under this threshold, only if "USE_ENFORCE_MOB_LEVEL_RANGE" is enabled. For bosses, this attribute is doubled.
+     public static final byte MAX_MONITORED_BUFFSTATS = 5;           //Limits accounting for "dormant" buff effects, that should take place when stronger stat buffs expires.
+diff --git a/src/net/server/channel/handlers/DistributeAPHandler.java b/src/net/server/channel/handlers/DistributeAPHandler.java
+index 09a6f4647..5d9ac714f 100644
+--- a/src/net/server/channel/handlers/DistributeAPHandler.java
++++ b/src/net/server/channel/handlers/DistributeAPHandler.java
+@@ -104,7 +104,7 @@ private static int addHP(MapleClient c, boolean usedAPReset) {
+         return MaxHP + calcHpChange(player, job, usedAPReset);
+     }
+     
+-    public static int calcHpChange(MapleCharacter player, MapleJob job, boolean usedAPReset) {
++    private static int calcHpChange(MapleCharacter player, MapleJob job, boolean usedAPReset) {
+         int MaxHP = 0;
+         
+         if (job.isA(MapleJob.WARRIOR) || job.isA(MapleJob.DAWNWARRIOR1)) {
+@@ -207,7 +207,7 @@ private static int addMP(MapleClient c, boolean usedAPReset) {
+         return MaxMP + calcMpChange(player, job, usedAPReset);
+     }
+     
+-    public static int calcMpChange(MapleCharacter player, MapleJob job, boolean usedAPReset) {
++    private static int calcMpChange(MapleCharacter player, MapleJob job, boolean usedAPReset) {
+         int MaxMP = 0;
+         
+         if (job.isA(MapleJob.WARRIOR) || job.isA(MapleJob.DAWNWARRIOR1) || job.isA(MapleJob.ARAN1)) {
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index a38e9684a..5163945ee 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -70,7 +70,7 @@ public static boolean addById(MapleClient c, int itemId, short quantity, String
+         if (!type.equals(MapleInventoryType.EQUIP)) {
+             short slotMax = ii.getSlotMax(c, itemId);
+             List<Item> existing = c.getPlayer().getInventory(type).listById(itemId);
+-            if (!ItemConstants.isRechargable(itemId)) {
++            if (!ItemConstants.isRechargable(itemId) && petid == -1) {
+                 if (existing.size() > 0) { // first update all existing slots to slotMax
+                     Iterator<Item> i = existing.iterator();
+                     while (quantity > 0) {
+@@ -151,7 +151,7 @@ public static boolean addFromDrop(MapleClient c, Item item) {
+     }
+     
+     public static boolean addFromDrop(MapleClient c, Item item, boolean show) {
+-        return addFromDrop(c, item, show, -1);
++        return addFromDrop(c, item, show, item.getPetId());
+     }
+ 
+     public static boolean addFromDrop(MapleClient c, Item item, boolean show, int petId) {
+@@ -166,7 +166,7 @@ public static boolean addFromDrop(MapleClient c, Item item, boolean show, int pe
+         if (!type.equals(MapleInventoryType.EQUIP)) {
+             short slotMax = ii.getSlotMax(c, item.getItemId());
+             List<Item> existing = c.getPlayer().getInventory(type).listById(item.getItemId());
+-            if (!ItemConstants.isRechargable(item.getItemId())) {
++            if (!ItemConstants.isRechargable(item.getItemId()) && petId == -1) {
+                 if (existing.size() > 0) { // first update all existing slots to slotMax
+                     Iterator<Item> i = existing.iterator();
+                     while (quantity > 0) {
+@@ -202,6 +202,8 @@ public static boolean addFromDrop(MapleClient c, Item item, boolean show, int pe
+                 }
+             } else {
+                 Item nItem = new Item(item.getItemId(), (short) 0, quantity, petId);
++                nItem.setExpiration(item.getExpiration());
++                
+                 short newSlot = c.getPlayer().getInventory(type).addItem(nItem);
+                 if (newSlot == -1) {
+                     c.announce(MaplePacketCreator.getInventoryFull());

@@ -1,0 +1,139 @@
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 507afee3a..450deb835 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -354,8 +354,9 @@ public static boolean executePlayerCommand(MapleClient c, String[] sub, char hea
+ 			player.yellowMessage("SourMjolk - Game Master");
+ 			player.yellowMessage("Kanade - Game Master");
+ 			player.yellowMessage("Kitsune - Game Master");
+-                        player.yellowMessage("Branch Staff");
++                        player.yellowMessage("MapleSolaxiaV2 Staff");
+                         player.yellowMessage("Ronan - Freelance Developer");
++                        player.yellowMessage("Vcoc - Freelance Developer");
+ 			break;
+ 		case "lastrestart":
+ 		case "uptime":
+diff --git a/src/net/server/channel/handlers/GeneralChatHandler.java b/src/net/server/channel/handlers/GeneralChatHandler.java
+index 673c8d501..561c0de3b 100644
+--- a/src/net/server/channel/handlers/GeneralChatHandler.java
++++ b/src/net/server/channel/handlers/GeneralChatHandler.java
+@@ -29,6 +29,8 @@
+ import client.MapleClient;
+ import client.autoban.AutobanFactory;
+ import client.command.Commands;
++import java.text.SimpleDateFormat;
++import java.util.Calendar;
+ 
+ public final class GeneralChatHandler extends net.AbstractMaplePacketHandler {
+ 	
+@@ -57,7 +59,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     for (String used : sp) {
+                     	command += used + " ";
+                     }
+-                    FilePrinter.printError("usedCommands.txt", c.getPlayer().getName() + " used: " + heading + command + "\r\n");
++                    
++                    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
++                    FilePrinter.print(FilePrinter.USED_COMMANDS + ".txt", c.getPlayer().getName() + " used: " + heading + command + "on " + sdf.format(Calendar.getInstance().getTime()) + "\r\n");
+                 }
+             }
+         } else {
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 0d1fe04c8..3284db31e 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -110,7 +110,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+             } catch(ClassCastException e) {
+                 e.printStackTrace();
+-                FilePrinter.print(FilePrinter.EXCEPTION_CAUGHT, "Attacker is not a mob-type, rather is a " + map.getMapObject(oid).getClass().getName() + " entity.");
++                FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Attacker is not a mob-type, rather is a " + map.getMapObject(oid).getClass().getName() + " entity.");
+             }
+             
+             direction = slea.readByte();
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index a22e2fe93..41b908dc9 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -213,7 +213,7 @@ public static boolean addFromDrop(MapleClient c, Item item, boolean show, int pe
+             }
+             c.announce(MaplePacketCreator.modifyInventory(true, Collections.singletonList(new ModifyInventory(0, item))));
+         } else {
+-            FilePrinter.print(FilePrinter.ITEM, "Tried to pickup Equip id " + item.getItemId() + " containing more than 1 quantity --> " + quantity);
++            FilePrinter.printError(FilePrinter.ITEM, "Tried to pickup Equip id " + item.getItemId() + " containing more than 1 quantity --> " + quantity);
+             c.announce(MaplePacketCreator.getInventoryFull());
+             c.announce(MaplePacketCreator.showItemUnavailable());
+             return false;
+diff --git a/src/server/partyquest/PartyQuest.java b/src/server/partyquest/PartyQuest.java
+index 710faca9e..d505163c6 100644
+--- a/src/server/partyquest/PartyQuest.java
++++ b/src/server/partyquest/PartyQuest.java
+@@ -107,7 +107,7 @@ public static int getExp(String PQ, int level) {
+                 } else if(PQ.equals("LudiPQLast")) {
+                     return 800 * level / 5;
+                 }
+-		FilePrinter.print(FilePrinter.NPC, "Unhandled PartyQuest: " + PQ);
++		FilePrinter.printError(FilePrinter.NPC, "Unhandled PartyQuest: " + PQ);
+ 		return 0;
+ 	}
+ }
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index cdb9c14b3..ed0445a58 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -11,7 +11,7 @@
+ public class FilePrinter {
+ 
+     public static final String 
+-    		ACCOUNT_STUCK = "accountStuck.txt",
++            ACCOUNT_STUCK = "accountStuck.txt",
+             EXCEPTION_CAUGHT = "exceptionCaught.txt",
+             CLIENT_START = "clientStartError.txt",
+             ADD_PLAYER = "addPlayer.txt",
+@@ -39,11 +39,13 @@
+             PACKET_LOGS = "packetlogs/",
+             DELETED_CHARACTERS = "deletedchars/",
+             FREDRICK = "fredrick/",
+-    		NPC_UNCODED = "uncodedNPCs.txt",
+-    		QUEST_UNCODED = "uncodedQuests.txt",
+-            SAVING_CHARACTER = "saveChar.txt";//more to come (maps)
++            NPC_UNCODED = "uncodedNPCs.txt",
++            QUEST_UNCODED = "uncodedQuests.txt",
++            SAVING_CHARACTER = "saveChar.txt",
++            USED_COMMANDS = "usedCommands.txt";//more to come (maps)
++    
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //for file system purposes, it's nice to use yyyy-MM-dd
+-    private static final String FILE_PATH = "logs/" + sdf.format(Calendar.getInstance().getTime()) + "/";// + sdf.format(Calendar.getInstance().getTime()) + "/"
++    private static final String FILE_PATH = "logs/" + sdf.format(Calendar.getInstance().getTime()) + "/"; // + sdf.format(Calendar.getInstance().getTime()) + "/"
+     private static final String ERROR = "error/";
+ 
+     public static void printError(final String name, final Throwable t) {
+@@ -130,7 +132,7 @@ public static void print(final String name, final String s) {
+     }
+ 
+     public static void print(final String name, final String s, boolean line) {
+-    	System.out.println("Error thrown: " + name);
++    	System.out.println("Log: " + name);
+     	System.out.println(s);
+         FileOutputStream out = null;
+         String file = FILE_PATH + name;
+diff --git a/src/tools/LogHelper.java b/src/tools/LogHelper.java
+index 6392eccd7..1c1f43740 100644
+--- a/src/tools/LogHelper.java
++++ b/src/tools/LogHelper.java
+@@ -60,14 +60,14 @@ public static String getTimeString(long then){
+ 	}
+ 
+ 	public static void logLeaf(MapleCharacter player, boolean gotPrize, String operation) {
+-		String timeStamp = new SimpleDateFormat("dd-M-yyyy hh:mm:ss").format(new Date());
++		String timeStamp = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss").format(new Date());
+ 		String log = player.getName() + (gotPrize ? " used a maple leaf to buy " + operation : " redeemed " + operation + " VP for a leaf") + " - " + timeStamp + "\r\n";
+ 		FilePrinter.printError("mapleleaves.txt", log);
+ 	}
+ 	
+ 	public static void logGacha(MapleCharacter player, int itemid, String map) {
+ 		String itemName = MapleItemInformationProvider.getInstance().getName(itemid);
+-		String timeStamp = new SimpleDateFormat("dd-M-yyyy hh:mm:ss").format(new Date());
++		String timeStamp = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss").format(new Date());
+ 		String log = player.getName() + " got a " + itemName + "(" + itemid + ") from the " + map + " gachapon. - " + timeStamp + "\r\n";
+ 		FilePrinter.printError("gachapon.txt", log);
+ 	}

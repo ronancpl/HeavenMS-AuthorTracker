@@ -1,0 +1,258 @@
+diff --git a/src/client/command/commands/gm2/ApCommand.java b/src/client/command/commands/gm2/ApCommand.java
+index b6163e3a2..aaecf00df 100644
+--- a/src/client/command/commands/gm2/ApCommand.java
++++ b/src/client/command/commands/gm2/ApCommand.java
+@@ -48,7 +48,7 @@ public void execute(MapleClient c, String[] params) {
+ 
+             player.changeRemainingAp(newAp, false);
+         } else {
+-            MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++            MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+             if (victim != null) {
+                 int newAp = Integer.parseInt(params[1]);
+                 if (newAp < 0) newAp = 0;
+@@ -56,7 +56,7 @@ public void execute(MapleClient c, String[] params) {
+ 
+                 victim.changeRemainingAp(newAp, false);
+             } else {
+-                player.message("Player '" + params[0] + "' could not be found on this channel.");
++                player.message("Player '" + params[0] + "' could not be found.");
+             }
+         }
+     }
+diff --git a/src/client/command/commands/gm2/ClearSavedLocationsCommand.java b/src/client/command/commands/gm2/ClearSavedLocationsCommand.java
+index d049b1938..8f069ea68 100644
+--- a/src/client/command/commands/gm2/ClearSavedLocationsCommand.java
++++ b/src/client/command/commands/gm2/ClearSavedLocationsCommand.java
+@@ -38,9 +38,9 @@ public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer(), victim;
+         
+         if (params.length > 0) {
+-            victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++            victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+             if (victim == null) {
+-                player.message("Player '" + params[0] + "' could not be found on this channel.");
++                player.message("Player '" + params[0] + "' could not be found.");
+                 return;
+             }
+         } else {
+diff --git a/src/client/command/commands/gm2/JailCommand.java b/src/client/command/commands/gm2/JailCommand.java
+index ceb5c6063..afea582f8 100644
+--- a/src/client/command/commands/gm2/JailCommand.java
++++ b/src/client/command/commands/gm2/JailCommand.java
+@@ -51,7 +51,7 @@ public void execute(MapleClient c, String[] params) {
+             }
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.addJailExpirationTime(minutesJailed * 60 * 1000);
+ 
+@@ -68,7 +68,7 @@ public void execute(MapleClient c, String[] params) {
+             }
+ 
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm2/JobCommand.java b/src/client/command/commands/gm2/JobCommand.java
+index cf679b2c2..a66f91d99 100644
+--- a/src/client/command/commands/gm2/JobCommand.java
++++ b/src/client/command/commands/gm2/JobCommand.java
+@@ -46,7 +46,7 @@ public void execute(MapleClient c, String[] params) {
+             player.changeJob(MapleJob.getById(jobid));
+             player.equipChanged();
+         } else if (params.length == 2) {
+-            MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++            MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+ 
+             if (victim != null) {
+                 int jobid = Integer.parseInt(params[1]);
+@@ -58,7 +58,7 @@ public void execute(MapleClient c, String[] params) {
+                 victim.changeJob(MapleJob.getById(jobid));
+                 player.equipChanged();
+             } else {
+-                player.message("Player '" + params[0] + "' could not be found on this channel.");
++                player.message("Player '" + params[0] + "' could not be found.");
+             }
+         } else {
+             player.message("Syntax: !job <job id> <opt: IGN of another person>");
+diff --git a/src/client/command/commands/gm2/SpCommand.java b/src/client/command/commands/gm2/SpCommand.java
+index 3804f636b..5b217b62c 100644
+--- a/src/client/command/commands/gm2/SpCommand.java
++++ b/src/client/command/commands/gm2/SpCommand.java
+@@ -48,7 +48,7 @@ public void execute(MapleClient c, String[] params) {
+ 
+             player.updateRemainingSp(newSp);
+         } else {
+-            MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++            MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+             if (victim != null) {
+                 int newSp = Integer.parseInt(params[1]);
+                 if (newSp < 0) newSp = 0;
+@@ -58,7 +58,7 @@ public void execute(MapleClient c, String[] params) {
+ 
+                 player.dropMessage(5, "SP given.");
+             } else {
+-                player.message("Player '" + params[0] + "' could not be found on this channel.");
++                player.message("Player '" + params[0] + "' could not be found.");
+             }
+         }
+     }
+diff --git a/src/client/command/commands/gm2/UnJailCommand.java b/src/client/command/commands/gm2/UnJailCommand.java
+index f5fb8b4da..b8381bca1 100644
+--- a/src/client/command/commands/gm2/UnJailCommand.java
++++ b/src/client/command/commands/gm2/UnJailCommand.java
+@@ -40,7 +40,7 @@ public void execute(MapleClient c, String[] params) {
+             return;
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             if (victim.getJailExpirationTimeLeft() <= 0) {
+                 player.message("This player is already free.");
+@@ -50,7 +50,7 @@ public void execute(MapleClient c, String[] params) {
+             victim.message("By lack of concrete proof you are now unjailed. Enjoy freedom!");
+             player.message(victim.getName() + " was unjailed.");
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/FameCommand.java b/src/client/command/commands/gm3/FameCommand.java
+index 9e1b8e616..78e1738c7 100644
+--- a/src/client/command/commands/gm3/FameCommand.java
++++ b/src/client/command/commands/gm3/FameCommand.java
+@@ -41,13 +41,13 @@ public void execute(MapleClient c, String[] params) {
+             return;
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.setFame(Integer.parseInt(params[1]));
+             victim.updateSingleStat(MapleStat.FAME, victim.getFame());
+             player.message("FAME given.");
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/GiveMesosCommand.java b/src/client/command/commands/gm3/GiveMesosCommand.java
+index 09f58a4cd..10d6fe63a 100644
+--- a/src/client/command/commands/gm3/GiveMesosCommand.java
++++ b/src/client/command/commands/gm3/GiveMesosCommand.java
+@@ -66,12 +66,12 @@ public void execute(MapleClient c, String[] params) {
+             }
+         }
+         
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(recv_);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(recv_);
+         if (victim != null) {
+             victim.gainMeso((int) mesos_, true);
+             player.message("MESO given.");
+         } else {
+-            player.message("Player '" + recv_ + "' could not be found on this channel.");
++            player.message("Player '" + recv_ + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/GiveNxCommand.java b/src/client/command/commands/gm3/GiveNxCommand.java
+index 04289bec4..f3d4dd12c 100644
+--- a/src/client/command/commands/gm3/GiveNxCommand.java
++++ b/src/client/command/commands/gm3/GiveNxCommand.java
+@@ -50,12 +50,12 @@ public void execute(MapleClient c, String[] params) {
+             value = Integer.parseInt(params[0]);
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(recv);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(recv);
+         if (victim != null) {
+             victim.getCashShop().gainCash(1, value);
+             player.message("NX given.");
+         } else {
+-            player.message("Player '" + recv + "' could not be found on this channel.");
++            player.message("Player '" + recv + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/GiveVpCommand.java b/src/client/command/commands/gm3/GiveVpCommand.java
+index 798ac91ad..20135a57f 100644
+--- a/src/client/command/commands/gm3/GiveVpCommand.java
++++ b/src/client/command/commands/gm3/GiveVpCommand.java
+@@ -40,12 +40,12 @@ public void execute(MapleClient c, String[] params) {
+             return;
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.getClient().addVotePoints(Integer.parseInt(params[1]));
+             player.message("VP given.");
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/HealPersonCommand.java b/src/client/command/commands/gm3/HealPersonCommand.java
+index 7621cb281..73a6a05c0 100644
+--- a/src/client/command/commands/gm3/HealPersonCommand.java
++++ b/src/client/command/commands/gm3/HealPersonCommand.java
+@@ -36,11 +36,11 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.healHpMp();
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/HurtCommand.java b/src/client/command/commands/gm3/HurtCommand.java
+index 82cf06ac9..1324dbcc3 100644
+--- a/src/client/command/commands/gm3/HurtCommand.java
++++ b/src/client/command/commands/gm3/HurtCommand.java
+@@ -35,11 +35,11 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.updateHp(1);
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }
+diff --git a/src/client/command/commands/gm3/KillCommand.java b/src/client/command/commands/gm3/KillCommand.java
+index 910fd9f53..041826ce6 100644
+--- a/src/client/command/commands/gm3/KillCommand.java
++++ b/src/client/command/commands/gm3/KillCommand.java
+@@ -42,12 +42,12 @@ public void execute(MapleClient c, String[] params) {
+             return;
+         }
+ 
+-        MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(params[0]);
++        MapleCharacter victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
+         if (victim != null) {
+             victim.updateHpMp(0);
+             Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, player.getName() + " used !kill on " + victim.getName()));
+         } else {
+-            player.message("Player '" + params[0] + "' could not be found on this channel.");
++            player.message("Player '" + params[0] + "' could not be found.");
+         }
+     }
+ }

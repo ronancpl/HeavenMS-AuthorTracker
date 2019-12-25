@@ -1,0 +1,342 @@
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 70b4e8da4..77e84e339 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -44,6 +44,7 @@
+ import java.util.concurrent.Semaphore;
+ import java.util.concurrent.locks.Lock;
+ 
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import tools.*;
+ 
+ import javax.script.ScriptEngine;
+@@ -106,7 +107,7 @@
+ 	private long lastPong;
+ 	private int gmlevel;
+ 	private Set<String> macs = new HashSet<>();
+-	private Map<String, ScriptEngine> engines = new HashMap<>();
++	private Map<String, NashornScriptEngine> engines = new HashMap<>();
+ 	private byte characterSlots = 3;
+ 	private byte loginattempt = 0;
+ 	private String pin = "";
+@@ -1174,11 +1175,11 @@ public void setGMLevel(int level) {
+ 		gmlevel = level;
+ 	}
+ 
+-	public void setScriptEngine(String name, ScriptEngine e) {
++	public void setScriptEngine(String name, NashornScriptEngine e) {
+                 engines.put(name, e);
+ 	}
+ 
+-	public ScriptEngine getScriptEngine(String name) {
++	public NashornScriptEngine getScriptEngine(String name) {
+ 		return engines.get(name);
+ 	}
+ 
+diff --git a/src/scripting/AbstractScriptManager.java b/src/scripting/AbstractScriptManager.java
+index 2ec8782b1..1fdf81c3e 100644
+--- a/src/scripting/AbstractScriptManager.java
++++ b/src/scripting/AbstractScriptManager.java
+@@ -27,12 +27,11 @@
+ import java.io.FileReader;
+ import java.io.IOException;
+ 
+-import javax.script.Invocable;
+-import javax.script.ScriptEngine;
+-import javax.script.ScriptEngineManager;
+-import javax.script.ScriptException;
++import javax.script.*;
+ 
+ import constants.ServerConstants;
++import jdk.nashorn.api.scripting.NashornScriptEngine;
++import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+ import tools.FilePrinter;
+ 
+ /**
+@@ -40,45 +39,42 @@
+  * @author Matze
+  */
+ public abstract class AbstractScriptManager {
+-
+-    protected ScriptEngine engine;
+-    private ScriptEngineManager sem;
++    private ScriptEngineFactory sef;
+ 
+     protected AbstractScriptManager() {
+-        sem = new ScriptEngineManager();
++        sef = new ScriptEngineManager().getEngineByName("javascript").getFactory();
+     }
+ 
+-    protected Invocable getInvocable(String path, MapleClient c) {
++    protected NashornScriptEngine getScriptEngine(String path) {
+         path = "scripts/" + path;
+-        engine = null;
+-        if (c != null) {
+-            try {
+-                engine = c.getScriptEngine(path);
+-            } catch (NullPointerException npe) {
+-                c = null;   // player disconnected
++        File scriptFile = new File(path);
++        if (!scriptFile.exists()) {
++            return null;
++        }
++        NashornScriptEngine engine = (NashornScriptEngine) sef.getScriptEngine();
++        try (FileReader fr = new FileReader(scriptFile)) {
++            if (ServerConstants.JAVA_8){
++                engine.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+             }
++            engine.eval(fr);
++        } catch (final ScriptException | IOException t) {
++            FilePrinter.printError(FilePrinter.INVOCABLE + path.substring(12), t, path);
++            return null;
+         }
++
++        return engine;
++    }
++
++    protected NashornScriptEngine getScriptEngine(String path, MapleClient c) {
++        String cachePath = "scripts/" + path;
++        NashornScriptEngine engine = c.getScriptEngine(cachePath);
++
+         if (engine == null) {
+-            File scriptFile = new File(path);
+-            if (!scriptFile.exists()) {
+-                return null;
+-            }
+-            engine = sem.getEngineByName("javascript");
+-            if (c != null) {
+-                c.setScriptEngine(path, engine);
+-            }
+-            try (FileReader fr = new FileReader(scriptFile)) {
+-            	if (ServerConstants.JAVA_8){
+-            		engine.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+-            	}
+-                engine.eval(fr);
+-            } catch (final ScriptException | IOException t) {
+-                FilePrinter.printError(FilePrinter.INVOCABLE + path.substring(12, path.length()), t, path);
+-                return null;
+-            }
++            engine = getScriptEngine(cachePath);
++            c.setScriptEngine(path, engine);
+         }
+ 
+-        return (Invocable) engine;
++        return engine;
+     }
+ 
+     protected void resetContext(String path, MapleClient c) {
+diff --git a/src/scripting/event/EventScriptManager.java b/src/scripting/event/EventScriptManager.java
+index 2d7d16d90..87af1a564 100644
+--- a/src/scripting/event/EventScriptManager.java
++++ b/src/scripting/event/EventScriptManager.java
+@@ -54,7 +54,7 @@ public EventScriptManager(Channel cserv, String[] scripts) {
+         super();
+         for (String script : scripts) {
+             if (!script.equals("")) {
+-                Invocable iv = getInvocable("event/" + script + ".js", null);
++                Invocable iv = getScriptEngine("event/" + script + ".js");
+                 events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+             }
+         }
+@@ -88,7 +88,7 @@ private void reloadScripts() {
+         Channel cserv = events.values().iterator().next().em.getChannelServer();
+         for (Entry<String, EventEntry> entry : events.entrySet()) {
+             String script = entry.getKey();
+-            Invocable iv = getInvocable("event/" + script + ".js", null);
++            Invocable iv = getScriptEngine("event/" + script + ".js");
+             events.put(script, new EventEntry(iv, new EventManager(cserv, iv, script)));
+         }
+     }
+diff --git a/src/scripting/npc/NPCScriptManager.java b/src/scripting/npc/NPCScriptManager.java
+index 910f49bd9..1abc21863 100644
+--- a/src/scripting/npc/NPCScriptManager.java
++++ b/src/scripting/npc/NPCScriptManager.java
+@@ -30,7 +30,10 @@
+ import java.util.Map;
+ 
+ import javax.script.Invocable;
++import javax.script.ScriptEngine;
+ import javax.script.ScriptException;
++
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import net.server.world.MaplePartyCharacter;
+ 
+ import scripting.AbstractScriptManager;
+@@ -56,7 +59,7 @@ public static NPCScriptManager getInstance() {
+     public boolean isNpcScriptAvailable(MapleClient c, String fileName) {
+         Invocable iv = null;
+         if (fileName != null) {
+-            iv = getInvocable("npc/" + fileName + ".js", c);
++            iv = getScriptEngine("npc/" + fileName + ".js", c);
+         }
+ 
+         return iv != null;
+@@ -90,24 +93,19 @@ public void start(String filename, MapleClient c, int npc, List<MaplePartyCharac
+                 return;
+             }
+             cms.put(c, cm);
+-            Invocable iv = null;
+-            iv = getInvocable("npc/" + filename + ".js", c);
++            NashornScriptEngine iv = getScriptEngine("npc/" + filename + ".js", c);
+ 
+             if (iv == null) {
+                 c.getPlayer().dropMessage(1, npc + "");
+                 cm.dispose();
+                 return;
+             }
+-            engine.put("cm", cm);
++            iv.put("cm", cm);
+             scripts.put(c, iv);
+             try {
+                 iv.invokeFunction("start", chrs);
+             } catch (final NoSuchMethodException nsme) {
+-                try {
+-                    iv.invokeFunction("start", chrs);
+-                } catch (final NoSuchMethodException nsma) {
+-                    nsma.printStackTrace();
+-                }
++                nsme.printStackTrace();
+             }
+ 
+         } catch (final UndeclaredThrowableException ute) {
+@@ -127,25 +125,25 @@ private boolean start(MapleClient c, int npc, int oid, String fileName, MapleCha
+             }
+             if (c.canClickNPC()) {
+                 cms.put(c, cm);
+-                Invocable iv = null;
++                NashornScriptEngine iv = null;
+                 if (!itemScript) {
+                     if (fileName != null) {
+-                        iv = getInvocable("npc/" + fileName + ".js", c);
++                        iv = getScriptEngine("npc/" + fileName + ".js", c);
+                     }
+                 } else {
+                     if (fileName != null) {     // thanks MiLin for drafting NPC-based item scripts
+-                        iv = getInvocable("item/" + fileName + ".js", c);
++                        iv = getScriptEngine("item/" + fileName + ".js", c);
+                     }
+                 }
+                 if (iv == null) {
+-                    iv = getInvocable("npc/" + npc + ".js", c);
++                    iv = getScriptEngine("npc/" + npc + ".js", c);
+                     cm.resetItemScript();
+                 }
+                 if (iv == null) {
+                     dispose(c);
+                     return false;
+                 }
+-                engine.put(engineName, cm);
++                iv.put(engineName, cm);
+                 scripts.put(c, iv);
+                 c.setClickedNPC();
+                 try {
+diff --git a/src/scripting/quest/QuestScriptManager.java b/src/scripting/quest/QuestScriptManager.java
+index c599a943f..46b7dc7f6 100644
+--- a/src/scripting/quest/QuestScriptManager.java
++++ b/src/scripting/quest/QuestScriptManager.java
+@@ -27,6 +27,7 @@
+ 
+ import javax.script.Invocable;
+ 
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import scripting.AbstractScriptManager;
+ import server.quest.MapleQuest;
+ import tools.FilePrinter;
+@@ -62,10 +63,10 @@ public void start(MapleClient c, short questid, int npc) {
+                         }
+                         if(c.canClickNPC()) {
+                                 qms.put(c, qm);
+-                                Invocable iv = getInvocable("quest/" + questid + ".js", c);
++                                NashornScriptEngine iv = getScriptEngine("quest/" + questid + ".js", c);
+                                 if (iv == null) {
+                                         if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+-                                                iv = getInvocable("quest/medalQuest.js", c);
++                                                iv = getScriptEngine("quest/medalQuest.js", c);
+                                         } else {
+                                                 FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.");
+                                         }
+@@ -74,7 +75,7 @@ public void start(MapleClient c, short questid, int npc) {
+                                         qm.dispose();
+                                         return;
+                                 }
+-                                engine.put("qm", qm);
++                                iv.put("qm", qm);
+                                 scripts.put(c, iv);
+                                 c.setClickedNPC();
+                                 iv.invokeFunction("start", (byte) 1, (byte) 0, 0);
+@@ -117,17 +118,17 @@ public void end(MapleClient c, short questid, int npc) {
+ 			}
+ 			if(c.canClickNPC()){
+ 				qms.put(c, qm);
+-				Invocable iv = getInvocable("quest/" + questid + ".js", c);
++				NashornScriptEngine iv = getScriptEngine("quest/" + questid + ".js", c);
+ 				if (iv == null) {
+                                         if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+-                                                iv = getInvocable("quest/medalQuest.js", c);
++                                                iv = getScriptEngine("quest/medalQuest.js", c);
+                                         } else {
+                                                 FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.");
+                                                 qm.dispose();
+                                                 return;
+                                         }
+ 				}
+-				engine.put("qm", qm);
++				iv.put("qm", qm);
+ 				scripts.put(c, iv);
+ 				c.setClickedNPC();
+ 				iv.invokeFunction("end", (byte) 1, (byte) 0, 0);
+diff --git a/src/scripting/reactor/ReactorScriptManager.java b/src/scripting/reactor/ReactorScriptManager.java
+index 6e06f41ee..e4d1cb438 100644
+--- a/src/scripting/reactor/ReactorScriptManager.java
++++ b/src/scripting/reactor/ReactorScriptManager.java
+@@ -31,6 +31,8 @@
+ import java.util.Map;
+ import javax.script.Invocable;
+ import javax.script.ScriptException;
++
++import jdk.nashorn.api.scripting.NashornScriptEngine;
+ import scripting.AbstractScriptManager;
+ import server.maps.MapleReactor;
+ import server.maps.ReactorDropEntry;
+@@ -52,11 +54,11 @@ public static ReactorScriptManager getInstance() {
+     
+     public void onHit(MapleClient c, MapleReactor reactor) {
+         try {
+-            Invocable iv = getInvocable("reactor/" + reactor.getId() + ".js", c);
++            NashornScriptEngine iv = getScriptEngine("reactor/" + reactor.getId() + ".js", c);
+             if (iv == null) return;
+             
+             ReactorActionManager rm = new ReactorActionManager(c, reactor, iv);
+-            engine.put("rm", rm);
++            iv.put("rm", rm);
+             iv.invokeFunction("hit");
+         } catch (final NoSuchMethodException e) {} //do nothing, hit is OPTIONAL
+         
+@@ -67,11 +69,11 @@ public void onHit(MapleClient c, MapleReactor reactor) {
+ 
+     public void act(MapleClient c, MapleReactor reactor) {
+         try {
+-            Invocable iv = getInvocable("reactor/" + reactor.getId() + ".js", c);
++            NashornScriptEngine iv = getScriptEngine("reactor/" + reactor.getId() + ".js", c);
+             if (iv == null) return;
+             
+             ReactorActionManager rm = new ReactorActionManager(c, reactor, iv);
+-            engine.put("rm", rm);
++            iv.put("rm", rm);
+             iv.invokeFunction("act");
+         } catch (final ScriptException | NoSuchMethodException | NullPointerException e) {
+             FilePrinter.printError(FilePrinter.REACTOR + reactor.getId() + ".txt", e);
+@@ -116,11 +118,11 @@ public void untouch(MapleClient c, MapleReactor reactor) {
+ 
+     private void touching(MapleClient c, MapleReactor reactor, boolean touching) {
+         try {
+-            Invocable iv = getInvocable("reactor/" + reactor.getId() + ".js", c);
++            NashornScriptEngine iv = getScriptEngine("reactor/" + reactor.getId() + ".js", c);
+             if (iv == null) return;
+             
+             ReactorActionManager rm = new ReactorActionManager(c, reactor, iv);
+-            engine.put("rm", rm);
++            iv.put("rm", rm);
+             if (touching) {
+                 iv.invokeFunction("touch");
+             } else {

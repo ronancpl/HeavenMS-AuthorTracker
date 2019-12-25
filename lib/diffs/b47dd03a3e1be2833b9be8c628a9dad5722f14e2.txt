@@ -1,0 +1,2723 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 20d681ed6..11c5760ce 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1530,4 +1530,20 @@ Corrigido comandos que transportam jogadores entre mapas não levando em conside
+ 
+ 21 Dezembro 2018,
+ Cosméticos já usados pelo jogador não estão mais disponíveis nos estilistas/cirurgiões.
+-Corrigido alguns itens estéticos não sendo devidamente disponibilizados se jogadores usam algum cosmético de cor não-default.
+\ No newline at end of file
++Corrigido alguns itens estéticos não sendo devidamente disponibilizados se jogadores usam algum cosmético de cor não-default.
++
++28 Dezembro 2018,
++Corrigido um problema com comando Music, que não identificaria informações das músicas do jogo corretamente.
++Corrigido scripts de NPC de cosméticos bloqueando dialógo de jogadores em certos casos.
++
++29 - 31 Dezembro 2018,
++Resolvido envio de temporarização descompassada pro cliente (quests, expirações de itens, BBS threads, etc).
++Corrigido quests não registrando tempo de completude corretamente.
++Corrigido mob Jesters utilizando autoaggro.
++
++03 - 06 Janeiro 2019,
++Corrigido Homing Beacon skill provocando autoflag em mobs para jogadores que mudam de mapas, onde há mobs com mesmo objectid do mob alvejado anteriormente.
++Resolvido casos onde pets equipados poderiam provocar inconsistências na DB ao ser removido da aba de cash no inventário.
++Revisado sistema de log por todo o código-fonte. Espera-se uma formatação similar para os vários logs.
++Corrigido pet excludes não sendo devidamente removidos ao retirar o pet da DB.
++Corrigido bug na expedição de Horntail ao tentar reentrar numa expedição já começada.
+\ No newline at end of file
+diff --git a/scripts/event/GuildQuest.js b/scripts/event/GuildQuest.js
+index 921efdf8f..8f3c75564 100644
+--- a/scripts/event/GuildQuest.js
++++ b/scripts/event/GuildQuest.js
+@@ -237,7 +237,7 @@ function changedMap(eim, player, mapid) {
+ function afterChangedMap(eim, player, mapid) {
+         if (mapid == 990000100) {
+                 var texttt = "So, here is the brief. You guys should be warned that, once out on the fortress outskirts, anyone that would not be equipping the #b#t1032033##k will die instantly due to the deteriorated state of the air around there. That being said, once your team moves out, make sure to #bhit the glowing rocks#k in that region and #bequip the dropped item#k before advancing stages. That will protect you thoroughly from the air sickness. Good luck!";
+-                player.getClient().announce(Packages.tools.MaplePacketCreator.getNPCTalk(9040000, /*(byte)*/ 0, texttt, "00 00", /*(byte)*/ 0));
++                player.getClient().getAbstractPlayerInteraction().npcTalk(9040000, texttt);
+         }
+ }
+ 
+diff --git a/scripts/event/HorntailBattle.js b/scripts/event/HorntailBattle.js
+index 9f4881257..f31c2cdb0 100644
+--- a/scripts/event/HorntailBattle.js
++++ b/scripts/event/HorntailBattle.js
+@@ -88,7 +88,7 @@ function setEventRewards(eim) {
+ function afterSetup(eim) {}
+ 
+ function setup(channel) {
+-    var eim = em.newInstance("Scarga" + channel);
++    var eim = em.newInstance("Horntail" + channel);     // thanks Thora for reporting an issue with misleading event name here
+     eim.setProperty("canJoin", 1);
+     eim.setProperty("defeatedBoss", 0);
+     eim.setProperty("defeatedHead", 0);
+diff --git a/scripts/event/OrbisPQ.js b/scripts/event/OrbisPQ.js
+index 9ab4462fd..2d11c2c40 100644
+--- a/scripts/event/OrbisPQ.js
++++ b/scripts/event/OrbisPQ.js
+@@ -180,7 +180,7 @@ function playerEntry(eim, player) {
+         player.changeMap(map, map.getPortal(0));
+         
+         var texttt = "Hi, my name is Eak, the Chamberlain of the Goddess. Don't be alarmed; you won't be able to see me right now. Back when the Goddess turned into a block of stone, I simultaneously lost my own power. If you gather up the power of the Magic Cloud of Orbis, however, then I'll be able to recover my body and re-transform back to my original self. Please collect #b20#k Magic Clouds and bring them back to me. Right now, you'll only see me as a tiny, flickering light.";
+-        player.getClient().announce(Packages.tools.MaplePacketCreator.getNPCTalk(2013001, /*(byte)*/ 0, texttt, "00 00", /*(byte)*/ 0));
++        player.getClient().getAbstractPlayerInteraction().npcTalk(2013001, texttt);
+ }
+ 
+ function scheduledTimeout(eim) {
+diff --git a/scripts/npc/1012104.js b/scripts/npc/1012104.js
+index d00ec8f20..8f075f6ac 100644
+--- a/scripts/npc/1012104.js
++++ b/scripts/npc/1012104.js
+@@ -45,13 +45,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1012105.js b/scripts/npc/1012105.js
+index c928d6662..0e052b6dd 100644
+--- a/scripts/npc/1012105.js
++++ b/scripts/npc/1012105.js
+@@ -32,14 +32,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-        if (mode == -1) {
++        if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+                 cm.dispose();
+         } else {
+-                if (mode == 0 && type > 0) {
+-                        cm.dispose();
+-                        return;
+-                }
+-                
+                 if (mode == 1)
+                         status++;
+                 else
+diff --git a/scripts/npc/1012117.js b/scripts/npc/1012117.js
+index 4dd03728d..131f45b7f 100644
+--- a/scripts/npc/1012117.js
++++ b/scripts/npc/1012117.js
+@@ -48,14 +48,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && type > 0) {
+-            cm.dispose();
+-            return;
+-        }
+-        
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1052004.js b/scripts/npc/1052004.js
+index 1a44a73f8..7d2848bf5 100644
+--- a/scripts/npc/1052004.js
++++ b/scripts/npc/1052004.js
+@@ -42,13 +42,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1052005.js b/scripts/npc/1052005.js
+index 40b92bf9f..2e7bd8e5b 100644
+--- a/scripts/npc/1052005.js
++++ b/scripts/npc/1052005.js
+@@ -42,13 +42,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1052100.js b/scripts/npc/1052100.js
+index 2f8a772c1..5be126551 100644
+--- a/scripts/npc/1052100.js
++++ b/scripts/npc/1052100.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1052101.js b/scripts/npc/1052101.js
+index f35f863af..53b5e393b 100644
+--- a/scripts/npc/1052101.js
++++ b/scripts/npc/1052101.js
+@@ -45,13 +45,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/1101001.js b/scripts/npc/1101001.js
+index 783703847..e08c21fb2 100644
+--- a/scripts/npc/1101001.js
++++ b/scripts/npc/1101001.js
+@@ -8,8 +8,10 @@ importPackage(Packages.constants);
+ function start() {
+     if (cm.getPlayer().isCygnus() && GameConstants.getJobBranch(cm.getJob()) > 2) {
+         cm.useItem(2022458);
++        cm.sendOk("Let me cast you my blessings, my Knight. Please protect the world of Maple....");
++    } else {
++        cm.sendOk("Don't stop training. Every ounce of your energy is required to protect the world of Maple....");
+     }
+     
+-    cm.sendOk("Don't stop training. Every ounce of your energy is required to protect the world of Maple....");
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/2010001.js b/scripts/npc/2010001.js
+index 64dcfb3bd..ed798b74f 100644
+--- a/scripts/npc/2010001.js
++++ b/scripts/npc/2010001.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2010002.js b/scripts/npc/2010002.js
+index 9be9a9784..c9dd0e513 100644
+--- a/scripts/npc/2010002.js
++++ b/scripts/npc/2010002.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2012008.js b/scripts/npc/2012008.js
+index 914dd002c..bf7cdcb96 100644
+--- a/scripts/npc/2012008.js
++++ b/scripts/npc/2012008.js
+@@ -31,13 +31,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2040019.js b/scripts/npc/2040019.js
+index cd4ccf470..7ecf6af85 100644
+--- a/scripts/npc/2040019.js
++++ b/scripts/npc/2040019.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2041007.js b/scripts/npc/2041007.js
+index d7c2f8ad2..0cc2197a5 100644
+--- a/scripts/npc/2041007.js
++++ b/scripts/npc/2041007.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2041009.js b/scripts/npc/2041009.js
+index d89c13a6d..af2cd7d99 100644
+--- a/scripts/npc/2041009.js
++++ b/scripts/npc/2041009.js
+@@ -46,13 +46,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2041010.js b/scripts/npc/2041010.js
+index d76e15c5f..adff60bdc 100644
+--- a/scripts/npc/2041010.js
++++ b/scripts/npc/2041010.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2041013.js b/scripts/npc/2041013.js
+index 41f54a444..16f85921d 100644
+--- a/scripts/npc/2041013.js
++++ b/scripts/npc/2041013.js
+@@ -29,13 +29,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+ 		cm.dispose();
+ 	} else {
+-		if (mode == 0 && status == 0) {
+-			cm.dispose();
+-			return;
+-		}
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/2090100.js b/scripts/npc/2090100.js
+index c4e8b8972..60609facb 100644
+--- a/scripts/npc/2090100.js
++++ b/scripts/npc/2090100.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2090101.js b/scripts/npc/2090101.js
+index 9d2350398..92066c7c3 100644
+--- a/scripts/npc/2090101.js
++++ b/scripts/npc/2090101.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2090102.js b/scripts/npc/2090102.js
+index c16055f95..e1980b984 100644
+--- a/scripts/npc/2090102.js
++++ b/scripts/npc/2090102.js
+@@ -32,13 +32,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2090103.js b/scripts/npc/2090103.js
+index 4edf8d6ed..e825cd604 100644
+--- a/scripts/npc/2090103.js
++++ b/scripts/npc/2090103.js
+@@ -51,13 +51,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2090104.js b/scripts/npc/2090104.js
+index ae1138ce4..755f0d8d5 100644
+--- a/scripts/npc/2090104.js
++++ b/scripts/npc/2090104.js
+@@ -51,13 +51,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/2100005.js b/scripts/npc/2100005.js
+index 02dff1f73..015b84765 100644
+--- a/scripts/npc/2100005.js
++++ b/scripts/npc/2100005.js
+@@ -24,14 +24,13 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
++                if (type == 7) {
++                        cm.sendNext("I guess you aren't ready to make the change yet. Let me know when you are!");
++                }
++                
+ 		cm.dispose();
+ 	} else {
+-		if (mode == 0 && status >= 0) {
+-			cm.sendNext("I guess you aren't ready to make the change yet. Let me know when you are!");
+-			cm.dispose();
+-			return;
+-		}
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/2100006.js b/scripts/npc/2100006.js
+index 9e6a054c2..5da564f95 100644
+--- a/scripts/npc/2100006.js
++++ b/scripts/npc/2100006.js
+@@ -24,13 +24,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+ 		cm.dispose();
+ 	} else {
+-		if (mode == 0 && status >= 0) {
+-			cm.dispose();
+-			return;
+-		}
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/2100007.js b/scripts/npc/2100007.js
+index 3fc087cbf..55a32b25c 100644
+--- a/scripts/npc/2100007.js
++++ b/scripts/npc/2100007.js
+@@ -13,13 +13,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+ 		cm.dispose();
+ 	} else {
+-		if (mode == 0 && status >= 0) {
+-			cm.dispose();
+-			return;
+-		}
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/2100008.js b/scripts/npc/2100008.js
+index ac28e0c1b..9fac81c78 100644
+--- a/scripts/npc/2100008.js
++++ b/scripts/npc/2100008.js
+@@ -34,13 +34,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+ 		cm.dispose();
+ 	} else {
+-		if (mode == 0 && status == 0) {
+-			cm.dispose();
+-			return;
+-		}
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/2100009.js b/scripts/npc/2100009.js
+index 5da61a5c5..181a396c8 100644
+--- a/scripts/npc/2100009.js
++++ b/scripts/npc/2100009.js
+@@ -34,14 +34,13 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == -1) {
+-		cm.dispose();
+-	} else {
+-		if (mode == 0 && status == 0) {
++	if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
++                if (type == 7) {
+ 			cm.sendNext("I see...take your time, see if you really want it. Let me know when you make up your mind.");
+-			cm.dispose();
+-			return;
+ 		}
++            
++		cm.dispose();
++	} else {
+ 		if (mode == 1)
+ 			status++;
+ 		else
+diff --git a/scripts/npc/9120100.js b/scripts/npc/9120100.js
+index eb4810a71..5533c582e 100644
+--- a/scripts/npc/9120100.js
++++ b/scripts/npc/9120100.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9120101.js b/scripts/npc/9120101.js
+index 70df6cfea..3a0dee60d 100644
+--- a/scripts/npc/9120101.js
++++ b/scripts/npc/9120101.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9120102.js b/scripts/npc/9120102.js
+index b8bf440aa..52b1e7d27 100644
+--- a/scripts/npc/9120102.js
++++ b/scripts/npc/9120102.js
+@@ -56,13 +56,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9200100.js b/scripts/npc/9200100.js
+index 516d82248..85bc796f4 100644
+--- a/scripts/npc/9200100.js
++++ b/scripts/npc/9200100.js
+@@ -50,15 +50,14 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0)
+-            cm.dispose();
+         if (mode == 1)
+             status++;
+         else
+             status--;
++        
+         if (status == 0)
+             cm.sendSimple("Hi, there~! I'm Dr. Lenu, in charge of the cosmetic lenses here at the Henesys Plastic Surgery Shop! With #b#t5152010##k or #b#t5152013##k, you can let us take care of the rest and have the kind of beautiful look you've always craved~! Remember, the first thing everyone notices about you is the eyes, and we can help you find the cosmetic lens that most fits you! Now, what would you like to use?\r\n#L1#Cosmetic Lenses: #i5152010##t5152010##l\r\n#L2#Cosmetic Lenses: #i5152013##t5152013##l\r\n#L3#One-time Cosmetic Lenses: #i5152103# (any color)#l");
+         else if (status == 1) {
+diff --git a/scripts/npc/9200101.js b/scripts/npc/9200101.js
+index fc5a8a8a6..99532c29b 100644
+--- a/scripts/npc/9200101.js
++++ b/scripts/npc/9200101.js
+@@ -50,13 +50,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9200102.js b/scripts/npc/9200102.js
+index 78ff68ade..69386b776 100644
+--- a/scripts/npc/9200102.js
++++ b/scripts/npc/9200102.js
+@@ -50,13 +50,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201015.js b/scripts/npc/9201015.js
+index 58ecd8a92..3d3ade88b 100644
+--- a/scripts/npc/9201015.js
++++ b/scripts/npc/9201015.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201016.js b/scripts/npc/9201016.js
+index fb1d2d799..1e05472a6 100644
+--- a/scripts/npc/9201016.js
++++ b/scripts/npc/9201016.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201017.js b/scripts/npc/9201017.js
+index 98e225756..d3aa73dfa 100644
+--- a/scripts/npc/9201017.js
++++ b/scripts/npc/9201017.js
+@@ -50,13 +50,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201018.js b/scripts/npc/9201018.js
+index c511102ca..629617315 100644
+--- a/scripts/npc/9201018.js
++++ b/scripts/npc/9201018.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201019.js b/scripts/npc/9201019.js
+index f7c66d73f..4db4bb3c6 100644
+--- a/scripts/npc/9201019.js
++++ b/scripts/npc/9201019.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201039.js b/scripts/npc/9201039.js
+index 491e3b8e0..203cc8de6 100644
+--- a/scripts/npc/9201039.js
++++ b/scripts/npc/9201039.js
+@@ -46,12 +46,12 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
+-        cm.dispose();
+-    } else if (mode == 0) {
+-        cm.sendNext("Ok, I'll give you a minute.");
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
++        if (type == 7) {
++            cm.sendNext("Ok, I'll give you a minute.");
++        }
++        
+         cm.dispose();
+-        return;
+     }
+     status++;
+     if (status == 1) {
+diff --git a/scripts/npc/9201061.js b/scripts/npc/9201061.js
+index 0c61db6b6..bbdb90042 100644
+--- a/scripts/npc/9201061.js
++++ b/scripts/npc/9201061.js
+@@ -42,13 +42,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201062.js b/scripts/npc/9201062.js
+index 228ad43bc..1438423ac 100644
+--- a/scripts/npc/9201062.js
++++ b/scripts/npc/9201062.js
+@@ -49,13 +49,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201063.js b/scripts/npc/9201063.js
+index 47224f97a..d59b5c2cc 100644
+--- a/scripts/npc/9201063.js
++++ b/scripts/npc/9201063.js
+@@ -44,13 +44,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201064.js b/scripts/npc/9201064.js
+index 06e696ea6..7625f74fe 100644
+--- a/scripts/npc/9201064.js
++++ b/scripts/npc/9201064.js
+@@ -43,13 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201065.js b/scripts/npc/9201065.js
+index 94811914e..32049e4b7 100644
+--- a/scripts/npc/9201065.js
++++ b/scripts/npc/9201065.js
+@@ -20,7 +20,7 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ /* Miranda
+-NLC Skin Change.
++        NLC Skin Change.
+ */
+ var status = 0;
+ var price = 1000000;
+@@ -31,13 +31,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201069.js b/scripts/npc/9201069.js
+index fe70fa205..edb97c8e7 100644
+--- a/scripts/npc/9201069.js
++++ b/scripts/npc/9201069.js
+@@ -42,13 +42,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9201070.js b/scripts/npc/9201070.js
+index 92d19f172..70f03ecdf 100644
+--- a/scripts/npc/9201070.js
++++ b/scripts/npc/9201070.js
+@@ -42,13 +42,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) {
++    if (mode < 1) {  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9270023.js b/scripts/npc/9270023.js
+index 45e93e684..656c7c151 100644
+--- a/scripts/npc/9270023.js
++++ b/scripts/npc/9270023.js
+@@ -43,14 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) 
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status >= 0) {
+-            cm.dispose();
+-            return;
+-        }
+-        
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9270024.js b/scripts/npc/9270024.js
+index 605f93f4f..b194e24c8 100644
+--- a/scripts/npc/9270024.js
++++ b/scripts/npc/9270024.js
+@@ -43,14 +43,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode == -1) 
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc 
+         cm.dispose();
+     else {
+-        if (mode == 0 && status >= 0) {
+-            cm.dispose();
+-            return;
+-        }
+-
+         if (mode == 1)
+             status++;
+         else
+diff --git a/scripts/npc/9270025.js b/scripts/npc/9270025.js
+index a6fdc0c2a..84ef57df6 100644
+--- a/scripts/npc/9270025.js
++++ b/scripts/npc/9270025.js
+@@ -32,13 +32,9 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode < 1)
++    if (mode < 1)  // disposing issue with stylishs found thanks to Vcoc
+         cm.dispose();
+     else {
+-        if (mode == 0 && status >= 0) {
+-                cm.dispose();
+-                return;
+-        }
+         if (mode == 1)
+                 status++;
+         else
+diff --git a/scripts/quest/8185.js b/scripts/quest/8185.js
+index b9f949b68..b4623a147 100644
+--- a/scripts/quest/8185.js
++++ b/scripts/quest/8185.js
+@@ -44,7 +44,7 @@ function end(mode, type, selection) {
+                             return;
+                         }
+                     
+-			qm.sendNextPrev("#e#bHey, you did it!#n#k \r\n#rWow!#k Now I could complete my studies on your pet!");
++			qm.sendNext("#e#bHey, you did it!#n#k \r\n#rWow!#k Now I could complete my studies on your pet!");
+ 		} else if (status == 1) {
+ 			if (mode == 0) {
+ 				qm.sendOk("I see... Come back when you wish to do it. I'm really excited to do this.");
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 10662c614..f5db5de78 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -187,7 +187,6 @@
+     private MapleFamily family;
+     private int familyId;
+     private int bookCover;
+-    private int markedMonster = 0;
+     private int battleshipHp = 0;
+     private int mesosTraded = 0;
+     private int possibleReports = 10;
+@@ -2785,11 +2784,6 @@ public void run() {
+                                         deletedCoupon = true;
+                                     }
+                                 } else {
+-                                    if (item.getPetId() > -1) {
+-                                        int petIdx = getPetIndex(item.getPetId());
+-                                        if(petIdx > -1) unequipPet(getPet(petIdx), true);
+-                                    }
+-                                    
+                                     if (ItemConstants.isExpirablePet(item.getItemId())) {
+                                         client.announce(MaplePacketCreator.itemExpired(item.getItemId()));
+                                         toberemove.add(item);
+@@ -4638,10 +4632,6 @@ public int getMapId() {
+         return mapid;
+     }
+ 
+-    public int getMarkedMonster() {
+-        return markedMonster;
+-    }
+-
+     public MapleRing getMarriageRing() {
+         return partnerId > 0 ? marriageRing : null;
+     }
+@@ -8003,10 +7993,10 @@ public void sendPolice(String text) {
+         String message = getName() + " received this - " + text;
+         if (Server.getInstance().isGmOnline(this.getWorld())) { //Alert and log if a GM is online
+             Server.getInstance().broadcastGMMessage(this.getWorld(), MaplePacketCreator.sendYellowTip(message));
+-            FilePrinter.printError("autobanwarning.txt", message + "\r\n");
++            FilePrinter.print(FilePrinter.AUTOBAN_WARNING, message);
+         } else { //Auto DC and log if no GM is online
+             client.disconnect(false, false);
+-            FilePrinter.printError("autobandced.txt", message + "\r\n");
++            FilePrinter.print(FilePrinter.AUTOBAN_DC, message);
+         }
+         //Server.getInstance().broadcastGMMessage(0, MaplePacketCreator.serverNotice(1, getName() + " received this - " + text));
+         //announce(MaplePacketCreator.sendPolice(text));
+@@ -8357,10 +8347,6 @@ public void setMap(int PmapId) {
+     public void setMap(MapleMap newmap) {
+         this.map = newmap;
+     }
+-
+-    public void setMarkedMonster(int markedMonster) {
+-        this.markedMonster = markedMonster;
+-    }
+     
+     public void setMessenger(MapleMessenger messenger) {
+         this.messenger = messenger;
+diff --git a/src/client/autoban/AutobanFactory.java b/src/client/autoban/AutobanFactory.java
+index 32bf79a67..92894c0fe 100644
+--- a/src/client/autoban/AutobanFactory.java
++++ b/src/client/autoban/AutobanFactory.java
+@@ -91,7 +91,7 @@ public void alert(MapleCharacter chr, String reason) {
+ 		Server.getInstance().broadcastGMMessage((chr != null ? chr.getWorld() : 0), MaplePacketCreator.sendYellowTip((chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason));
+             }
+         if (ServerConstants.USE_AUTOBAN_LOG) {
+-			FilePrinter.printError("autobanwarning.txt", (chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason + "\r\n");
++			FilePrinter.print(FilePrinter.AUTOBAN_WARNING, (chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason);
+ 		}
+ 	}
+ 	
+diff --git a/src/client/autoban/AutobanManager.java b/src/client/autoban/AutobanManager.java
+index 6f86cdca2..b9579daae 100644
+--- a/src/client/autoban/AutobanManager.java
++++ b/src/client/autoban/AutobanManager.java
+@@ -58,7 +58,7 @@ public void addPoint(AutobanFactory fac, String reason) {
+         }
+         if (ServerConstants.USE_AUTOBAN_LOG) {
+             // Lets log every single point too.
+-            FilePrinter.printError("autobanwarning.txt", MapleCharacter.makeMapleReadable(chr.getName()) + " caused " + fac.name() + " " + reason + "\r\n");
++            FilePrinter.print(FilePrinter.AUTOBAN_WARNING, MapleCharacter.makeMapleReadable(chr.getName()) + " caused " + fac.name() + " " + reason);
+         }
+     }
+ 
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index 3ddda29c7..701ba30e1 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -113,7 +113,7 @@ public void handle(MapleClient client, String message){
+     private void writeLog(MapleClient client, String command){
+         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+         FilePrinter.print(FilePrinter.USED_COMMANDS, client.getPlayer().getName() + " used: " + command + " on "
+-                + sdf.format(Calendar.getInstance().getTime()) + "\r\n");
++                + sdf.format(Calendar.getInstance().getTime()));
+     }
+ 
+     private void addCommandInfo(String name, Class<? extends Command> commandClass) {
+@@ -262,7 +262,7 @@ private void registerLv3Commands() {
+         addCommand("ignored", 3, IgnoredCommand.class);
+         addCommand("pos", 3, PosCommand.class);
+         addCommand("togglecoupon", 3, ToggleCouponCommand.class);
+-        addCommand("chat", 3, ChatCommand.class);
++        addCommand("togglewhitechat", 3, ChatCommand.class);
+         addCommand("fame", 3, FameCommand.class);
+         addCommand("givenx", 3, GiveNxCommand.class);
+         addCommand("givevp", 3, GiveVpCommand.class);
+diff --git a/src/client/command/commands/gm0/GachaCommand.java b/src/client/command/commands/gm0/GachaCommand.java
+index 5c4ecd46a..44762e9a4 100644
+--- a/src/client/command/commands/gm0/GachaCommand.java
++++ b/src/client/command/commands/gm0/GachaCommand.java
+@@ -61,6 +61,7 @@ public void execute(MapleClient c, String[] params) {
+             }
+         }
+         talkStr += "\r\nPlease keep in mind that there are items that are in all gachapons and are not listed here.";
+-        c.announce(MaplePacketCreator.getNPCTalk(9010000, (byte) 0, talkStr, "00 00", (byte) 0));
++        
++        c.getAbstractPlayerInteraction().npcTalk(9010000, talkStr);
+     }
+ }
+diff --git a/src/client/command/commands/gm0/GmCommand.java b/src/client/command/commands/gm0/GmCommand.java
+index 893b98fa1..906210a63 100644
+--- a/src/client/command/commands/gm0/GmCommand.java
++++ b/src/client/command/commands/gm0/GmCommand.java
+@@ -53,7 +53,7 @@ public void execute(MapleClient c, String[] params) {
+         String message = joinStringFrom(params, 0);
+         Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[GM MESSAGE]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
+         Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(1, message));
+-        FilePrinter.printError("gm.txt", MapleCharacter.makeMapleReadable(player.getName()) + ": " + message + "\r\n");
++        FilePrinter.printError(FilePrinter.COMMAND_GM, MapleCharacter.makeMapleReadable(player.getName()) + ": " + message);
+         player.dropMessage(5, "Your message '" + message + "' was sent to GMs.");
+         player.dropMessage(5, tips[Randomizer.nextInt(tips.length)]);
+     }
+diff --git a/src/client/command/commands/gm0/ReportBugCommand.java b/src/client/command/commands/gm0/ReportBugCommand.java
+index 0654da4f0..06dfff78b 100644
+--- a/src/client/command/commands/gm0/ReportBugCommand.java
++++ b/src/client/command/commands/gm0/ReportBugCommand.java
+@@ -46,7 +46,7 @@ public void execute(MapleClient c, String[] params) {
+         String message = joinStringFrom(params, 0);
+         Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[BUG]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
+         Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(1, message));
+-        FilePrinter.printError("bug.txt", MapleCharacter.makeMapleReadable(player.getName()) + ": " + message + "\r\n");
++        FilePrinter.printError(FilePrinter.COMMAND_BUG, MapleCharacter.makeMapleReadable(player.getName()) + ": " + message);
+         player.dropMessage(5, "Your bug '" + message + "' was submitted successfully to our developers. Thank you!");
+ 
+     }
+diff --git a/src/client/command/commands/gm1/GotoCommand.java b/src/client/command/commands/gm1/GotoCommand.java
+index 4ba8bb5a2..f39df8649 100644
+--- a/src/client/command/commands/gm1/GotoCommand.java
++++ b/src/client/command/commands/gm1/GotoCommand.java
+@@ -50,7 +50,7 @@ public void execute(MapleClient c, String[] params) {
+         }
+ 
+         if (player.getEventInstance() != null || MapleMiniDungeonInfo.isDungeonMap(player.getMapId()) || FieldLimit.CANNOTMIGRATE.check(player.getMap().getFieldLimit()) || !player.isAlive()) {
+-            player.yellowMessage("This command can not be used in this map.");
++            player.dropMessage(1, "This command can not be used in this map.");
+             return;
+         }
+ 
+diff --git a/src/client/command/commands/gm1/WhatDropsFromCommand.java b/src/client/command/commands/gm1/WhatDropsFromCommand.java
+index 7d80c1b60..d8d554121 100644
+--- a/src/client/command/commands/gm1/WhatDropsFromCommand.java
++++ b/src/client/command/commands/gm1/WhatDropsFromCommand.java
+@@ -72,6 +72,7 @@ public void execute(MapleClient c, String[] params) {
+                 output += "\r\n";
+             }
+         }
+-        c.announce(MaplePacketCreator.getNPCTalk(9010000, (byte) 0, output, "00 00", (byte) 0));
++        
++        c.getAbstractPlayerInteraction().npcTalk(9010000, output);
+     }
+ }
+diff --git a/src/client/command/commands/gm1/WhoDropsCommand.java b/src/client/command/commands/gm1/WhoDropsCommand.java
+index 9d4a42800..81f5dd458 100644
+--- a/src/client/command/commands/gm1/WhoDropsCommand.java
++++ b/src/client/command/commands/gm1/WhoDropsCommand.java
+@@ -86,7 +86,8 @@ public void execute(MapleClient c, String[] params) {
+                     player.dropMessage(5, "The item you searched for doesn't exist.");
+                     return;
+                 }
+-                c.announce(MaplePacketCreator.getNPCTalk(9010000, (byte) 0, output, "00 00", (byte) 0));
++                
++                c.getAbstractPlayerInteraction().npcTalk(9010000, output);
+             } finally {
+                 c.releaseClient();
+             }
+diff --git a/src/client/command/commands/gm2/SearchCommand.java b/src/client/command/commands/gm2/SearchCommand.java
+index 31b3e518b..81640584d 100644
+--- a/src/client/command/commands/gm2/SearchCommand.java
++++ b/src/client/command/commands/gm2/SearchCommand.java
+@@ -136,6 +136,6 @@ public void execute(MapleClient c, String[] params) {
+         }
+         sb.append("\r\n#kLoaded within ").append((double) (System.currentTimeMillis() - start) / 1000).append(" seconds.");//because I can, and it's free
+ 
+-        c.announce(MaplePacketCreator.getNPCTalk(9010000, (byte) 0, sb.toString(), "00 00", (byte) 0));
++        c.getAbstractPlayerInteraction().npcTalk(9010000, sb.toString());
+     }
+ }
+diff --git a/src/client/command/commands/gm2/WarpCommand.java b/src/client/command/commands/gm2/WarpCommand.java
+index aee84fc76..ff03a70f1 100644
+--- a/src/client/command/commands/gm2/WarpCommand.java
++++ b/src/client/command/commands/gm2/WarpCommand.java
+@@ -26,7 +26,9 @@
+ import client.command.Command;
+ import client.MapleClient;
+ import client.MapleCharacter;
++import server.maps.FieldLimit;
+ import server.maps.MapleMap;
++import server.maps.MapleMiniDungeonInfo;
+ 
+ public class WarpCommand extends Command {
+     {
+@@ -48,6 +50,11 @@ public void execute(MapleClient c, String[] params) {
+                 return;
+             }
+             
++            if (player.getEventInstance() != null || MapleMiniDungeonInfo.isDungeonMap(player.getMapId()) || FieldLimit.CANNOTMIGRATE.check(player.getMap().getFieldLimit()) || !player.isAlive()) {
++                player.dropMessage(1, "This command cannot be used in this map.");
++                return;
++            }
++            
+             // expedition issue with this command detected thanks to Masterrulax
+             player.saveLocationOnWarp();
+             player.changeMap(target, target.getRandomPlayerSpawnpoint());
+diff --git a/src/client/command/commands/gm3/MusicCommand.java b/src/client/command/commands/gm3/MusicCommand.java
+index 3ca6b4953..9f383d781 100644
+--- a/src/client/command/commands/gm3/MusicCommand.java
++++ b/src/client/command/commands/gm3/MusicCommand.java
+@@ -26,6 +26,7 @@
+ import client.command.Command;
+ import client.MapleClient;
+ import client.MapleCharacter;
++import constants.GameConstants;
+ import tools.MaplePacketCreator;
+ 
+ public class MusicCommand extends Command {
+@@ -33,181 +34,42 @@
+         setDescription("");
+     }
+ 
++    private static String getSongList() {
++        String songList = "Song:\r\n";
++        for (String s : GameConstants.GAME_SONGS) {
++            songList += ("  " + s + "\r\n");
++        }
++        
++        return songList;
++    }
++    
+     @Override
+     public void execute(MapleClient c, String[] params) {
+-        final String[] songs = {
+-                "Jukebox/Congratulation",
+-                "Bgm00/SleepyWood",
+-                "Bgm00/FloralLife",
+-                "Bgm00/GoPicnic",
+-                "Bgm00/Nightmare",
+-                "Bgm00/RestNPeace",
+-                "Bgm01/AncientMove",
+-                "Bgm01/MoonlightShadow",
+-                "Bgm01/WhereTheBarlogFrom",
+-                "Bgm01/CavaBien",
+-                "Bgm01/HighlandStar",
+-                "Bgm01/BadGuys",
+-                "Bgm02/MissingYou",
+-                "Bgm02/WhenTheMorningComes",
+-                "Bgm02/EvilEyes",
+-                "Bgm02/JungleBook",
+-                "Bgm02/AboveTheTreetops",
+-                "Bgm03/Subway",
+-                "Bgm03/Elfwood",
+-                "Bgm03/BlueSky",
+-                "Bgm03/Beachway",
+-                "Bgm03/SnowyVillage",
+-                "Bgm04/PlayWithMe",
+-                "Bgm04/WhiteChristmas",
+-                "Bgm04/UponTheSky",
+-                "Bgm04/ArabPirate",
+-                "Bgm04/Shinin'Harbor",
+-                "Bgm04/WarmRegard",
+-                "Bgm05/WolfWood",
+-                "Bgm05/DownToTheCave",
+-                "Bgm05/AbandonedMine",
+-                "Bgm05/MineQuest",
+-                "Bgm05/HellGate",
+-                "Bgm06/FinalFight",
+-                "Bgm06/WelcomeToTheHell",
+-                "Bgm06/ComeWithMe",
+-                "Bgm06/FlyingInABlueDream",
+-                "Bgm06/FantasticThinking",
+-                "Bgm07/WaltzForWork",
+-                "Bgm07/WhereverYouAre",
+-                "Bgm07/FunnyTimeMaker",
+-                "Bgm07/HighEnough",
+-                "Bgm07/Fantasia",
+-                "Bgm08/LetsMarch",
+-                "Bgm08/ForTheGlory",
+-                "Bgm08/FindingForest",
+-                "Bgm08/LetsHuntAliens",
+-                "Bgm08/PlotOfPixie",
+-                "Bgm09/DarkShadow",
+-                "Bgm09/TheyMenacingYou",
+-                "Bgm09/FairyTale",
+-                "Bgm09/FairyTalediffvers",
+-                "Bgm09/TimeAttack",
+-                "Bgm10/Timeless",
+-                "Bgm10/TimelessB",
+-                "Bgm10/BizarreTales",
+-                "Bgm10/TheWayGrotesque",
+-                "Bgm10/Eregos",
+-                "Bgm11/BlueWorld",
+-                "Bgm11/Aquarium",
+-                "Bgm11/ShiningSea",
+-                "Bgm11/DownTown",
+-                "Bgm11/DarkMountain",
+-                "Bgm12/AquaCave",
+-                "Bgm12/DeepSee",
+-                "Bgm12/WaterWay",
+-                "Bgm12/AcientRemain",
+-                "Bgm12/RuinCastle",
+-                "Bgm12/Dispute",
+-                "Bgm13/CokeTown",
+-                "Bgm13/Leafre",
+-                "Bgm13/Minar'sDream",
+-                "Bgm13/AcientForest",
+-                "Bgm13/TowerOfGoddess",
+-                "Bgm14/DragonLoad",
+-                "Bgm14/HonTale",
+-                "Bgm14/CaveOfHontale",
+-                "Bgm14/DragonNest",
+-                "Bgm14/Ariant",
+-                "Bgm14/HotDesert",
+-                "Bgm15/MureungHill",
+-                "Bgm15/MureungForest",
+-                "Bgm15/WhiteHerb",
+-                "Bgm15/Pirate",
+-                "Bgm15/SunsetDesert",
+-                "Bgm16/Duskofgod",
+-                "Bgm16/FightingPinkBeen",
+-                "Bgm16/Forgetfulness",
+-                "Bgm16/Remembrance",
+-                "Bgm16/Repentance",
+-                "Bgm16/TimeTemple",
+-                "Bgm17/MureungSchool1",
+-                "Bgm17/MureungSchool2",
+-                "Bgm17/MureungSchool3",
+-                "Bgm17/MureungSchool4",
+-                "Bgm18/BlackWing",
+-                "Bgm18/DrillHall",
+-                "Bgm18/QueensGarden",
+-                "Bgm18/RaindropFlower",
+-                "Bgm18/WolfAndSheep",
+-                "Bgm19/BambooGym",
+-                "Bgm19/CrystalCave",
+-                "Bgm19/MushCatle",
+-                "Bgm19/RienVillage",
+-                "Bgm19/SnowDrop",
+-                "Bgm20/GhostShip",
+-                "Bgm20/NetsPiramid",
+-                "Bgm20/UnderSubway",
+-                "Bgm21/2021year",
+-                "Bgm21/2099year",
+-                "Bgm21/2215year",
+-                "Bgm21/2230year",
+-                "Bgm21/2503year",
+-                "Bgm21/KerningSquare",
+-                "Bgm21/KerningSquareField",
+-                "Bgm21/KerningSquareSubway",
+-                "Bgm21/TeraForest",
+-                "BgmEvent/FunnyRabbit",
+-                "BgmEvent/FunnyRabbitFaster",
+-                "BgmEvent/wedding",
+-                "BgmEvent/weddingDance",
+-                "BgmEvent/wichTower",
+-                "BgmGL/amoria",
+-                "BgmGL/Amorianchallenge",
+-                "BgmGL/chapel",
+-                "BgmGL/cathedral",
+-                "BgmGL/Courtyard",
+-                "BgmGL/CrimsonwoodKeep",
+-                "BgmGL/CrimsonwoodKeepInterior",
+-                "BgmGL/GrandmastersGauntlet",
+-                "BgmGL/HauntedHouse",
+-                "BgmGL/NLChunt",
+-                "BgmGL/NLCtown",
+-                "BgmGL/NLCupbeat",
+-                "BgmGL/PartyQuestGL",
+-                "BgmGL/PhantomForest",
+-                "BgmJp/Feeling",
+-                "BgmJp/BizarreForest",
+-                "BgmJp/Hana",
+-                "BgmJp/Yume",
+-                "BgmJp/Bathroom",
+-                "BgmJp/BattleField",
+-                "BgmJp/FirstStepMaster",
+-                "BgmMY/Highland",
+-                "BgmMY/KualaLumpur",
+-                "BgmSG/BoatQuay_field",
+-                "BgmSG/BoatQuay_town",
+-                "BgmSG/CBD_field",
+-                "BgmSG/CBD_town",
+-                "BgmSG/Ghostship",
+-                "BgmUI/ShopBgm",
+-                "BgmUI/Title"
+-        };
++        
+         MapleCharacter player = c.getPlayer();
+         if (params.length < 1) {
+-            player.yellowMessage("Syntax: !music <song>");
+-            for (String s : songs) {
+-                player.yellowMessage(s);
+-            }
++            String sendMsg = "";
++            
++            sendMsg += "Syntax: #r!music <song>#k\r\n\r\n";
++            sendMsg += getSongList();
++            
++            c.announce(MaplePacketCreator.getNPCTalk(1052015, (byte) 0, sendMsg, "00 00", (byte) 0));
+             return;
+         }
++        
+         String song = joinStringFrom(params, 0);
+-        for (String s : songs) {
+-            if (s.equals(song)) {
++        for (String s : GameConstants.GAME_SONGS) {
++            if (s.equalsIgnoreCase(song)) {    // thanks Masterrulax for finding an issue here
+                 player.getMap().broadcastMessage(MaplePacketCreator.musicChange(s));
+-                player.yellowMessage("Now playing song " + song + ".");
+-                break;
++                player.yellowMessage("Now playing song " + s + ".");
++                return;
+             }
+         }
+-        player.yellowMessage("Song not found, please enter a song below.");
+-        for (String s : songs) {
+-            player.yellowMessage(s);
+-        }
++        
++        String sendMsg = "";
++        sendMsg += "Song not found, please enter a song below.\r\n\r\n";
++        sendMsg += getSongList();
++        
++        c.announce(MaplePacketCreator.getNPCTalk(1052015, (byte) 0, sendMsg, "00 00", (byte) 0));
+     }
+ }
+diff --git a/src/client/command/commands/gm4/ProItemCommand.java b/src/client/command/commands/gm4/ProItemCommand.java
+index 40cc7c43a..86ff99636 100644
+--- a/src/client/command/commands/gm4/ProItemCommand.java
++++ b/src/client/command/commands/gm4/ProItemCommand.java
+@@ -45,11 +45,18 @@ public void execute(MapleClient c, String[] params) {
+             player.yellowMessage("Syntax: !proitem <itemid> <stat value> [<spdjmp value>]");
+             return;
+         }
++        
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+         int itemid = Integer.parseInt(params[0]);
++        
++        if(ii.getName(itemid) == null) {
++            player.yellowMessage("Item id '" + params[0] + "' does not exist.");
++            return;
++        }
++        
+         short stat = (short) Math.max(0, Short.parseShort(params[1]));
+         short spdjmp = params.length >= 3 ? (short) Math.max(0, Short.parseShort(params[2])) : 0;
+-
+-        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        
+         MapleInventoryType type = ItemConstants.getInventoryType(itemid);
+         if (type.equals(MapleInventoryType.EQUIP)) {
+             Item it = ii.getEquipById(itemid);
+diff --git a/src/client/command/commands/gm5/DebugCommand.java b/src/client/command/commands/gm5/DebugCommand.java
+index 43d1fc56f..9d1296867 100644
+--- a/src/client/command/commands/gm5/DebugCommand.java
++++ b/src/client/command/commands/gm5/DebugCommand.java
+@@ -64,7 +64,7 @@ public void execute(MapleClient c, String[] params) {
+                     msgTypes += ("#L" + i + "#" + debugTypes[i] + "#l\r\n");
+                 }
+                 
+-                player.announce(MaplePacketCreator.getNPCTalk(9201143, (byte) 0, msgTypes, "00 00", (byte) 0));
++                c.getAbstractPlayerInteraction().npcTalk(9201143, msgTypes);
+                 break;
+             
+             case "monster":
+diff --git a/src/client/creator/CharacterFactory.java b/src/client/creator/CharacterFactory.java
+index a5ebb1257..5227e9006 100644
+--- a/src/client/creator/CharacterFactory.java
++++ b/src/client/creator/CharacterFactory.java
+@@ -28,6 +28,7 @@
+ import constants.ServerConstants;
+ import net.server.Server;
+ import server.MapleItemInformationProvider;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ 
+ /**
+@@ -93,6 +94,7 @@ protected synchronized static int createNewCharacter(MapleClient c, String name,
+                 
+                 Server.getInstance().createCharacterEntry(newchar);
+                 Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[NEW CHAR]: " + c.getAccountName() + " has created a new character with IGN " + name));
++                FilePrinter.print(FilePrinter.CREATED_CHAR + c.getAccountName() + ".txt", c.getAccountName() + " created character with IGN " + name);
+                 
+                 return 0;
+         }        
+diff --git a/src/client/inventory/MaplePet.java b/src/client/inventory/MaplePet.java
+index 2f9b8d3fd..67483cd49 100644
+--- a/src/client/inventory/MaplePet.java
++++ b/src/client/inventory/MaplePet.java
+@@ -81,17 +81,24 @@ public static MaplePet loadFromDb(int itemid, short position, int petid) {
+             return null;
+         }
+     }
+-
+-    public void deleteFromDb() {
++    
++    public static void deleteFromDb(int petid) {
+         try {
+             Connection con = DatabaseConnection.getConnection();
++            
+             PreparedStatement ps = con.prepareStatement("DELETE FROM pets WHERE `petid` = ?");
+-            ps.setInt(1, this.getUniqueId());
++            ps.setInt(1, petid);
+             ps.executeUpdate();
+             ps.close();
++            
++            ps = con.prepareStatement("DELETE FROM petignores WHERE `petid` = ?");  // thanks Vcoc for detecting petignores remaining after deletion
++            ps.setInt(1, petid);
++            ps.executeUpdate();
++            ps.close();
++            
+             con.close();
+             
+-            MapleCashidGenerator.freeCashId(this.getUniqueId());
++            MapleCashidGenerator.freeCashId(petid);
+         } catch (SQLException ex) {
+             ex.printStackTrace();
+         }
+diff --git a/src/client/inventory/manipulator/MapleInventoryManipulator.java b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+index 4e4bdd0c0..bfd9ed9e5 100644
+--- a/src/client/inventory/manipulator/MapleInventoryManipulator.java
++++ b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+@@ -28,6 +28,7 @@
+ import client.inventory.Item;
+ import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
++import client.inventory.MaplePet;
+ import client.inventory.ModifyInventory;
+ import client.newyear.NewYearCardRecord;
+ import constants.ItemConstants;
+@@ -361,14 +362,15 @@ public static void removeFromSlot(MapleClient c, MapleInventoryType type, short
+     }
+ 
+     public static void removeFromSlot(MapleClient c, MapleInventoryType type, short slot, short quantity, boolean fromDrop, boolean consume) {
+-        MapleInventory inv = c.getPlayer().getInventory(type);
++        MapleCharacter chr = c.getPlayer();
++        MapleInventory inv = chr.getInventory(type);
+         Item item = inv.getItem(slot);
+         boolean allowZero = consume && ItemConstants.isRechargeable(item.getItemId());
+         
+         if(type == MapleInventoryType.EQUIPPED) {
+             inv.lockInventory();
+             try {
+-                c.getPlayer().unequippedItem((Equip) item);
++                chr.unequippedItem((Equip) item);
+                 inv.removeItem(slot, quantity, allowZero);
+             } finally {
+                 inv.unlockInventory();
+@@ -376,10 +378,25 @@ public static void removeFromSlot(MapleClient c, MapleInventoryType type, short
+             
+             announceModifyInventory(c, item, fromDrop, allowZero);
+         } else {
+-            inv.removeItem(slot, quantity, allowZero);
++            int petid = item.getPetId();
++            if (petid > -1) { // thanks Vcoc for finding a d/c issue with equipped pets & pets remaining on DB here
++                int petIdx = chr.getPetIndex(petid);
++                if(petIdx > -1) {
++                    MaplePet pet = chr.getPet(petIdx);
++                    chr.unequipPet(pet, true);
++                }
+             
+-            if(type != MapleInventoryType.CANHOLD) {
+-                announceModifyInventory(c, item, fromDrop, allowZero);
++                inv.removeItem(slot, quantity, allowZero);
++                if(type != MapleInventoryType.CANHOLD) {
++                    announceModifyInventory(c, item, fromDrop, allowZero);
++                }
++                
++                MaplePet.deleteFromDb(petid);
++            } else {
++                inv.removeItem(slot, quantity, allowZero);
++                if(type != MapleInventoryType.CANHOLD) {
++                    announceModifyInventory(c, item, fromDrop, allowZero);
++                }
+             }
+         }
+     }
+diff --git a/src/client/processor/AssignSPProcessor.java b/src/client/processor/AssignSPProcessor.java
+index 111ed8ade..a5a4e8ca9 100644
+--- a/src/client/processor/AssignSPProcessor.java
++++ b/src/client/processor/AssignSPProcessor.java
+@@ -53,7 +53,7 @@ public static void SPAssignAction(MapleClient c, int skillid) {
+             boolean isBeginnerSkill = false;
+             if ((!GameConstants.isPqSkillMap(player.getMapId()) && GameConstants.isPqSkill(skillid)) || (!player.isGM() && GameConstants.isGMSkills(skillid)) || (!GameConstants.isInJobTree(skillid, player.getJob().getId()) && !player.isGM())) {
+                 AutobanFactory.PACKET_EDIT.alert(player, "tried to packet edit in distributing sp.");
+-                FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use skill " + skillid + " without it being in their job.\r\n");
++                FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use skill " + skillid + " without it being in their job.");
+                 
+                 final MapleClient client = c;
+                 ThreadManager.getInstance().newTask(new Runnable() {
+diff --git a/src/client/processor/DueyProcessor.java b/src/client/processor/DueyProcessor.java
+index 42b4e005a..b06ffdd3d 100644
+--- a/src/client/processor/DueyProcessor.java
++++ b/src/client/processor/DueyProcessor.java
+@@ -351,7 +351,7 @@ public static void dueySendItem(MapleClient c, byte inventId, short itemPos, sho
+                 final long sendMesos = (long) mesos + fee;
+                 if (mesos < 0 || sendMesos > Integer.MAX_VALUE || (amount < 1 && mesos == 0)) {
+                     AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with duey.");
+-                    FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use duey with mesos " + mesos + " and amount " + amount + "\r\n");           	
++                    FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use duey with mesos " + mesos + " and amount " + amount);
+                     c.disconnect(true, false);
+                     return;
+                 }
+@@ -464,7 +464,7 @@ public static void dueyClaimPackage(MapleClient c, int packageid) {
+                     dp = dueypack;
+                     if(dp == null) {
+                         c.announce(MaplePacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_UNKNOWN_ERROR.getCode()));
+-                        FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to receive package from duey with id " + packageid + "\r\n");
++                        FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to receive package from duey with id " + packageid);
+                         return;
+                     }
+ 
+diff --git a/src/client/processor/FredrickProcessor.java b/src/client/processor/FredrickProcessor.java
+index 96813f671..50cd97f91 100644
+--- a/src/client/processor/FredrickProcessor.java
++++ b/src/client/processor/FredrickProcessor.java
+@@ -94,7 +94,7 @@ public static void fredrickRetrieveItems(MapleClient c) {     // thanks Gustav f
+                             Item item = it.getLeft();
+                             MapleInventoryManipulator.addFromDrop(chr.getClient(), item, false);
+                             String itemName = MapleItemInformationProvider.getInstance().getName(item.getItemId());
+-                            FilePrinter.print(FilePrinter.FREDRICK + chr.getName() + ".txt", chr.getName() + " gained " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")\r\n");
++                            FilePrinter.print(FilePrinter.FREDRICK + chr.getName() + ".txt", chr.getName() + " gained " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")");
+                         }
+ 
+                         chr.announce(MaplePacketCreator.fredrickMessage((byte) 0x1E));
+diff --git a/src/client/processor/SpawnPetProcessor.java b/src/client/processor/SpawnPetProcessor.java
+index 8264cbee8..459fba8b8 100644
+--- a/src/client/processor/SpawnPetProcessor.java
++++ b/src/client/processor/SpawnPetProcessor.java
+@@ -62,7 +62,7 @@ public static void processSpawnPet(MapleClient c, byte slot, boolean lead) {
+                         long expiration = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getExpiration();
+                         MapleInventoryManipulator.removeById(c, MapleInventoryType.CASH, petid, (short) 1, false, false);
+                         MapleInventoryManipulator.addById(c, evolveid, (short) 1, null, petId, expiration);
+-                        pet.deleteFromDb();
++                        MaplePet.deleteFromDb(petId);
+ 
+                         c.announce(MaplePacketCreator.enableActions());
+                         return;
+diff --git a/src/client/processor/StorageProcessor.java b/src/client/processor/StorageProcessor.java
+index 0d8e731eb..77eeafd74 100644
+--- a/src/client/processor/StorageProcessor.java
++++ b/src/client/processor/StorageProcessor.java
+@@ -61,7 +61,7 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                         byte slot = slea.readByte();
+                                         if (slot < 0 || slot > storage.getSlots()) { // removal starts at zero
+                                                 AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with storage.");
+-                                                FilePrinter.print(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to work with storage slot " + slot + "\r\n");
++                                                FilePrinter.print(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to work with storage slot " + slot);
+                                                 c.disconnect(true, false);
+                                                 return;
+                                         }
+@@ -84,7 +84,7 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                                 if (MapleInventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {                
+                                                         item = storage.takeOut(slot);//actually the same but idc
+                                                         String itemName = MapleItemInformationProvider.getInstance().getName(item.getItemId());
+-                                                        FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " took out " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")\r\n");
++                                                        FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " took out " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")");
+                                                         chr.setUsedStorage();
+                                                         MapleKarmaManipulator.toggleKarmaFlagToUntradeable(item);
+                                                         MapleInventoryManipulator.addFromDrop(c, item, false);
+@@ -101,7 +101,7 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                         MapleInventory Inv = chr.getInventory(slotType);
+                                         if (slot < 1 || slot > Inv.getSlotLimit()) { //player inv starts at one
+                                                 AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with storage.");
+-                                                FilePrinter.print(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to store item at slot " + slot + "\r\n");
++                                                FilePrinter.print(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to store item at slot " + slot);
+                                                 c.disconnect(true, false);
+                                                 return;
+                                         }
+@@ -137,7 +137,7 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                                         storage.store(item);
+                                                         storage.sendStored(c, ItemConstants.getInventoryType(itemId));
+                                                         String itemName = MapleItemInformationProvider.getInstance().getName(item.getItemId());
+-                                                        FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " stored " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")\r\n");
++                                                        FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " stored " + item.getQuantity() + " " + itemName + " (" + item.getItemId() + ")");
+                                                         chr.setUsedStorage();
+                                                 }
+                                         }
+@@ -164,7 +164,7 @@ public static void storageAction(SeekableLittleEndianAccessor slea, MapleClient
+                                                 }
+                                                 storage.setMeso(storageMesos - meso);
+                                                 chr.gainMeso(meso, false, true, false);
+-                                                FilePrinter.print(FilePrinter.STORAGE + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + (meso > 0 ? " took out " : " stored ") + Math.abs(meso) + " mesos\r\n");
++                                                FilePrinter.print(FilePrinter.STORAGE + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + (meso > 0 ? " took out " : " stored ") + Math.abs(meso) + " mesos");
+                                                 chr.setUsedStorage();
+                                         } else {
+                                                 c.announce(MaplePacketCreator.enableActions());
+diff --git a/src/constants/GameConstants.java b/src/constants/GameConstants.java
+index 8ca837828..1c5b8c7dd 100644
+--- a/src/constants/GameConstants.java
++++ b/src/constants/GameConstants.java
+@@ -1,5 +1,7 @@
+ package constants;
+ 
++import java.util.ArrayList;
++import java.util.List;
+ import java.util.HashMap;
+ import java.util.Map;
+ import client.MapleJob;
+@@ -102,6 +104,161 @@ public static int getPlayerBonusExpRate(int slot) {
+         put("fm", 910000000);
+     }};
+     
++    public static final List<String> GAME_SONGS = new ArrayList<String>(170) {{
++        add("Jukebox/Congratulation");
++        add("Bgm00/SleepyWood");
++        add("Bgm00/FloralLife");
++        add("Bgm00/GoPicnic");
++        add("Bgm00/Nightmare");
++        add("Bgm00/RestNPeace");
++        add("Bgm01/AncientMove");
++        add("Bgm01/MoonlightShadow");
++        add("Bgm01/WhereTheBarlogFrom");
++        add("Bgm01/CavaBien");
++        add("Bgm01/HighlandStar");
++        add("Bgm01/BadGuys");
++        add("Bgm02/MissingYou");
++        add("Bgm02/WhenTheMorningComes");
++        add("Bgm02/EvilEyes");
++        add("Bgm02/JungleBook");
++        add("Bgm02/AboveTheTreetops");
++        add("Bgm03/Subway");
++        add("Bgm03/Elfwood");
++        add("Bgm03/BlueSky");
++        add("Bgm03/Beachway");
++        add("Bgm03/SnowyVillage");
++        add("Bgm04/PlayWithMe");
++        add("Bgm04/WhiteChristmas");
++        add("Bgm04/UponTheSky");
++        add("Bgm04/ArabPirate");
++        add("Bgm04/Shinin'Harbor");
++        add("Bgm04/WarmRegard");
++        add("Bgm05/WolfWood");
++        add("Bgm05/DownToTheCave");
++        add("Bgm05/AbandonedMine");
++        add("Bgm05/MineQuest");
++        add("Bgm05/HellGate");
++        add("Bgm06/FinalFight");
++        add("Bgm06/WelcomeToTheHell");
++        add("Bgm06/ComeWithMe");
++        add("Bgm06/FlyingInABlueDream");
++        add("Bgm06/FantasticThinking");
++        add("Bgm07/WaltzForWork");
++        add("Bgm07/WhereverYouAre");
++        add("Bgm07/FunnyTimeMaker");
++        add("Bgm07/HighEnough");
++        add("Bgm07/Fantasia");
++        add("Bgm08/LetsMarch");
++        add("Bgm08/ForTheGlory");
++        add("Bgm08/FindingForest");
++        add("Bgm08/LetsHuntAliens");
++        add("Bgm08/PlotOfPixie");
++        add("Bgm09/DarkShadow");
++        add("Bgm09/TheyMenacingYou");
++        add("Bgm09/FairyTale");
++        add("Bgm09/FairyTalediffvers");
++        add("Bgm09/TimeAttack");
++        add("Bgm10/Timeless");
++        add("Bgm10/TimelessB");
++        add("Bgm10/BizarreTales");
++        add("Bgm10/TheWayGrotesque");
++        add("Bgm10/Eregos");
++        add("Bgm11/BlueWorld");
++        add("Bgm11/Aquarium");
++        add("Bgm11/ShiningSea");
++        add("Bgm11/DownTown");
++        add("Bgm11/DarkMountain");
++        add("Bgm12/AquaCave");
++        add("Bgm12/DeepSee");
++        add("Bgm12/WaterWay");
++        add("Bgm12/AcientRemain");
++        add("Bgm12/RuinCastle");
++        add("Bgm12/Dispute");
++        add("Bgm13/CokeTown");
++        add("Bgm13/Leafre");
++        add("Bgm13/Minar'sDream");
++        add("Bgm13/AcientForest");
++        add("Bgm13/TowerOfGoddess");
++        add("Bgm14/DragonLoad");
++        add("Bgm14/HonTale");
++        add("Bgm14/CaveOfHontale");
++        add("Bgm14/DragonNest");
++        add("Bgm14/Ariant");
++        add("Bgm14/HotDesert");
++        add("Bgm15/MureungHill");
++        add("Bgm15/MureungForest");
++        add("Bgm15/WhiteHerb");
++        add("Bgm15/Pirate");
++        add("Bgm15/SunsetDesert");
++        add("Bgm16/Duskofgod");
++        add("Bgm16/FightingPinkBeen");
++        add("Bgm16/Forgetfulness");
++        add("Bgm16/Remembrance");
++        add("Bgm16/Repentance");
++        add("Bgm16/TimeTemple");
++        add("Bgm17/MureungSchool1");
++        add("Bgm17/MureungSchool2");
++        add("Bgm17/MureungSchool3");
++        add("Bgm17/MureungSchool4");
++        add("Bgm18/BlackWing");
++        add("Bgm18/DrillHall");
++        add("Bgm18/QueensGarden");
++        add("Bgm18/RaindropFlower");
++        add("Bgm18/WolfAndSheep");
++        add("Bgm19/BambooGym");
++        add("Bgm19/CrystalCave");
++        add("Bgm19/MushCatle");
++        add("Bgm19/RienVillage");
++        add("Bgm19/SnowDrop");
++        add("Bgm20/GhostShip");
++        add("Bgm20/NetsPiramid");
++        add("Bgm20/UnderSubway");
++        add("Bgm21/2021year");
++        add("Bgm21/2099year");
++        add("Bgm21/2215year");
++        add("Bgm21/2230year");
++        add("Bgm21/2503year");
++        add("Bgm21/KerningSquare");
++        add("Bgm21/KerningSquareField");
++        add("Bgm21/KerningSquareSubway");
++        add("Bgm21/TeraForest");
++        add("BgmEvent/FunnyRabbit");
++        add("BgmEvent/FunnyRabbitFaster");
++        add("BgmEvent/wedding");
++        add("BgmEvent/weddingDance");
++        add("BgmEvent/wichTower");
++        add("BgmGL/amoria");
++        add("BgmGL/Amorianchallenge");
++        add("BgmGL/chapel");
++        add("BgmGL/cathedral");
++        add("BgmGL/Courtyard");
++        add("BgmGL/CrimsonwoodKeep");
++        add("BgmGL/CrimsonwoodKeepInterior");
++        add("BgmGL/GrandmastersGauntlet");
++        add("BgmGL/HauntedHouse");
++        add("BgmGL/NLChunt");
++        add("BgmGL/NLCtown");
++        add("BgmGL/NLCupbeat");
++        add("BgmGL/PartyQuestGL");
++        add("BgmGL/PhantomForest");
++        add("BgmJp/Feeling");
++        add("BgmJp/BizarreForest");
++        add("BgmJp/Hana");
++        add("BgmJp/Yume");
++        add("BgmJp/Bathroom");
++        add("BgmJp/BattleField");
++        add("BgmJp/FirstStepMaster");
++        add("BgmMY/Highland");
++        add("BgmMY/KualaLumpur");
++        add("BgmSG/BoatQuay_field");
++        add("BgmSG/BoatQuay_town");
++        add("BgmSG/CBD_field");
++        add("BgmSG/CBD_town");
++        add("BgmSG/Ghostship");
++        add("BgmUI/ShopBgm");
++        add("BgmUI/Title");
++    }};
++    
+     // MapleStory default keyset
+     private static final int[] DEFAULT_KEY = {18, 65, 2, 23, 3, 4, 5, 6, 16, 17, 19, 25, 26, 27, 31, 34, 35, 37, 38, 40, 43, 44, 45, 46, 50, 56, 59, 60, 61, 62, 63, 64, 57, 48, 29, 7, 24, 33, 41, 39};
+     private static final int[] DEFAULT_TYPE = {4, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 4, 4, 5, 6, 6, 6, 6, 6, 6, 5, 4, 5, 4, 4, 4, 4, 4};
+diff --git a/src/net/server/audit/ThreadTracker.java b/src/net/server/audit/ThreadTracker.java
+index 7ad940f34..319f1bd14 100644
+--- a/src/net/server/audit/ThreadTracker.java
++++ b/src/net/server/audit/ThreadTracker.java
+@@ -198,7 +198,7 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredLockType
+                     dateFormat.setTimeZone(TimeZone.getDefault());
+ 
+                     FilePrinter.printError(FilePrinter.DEADLOCK_STATE, printThreadTrackerState(dateFormat.format(new Date())));
+-                    //FilePrinter.printError(FilePrinter.DEADLOCK_STATE, "[" + dateFormat.format(new Date()) + "] Presenting current lock path for lockid " + lockId.name() + ".\r\n" + printLockStatus(lockId) + "\r\n-------------------------------\r\n");
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_STATE, "[" + dateFormat.format(new Date()) + "] Presenting current lock path for lockid " + lockId.name() + ".\r\n" + printLockStatus(lockId) + "\r\n-------------------------------");
+                 }
+             } else {
+                 long tid = Thread.currentThread().getId();
+diff --git a/src/net/server/audit/locks/active/TrackerReadLock.java b/src/net/server/audit/locks/active/TrackerReadLock.java
+index 22fbc2618..bed688d8f 100644
+--- a/src/net/server/audit/locks/active/TrackerReadLock.java
++++ b/src/net/server/audit/locks/active/TrackerReadLock.java
+@@ -64,7 +64,7 @@ public void lock() {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                 dateFormat.setTimeZone(TimeZone.getDefault());
+ 
+-                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                 ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                 deadlockedState = null;
+             }
+@@ -89,7 +89,7 @@ public boolean tryLock() {
+         if(super.tryLock()) {
+             if(ServerConstants.USE_THREAD_TRACKER) {
+                 if(deadlockedState != null) {
+-                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                     ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                     deadlockedState = null;
+                 }
+diff --git a/src/net/server/audit/locks/active/TrackerReentrantLock.java b/src/net/server/audit/locks/active/TrackerReentrantLock.java
+index c60fe5f89..5a211086f 100644
+--- a/src/net/server/audit/locks/active/TrackerReentrantLock.java
++++ b/src/net/server/audit/locks/active/TrackerReentrantLock.java
+@@ -66,7 +66,7 @@ public void lock() {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                 dateFormat.setTimeZone(TimeZone.getDefault());
+ 
+-                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                 ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                 deadlockedState = null;
+             }
+@@ -91,7 +91,7 @@ public boolean tryLock() {
+         if(super.tryLock()) {
+             if(ServerConstants.USE_THREAD_TRACKER) {
+                 if(deadlockedState != null) {
+-                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                     ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                     deadlockedState = null;
+                 }
+diff --git a/src/net/server/audit/locks/active/TrackerWriteLock.java b/src/net/server/audit/locks/active/TrackerWriteLock.java
+index 82bc42910..dd160fcad 100644
+--- a/src/net/server/audit/locks/active/TrackerWriteLock.java
++++ b/src/net/server/audit/locks/active/TrackerWriteLock.java
+@@ -62,7 +62,7 @@ public void lock() {
+                 DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                 dateFormat.setTimeZone(TimeZone.getDefault());
+ 
+-                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                 ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                 deadlockedState = null;
+             }
+@@ -87,7 +87,7 @@ public boolean tryLock() {
+         if(super.tryLock()) {
+             if(ServerConstants.USE_THREAD_TRACKER) {
+                 if(deadlockedState != null) {
+-                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState));
+                     ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
+                     deadlockedState = null;
+                 }
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index df5168eae..6eecd578d 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -326,8 +326,8 @@ public void run() {
+                     } else if (attack.skill == ILArchMage.ICE_DEMON) {
+                         monster.setTempEffectiveness(Element.FIRE, ElementalEffectiveness.WEAK, SkillFactory.getSkill(ILArchMage.ICE_DEMON).getEffect(player.getSkillLevel(SkillFactory.getSkill(ILArchMage.ICE_DEMON))).getDuration() * 1000);
+                     } else if (attack.skill == Outlaw.HOMING_BEACON || attack.skill == Corsair.BULLSEYE) {
+-                        player.setMarkedMonster(monster.getObjectId());
+-                        player.announce(MaplePacketCreator.giveBuff(1, attack.skill, Collections.singletonList(new Pair<>(MapleBuffStat.HOMING_BEACON, monster.getObjectId()))));
++                        MapleStatEffect beacon = SkillFactory.getSkill(attack.skill).getEffect(player.getSkillLevel(attack.skill));
++                        beacon.applyBeaconBuff(player, monster.getObjectId());
+                     } else if (attack.skill == Outlaw.FLAME_THROWER) {
+                         if (!monster.isBoss()) {
+                             Skill type = SkillFactory.getSkill(Outlaw.FLAME_THROWER);
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index 6ad2bd372..34fbcc7ec 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -172,7 +172,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     return;
+                 }
+                 if (chr.getStorage().gainSlots(4)) {
+-                    FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " bought 4 slots to their account storage.\r\n");
++                    FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " bought 4 slots to their account storage.");
+                     chr.setUsedStorage();
+                     
+                     c.announce(MaplePacketCreator.showBoughtStorageSlots(chr.getStorage().getSlots()));
+@@ -187,7 +187,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     return;
+                 }
+                 if (chr.getStorage().gainSlots(8)) {    // thanks ABaldParrot & Thora for detecting storage issues here
+-                    FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " bought 8 slots to their account storage.\r\n");
++                    FilePrinter.print(FilePrinter.STORAGE + c.getAccountName() + ".txt", c.getPlayer().getName() + " bought 8 slots to their account storage.");
+                     chr.setUsedStorage();
+                     
+                     c.announce(MaplePacketCreator.showBoughtStorageSlots(chr.getStorage().getSlots()));
+diff --git a/src/net/server/channel/handlers/GeneralChatHandler.java b/src/net/server/channel/handlers/GeneralChatHandler.java
+index beacc5959..5fbea4eb4 100644
+--- a/src/net/server/channel/handlers/GeneralChatHandler.java
++++ b/src/net/server/channel/handlers/GeneralChatHandler.java
+@@ -43,7 +43,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+                 if (s.length() > Byte.MAX_VALUE && !chr.isGM()) {
+                         AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit in General Chat.");
+-                        FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + s.length() + "\r\n");
++                        FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + s.length());
+                         c.disconnect(true, false);
+                         return;
+                 }
+diff --git a/src/net/server/channel/handlers/GiveFameHandler.java b/src/net/server/channel/handlers/GiveFameHandler.java
+index c8c11a794..fadf9f8e6 100644
+--- a/src/net/server/channel/handlers/GiveFameHandler.java
++++ b/src/net/server/channel/handlers/GiveFameHandler.java
+@@ -43,7 +43,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             return;
+         } else if (famechange != 1 && famechange != -1) {
+             AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit fame.");
+-            FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to fame hack with famechange " + famechange + "\r\n");
++            FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to fame hack with famechange " + famechange);
+             c.disconnect(true, false);
+             return;
+         }
+diff --git a/src/net/server/channel/handlers/ItemPickupHandler.java b/src/net/server/channel/handlers/ItemPickupHandler.java
+index 988d2fc0c..fca88aae9 100644
+--- a/src/net/server/channel/handlers/ItemPickupHandler.java
++++ b/src/net/server/channel/handlers/ItemPickupHandler.java
+@@ -49,7 +49,7 @@ public final void handlePacket(final SeekableLittleEndianAccessor slea, final Ma
+         Point charPos = chr.getPosition();
+         Point obPos = ob.getPosition();
+         if (Math.abs(charPos.getX() - obPos.getX()) > 800 || Math.abs(charPos.getY() - obPos.getY()) > 600) {
+-            FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to pick up an item too far away. Mapid: " + chr.getMapId() + " Player pos: " + charPos + " Object pos: " + obPos + "\r\n");
++            FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to pick up an item too far away. Mapid: " + chr.getMapId() + " Player pos: " + charPos + " Object pos: " + obPos);
+             return;
+         }
+         
+diff --git a/src/net/server/channel/handlers/KeymapChangeHandler.java b/src/net/server/channel/handlers/KeymapChangeHandler.java
+index f7762d40d..5613ddaef 100644
+--- a/src/net/server/channel/handlers/KeymapChangeHandler.java
++++ b/src/net/server/channel/handlers/KeymapChangeHandler.java
+@@ -51,7 +51,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                                                         isBanndedSkill = GameConstants.bannedBindSkills(skill.getId());
+                                                         if (isBanndedSkill || (!c.getPlayer().isGM() && GameConstants.isGMSkills(skill.getId())) || (!GameConstants.isInJobTree(skill.getId(), c.getPlayer().getJob().getId()) && !c.getPlayer().isGM())) { //for those skills are are "technically" in the beginner tab, like bamboo rain in Dojo or skills you find in PYPQ
+                                                                 //AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit keymapping.");
+-                                                                //FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use skill " + skill.getId() + "\r\n");
++                                                                //FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to use skill " + skill.getId());
+                                                                 //c.disconnect(true, false);
+                                                                 //return;
+ 
+diff --git a/src/net/server/channel/handlers/MultiChatHandler.java b/src/net/server/channel/handlers/MultiChatHandler.java
+index af883d8ad..8924774c3 100644
+--- a/src/net/server/channel/handlers/MultiChatHandler.java
++++ b/src/net/server/channel/handlers/MultiChatHandler.java
+@@ -50,7 +50,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         String chattext = slea.readMapleAsciiString();
+         if (chattext.length() > Byte.MAX_VALUE && !player.isGM()) {
+         	AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit chats.");
+-        	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + chattext.length() + "\r\n");
++        	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + chattext.length());
+         	c.disconnect(true, false);
+         	return;
+         }	
+diff --git a/src/net/server/channel/handlers/NPCShopHandler.java b/src/net/server/channel/handlers/NPCShopHandler.java
+index d59fe2816..1598df933 100644
+--- a/src/net/server/channel/handlers/NPCShopHandler.java
++++ b/src/net/server/channel/handlers/NPCShopHandler.java
+@@ -41,7 +41,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             short quantity = slea.readShort();
+             if (quantity < 1) {
+             	AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit a npc shop.");
+-            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to buy quantity " + quantity + " of item id " + itemId + "\r\n");
++            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to buy quantity " + quantity + " of item id " + itemId);
+             	c.disconnect(true, false);
+             	return;
+             }
+diff --git a/src/net/server/channel/handlers/NPCTalkHandler.java b/src/net/server/channel/handlers/NPCTalkHandler.java
+index aeaa78ade..64f5a3b7f 100644
+--- a/src/net/server/channel/handlers/NPCTalkHandler.java
++++ b/src/net/server/channel/handlers/NPCTalkHandler.java
+@@ -67,7 +67,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     boolean hasNpcScript = NPCScriptManager.getInstance().start(c, npc.getId(), oid, null);
+                     if (!hasNpcScript) {
+                         if (!npc.hasShop()) {
+-                            FilePrinter.printError(FilePrinter.NPC_UNCODED, "NPC " + npc.getName() + "(" + npc.getId() + ") is not coded.\r\n");
++                            FilePrinter.printError(FilePrinter.NPC_UNCODED, "NPC " + npc.getName() + "(" + npc.getId() + ") is not coded.");
+                             return;
+                         } else if(c.getPlayer().getShop() != null) {
+                             c.announce(MaplePacketCreator.enableActions());
+diff --git a/src/net/server/channel/handlers/PetChatHandler.java b/src/net/server/channel/handlers/PetChatHandler.java
+index e7cd00324..448583b5f 100644
+--- a/src/net/server/channel/handlers/PetChatHandler.java
++++ b/src/net/server/channel/handlers/PetChatHandler.java
+@@ -45,7 +45,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         String text = slea.readMapleAsciiString();
+         if (text.length() > Byte.MAX_VALUE) {
+         	AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with pets.");
+-        	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + text.length() + "\r\n");
++        	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + text.length());
+         	c.disconnect(true, false);
+         	return;
+         }
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index 44a70242a..d674c85ac 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -577,7 +577,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     int slot = slea.readShort();
+                     if (slot >= shop.getItems().size() || slot < 0) {
+                         AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to packet edit with a player shop.");
+-                        FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to remove item at slot " + slot + "\r\n");
++                        FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to remove item at slot " + slot);
+                         c.disconnect(true, false);
+                         return;
+                     }
+@@ -609,7 +609,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 short quantity = slea.readShort();
+                 if (quantity < 1) {
+                     AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to packet edit with a hired merchant and or player shop.");
+-                    FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to buy item " + itemid + " with quantity " + quantity + "\r\n");
++                    FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to buy item " + itemid + " with quantity " + quantity);
+                     c.disconnect(true, false);
+                     return;
+                 }
+@@ -635,7 +635,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     int slot = slea.readShort();
+                     if (slot >= merchant.getItems().size() || slot < 0) {
+                         AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to packet edit with a hired merchant.");
+-                        FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to remove item at slot " + slot + "\r\n");
++                        FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to remove item at slot " + slot);
+                         c.disconnect(true, false);
+                         return;
+                     }
+diff --git a/src/net/server/channel/handlers/PlayerMapTransitionHandler.java b/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
+index da797948e..af7ccc57b 100644
+--- a/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
++++ b/src/net/server/channel/handlers/PlayerMapTransitionHandler.java
+@@ -20,8 +20,14 @@
+ 
+ package net.server.channel.handlers;
+ 
++import client.MapleBuffStat;
++import client.MapleCharacter;
+ import client.MapleClient;
++import java.util.Collections;
++import java.util.List;
+ import net.AbstractMaplePacketHandler;
++import tools.MaplePacketCreator;
++import tools.Pair;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ /**
+@@ -32,6 +38,15 @@
+     
+     @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-        c.getPlayer().setMapTransitionComplete();
++        MapleCharacter chr = c.getPlayer();
++        chr.setMapTransitionComplete();
++        
++        int beaconid = chr.getBuffSource(MapleBuffStat.HOMING_BEACON);
++        if (beaconid != -1) {
++            chr.cancelBuffStats(MapleBuffStat.HOMING_BEACON);
++            
++            final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.HOMING_BEACON, 0));
++            chr.announce(MaplePacketCreator.giveBuff(1, beaconid, stat));
++        }
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/server/channel/handlers/SpecialMoveHandler.java b/src/net/server/channel/handlers/SpecialMoveHandler.java
+index 1ad186209..1fb868d34 100644
+--- a/src/net/server/channel/handlers/SpecialMoveHandler.java
++++ b/src/net/server/channel/handlers/SpecialMoveHandler.java
+@@ -54,7 +54,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         /*
+         if ((!GameConstants.isPqSkillMap(chr.getMapId()) && GameConstants.isPqSkill(skillid)) || (!chr.isGM() && GameConstants.isGMSkills(skillid)) || (!GameConstants.isInJobTree(skillid, chr.getJob().getId()) && !chr.isGM())) {
+         	AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to packet edit skills.");
+-        	FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to use skill " + skillid + " without it being in their job.\r\n");
++        	FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to use skill " + skillid + " without it being in their job.");
+     		c.disconnect(true, false);
+             return;
+         }
+diff --git a/src/net/server/channel/handlers/WhisperHandler.java b/src/net/server/channel/handlers/WhisperHandler.java
+index 3be5be386..d3e35f78d 100644
+--- a/src/net/server/channel/handlers/WhisperHandler.java
++++ b/src/net/server/channel/handlers/WhisperHandler.java
+@@ -56,7 +56,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             }
+             if (text.length() > Byte.MAX_VALUE && !player.isGM()) {
+             	AutobanFactory.PACKET_EDIT.alert(c.getPlayer(), c.getPlayer().getName() + " tried to packet edit with whispers.");
+-            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + text.length() + "\r\n");
++            	FilePrinter.printError(FilePrinter.EXPLOITS + c.getPlayer().getName() + ".txt", c.getPlayer().getName() + " tried to send text with length of " + text.length());
+             	c.disconnect(true, false);
+             	return;
+             }
+diff --git a/src/net/server/handlers/login/DeleteCharHandler.java b/src/net/server/handlers/login/DeleteCharHandler.java
+index ae64c2d3d..5220c9ea3 100644
+--- a/src/net/server/handlers/login/DeleteCharHandler.java
++++ b/src/net/server/handlers/login/DeleteCharHandler.java
+@@ -35,7 +35,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         int cid = slea.readInt();
+         if (c.checkPic(pic)) {
+             if(c.deleteCharacter(cid, c.getAccID())) {
+-                FilePrinter.print(FilePrinter.DELETED_CHARACTERS + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid + "\r\n");			
++                FilePrinter.print(FilePrinter.DELETED_CHAR + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid);
+                 c.announce(MaplePacketCreator.deleteCharResponse(cid, 0));
+             } else {
+                 c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x14));
+diff --git a/src/net/server/worker/CouponWorker.java b/src/net/server/worker/CouponWorker.java
+index 8e460c14b..484c4b225 100644
+--- a/src/net/server/worker/CouponWorker.java
++++ b/src/net/server/worker/CouponWorker.java
+@@ -34,7 +34,7 @@ public void run() {
+             Server.getInstance().updateActiveCoupons();
+             Server.getInstance().commitActiveCoupons();
+         } catch(SQLException sqle) {
+-            FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Unexpected SQL error: " + sqle.getMessage() + "\n\n");
++            FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Unexpected SQL error: " + sqle.getMessage());
+         }
+     }
+ }
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index fedd04026..6b3363ef8 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -450,7 +450,6 @@ public Item evolvePet(byte slot, int afterId) {
+             }
+             
+             Item tmp = gainItem(afterId, (short) 1, false, true, period, target);
+-            getPlayer().unequipPet(target, true, false);
+             
+             /*
+             evolved = MaplePet.loadFromDb(tmp.getItemId(), tmp.getPosition(), tmp.getPetId());
+diff --git a/src/scripting/quest/QuestScriptManager.java b/src/scripting/quest/QuestScriptManager.java
+index 7b94add55..c599a943f 100644
+--- a/src/scripting/quest/QuestScriptManager.java
++++ b/src/scripting/quest/QuestScriptManager.java
+@@ -67,7 +67,7 @@ public void start(MapleClient c, short questid, int npc) {
+                                         if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+                                                 iv = getInvocable("quest/medalQuest.js", c);
+                                         } else {
+-                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.\r\n");
++                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "START Quest " + questid + " is uncoded.");
+                                         }
+                                 }
+                                 if (iv == null || QuestScriptManager.getInstance() == null) {
+@@ -122,7 +122,7 @@ public void end(MapleClient c, short questid, int npc) {
+                                         if(GameConstants.isMedalQuest(questid)) {   // start generic medal quest
+                                                 iv = getInvocable("quest/medalQuest.js", c);
+                                         } else {
+-                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.\r\n");
++                                                FilePrinter.printError(FilePrinter.QUEST_UNCODED, "END Quest " + questid + " is uncoded.");
+                                                 qm.dispose();
+                                                 return;
+                                         }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 7a5853f4d..8416453e1 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -1659,7 +1659,7 @@ public boolean canWearEquipment(MapleCharacter chr, Equip equip, int dst) {
+             String itemName = MapleItemInformationProvider.getInstance().getName(equip.getItemId());
+             Server.getInstance().broadcastGMMessage(chr.getWorld(), MaplePacketCreator.sendYellowTip("[WARNING]: " + chr.getName() + " tried to equip " + itemName + " into slot " + dst + "."));
+             AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to forcibly equip an item.");
+-            FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to equip " + itemName + " into " + dst + " slot.\r\n");      	
++            FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to equip " + itemName + " into " + dst + " slot.");
+             return false;
+         }
+         
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 05c6ee24b..6db3bd234 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1016,6 +1016,14 @@ public final void applyComboBuff(final MapleCharacter applyto, int combo) {
+         applyto.registerEffect(this, starttime, Long.MAX_VALUE, false);
+     }
+     
++    public final void applyBeaconBuff(final MapleCharacter applyto, int objectid) { // thanks Thora & Hyun for reporting an issue with homing beacon autoflagging mobs when changing maps
++        final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.HOMING_BEACON, objectid));
++        applyto.announce(MaplePacketCreator.giveBuff(1, sourceid, stat));
++
++        final long starttime = Server.getInstance().getCurrentTime();
++        applyto.registerEffect(this, starttime, Long.MAX_VALUE, false);
++    }
++    
+     public void updateBuffEffect(MapleCharacter target, List<Pair<MapleBuffStat, Integer>> activeStats, long starttime) {
+         int localDuration = getBuffLocalDuration();
+         localDuration = alchemistModifyVal(target, localDuration, false);
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 9482cc2de..5b4d1fff5 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -1952,7 +1952,7 @@ public void sendPackets(MapleClient c) {
+             } else if (monster.getId() == 9400326 || monster.getId() == 9400331 || monster.getId() == 9400336) {
+                 monsterItemDrop(monster, monster.getDropPeriodTime());
+             } else {
+-                FilePrinter.printError(FilePrinter.UNHANDLED_EVENT, "UNCODED TIMED MOB DETECTED: " + monster.getId() + "\r\n");
++                FilePrinter.printError(FilePrinter.UNHANDLED_EVENT, "UNCODED TIMED MOB DETECTED: " + monster.getId());
+             }
+         }
+         
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index 4ae5a1241..cef5a64c2 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -11,55 +11,67 @@
+ public class FilePrinter {
+ 
+     public static final String 
+-            ACCOUNT_STUCK = "accountStuck.txt",
+-            EXCEPTION_CAUGHT = "exceptionCaught.txt",
+-            CLIENT_START = "clientStartError.txt",
+-            ADD_PLAYER = "addPlayer.txt",
+-            MAPLE_MAP = "mapleMap.txt",
+-            ERROR38 = "error38.txt",
+-            PACKET_LOG = "log.txt",
+-            CASHITEM_BOUGHT = "cashlog.txt",
+-            EXCEPTION = "exceptions.txt",
+-            SQL_EXCEPTION = "sqlexceptions.txt",
+-            PACKET_HANDLER = "PacketHandler/",
+-            PORTAL = "portals/",
+-            PORTAL_STUCK = "portalblocks/",
+-            NPC = "npcs/",
+-            INVOCABLE = "invocable/",
+-            REACTOR = "reactors/",
+-            QUEST = "quests/",
+-            ITEM = "items/",
+-            MOB_MOVEMENT = "mobmovement.txt",
+-            MAP_SCRIPT = "mapscript/",
+-            DIRECTION = "directions/",
+-            SAVE_CHAR = "saveToDB.txt",
+-            INSERT_CHAR = "insertCharacter.txt",
+-            LOAD_CHAR = "loadCharFromDB.txt",
+-            UNHANDLED_EVENT = "doesNotExist.txt",
+-            SESSION = "sessions.txt",
+-            EXPLOITS = "exploits/",
+-            STORAGE = "storage/",
+-            PACKET_LOGS = "packetlogs/",
+-            DELETED_CHARACTERS = "deletedchars/",
+-            FREDRICK = "fredrick/",
+-            NPC_UNCODED = "uncodedNPCs.txt",
+-            QUEST_UNCODED = "uncodedQuests.txt",
+-            AUTOSAVING_CHARACTER = "saveCharAuto.txt",
+-            SAVING_CHARACTER = "saveChar.txt",
+-            USED_COMMANDS = "usedCommands.txt",
+-            DEADLOCK_ERROR = "deadlocks.txt",
+-            DEADLOCK_STACK = "deadlocks/path.txt",
+-            DEADLOCK_LOCKS = "deadlocks/locks.txt",
+-            DEADLOCK_STATE = "deadlocks/state.txt",
+-            DISPOSED_LOCKS = "deadlocks/disposed.txt";
++            AUTOBAN_WARNING = "game/AutoBanWarning.txt",    // log naming version by Vcoc
++            AUTOBAN_DC = "game/AutoBanDC.txt",
++            ACCOUNT_STUCK = "players/AccountStuck.txt",
++            COMMAND_GM = "reports/Gm.txt",
++            COMMAND_BUG = "reports/Bug.txt",
++            LOG_TRADE = "interactions/Trades.txt",
++            LOG_EXPEDITION = "interactions/Expeditions.txt",
++            LOG_LEAF = "interactions/MapleLeaves.txt",
++            LOG_GACHAPON = "interactions/Gachapon.txt",
++            LOG_CHAT = "interactions/ChatLog.txt",
++            EXCEPTION_CAUGHT = "game/ExceptionCaught.txt",
++            CLIENT_START = "game/ClientStartError.txt",
++            MAPLE_MAP = "game/MapleMap.txt",
++            ERROR38 = "game/Error38.txt",
++            PACKET_LOG = "game/Log.txt",
++            CASHITEM_BOUGHT = "interactions/CashLog.txt",
++            EXCEPTION = "game/Exceptions.txt",
++            SQL_EXCEPTION = "game/SqlExceptions.txt",
++            PACKET_HANDLER = "game/packethandler/",
++            PORTAL = "game/portals/",
++            PORTAL_STUCK = "game/portalblocks/",
++            NPC = "game/npcs/",
++            INVOCABLE = "game/invocable/",
++            REACTOR = "game/reactors/",
++            QUEST = "game/quests/",
++            ITEM = "game/items/",
++            MOB_MOVEMENT = "game/MobMovement.txt",
++            MAP_SCRIPT = "game/mapscript/",
++            DIRECTION = "game/directions/",
++            SAVE_CHAR = "players/SaveToDB.txt",
++            INSERT_CHAR = "players/InsertCharacter.txt",
++            LOAD_CHAR = "players/LoadCharFromDB.txt",
++            CREATED_CHAR = "players/createdchars/",
++            DELETED_CHAR = "players/deletedchars/",
++            UNHANDLED_EVENT = "game/DoesNotExist.txt",
++            SESSION = "players/Sessions.txt",
++            EXPLOITS = "game/exploits/",
++            STORAGE = "game/storage/",
++            PACKET_LOGS = "game/packetlogs/",
++            FREDRICK = "game/npcs/fredrick/",
++            NPC_UNCODED = "game/npcs/UncodedNPCs.txt",
++            QUEST_UNCODED = "game/quests/UncodedQuests.txt",
++            AUTOSAVING_CHARACTER = "players/SaveCharAuto.txt",
++            SAVING_CHARACTER = "players/SaveChar.txt",
++            USED_COMMANDS = "commands/UsedCommands.txt",
++            DEADLOCK_ERROR = "deadlocks/Deadlocks.txt",
++            DEADLOCK_STACK = "deadlocks/Path.txt",
++            DEADLOCK_LOCKS = "deadlocks/Locks.txt",
++            DEADLOCK_STATE = "deadlocks/State.txt",
++            DISPOSED_LOCKS = "deadlocks/Disposed.txt";
+     
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //for file system purposes, it's nice to use yyyy-MM-dd
+     private static final String FILE_PATH = "logs/" + sdf.format(Calendar.getInstance().getTime()) + "/"; // + sdf.format(Calendar.getInstance().getTime()) + "/"
+     private static final String ERROR = "error/";
+ 
+     public static void printError(final String name, final Throwable t) {
++        String stringT = getString(t);
++        
+     	System.out.println("Error thrown: " + name);
+-    	System.out.println(getString(t));
++    	System.out.println(stringT);
++        System.out.println();
+         FileOutputStream out = null;
+         final String file = FILE_PATH + ERROR + name;
+         try {
+@@ -68,8 +80,9 @@ public static void printError(final String name, final Throwable t) {
+                 outputFile.getParentFile().mkdirs();
+             }
+             out = new FileOutputStream(file, true);
+-            out.write(getString(t).getBytes());
+-            out.write("\n---------------------------------\r\n".getBytes());
++            out.write(stringT.getBytes());
++            out.write("\r\n---------------------------------\r\n".getBytes());
++            out.write("\r\n".getBytes()); // thanks Vcoc for suggesting review body log structure
+         } catch (IOException ess) {
+             ess.printStackTrace();
+         } finally {
+@@ -84,8 +97,11 @@ public static void printError(final String name, final Throwable t) {
+     }
+ 
+     public static void printError(final String name, final Throwable t, final String info) {
++        String stringT = getString(t);
++        
+     	System.out.println("Error thrown: " + name);
+-    	System.out.println(getString(t));
++    	System.out.println(stringT);
++        System.out.println();
+         FileOutputStream out = null;
+         final String file = FILE_PATH + ERROR + name;
+         try {
+@@ -95,8 +111,9 @@ public static void printError(final String name, final Throwable t, final String
+             }
+             out = new FileOutputStream(file, true);
+             out.write((info + "\r\n").getBytes());
+-            out.write(getString(t).getBytes());
+-            out.write("\n---------------------------------\r\n".getBytes());
++            out.write(stringT.getBytes());
++            out.write("\r\n---------------------------------\r\n".getBytes());
++            out.write("\r\n".getBytes());
+         } catch (IOException ess) {
+             ess.printStackTrace();
+         } finally {
+@@ -113,6 +130,7 @@ public static void printError(final String name, final Throwable t, final String
+     public static void printError(final String name, final String s) {
+     	System.out.println("Error thrown: " + name);
+     	System.out.println(s);
++        System.out.println();
+         FileOutputStream out = null;
+         final String file = FILE_PATH + ERROR + name;
+         try {
+@@ -122,7 +140,8 @@ public static void printError(final String name, final String s) {
+             }
+             out = new FileOutputStream(file, true);
+             out.write(s.getBytes());
+-            //out.write("\n---------------------------------\n".getBytes());
++            //out.write("\r\n---------------------------------\r\n".getBytes());
++            out.write("\r\n".getBytes());
+         } catch (IOException ess) {
+             ess.printStackTrace();
+         } finally {
+@@ -143,6 +162,7 @@ public static void print(final String name, final String s) {
+     public static void print(final String name, final String s, boolean line) {
+     	System.out.println("Log: " + name);
+     	System.out.println(s);
++        System.out.println();
+         FileOutputStream out = null;
+         String file = FILE_PATH + name;
+         try {
+@@ -152,10 +172,10 @@ public static void print(final String name, final String s, boolean line) {
+             }
+             out = new FileOutputStream(file, true);
+             out.write(s.getBytes());
+-            out.write("\r\n".getBytes());
+             if (line) {
+-                out.write("---------------------------------\r\n".getBytes());
++                out.write("\r\n---------------------------------\r\n".getBytes());
+             }
++            out.write("\r\n".getBytes());
+         } catch (IOException ess) {
+             ess.printStackTrace();
+         } finally {
+diff --git a/src/tools/LogHelper.java b/src/tools/LogHelper.java
+index f1ec04361..f34d6422b 100644
+--- a/src/tools/LogHelper.java
++++ b/src/tools/LogHelper.java
+@@ -6,9 +6,6 @@
+ 
+ import client.MapleClient;
+ import net.server.Server;
+-import net.server.channel.Channel;
+-import net.server.world.MapleParty;
+-import net.server.world.MaplePartyCharacter;
+ import server.MapleItemInformationProvider;
+ import server.MapleTrade;
+ import server.expeditions.MapleExpedition;
+@@ -34,7 +31,7 @@ public static void logTrade(MapleTrade trade1, MapleTrade trade2) {
+ 			log += item.getQuantity() + " " + itemName + " from " + name2 + " to " + name1 + " \r\n";;
+ 		}
+ 		log += "\r\n\r\n";
+-		FilePrinter.print("trades.txt", log);
++		FilePrinter.print(FilePrinter.LOG_TRADE, log);
+ 	}
+ 
+ 	public static void logExpedition(MapleExpedition expedition) {
+@@ -50,8 +47,8 @@ public static void logExpedition(MapleExpedition expedition) {
+ 		for (String message: expedition.getBossLogs()){
+ 			log += message;
+ 		}
+-		log += "\r\n\r\n";
+-		FilePrinter.print("expeditions.txt", log);
++		log += "\r\n";
++		FilePrinter.print(FilePrinter.LOG_EXPEDITION, log);
+ 	}
+ 	
+ 	public static String getTimeString(long then){
+@@ -63,20 +60,20 @@ public static String getTimeString(long then){
+ 
+ 	public static void logLeaf(MapleCharacter player, boolean gotPrize, String operation) {
+ 		String timeStamp = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss").format(new Date());
+-		String log = player.getName() + (gotPrize ? " used a maple leaf to buy " + operation : " redeemed " + operation + " VP for a leaf") + " - " + timeStamp + "\r\n";
+-		FilePrinter.print("mapleleaves.txt", log);
++		String log = player.getName() + (gotPrize ? " used a maple leaf to buy " + operation : " redeemed " + operation + " VP for a leaf") + " - " + timeStamp;
++		FilePrinter.print(FilePrinter.LOG_LEAF, log);
+ 	}
+ 	
+ 	public static void logGacha(MapleCharacter player, int itemid, String map) {
+ 		String itemName = MapleItemInformationProvider.getInstance().getName(itemid);
+ 		String timeStamp = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss").format(new Date());
+-		String log = player.getName() + " got a " + itemName + "(" + itemid + ") from the " + map + " gachapon. - " + timeStamp + "\r\n";
+-		FilePrinter.print("gachapon.txt", log);
++		String log = player.getName() + " got a " + itemName + "(" + itemid + ") from the " + map + " gachapon. - " + timeStamp;
++		FilePrinter.print(FilePrinter.LOG_GACHAPON, log);
+ 	}
+ 
+ 	public static void logChat(MapleClient player, String chatType, String text){
+ 		SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+-		FilePrinter.print("chat.txt", "[" + sdf.format(Calendar.getInstance().getTime()) + "] (" + chatType + ") " +player.getPlayer().getName() + ": " + text + "\r\n");
++		FilePrinter.print(FilePrinter.LOG_CHAT, "[" + sdf.format(Calendar.getInstance().getTime()) + "] (" + chatType + ") " +player.getPlayer().getName() + ": " + text);
+ 	}
+ 
+ }
+diff --git a/src/tools/MapleLogger.java b/src/tools/MapleLogger.java
+index 389d15952..2ee01e104 100644
+--- a/src/tools/MapleLogger.java
++++ b/src/tools/MapleLogger.java
+@@ -49,7 +49,7 @@ public static void logRecv(MapleClient c, short packetId, Object message) {
+ 			return;
+ 		}
+ 		String packet = op.toString() + "\r\n" + HexTool.toString((byte[]) message);
+-		FilePrinter.printError(FilePrinter.PACKET_LOGS + c.getAccountName() + "-" + c.getPlayer().getName() + ".txt", packet + "\r\n\r\n");
++		FilePrinter.printError(FilePrinter.PACKET_LOGS + c.getAccountName() + "-" + c.getPlayer().getName() + ".txt", packet);
+ 	}
+ 	
+ 	private static final boolean isRecvBlocked(RecvOpcode op){
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index ecca589eb..c9dde3513 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -120,7 +120,7 @@
+ public class MaplePacketCreator {
+ 
+         public static final List<Pair<MapleStat, Integer>> EMPTY_STATUPDATE = Collections.emptyList();
+-        private final static long FT_UT_OFFSET = 116444592000000000L; // EDT
++        private final static long FT_UT_OFFSET = 116444628000000000L;
+         private final static long DEFAULT_TIME = 150842304000000000L;//00 80 05 BB 46 E6 17 02
+         public final static long ZERO_TIME = 94354848000000000L;//00 40 E0 FD 3B 37 4F 01
+         private final static long PERMANENT = 150841440000000000L; // 00 C0 9B 90 7D E5 17 02
+@@ -363,7 +363,7 @@ private static void addQuestInfo(final MaplePacketLittleEndianWriter mplew, Mapl
+         }
+ 
+         private static void addExpirationTime(final MaplePacketLittleEndianWriter mplew, long time) {
+-                mplew.writeLong(getTime(time));
++                mplew.writeLong(getTime(time)); // offset expiration time issue found thanks to Thora
+         }
+ 
+         private static void addItemInfo(final MaplePacketLittleEndianWriter mplew, Item item) {
+@@ -1064,8 +1064,8 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.write(spawnPoint);
+                 mplew.writeShort(chr.getHp());
+                 mplew.writeBool(false);
+-                mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(8);
++                mplew.writeLong(0);                 // getTime(Server.getInstance().getCurrentTime())?
++                mplew.skip(ServerConstants.DEBUG_VALUES[0]);
+                 return mplew.getPacket();
+         }
+         
+@@ -1081,8 +1081,8 @@ public int compare(Pair<MapleStat, Integer> o1, Pair<MapleStat, Integer> o2) {
+                 mplew.writeBool(true);
+                 mplew.writeInt(spawnPosition.x);    // spawn position placement thanks to Arnah (Vertisy)
+                 mplew.writeInt(spawnPosition.y);
+-                mplew.writeLong(getTime(Server.getInstance().getCurrentTime()));
+-                mplew.skip(8);
++                mplew.writeLong(0);                 // getTime(Server.getInstance().getCurrentTime())?
++                mplew.skip(ServerConstants.DEBUG_VALUES[0]);
+                 return mplew.getPacket();
+         }
+         
+@@ -2867,7 +2867,7 @@ private static int doubleToShortBits(double d) {
+                 mplew.write(1);
+                 mplew.writeShort(quest);
+                 mplew.write(2);
+-                mplew.writeLong(time);
++                mplew.writeLong(getTime(time));
+                 return mplew.getPacket();
+         }
+ 
+diff --git a/wz/Mob.wz/9400638.img.xml b/wz/Mob.wz/9400638.img.xml
+index bc2b4946c..48531a527 100644
+--- a/wz/Mob.wz/9400638.img.xml
++++ b/wz/Mob.wz/9400638.img.xml
+@@ -18,7 +18,7 @@
+     <float name="fs" value="10.0"/>
+     <int name="summonType" value="1"/>
+     <string name="elemAttr" value="S1H3"/>
+-    <int name="firstAttack" value="1"/>
++    <int name="firstAttack" value="0"/>
+   </imgdir>
+   <imgdir name="move">
+     <canvas name="0" width="99" height="126">
+diff --git a/wz/Mob.wz/9400639.img.xml b/wz/Mob.wz/9400639.img.xml
+index 88a82167e..ee46fb8a1 100644
+--- a/wz/Mob.wz/9400639.img.xml
++++ b/wz/Mob.wz/9400639.img.xml
+@@ -17,7 +17,7 @@
+     <int name="pushed" value="1"/>
+     <float name="fs" value="10.0"/>
+     <int name="summonType" value="1"/>
+-    <int name="firstAttack" value="1"/>
++    <int name="firstAttack" value="0"/>
+   </imgdir>
+   <imgdir name="move">
+     <canvas name="0" width="132" height="127">
+diff --git a/wz/Mob.wz/9400640.img.xml b/wz/Mob.wz/9400640.img.xml
+index 3e1a602f9..2511b500e 100644
+--- a/wz/Mob.wz/9400640.img.xml
++++ b/wz/Mob.wz/9400640.img.xml
+@@ -17,7 +17,7 @@
+     <int name="pushed" value="1200"/>
+     <float name="fs" value="10.0"/>
+     <int name="summonType" value="1"/>
+-    <int name="firstAttack" value="1"/>
++    <int name="firstAttack" value="0"/>
+   </imgdir>
+   <imgdir name="move">
+     <canvas name="0" width="82" height="86">
+diff --git a/wz/String.wz/Skill.img.xml b/wz/String.wz/Skill.img.xml
+index eba9f463a..76726b3df 100644
+--- a/wz/String.wz/Skill.img.xml
++++ b/wz/String.wz/Skill.img.xml
+@@ -8702,26 +8702,26 @@
+   <imgdir name="5121003">
+     <string name="name" value="Super Transformation"/>
+     <string name="desc" value="Increases power to extreme levels for 120 seconds. \nAvailable skills : Changes have been made so that while using the Viper skill, Super Transform, you can now use all skills excluding the Oak Barrel and the Double Fire. \nRequired Skill : #cLevel 20 of Transformation#"/>
+-    <string name="h1" value="MP -22; weapon &amp; magic att. +41, waiting time until next use : 740 sec."/>
+-    <string name="h2" value="MP -24; weapon &amp; magic att. +42, waiting time until next use : 720 sec."/>
+-    <string name="h3" value="MP -26; weapon &amp; magic att. +43, waiting time until next use : 700 sec."/>
+-    <string name="h4" value="MP -28; weapon &amp; magic att. +44, waiting time until next use : 680 sec."/>
+-    <string name="h5" value="MP -30; weapon &amp; magic att. +45, waiting time until next use : 660 sec."/>
+-    <string name="h6" value="MP -32; weapon &amp; magic att. +46, waiting time until next use : 640 sec."/>
+-    <string name="h7" value="MP -34; weapon &amp; magic att. +47, waiting time until next use : 620 sec."/>
+-    <string name="h8" value="MP -36; weapon &amp; magic att. +48, waiting time until next use : 600 sec."/>
+-    <string name="h9" value="MP -38; weapon &amp; magic att. +49, waiting time until next use : 580 sec."/>
+-    <string name="h10" value="MP -40; weapon &amp; magic att. +50, waiting time until next use : 560 sec."/>
+-    <string name="h11" value="MP -42; weapon &amp; magic att. +51, waiting time until next use : 540 sec."/>
+-    <string name="h12" value="MP -44; weapon &amp; magic att. +52, waiting time until next use : 520 sec."/>
+-    <string name="h13" value="MP -46; weapon &amp; magic att. +53, waiting time until next use : 500 sec."/>
+-    <string name="h14" value="MP -48; weapon &amp; magic att. +54, waiting time until next use : 480 sec."/>
+-    <string name="h15" value="MP -50; weapon &amp; magic att. +55, waiting time until next use : 460 sec."/>
+-    <string name="h16" value="MP -52; weapon &amp; magic att. +56, waiting time until next use : 440 sec."/>
+-    <string name="h17" value="MP -54; weapon &amp; magic att. +57, waiting time until next use : 420 sec."/>
+-    <string name="h18" value="MP -56; weapon &amp; magic att. +58, waiting time until next use : 400 sec."/>
+-    <string name="h19" value="MP -58; weapon &amp; magic att. +59, waiting time until next use : 380 sec."/>
+-    <string name="h20" value="MP -60; weapon &amp; magic att. +60, waiting time until next use : 360 sec."/>
++    <string name="h1" value="MP -22; weapon &amp; magic def. +41, waiting time until next use : 740 sec."/>
++    <string name="h2" value="MP -24; weapon &amp; magic def. +42, waiting time until next use : 720 sec."/>
++    <string name="h3" value="MP -26; weapon &amp; magic def. +43, waiting time until next use : 700 sec."/>
++    <string name="h4" value="MP -28; weapon &amp; magic def. +44, waiting time until next use : 680 sec."/>
++    <string name="h5" value="MP -30; weapon &amp; magic def. +45, waiting time until next use : 660 sec."/>
++    <string name="h6" value="MP -32; weapon &amp; magic def. +46, waiting time until next use : 640 sec."/>
++    <string name="h7" value="MP -34; weapon &amp; magic def. +47, waiting time until next use : 620 sec."/>
++    <string name="h8" value="MP -36; weapon &amp; magic def. +48, waiting time until next use : 600 sec."/>
++    <string name="h9" value="MP -38; weapon &amp; magic def. +49, waiting time until next use : 580 sec."/>
++    <string name="h10" value="MP -40; weapon &amp; magic def. +50, waiting time until next use : 560 sec."/>
++    <string name="h11" value="MP -42; weapon &amp; magic def. +51, waiting time until next use : 540 sec."/>
++    <string name="h12" value="MP -44; weapon &amp; magic def. +52, waiting time until next use : 520 sec."/>
++    <string name="h13" value="MP -46; weapon &amp; magic def. +53, waiting time until next use : 500 sec."/>
++    <string name="h14" value="MP -48; weapon &amp; magic def. +54, waiting time until next use : 480 sec."/>
++    <string name="h15" value="MP -50; weapon &amp; magic def. +55, waiting time until next use : 460 sec."/>
++    <string name="h16" value="MP -52; weapon &amp; magic def. +56, waiting time until next use : 440 sec."/>
++    <string name="h17" value="MP -54; weapon &amp; magic def. +57, waiting time until next use : 420 sec."/>
++    <string name="h18" value="MP -56; weapon &amp; magic def. +58, waiting time until next use : 400 sec."/>
++    <string name="h19" value="MP -58; weapon &amp; magic def. +59, waiting time until next use : 380 sec."/>
++    <string name="h20" value="MP -60; weapon &amp; magic def. +60, waiting time until next use : 360 sec."/>
+   </imgdir>
+   <imgdir name="5121004">
+     <string name="name" value="Demolition"/>

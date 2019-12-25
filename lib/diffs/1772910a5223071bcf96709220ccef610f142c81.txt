@@ -1,0 +1,98 @@
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index ca9b17156..645d8bada 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
+   `email` varchar(45) DEFAULT NULL,
+   `ip` text,
+   `rewardpoints` int(11) NOT NULL DEFAULT '0',
++  `votepoints` int(11) NOT NULL DEFAULT '0',
+   `hwid` varchar(12) NOT NULL DEFAULT '',
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `name` (`name`),
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 9fdf031b5..55089dd75 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1160,12 +1160,12 @@ public int getVotePoints(){
+ 		int points = 0;
+ 		try {
+                         Connection con = DatabaseConnection.getConnection();
+-			PreparedStatement ps = con.prepareStatement("SELECT `votes` FROM accounts WHERE id = ?");
++			PreparedStatement ps = con.prepareStatement("SELECT `votepoints` FROM accounts WHERE id = ?");
+ 			ps.setInt(1, accId);
+ 			ResultSet rs = ps.executeQuery();
+ 
+ 			if (rs.next()) {
+-				points = rs.getInt("votes");
++				points = rs.getInt("votepoints");
+ 			}
+ 			ps.close();
+ 			rs.close();
+@@ -1196,7 +1196,7 @@ public void useVotePoints(int points){
+ 	private void saveVotePoints() {
+ 		try {
+ 			Connection con = DatabaseConnection.getConnection();
+-			try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET votes = ? WHERE id = ?")) {
++			try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET votepoints = ? WHERE id = ?")) {
+ 				ps.setInt(1, votePoints);
+ 				ps.setInt(2, accId);
+ 				ps.executeUpdate();
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index edd7fcd06..012a784ef 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -184,7 +184,7 @@ private void registerLv0Commands(){
+         addCommand("online", OnlineCommand.class);
+         addCommand("gm", GmCommand.class);
+         addCommand("reportbug", ReportBugCommand.class);
+-        //addCommand("points", "");
++        addCommand("points", ReadPointsCommand.class);
+         addCommand("joinevent", JoinEventCommand.class);
+         addCommand("leaveevent", LeaveEventCommand.class);
+         addCommand("ranks", RanksCommand.class);
+diff --git a/src/client/command/commands/gm0/ReadPointsCommand.java b/src/client/command/commands/gm0/ReadPointsCommand.java
+new file mode 100644
+index 000000000..319451978
+--- /dev/null
++++ b/src/client/command/commands/gm0/ReadPointsCommand.java
+@@ -0,0 +1,38 @@
++package client.command.commands.gm0;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.command.Command;
++
++public class ReadPointsCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient client, String[] params) {
++
++        MapleCharacter player = client.getPlayer();
++        if (params.length > 2) {
++            player.yellowMessage("Syntax: @points (rp|vp|all)");
++            return;
++        } else if (params.length == 0) {
++            player.yellowMessage("RewardPoints: " + player.getRewardPoints() + " | "
++                    + "VotePoints: " + player.getClient().getVotePoints());
++            return;
++        }
++
++        switch (params[0]) {
++            case "rp":
++                player.yellowMessage("RewardPoints: " + player.getRewardPoints());
++                break;
++            case "vp":
++                player.yellowMessage("VotePoints: " + player.getClient().getVotePoints());
++                break;
++            default:
++                player.yellowMessage("RewardPoints: " + player.getRewardPoints() + " | "
++                        + "VotePoints: " + player.getClient().getVotePoints());
++                break;
++        }
++    }
++}
+\ No newline at end of file

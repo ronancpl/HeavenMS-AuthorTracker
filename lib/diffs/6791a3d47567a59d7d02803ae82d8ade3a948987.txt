@@ -1,0 +1,1946 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 26c6b9028..cab8a4306 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -148,4 +148,7 @@ Diversas pequenas altera
+ 10 Abril 2017,
+ Navio de Crimson Balrogs agora são renderizados na tela, mesmo depois de mudar de mapas.
+ Adição de client alternativo: MapleStory sem Damage Cap.
+-Adição de expedições PiratePQ e EllinPQ.
+\ No newline at end of file
++Adição de expedições PiratePQ e EllinPQ.
++
++11 - 12 Abril 2017,
++Implementação do PiratePQ.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 4ce607c8f..9b44440cf 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,7 +3,7 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/server/life/MobSkill.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/Ellin.js b/scripts/event/Ellin.js
+index 882d42771..576581133 100644
+--- a/scripts/event/Ellin.js
++++ b/scripts/event/Ellin.js
+@@ -1,4 +1,5 @@
+ var minPlayers = 2;
++var entryMap = 930000000;
+ 
+ function init() {
+         em.setProperty("state", "0");
+@@ -26,7 +27,7 @@ function setup(level, leaderid) {
+ }
+ 
+ function playerEntry(eim, player) {
+-        var map = eim.getMapInstance(0);
++        var map = eim.getMapInstance(entryMap);
+         player.changeMap(map, map.getPortal(0));
+ }
+ 
+diff --git a/scripts/event/PiratePQ.js b/scripts/event/PiratePQ.js
+index a8228dc96..5b3d9f535 100644
+--- a/scripts/event/PiratePQ.js
++++ b/scripts/event/PiratePQ.js
+@@ -1,20 +1,26 @@
+ var isPq = true;
+ var minPlayers = 1;
++var entryMap = 925100000;
++var exitMap = 925100700;
+ 
+ function init() {
+-em.setProperty("state", "0");
++        em.setProperty("state", "0");
+ 	em.setProperty("leader", "true");
+ }
+ 
+ function setup(level, leaderid) {
+-em.setProperty("state", "1");
++        em.setProperty("state", "1");
+ 	em.setProperty("leader", "true");
+-    var eim = em.newInstance("Pirate" + leaderid);
++        var eim = em.newInstance("Pirate" + leaderid);
+ 	em.setProperty("stage2", "0");
+-	em.setProperty("stage2a", "0");
++        em.setProperty("stage2a", "0");
+ 	em.setProperty("stage3a", "0");
++        em.setProperty("stage2b", "0");
++	em.setProperty("stage3b", "0");
+ 	em.setProperty("stage4", "0");
+ 	em.setProperty("stage5", "0");
++        em.setProperty("level", level);
++        em.setProperty("openedChests", "0");
+         eim.setInstanceMap(925100000).resetPQ(level);
+ 	eim.setInstanceMap(925100100).resetPQ(level);
+ 	var map = eim.setInstanceMap(925100200);
+@@ -85,24 +91,27 @@ em.setProperty("state", "1");
+ 	eim.setInstanceMap(925100302).resetPQ(level);
+ 	eim.setInstanceMap(925100400).resetPQ(level);
+ 	eim.setInstanceMap(925100500).resetPQ(level);
+-
+-    eim.startEventTimer(1200000); //20 mins
+-    return eim;
++        
++        respawnStg4(eim);
++        eim.startEventTimer(1200000); //20 mins
++        return eim;
+ }
+ 
+ function playerEntry(eim, player) {
+-    var map = eim.getMapInstance(0);
++    var map = eim.getMapInstance(entryMap);
+     player.changeMap(map, map.getPortal(0));
+-    player.tryPartyQuest(1204);
+-}
+-
+-function playerRevive(eim, player) {
+ }
+ 
+ function scheduledTimeout(eim) {
+     end(eim);
+ }
+ 
++function removePlayer(eim, player) {
++    eim.unregisterPlayer(player);
++    player.getMap().removePlayer(player);
++    player.setMap(exitMap);
++}
++
+ function changedMap(eim, player, mapid) {
+     if (mapid < 925100000 || mapid > 925100500) {
+ 	eim.unregisterPlayer(player);
+@@ -114,42 +123,86 @@ function changedMap(eim, player, mapid) {
+     }
+ }
+ 
++function playerDead(eim, player) {}
++
++function playerRevive(eim, player) { // player presses ok on the death pop up.
++    if (eim.isLeader(player) || party.size() <= minPlayers) { // Check for party leader
++        var party = eim.getPlayers();
++        for (var i = 0; i < party.size(); i++)
++            playerExit(eim, party.get(i));
++        eim.dispose();
++    } else
++        playerExit(eim, player);
++}
++
++
+ function playerDisconnected(eim, player) {
+-    return 0;
++    var party = eim.getPlayers();
++    if (eim.isLeader(player) || party.size() < minPlayers) {
++        var party = eim.getPlayers();
++        for (var i = 0; i < party.size(); i++)
++            if (party.get(i).equals(player))
++                removePlayer(eim, player);
++            else
++                playerExit(eim, party.get(i));
++        eim.dispose();
++    } else
++        removePlayer(eim, player);
+ }
+ 
+-function monsterValue(eim, mobId) {
+-    return 1;
++function leftParty(eim, player) {
++    var party = eim.getPlayers();
++    if (party.size() < minPlayers) {
++        for (var i = 0; i < party.size(); i++)
++            playerExit(eim,party.get(i));
++        eim.dispose();
++    } else
++        playerExit(eim, player);
++}
++
++function disbandParty(eim) {
++    var party = eim.getPlayers();
++    for (var i = 0; i < party.size(); i++) {
++        playerExit(eim, party.get(i));
++    }
++    eim.dispose();
+ }
+ 
+ function playerExit(eim, player) {
+     eim.unregisterPlayer(player);
++    player.changeMap(exitMap, exitMap.getPortal(0));
++}
+ 
+-    if (eim.disposeIfPlayerBelow(0, 0)) {
+-	em.setProperty("state", "0");
+-		em.setProperty("leader", "true");
+-	}
++function monsterValue(eim, mobId) {
++    return 1;
+ }
+ 
+ function end(eim) {
+-    eim.disposeIfPlayerBelow(100, 925100700);
+-	em.setProperty("state", "0");
+-		em.setProperty("leader", "true");
++    var party = eim.getPlayers();
++    for (var i = 0; i < party.size(); i++) {
++        playerExit(eim, party.get(i));
++    }
++    eim.dispose();
+ }
+ 
+ function clearPQ(eim) {
+     end(eim);
+ }
+ 
+-function allMonstersDead(eim) {
+-}
++function allMonstersDead(eim) {}
+ 
+-function leftParty (eim, player) {
+-    // If only 2 players are left, uncompletable:
+-	end(eim);
++function cancelSchedule() {}
++
++function respawnStg4(eim) {
++        //if(em.getProperty("stage4") == "0") {
++                eim.getMapInstance(925100400).instanceMapRespawn();
++                em.schedule("respawnStg4", eim, 10 * 1000);
++        //}
+ }
+-function disbandParty (eim) {
+-	end(eim);
++
++function dispose(eim) {
++    em.cancelSchedule();
++    
++    em.setProperty("state", "0");
++    em.setProperty("leader", "true");
+ }
+-function playerDead(eim, player) {}
+-function cancelSchedule() {}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2041029.js b/scripts/npc/world0/2041029.js
+new file mode 100644
+index 000000000..e5c61c464
+--- /dev/null
++++ b/scripts/npc/world0/2041029.js
+@@ -0,0 +1,27 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++function start() {
++    cm.sendOk("Up ahead is the mysterious forest of Elin. Go through #bthe portal of time#k if you are ready to unveil some of the mysteries of the past of Victoria Island, as how it used to be at it's dawn.");
++    cm.dispose();
++}
++	
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2094000.js b/scripts/npc/world0/2094000.js
+index b4c8dd037..ecaf90c50 100644
+--- a/scripts/npc/world0/2094000.js
++++ b/scripts/npc/world0/2094000.js
+@@ -78,7 +78,7 @@ function action(mode, type, selection) {
+                         cm.dispose();
+                     }
+                     else {
+-                        em.startInstance(cm.getParty(),cm.getPlayer().getMap());
++                        em.startInstance(cm.getParty(),cm.getPlayer().getMap(), 1);
+                         party = cm.getParty().getMembers();
+                     }
+                     cm.dispose();
+diff --git a/scripts/npc/world0/2094001.js b/scripts/npc/world0/2094001.js
+index 8907244d8..d7f3ecc05 100644
+--- a/scripts/npc/world0/2094001.js
++++ b/scripts/npc/world0/2094001.js
+@@ -19,7 +19,77 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
++
++var status = -1;
++
+ function start() {
+-    cm.warp(100000000, 0);
+-    cm.dispose();
+-}
+\ No newline at end of file
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode == 1)
++	status++;
++    else
++	status--;
++    if (status == 0) {
++	cm.removeAll(4001117);
++	cm.removeAll(4001120);
++	cm.removeAll(4001121);
++	cm.removeAll(4001122);
++	cm.sendSimple("#b#L0#Get me out of here.#l\r\n#L1#Give me Pirate Hat.#l#k");
++    } else if (status == 1) {
++	if (selection == 0) {
++		if (!cm.canHold(4001129, 1)) {
++			cm.sendOk("Please make room in ETC.");
++			cm.dispose();
++			return;
++		}
++		cm.gainItem(4001129, 1);
++                cm.warp(251010404,0);
++	} else { //TODO JUMP
++		if (cm.haveItem(1003267, 1)) {
++			cm.sendOk("You have the best hat.");
++		} else if (cm.haveItem(1002573, 1)) {
++		    if (cm.haveItem(4001129, 20)) {	
++				if (cm.canHold(1003267,1)) {
++					cm.gainItem(1002573, -1);
++					cm.gainItem(4001129, -20);
++                                        cm.gainItem(1003267,1);
++					cm.sendOk("I have given you the hat.");
++                                } else {
++					cm.sendOk("Please make room.");
++                                } 
++		    } else {
++				cm.sendOk("You need 20 #t4001129# to get the next hat.");
++		    }
++		} else if (cm.haveItem(1002572, 1)) {
++		    if (cm.haveItem(4001129, 20)) {	
++				if (cm.canHold(1002573,1)) {
++					cm.gainItem(1002572, -1);
++					cm.gainItem(4001129, -20);
++		    	    cm.gainItem(1002573,1);
++					cm.sendOk("I have given you the hat.");
++		    	} else {
++					cm.sendOk("Please make room.");
++		        } 
++		    } else {
++				cm.sendOk("You need 20 #t4001129# to get the next hat.");
++		    }
++		} else {
++		    if (cm.haveItem(4001129, 20)) {	
++				if (cm.canHold(1002572,1)) {
++					cm.gainItem(4001129, -20);
++		    	    cm.gainItem(1002572,1);
++					cm.sendOk("I have given you the hat.");
++		    	} else {
++					cm.sendOk("Please make room.");
++		        } 
++		    } else {
++				cm.sendOk("You need 20 #t4001129# to get the next hat.");
++		    }
++		}
++	}
++	cm.dispose();
++    }
++}
+diff --git a/scripts/npc/world0/2094002.js b/scripts/npc/world0/2094002.js
+new file mode 100644
+index 000000000..f1c8339ef
+--- /dev/null
++++ b/scripts/npc/world0/2094002.js
+@@ -0,0 +1,129 @@
++var status = -1;
++var level = 1;
++
++function start() {
++    action(1,0,0);
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	status--;
++    }
++    if (cm.getPlayer().getMapId() == 925100700) {
++	cm.removeAll(4001117);
++	cm.removeAll(4001120);
++	cm.removeAll(4001121);
++	cm.removeAll(4001122);
++	cm.warp(251010404,0);
++	cm.dispose();
++	return;
++    }
++    var em = cm.getEventManager("PiratePQ");
++    if (em == null) {
++	cm.sendNext("The event isn't started...");
++	cm.dispose();
++	return;
++    }
++    
++    level = em.getProperty("level");
++    if (!cm.isLeader()) {
++	cm.sendNext("I wish for your leader to talk to me.");
++	cm.dispose();
++	return;
++    }
++    switch(cm.getPlayer().getMapId()) {
++	case 925100000:
++	   cm.sendNext("We are heading into the Pirate Ship now! To get in, we must destroy all the monsters guarding it.");
++	   cm.dispose();
++	   break;
++	case 925100100:
++	   var emp = em.getProperty("stage2");
++	   if (emp == null) {
++		em.setProperty("stage2", "0");
++		emp = "0";
++	   }
++	   if (emp.equals("0")) {
++		if (cm.haveItem(4001120,20)) {
++		    cm.sendNext("Excellent! Now hunt me 20 Rising Medals.");
++		    cm.gainItem(4001120,-20);
++                    cm.getMap().killAllMonsters();
++		    em.setProperty("stage2", "1");
++		} else {
++	   	    cm.sendNext("We are heading into the Pirate Ship now! To get in, we must qualify ourselves as noble pirates. Hunt me 20 Rookie Medals.");
++                    if(cm.countMonster() < 1) cm.getPlayer().getMap().spawnAllMonsterIdFromMapSpawnList(9300114, level, true);
++		}
++	   } else if (emp.equals("1")) {
++		if (cm.haveItem(4001121,20)) {
++		    cm.sendNext("Excellent! Now hunt me 20 Veteran Medals.");
++		    cm.gainItem(4001121,-20);
++                    cm.getMap().killAllMonsters();
++		    em.setProperty("stage2", "2");
++		} else {
++	   	    cm.sendNext("We are heading into the Pirate Ship now! To get in, we must qualify ourselves as noble pirates. Hunt me 20 Rising Medals.");
++                    if(cm.countMonster() < 1) cm.getPlayer().getMap().spawnAllMonsterIdFromMapSpawnList(9300115, level, true);
++		}
++	   } else if (emp.equals("2")) {
++		if (cm.haveItem(4001122,20)) {
++		    cm.sendNext("Excellent! Now let us go.");
++		    cm.gainItem(4001122,-20);
++                    cm.getMap().killAllMonsters();
++		    em.setProperty("stage2", "3");
++		} else {
++	   	    cm.sendNext("We are heading into the Pirate Ship now! To get in, we must qualify ourselves as noble pirates. Hunt me 20 Veteran Medals.");
++                    if(cm.countMonster() < 1) cm.getPlayer().getMap().spawnAllMonsterIdFromMapSpawnList(9300116, level, true);
++		}
++	   } else {
++		cm.sendNext("The next stage has opened. GO!");
++	   }
++	   cm.dispose();
++	   break;
++	case 925100200:
++        case 925100300:
++	   cm.sendNext("To assault the pirate ship, we must destroy the guards first.");
++	   cm.dispose();
++	   break;
++	case 925100201:
++	   if (cm.getMap().getMonsters().size() == 0) {
++		cm.sendNext("Excellent.");
++		if (em.getProperty("stage2a") == "0") {
++		    cm.getMap().setReactorState();
++		    em.setProperty("stage2a", "1");
++		}
++	   } else {
++	   	cm.sendNext("These bellflowers are in hiding. We must liberate them.");
++	   }
++	   cm.dispose();
++	   break;
++	case 925100301:
++	   if (cm.getMap().getMonsters().size() == 0) {
++		cm.sendNext("Excellent.");
++		if (em.getProperty("stage3a").equals("0")) {
++		    cm.getMap().setReactorState();
++		    em.setProperty("stage3a", "1");
++		}
++	   } else {
++	   	cm.sendNext("These bellflowers are in hiding. We must liberate them.");
++	   }
++	   cm.dispose();
++	   break;
++	case 925100202:
++	case 925100302:
++	   cm.sendNext("These are the Captains and Krus which devote their whole life to Lord Pirate. Kill them as you see fit.");
++	   cm.dispose();
++	   break;
++	case 925100400:
++	   cm.sendNext("These are the sources of the ship's power. We must seal it by using the Old Metal Keys on the doors!");
++	   cm.dispose();
++	   break;
++	case 925100500:
++	   if (cm.getMap().getMonsters().size() == 0) {
++		cm.warpParty(925100600);
++	   } else {
++	   	cm.sendNext("Defeat all monsters! Even Lord Pirate's minions!");
++	   }
++	   cm.dispose();
++	   break;
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131001.js b/scripts/npc/world0/2131001.js
+index c4f9b6ea0..d12202376 100644
+--- a/scripts/npc/world0/2131001.js
++++ b/scripts/npc/world0/2131001.js
+@@ -1,7 +1,10 @@
+ var status = -1;
+-
+ var exchangeItem = 4000439;
+ 
++function start() {
++    action(1, 0, 0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2131003.js b/scripts/npc/world0/2131003.js
+index 1fc3929db..bcd563b2c 100644
+--- a/scripts/npc/world0/2131003.js
++++ b/scripts/npc/world0/2131003.js
+@@ -1,7 +1,10 @@
+ var status = -1;
+-
+ var exchangeItem = 4000437;
+ 
++function start() {
++    action(1, 0, 0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2131004.js b/scripts/npc/world0/2131004.js
+new file mode 100644
+index 000000000..892ee889a
+--- /dev/null
++++ b/scripts/npc/world0/2131004.js
+@@ -0,0 +1,8 @@
++function start() {
++    action(1,0,0);
++}
++
++function action(mode, type, selection) {
++    cm.sendNext("Zzzzz...");
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2131005.js b/scripts/npc/world0/2131005.js
+index 92ddb1f8d..50a6c55fd 100644
+--- a/scripts/npc/world0/2131005.js
++++ b/scripts/npc/world0/2131005.js
+@@ -1,7 +1,10 @@
+ var status = -1;
+-
+ var exchangeItem = 4000436;
+ 
++function start() {
++    action(1, 0, 0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2131006.js b/scripts/npc/world0/2131006.js
+index b77071102..d22bb1104 100644
+--- a/scripts/npc/world0/2131006.js
++++ b/scripts/npc/world0/2131006.js
+@@ -1,7 +1,10 @@
+ var status = -1;
+-
+ var exchangeItem = 4000440;
+ 
++function start() {
++    action(1, 0, 0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2131007.js b/scripts/npc/world0/2131007.js
+index 8bb8f338f..ea011fb7e 100644
+--- a/scripts/npc/world0/2131007.js
++++ b/scripts/npc/world0/2131007.js
+@@ -1,7 +1,10 @@
+ var status = -1;
+-
+ var exchangeItem = 4000438;
+ 
++function start() {
++    action(1, 0, 0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2132000.js b/scripts/npc/world0/2132000.js
+index 1a37073f9..e55f830ff 100644
+--- a/scripts/npc/world0/2132000.js
++++ b/scripts/npc/world0/2132000.js
+@@ -7,4 +7,4 @@
+ function start(){
+ 	cm.sendOk("Hmmm! For you to make your way here, far away from the Camp, you must be one strong individual. Let's explore new areas and find a place to establish our own town!!");
+ 	cm.dispose();
+-	}
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2132001.js b/scripts/npc/world0/2132001.js
+index 18ffc7d79..1fd12b013 100644
+--- a/scripts/npc/world0/2132001.js
++++ b/scripts/npc/world0/2132001.js
+@@ -1,3 +1,7 @@
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     cm.sendNext("Call me Dark Lord. I will give thieves a place in society... watch in a few years!");
+     cm.dispose();
+diff --git a/scripts/npc/world0/2132002.js b/scripts/npc/world0/2132002.js
+index c01d0abbd..3983d69bc 100644
+--- a/scripts/npc/world0/2132002.js
++++ b/scripts/npc/world0/2132002.js
+@@ -1,3 +1,7 @@
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     cm.sendNext("The magic of this forest is amazing...");
+     cm.dispose();
+diff --git a/scripts/npc/world0/2132003.js b/scripts/npc/world0/2132003.js
+index 4613d1105..7390fd059 100644
+--- a/scripts/npc/world0/2132003.js
++++ b/scripts/npc/world0/2132003.js
+@@ -1,3 +1,7 @@
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     cm.sendNext("Being young doesn't mean I'm any different from those guys. I'll show them!");
+     cm.dispose();
+diff --git a/scripts/npc/world0/2133000.js b/scripts/npc/world0/2133000.js
+index 6c105bc47..64608e1a7 100644
+--- a/scripts/npc/world0/2133000.js
++++ b/scripts/npc/world0/2133000.js
+@@ -1,5 +1,9 @@
+ var status = -1;
+ 
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2133000.txt b/scripts/npc/world0/2133000.txt
+new file mode 100644
+index 000000000..c76e2bd7a
+--- /dev/null
++++ b/scripts/npc/world0/2133000.txt
+@@ -0,0 +1,73 @@
++var status = -1;
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	if (status == 0) {
++	    cm.dispose();
++	}
++	status--;
++    }
++    if (status == 0) {
++	    cm.removeAll(4001163);
++	    cm.removeAll(4001169);
++	    cm.removeAll(2270004);
++	cm.sendSimple("#b#L0#Give me Altaire Earrings.#l\r\n#L1#Give me Glittering Altaire Earrings.#l\r\n#L3#Give me Brilliant Altaire Earrings.#l\r\n#L2#Attempt Forest of Poison Haze.#l#k");
++    } else if (status == 1) {
++	if (selection == 0) {
++	    if (!cm.haveItem(1032060) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032060,1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either have Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 1){
++	    if (cm.haveItem(1032060) && !cm.haveItem(1032061) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032060,-1);
++		cm.gainItem(1032061, 1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either don't have Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 1){
++	    if (cm.haveItem(1032061) && !cm.haveItem(1032101) && cm.haveItem(4001198, 10)) {
++		cm.gainItem(1032061,-1);
++		cm.gainItem(1032101, 1);
++		cm.gainItem(4001198, -10);
++	    } else {
++		cm.sendOk("You either don't have Glittering Altair Earrings already or you do not have 10 Altair Fragments");
++	    }
++	} else if (selection == 2) {
++	    if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
++		cm.sendOk("The leader of the party must be here.");
++	    } else {
++		var party = cm.getPlayer().getParty().getMembers();
++		var mapId = cm.getPlayer().getMapId();
++		var next = true;
++		var size = 0;
++		var it = party.iterator();
++		while (it.hasNext()) {
++			var cPlayer = it.next();
++			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
++			if (ccPlayer == null || ccPlayer.getLevel() < 70 || ccPlayer.getLevel() > 255) {
++				next = false;
++				break;
++			}
++			size += (ccPlayer.isGM() ? 4 : 1);
++		}	
++		if (next && size >= 2) {
++			var em = cm.getEventManager("Ellin");
++			if (em == null) {
++				cm.sendOk("Please try again later.");
++			} else {
++				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap(), 120);
++			}
++		} else {
++			cm.sendOk("All 2+ members of your party must be here and above level 70.");
++		}
++	    }
++	}
++	cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133001.js b/scripts/npc/world0/2133001.js
+index ad99ec233..aa0fe4624 100644
+--- a/scripts/npc/world0/2133001.js
++++ b/scripts/npc/world0/2133001.js
+@@ -1,5 +1,9 @@
+ var status = -1;
+ 
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2133002.js b/scripts/npc/world0/2133002.js
+index 631611d01..a9f0e82e0 100644
+--- a/scripts/npc/world0/2133002.js
++++ b/scripts/npc/world0/2133002.js
+@@ -1,5 +1,9 @@
+ var status = -1;
+ 
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/npc/world0/2133004.js b/scripts/npc/world0/2133004.js
+index 2b42dd914..a5133e59b 100644
+--- a/scripts/npc/world0/2133004.js
++++ b/scripts/npc/world0/2133004.js
+@@ -1,5 +1,9 @@
+ var status = -1;
+ 
++function start() {
++    action(1,0,0);
++}
++
+ function action(mode, type, selection) {
+     if (mode == 1) {
+ 	status++;
+diff --git a/scripts/portal/davy2_hd1.js b/scripts/portal/davy2_hd1.js
+new file mode 100644
+index 000000000..576f8302c
+--- /dev/null
++++ b/scripts/portal/davy2_hd1.js
+@@ -0,0 +1,13 @@
++var windowTime = 10 * 1000;
++
++function enter(pi) {
++    var em = pi.getEventManager("PiratePQ");
++    var level = em.getProperty("level");
++    if(em.getProperty("stage2b") == "0") {
++        pi.getMap(925100202).spawnAllMonstersFromMapSpawnList(level, true);
++        em.setProperty("stage2b", "1");
++    }
++    
++    pi.warp(925100202,0);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/davy3_hd1.js b/scripts/portal/davy3_hd1.js
+new file mode 100644
+index 000000000..480b4b2b1
+--- /dev/null
++++ b/scripts/portal/davy3_hd1.js
+@@ -0,0 +1,13 @@
++var windowTime = 10 * 1000;
++
++function enter(pi) {
++    var em = pi.getEventManager("PiratePQ");
++    var level = em.getProperty("level");
++    if(em.getProperty("stage3b") == "0") {
++        pi.getMap(925100302).spawnAllMonstersFromMapSpawnList(level, true);
++        em.setProperty("stage3b", "1");
++    }
++    
++    pi.warp(925100302,0);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/davy_next0.js b/scripts/portal/davy_next0.js
+index 16aa96d2d..f3257a4a8 100644
+--- a/scripts/portal/davy_next0.js
++++ b/scripts/portal/davy_next0.js
+@@ -40,11 +40,10 @@ function enter(pi) {
+ 		eim.setProperty("entryTimeStamp", 1000 * 60 * 6);
+ 		for(var g=0; g<party.size(); g++) {
+ 			party.get(g).changeMap(target, targetPortal);
+-			party.get(g).getClient().sendClock(party.get(g).getClient(), 300);
+ 		}
+ 		return true;
+ 	}else {
+-		pi.getPlayer().dropMessage(6, "Please kill all monsters before proceeding.");
++		pi.getPlayer().dropMessage(6, "You need to kill all monsters before proceeding.");
+ 		return false;
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/portal/davy_next1.js b/scripts/portal/davy_next1.js
+new file mode 100644
+index 000000000..1893a502c
+--- /dev/null
++++ b/scripts/portal/davy_next1.js
+@@ -0,0 +1,16 @@
++function enter(pi) {
++    try {
++        var em = pi.getEventManager("PiratePQ");
++        if (em != null && em.getProperty("stage2").equals("3")) {
++            pi.warp(925100200,0); //next
++            return(true);
++        } else {
++            pi.playerMessage(5, "The portal is not opened yet.");
++            return(false);
++        }
++    } catch(e) {
++        pi.playerMessage(5, "Error: " + e);
++    }
++ 
++    return(false);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/davy_next2.js b/scripts/portal/davy_next2.js
+new file mode 100644
+index 000000000..26c4e1448
+--- /dev/null
++++ b/scripts/portal/davy_next2.js
+@@ -0,0 +1,9 @@
++function enter(pi) {
++    if (pi.getMap().getMonsters().size() == 0) {
++	pi.warp(925100300,0); //next
++        return(true);
++    } else {
++	pi.playerMessage(5, "The portal is not opened yet.");
++        return(false);
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/portal/davy_next3.js b/scripts/portal/davy_next3.js
+new file mode 100644
+index 000000000..45645f3e2
+--- /dev/null
++++ b/scripts/portal/davy_next3.js
+@@ -0,0 +1,9 @@
++function enter(pi) {
++    if (pi.getMap().getMonsters().size() == 0) {
++	pi.warp(925100400,0); //next
++        return(true);
++    } else {
++	pi.playerMessage(5, "The portal is not opened yet.");
++        return(false);
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/portal/davy_next4.js b/scripts/portal/davy_next4.js
+new file mode 100644
+index 000000000..7cd16651c
+--- /dev/null
++++ b/scripts/portal/davy_next4.js
+@@ -0,0 +1,29 @@
++importPackage(Packages.server.life);
++
++function enter(pi) {
++    if (pi.getMap().getReactorByName("sMob1").getState() >= 1 && pi.getMap().getReactorByName("sMob2").getState() >= 1 && pi.getMap().getReactorByName("sMob3").getState() >= 1 && pi.getMap().getReactorByName("sMob4").getState() >= 1) {
++	if (pi.isLeader()) {
++            var em = pi.getEventManager("PiratePQ");
++            
++            var level = parseInt(em.getProperty("level"));
++            var chests = parseInt(em.getProperty("openedChests"));
++            var boss;                                               
++            
++            if(chests == 0) boss = MapleLifeFactory.getMonster(9300119);        //lord pirate
++            else if(chests == 1) boss = MapleLifeFactory.getMonster(9300105);   //angry lord pirate
++            else boss = MapleLifeFactory.getMonster(9300106);                   //enraged lord pirate
++            
++            boss.changeDifficulty(level, true);
++            
++            pi.getMap(925100500).spawnMonster(boss);
++	    pi.warpParty(925100500); //next
++            return(true);
++	} else {
++	    pi.playerMessage(5, "The leader must be here");
++            return(false);
++	}
++    } else {
++	pi.playerMessage(5, "The portal is not opened yet.");
++        return(false);
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/portal/enterWarehouse.js b/scripts/portal/enterWarehouse.js
+new file mode 100644
+index 000000000..fe16f833d
+--- /dev/null
++++ b/scripts/portal/enterWarehouse.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++    pi.warp(300000011,0);
++    return(true);
++}
+\ No newline at end of file
+diff --git a/scripts/portal/lpqboss.js b/scripts/portal/lpqboss.js
+index b430aad84..bf0deace1 100644
+--- a/scripts/portal/lpqboss.js
++++ b/scripts/portal/lpqboss.js
+@@ -25,7 +25,7 @@ LudiPQ - 1 - 2 Portal
+ 
+ function enter(pi) {
+ 	var nextMap = 922010900;
+-	var eim = pi.getPlayer().getEventInstance()
++	var eim = pi.getPlayer().getEventInstance();
+ 	var target = eim.getMapInstance(nextMap);
+ 	var targetPortal = target.getPortal("st00");
+ 	// only let people through if the eim is ready
+@@ -33,7 +33,8 @@ function enter(pi) {
+ 	if (avail == null) {
+ 		// can't go thru eh?
+ 		pi.getPlayer().dropMessage(5, "Some seal is blocking this door.");
+-		return false;	}
++		return false;
++        }
+ 	else {
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+diff --git a/scripts/reactor/2512001.js b/scripts/reactor/2512001.js
+new file mode 100644
+index 000000000..9ea187c33
+--- /dev/null
++++ b/scripts/reactor/2512001.js
+@@ -0,0 +1,33 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2512001.js
++ *@Author Ronan
++ *Pirate PQ Treasure chest
++ */
++ 
++function act() {
++	var eim = rm.getPlayer().getEventInstance();
++	var now = parseInt(eim.getProperty("openedChests"));
++	var nextNum = now + 1;
++	eim.setProperty("openedChests", nextNum);
++	rm.dropItems(true, 1, 50, 100, 15);
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2519000.js b/scripts/reactor/2519000.js
+new file mode 100644
+index 000000000..6594d0d79
+--- /dev/null
++++ b/scripts/reactor/2519000.js
+@@ -0,0 +1,28 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2519000.js - Reactor used at the door on stage 4.
++ *@author Ronan
++ */
++ 
++function act() {
++    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++}
+diff --git a/scripts/reactor/2519001.js b/scripts/reactor/2519001.js
+new file mode 100644
+index 000000000..adeb31212
+--- /dev/null
++++ b/scripts/reactor/2519001.js
+@@ -0,0 +1,28 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2519001.js - Reactor used at the door on stage 4.
++ *@author Ronan
++ */
++ 
++function act() {
++    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++}
+diff --git a/scripts/reactor/2519002.js b/scripts/reactor/2519002.js
+new file mode 100644
+index 000000000..08f81b873
+--- /dev/null
++++ b/scripts/reactor/2519002.js
+@@ -0,0 +1,28 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2519002.js - Reactor used at the door on stage 4.
++ *@author Ronan
++ */
++ 
++function act() {
++    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++}
+diff --git a/scripts/reactor/2519003.js b/scripts/reactor/2519003.js
+new file mode 100644
+index 000000000..c8f630189
+--- /dev/null
++++ b/scripts/reactor/2519003.js
+@@ -0,0 +1,28 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*2519003.js - Reactor used at the door on stage 4.
++ *@author Ronan
++ */
++ 
++function act() {
++    rm.getPlayer().getMap().setAllowSpawnPointInRange(false, rm.getReactor().getPosition(), 120.0);
++}
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index dd396c33e..bc4cd0c75 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -12786,8 +12786,8 @@ CREATE TABLE IF NOT EXISTS `drop_data_global` (
+ ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC AUTO_INCREMENT=5 ;
+ 
+ INSERT INTO `drop_data_global` (`id`, `continent`, `dropType`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`, `comments`) VALUES
+-(1, 0, 0, 4031865, 1, 1, 0, 125000, 'NX Card 100 PTS'),
+-(2, 0, 0, 4031866, 1, 1, 0, 78000, 'NX Card 250 PTS'),
++(1, 0, 0, 4031865, 1, 1, 0, 40000, 'NX Card 100 PTS'),
++(2, 0, 0, 4031866, 1, 1, 0, 25000, 'NX Card 250 PTS'),
+ (3, 0, 0, 4001126, 1, 2, 0, 10000, 'Maple Leaves'),
+ (4, 0, 0, 2049100, 1, 1, 0, 1500, 'Chaos Scroll 60%'),
+ (5, 0, 0, 4001006, 1, 1, 0, 12000, 'Flaming Feather');
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index c315f6292..3ff5494f9 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18714,7 +18714,7 @@
+ 
+   #--------------------------------------------------------------------------------------------
+ 
+-  #insert things that should have been present already.
++  #insert things that should be present by now, but aren't yet.
+ 
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+ (2386010, 8143000, 1, 1, 0, 10000),
+@@ -18722,10 +18722,8 @@
+ (3000002, 4000068, 1, 1, 0, 40000),
+ (3000003, 4000068, 1, 1, 0, 40000),
+ (3000004, 4000068, 1, 1, 0, 40000),
+-
+ (8141000, 2386002, 1, 1, 0, 10000),
+ (8141100, 2386009, 1, 1, 0, 10000),
+-
+ (4230116, 2382042, 1, 1, 0, 10000),
+ (4230117, 2382055, 1, 1, 0, 10000),
+ (4230118, 2382067, 1, 1, 0, 10000),
+@@ -18772,7 +18770,31 @@
+ (9500320, 2388027, 1, 1, 0, 8000),
+ (8220002, 2388032, 1, 1, 0, 8000),
+ (9300182, 2388039, 1, 1, 0, 8000),
+-(6130204, 0, 316, 478, 0, 400000);
++(6130204, 0, 316, 478, 0, 400000),
++(9300114, 4001120, 1, 1, 0, 200000),
++(9300115, 4001121, 1, 1, 0, 200000),
++(9300116, 4001122, 1, 1, 0, 200000),
++(9300120, 4001117, 1, 1, 0, 80000),
++(9300121, 4001117, 1, 1, 0, 80000),
++(9300122, 4001117, 1, 1, 0, 80000),
++(9300126, 4001117, 1, 1, 0, 80000),
++(9300124, 2022131, 1, 1, 0, 40000),
++(9300125, 2022131, 1, 1, 0, 40000),
++(9300124, 2022132, 1, 1, 0, 40000),
++(9300125, 2022132, 1, 1, 0, 40000),
++(9300105, 4031437, 1, 1, 0, 40000),
++(9300106, 4031437, 1, 1, 0, 40000),
++(9300107, 4031437, 1, 1, 0, 40000),
++(9300119, 4031437, 1, 1, 0, 40000),
++(9300105, 4031438, 1, 1, 3829, 40000),
++(9300106, 4031438, 1, 1, 3829, 40000),
++(9300107, 4031438, 1, 1, 3829, 40000),
++(9300119, 4031438, 1, 1, 3829, 40000),
++(9300105, 4031551, 1, 1, 3829, 40000),
++(9300106, 4031551, 1, 1, 3829, 40000),
++(9300107, 4031551, 1, 1, 3829, 40000),
++(9300119, 4031551, 1, 1, 3829, 40000);
++
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+@@ -18869,9 +18891,27 @@
+     (9102001, 4031158, 1, 2074),
+     (2502001, 2022116, 1, -1),
+     (2612000, 4031695, 1, 3335),
+-    (2402000, 2022087, 3, -1);
++    (2402000, 2022087, 3, -1),
+     (2402001, 2022088, 1, -1),
+-    (2402001, 2022086, 1, -1);
+-
++    (2402001, 2022086, 1, -1),
++    (2512001, 4010004, 1, -1),
++    (2512001, 4010005, 1, -1),
++    (2512001, 4010006, 1, -1),
++    (2512001, 4010007, 1, -1),
++    (2512001, 4020007, 1, -1),
++    (2512001, 4020008, 1, -1),
++    (2512001, 4010004, 1, -1),
++    (2512001, 4010005, 1, -1),
++    (2512001, 4010006, 1, -1),
++    (2512001, 4010007, 1, -1),
++    (2512001, 4020007, 1, -1),
++    (2512001, 4020008, 1, -1),
++    (2512001, 2020000, 3, -1),
++    (2512001, 2020001, 3, -1),
++    (2512001, 2020003, 3, -1),
++    (2512001, 2020004, 3, -1),
++    (2512001, 2020009, 3, -1),
++    (2512001, 2020010, 3, -1),
++    (2512001, 2020028, 1, -1);
+ 
+   #global data already updated
+\ No newline at end of file
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 5b46843fb..6030f596d 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -24,6 +24,7 @@
+     public static boolean JAVA_8;
+     public static boolean SHUTDOWNHOOK;
+     //Gameplay Configurations
++    public static final boolean USE_MAXRANGE = true;            //will send and receive packets from all events of a map.
+     public static final boolean USE_DEBUG = true;
+     public static final boolean USE_MTS = false;
+     public static final boolean USE_FAMILY_SYSTEM = false;
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 4c95b0b7f..0d1fe04c8 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -49,6 +49,7 @@
+ import server.life.MobSkill;
+ import server.life.MobSkillFactory;
+ import server.maps.MapleMap;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.Randomizer;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -69,42 +70,49 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         MapleMonster attacker = null;
+         final MapleMap map = player.getMap();
+         if (damagefrom != -3 && damagefrom != -4) {
+-        	monsteridfrom = slea.readInt();
+-	        oid = slea.readInt();
+-            attacker = (MapleMonster) map.getMapObject(oid);
+-            List<loseItem> loseItems;
+-            if (attacker != null) {
+-                if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
+-                    return;
+-                }
+-                if (damage > 0) {
+-                    loseItems = map.getMonsterById(monsteridfrom).getStats().loseItem();
+-                    if (loseItems != null) {
+-                        MapleInventoryType type;
+-                        final int playerpos = player.getPosition().x;
+-                        byte d = 1;
+-                        Point pos = new Point(0, player.getPosition().y);
+-                        for (loseItem loseItem : loseItems) {
+-                            type = MapleItemInformationProvider.getInstance().getInventoryType(loseItem.getId());
+-                            for (byte b = 0; b < loseItem.getX(); b++) {//LOL?
+-                                if (Randomizer.nextInt(101) >= loseItem.getChance()) {
+-                                    if (player.haveItem(loseItem.getId())) {
+-                                        pos.x = (int) (playerpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
+-                                        MapleInventoryManipulator.removeById(c, type, loseItem.getId(), 1, false, false);
+-                                        map.spawnItemDrop(c.getPlayer(), c.getPlayer(), new Item(loseItem.getId(), (short) 0, (short) 1), map.calcDropPos(pos, player.getPosition()), true, true);
+-                                        d++;
+-                                    } else {
+-                                        break;
++            monsteridfrom = slea.readInt();
++	    oid = slea.readInt();
++            
++            try {
++                attacker = (MapleMonster) map.getMapObject(oid);
++                List<loseItem> loseItems;
++                if (attacker != null) {
++                    if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
++                        return;
++                    }
++                    if (damage > 0) {
++                        loseItems = map.getMonsterById(monsteridfrom).getStats().loseItem();
++                        if (loseItems != null) {
++                            MapleInventoryType type;
++                            final int playerpos = player.getPosition().x;
++                            byte d = 1;
++                            Point pos = new Point(0, player.getPosition().y);
++                            for (loseItem loseItem : loseItems) {
++                                type = MapleItemInformationProvider.getInstance().getInventoryType(loseItem.getId());
++                                for (byte b = 0; b < loseItem.getX(); b++) {//LOL?
++                                    if (Randomizer.nextInt(101) >= loseItem.getChance()) {
++                                        if (player.haveItem(loseItem.getId())) {
++                                            pos.x = (int) (playerpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
++                                            MapleInventoryManipulator.removeById(c, type, loseItem.getId(), 1, false, false);
++                                            map.spawnItemDrop(c.getPlayer(), c.getPlayer(), new Item(loseItem.getId(), (short) 0, (short) 1), map.calcDropPos(pos, player.getPosition()), true, true);
++                                            d++;
++                                        } else {
++                                            break;
++                                        }
+                                     }
+                                 }
+                             }
++                            map.removeMapObject(attacker);
+                         }
+-                        map.removeMapObject(attacker);
+                     }
++                } else {
++                    return;
+                 }
+-            } else {
+-                return;
++            } catch(ClassCastException e) {
++                e.printStackTrace();
++                FilePrinter.print(FilePrinter.EXCEPTION_CAUGHT, "Attacker is not a mob-type, rather is a " + map.getMapObject(oid).getClass().getName() + " entity.");
+             }
++            
+             direction = slea.readByte();
+         }
+         if (damagefrom != -1 && damagefrom != -2 && attacker != null) {
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 409d71449..583ffea41 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -87,6 +87,10 @@ public MapleCharacter getPlayer() {
+         public MapleCharacter getChar() {
+ 		return c.getPlayer();
+ 	}
++        
++        public MapleMap getMap() {
++                return c.getPlayer().getMap();
++        }
+ 
+ 	public void warp(int map) {
+ 		getPlayer().changeMap(getWarpMap(map), getWarpMap(map).getPortal(0));
+@@ -142,6 +146,14 @@ public MapleMap getMap(int map) {
+ 		return getWarpMap(map);
+ 	}
+         
++        public int countAllMonstersOnMap(int map) {
++                return getMap(map).countAllMonsters();
++        }
++        
++        public int countMonster() {
++            return getPlayer().getMap().countAllMonsters();
++        }
++        
+         public void resetMapObjects(int mapid) {
+                 getWarpMap(mapid).resetMapObjects();
+         }
+@@ -651,10 +663,6 @@ public void resetMap(int mapid) {
+ 		}
+ 	}
+ 
+-	public void sendClock(MapleClient d, int time) {
+-		d.announce(MaplePacketCreator.getClock((int) (time - System.currentTimeMillis()) / 1000));
+-	}
+-
+ 	public void useItem(int id) {
+ 		MapleItemInformationProvider.getInstance().getItemEffect(id).applyTo(c.getPlayer());
+ 		c.announce(MaplePacketCreator.getItemMessage(id));//Useful shet :3
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 2a6019499..9360091b5 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -256,27 +256,27 @@ public int getKillCount(MapleCharacter chr) {
+ 	}
+ 
+ 	public void dispose() {
+-        try {
+-            em.getIv().invokeFunction("dispose", this);
+-        } catch (ScriptException | NoSuchMethodException ex) {
+-            ex.printStackTrace();
+-        }
+-        
+-        wL.lock();
+-        try {
+-            chars.clear();
+-        } finally {
+-            wL.unlock();
+-        }
+-        
+-        mobs.clear();
+-        killCount.clear();
+-        mapFactory = null;
+-        if (expedition != null) {
+-                em.getChannelServer().getExpeditions().remove(expedition);
+-        }
+-        em.disposeInstance(name);
+-        em = null;
++            try {
++                em.getIv().invokeFunction("dispose", this);
++            } catch (ScriptException | NoSuchMethodException ex) {
++                ex.printStackTrace();
++            }
++
++            wL.lock();
++            try {
++                chars.clear();
++            } finally {
++                wL.unlock();
++            }
++
++            mobs.clear();
++            killCount.clear();
++            mapFactory = null;
++            if (expedition != null) {
++                    em.getChannelServer().getExpeditions().remove(expedition);
++            }
++            em.disposeInstance(name);
++            em = null;
+ 	}
+ 
+ 	public MapleMapFactory getMapFactory() {
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 26fbcdf82..d16dba4c5 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -38,6 +38,9 @@
+ import server.TimerManager;
+ import server.expeditions.MapleExpedition;
+ import server.maps.MapleMap;
++import server.life.MapleMonster;
++import server.life.MapleLifeFactory;
++
+ import client.MapleCharacter;
+ 
+ /**
+@@ -194,4 +197,8 @@ public void startInstance(EventInstanceManager eim, String leader) {
+             Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, null, ex);
+         }
+     }
++    
++    public MapleMonster getMonster(int mid) {
++        return(MapleLifeFactory.getMonster(mid));
++    }
+ }
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index fe8611d8c..f28386492 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -82,7 +82,7 @@
+     private int team;
+     private final HashMap<Integer, AtomicInteger> takenDamage = new HashMap<>();
+ 
+-    public ReentrantLock monsterLock = new ReentrantLock();
++    private ReentrantLock monsterLock = new ReentrantLock();
+ 
+     public MapleMonster(int id, MapleMonsterStats stats) {
+         super(id);
+@@ -93,6 +93,14 @@ public MapleMonster(MapleMonster monster) {
+         super(monster);
+         initWithStats(monster.stats);
+     }
++    
++    public void lockMonster() {
++        monsterLock.lock();
++    }
++    
++    public void unlockMonster() {
++        monsterLock.unlock();
++    }
+ 
+     private void initWithStats(MapleMonsterStats stats) {
+         setStance(5);
+@@ -994,7 +1002,7 @@ private float getDifficultyRate(final int difficulty) {
+         return(1.0f);
+     }
+     
+-    public final void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
++    private final void changeLevelByDifficulty(final int difficulty, boolean pqMob) {
+         changeLevel((int)(this.getLevel() * getDifficultyRate(difficulty)), pqMob);
+     }
+     
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 16f7420a0..cf85327c1 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -32,6 +32,7 @@
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+ import constants.ItemConstants;
++import constants.ServerConstants;
+ import java.awt.Point;
+ import java.awt.Rectangle;
+ import java.util.ArrayList;
+@@ -181,6 +182,11 @@ public void broadcastGMMessage(MapleCharacter source, final byte[] packet) {
+     public void toggleDrops() {
+         this.dropsOn = !dropsOn;
+     }
++    
++    
++    private double getRangedDistance() {
++        return(ServerConstants.USE_MAXRANGE ? Double.POSITIVE_INFINITY : 722500);
++    }
+ 
+     public List<MapleMapObject> getMapObjectsInRect(Rectangle box, List<MapleMapObjectType> types) {
+         objectRLock.lock();
+@@ -295,6 +301,25 @@ private void spawnAndAddRangedMapObject(MapleMapObject mapobject, DelayedPacketC
+             objectWLock.unlock();
+         }
+     }
++    
++    private void spawnRangedMapObject(MapleMapObject mapobject, DelayedPacketCreation packetbakery, SpawnCondition condition) {
++        chrRLock.lock();
++        
++        try {
++            int curOID = getUsableOID();
++            mapobject.setObjectId(curOID);
++            for (MapleCharacter chr : characters) {
++                if (condition == null || condition.canSpawn(chr)) {
++                    if (chr.getPosition().distanceSq(mapobject.getPosition()) <= 722500) {
++                        packetbakery.sendPackets(chr.getClient());
++                        chr.addVisibleMapObject(mapobject);
++                    }
++                }
++            }
++        } finally {
++            chrRLock.unlock();
++        }
++    }
+ 
+     private int getUsableOID() {
+         if (runningOid.incrementAndGet() > 2000000000) {
+@@ -485,6 +510,10 @@ public int countMonster(int id) {
+         }
+         return count;
+     }
++    
++    public int countAllMonsters() {
++        return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER)).size();
++    }
+ 
+     public boolean damageMonster(final MapleCharacter chr, final MapleMonster monster, final int damage) {
+         if (monster.getId() == 8800000) {
+@@ -499,7 +528,7 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+         }
+         if (monster.isAlive()) {
+             boolean killed = false;
+-            monster.monsterLock.lock();
++            monster.lockMonster();
+             try {
+                 if (!monster.isAlive()) {
+                     return false;
+@@ -542,7 +571,7 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+                     }
+                 }
+             } finally {
+-                monster.monsterLock.unlock();
++                monster.unlockMonster();
+             }
+             if (monster.getStats().selfDestruction() != null && monster.getStats().selfDestruction().getHp() > -1) {// should work ;p
+                 if (monster.getHp() <= monster.getStats().selfDestruction().getHp()) {
+@@ -561,7 +590,7 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+     public List<MapleMonster> getMonsters() {
+         List<MapleMonster> mobs = new ArrayList<MapleMonster>();
+         for (MapleMapObject object : this.getMapObjects()) {
+-            mobs.add(this.getMonsterByOid(object.getObjectId()));
++            if(object instanceof MapleMonster) mobs.add((MapleMonster)object);
+         }
+         return mobs;
+     }
+@@ -584,8 +613,10 @@ public void run() {
+         if (chr == null) {
+             spawnedMonstersOnMap.decrementAndGet();
+             monster.setHp(0);
+-            broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
+             removeMapObject(monster);
++            monster.dispatchMonsterKilled();
++            broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
++            //System.out.println("Counter: " + spawnedMonstersOnMap.toString() + " Size: " + countAllMonsters());
+             return;
+         }
+         if (monster.getStats().getLevel() >= chr.getLevel() + 30 && !chr.isGM()) {
+@@ -619,7 +650,6 @@ public void run() {
+         }
+         spawnedMonstersOnMap.decrementAndGet();
+         monster.setHp(0);
+-        broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
+         //if (monster.getStats().selfDestruction() == null) {//FUU BOMBS D:
+         removeMapObject(monster);
+         //}
+@@ -663,6 +693,8 @@ public void run() {
+         }
+         
+         monster.dispatchMonsterKilled();
++        broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
++        //System.out.println("Counter: " + spawnedMonstersOnMap.toString() + " Size: " + countAllMonsters());
+     }
+ 
+     public void killFriendlies(MapleMonster mob) {
+@@ -834,7 +866,7 @@ public MapleReactor getReactorById(int Id) {
+      * @param monster
+      */
+     public void updateMonsterController(MapleMonster monster) {
+-        monster.monsterLock.lock();
++        monster.lockMonster();
+         try {
+             if (!monster.isAlive()) {
+                 return;
+@@ -869,7 +901,7 @@ public void updateMonsterController(MapleMonster monster) {
+                 }
+             }
+         } finally {
+-            monster.monsterLock.unlock();
++            monster.unlockMonster();
+         }
+     }
+ 
+@@ -920,21 +952,12 @@ public MapleMapObject getMapObject(int oid) {
+      */
+     public MapleMonster getMonsterByOid(int oid) {
+         MapleMapObject mmo = getMapObject(oid);
+-        if (mmo == null) {
+-            return null;
+-        }
+-        if (mmo.getType() == MapleMapObjectType.MONSTER) {
+-            return (MapleMonster) mmo;
+-        }
+-        return null;
++        return (mmo != null && mmo.getType() == MapleMapObjectType.MONSTER) ? (MapleMonster) mmo : null;
+     }
+ 
+     public MapleReactor getReactorByOid(int oid) {
+         MapleMapObject mmo = getMapObject(oid);
+-        if (mmo == null) {
+-            return null;
+-        }
+-        return mmo.getType() == MapleMapObjectType.REACTOR ? (MapleReactor) mmo : null;
++        return (mmo != null && mmo.getType() == MapleMapObjectType.REACTOR) ? (MapleReactor) mmo : null;
+     }
+ 
+     public MapleReactor getReactorByName(String name) {
+@@ -1031,12 +1054,43 @@ public void sendPackets(MapleClient c) {
+         updateMonsterController(monster);
+         spawnedMonstersOnMap.incrementAndGet();
+     }
++    
++    public void spawnAllMonsterIdFromMapSpawnList(int id) {
++        spawnAllMonsterIdFromMapSpawnList(id, 1, false);
++    }
++    
++    public void spawnAllMonsterIdFromMapSpawnList(int id, int difficulty, boolean isPq) {
++        for(SpawnPoint sp: allMonsterSpawn) {
++            MapleMonster mm = sp.getMonster();
++            
++            if(mm.getId() == id) {
++                spawnMonster(mm, difficulty, isPq);
++            }
++        }
++    }
++    
++    public void spawnAllMonstersFromMapSpawnList() {
++        spawnAllMonstersFromMapSpawnList(1, false);
++    }
++    
++    public void spawnAllMonstersFromMapSpawnList(int difficulty, boolean isPq) {
++        for(SpawnPoint sp: allMonsterSpawn) {
++            MapleMonster mm = sp.getMonster();
++            spawnMonster(mm, difficulty, isPq);
++        }
++    }
+ 
+     public void spawnMonster(final MapleMonster monster) {
++        spawnMonster(monster, 1, false);
++    }
++    
++    public void spawnMonster(final MapleMonster monster, int difficulty, boolean isPq) {
+         if (mobCapacity != -1 && mobCapacity == spawnedMonstersOnMap.get()) {
+-            System.out.println("got here");
+             return;//PyPQ
+         }
++        
++        monster.changeDifficulty(difficulty, isPq);
++        
+         monster.setMap(this);
+         if (!monster.getMap().getAllPlayer().isEmpty()) {
+             MapleCharacter chr = (MapleCharacter) getAllPlayer().get(0);
+@@ -1051,6 +1105,7 @@ public void sendPackets(MapleClient c) {
+                 c.announce(MaplePacketCreator.spawnMonster(monster, true));
+             }
+         }, null);
++        
+         updateMonsterController(monster);
+ 
+         if (monster.getDropPeriodTime() > 0) { //9300102 - Watchhog, 9300061 - Moon Bunny (HPQ), 9300093 - Tylus
+@@ -1433,6 +1488,7 @@ public void run() {
+         }
+ 
+         sendObjectPlacement(chr.getClient());
++        
+         if (isStartingEventMap() && !eventStarted()) {
+             chr.getMap().getPortal("join00").setPortalStatus(false);
+         }
+@@ -1507,6 +1563,7 @@ public void run() {
+             if(hasBoat() == 1) chr.getClient().announce((MaplePacketCreator.boatPacket(true)));
+             else chr.getClient().announce(MaplePacketCreator.boatPacket(false));
+         }
++        
+         chr.receivePartyMemberHP();
+     }
+ 
+@@ -1611,7 +1668,7 @@ public void broadcastMessage(MapleCharacter source, final byte[] packet, boolean
+      * @param rangedFrom
+      */
+     public void broadcastMessage(final byte[] packet, Point rangedFrom) {
+-        broadcastMessage(null, packet, 722500, rangedFrom);
++        broadcastMessage(null, packet, getRangedDistance(), rangedFrom);
+     }
+ 
+     /**
+@@ -1622,7 +1679,7 @@ public void broadcastMessage(final byte[] packet, Point rangedFrom) {
+      * @param rangedFrom
+      */
+     public void broadcastMessage(MapleCharacter source, final byte[] packet, Point rangedFrom) {
+-        broadcastMessage(source, packet, 722500, rangedFrom);
++        broadcastMessage(source, packet, getRangedDistance(), rangedFrom);
+     }
+ 
+     private void broadcastMessage(MapleCharacter source, final byte[] packet, double rangeSq, Point rangedFrom) {
+@@ -1687,7 +1744,7 @@ private void sendObjectPlacement(MapleClient mapleClient) {
+             objectRLock.unlock();
+         }
+         if (chr != null) {
+-            for (MapleMapObject o : getMapObjectsInRange(chr.getPosition(), 722500, rangedMapobjectTypes)) {
++            for (MapleMapObject o : getMapObjectsInRange(chr.getPosition(), getRangedDistance(), rangedMapobjectTypes)) {
+                 if (o.getType() == MapleMapObjectType.REACTOR) {
+                     if (((MapleReactor) o).isAlive()) {
+                         o.sendSpawnData(chr.getClient());
+@@ -1865,7 +1922,7 @@ public void movePlayer(MapleCharacter player, Point newPosition) {
+             objectRLock.unlock();
+         }
+         
+-        for (MapleMapObject mo : getMapObjectsInRange(player.getPosition(), 722500, rangedMapobjectTypes)) {
++        for (MapleMapObject mo : getMapObjectsInRange(player.getPosition(), getRangedDistance(), rangedMapobjectTypes)) {
+             if (!player.isMapObjectVisible(mo)) {
+                 mo.sendSpawnData(player.getClient());
+                 player.addVisibleMapObject(mo);
+@@ -2055,8 +2112,6 @@ public void instanceMapFirstSpawn(int difficulty, boolean isPq) {
+         for(SpawnPoint spawnPoint: allMonsterSpawn) {
+             if(spawnPoint.getMobTime() == -1) {   //just those allowed to be spawned only once
+                 MapleMonster monst = spawnPoint.getMonster();
+-                monst.changeLevelByDifficulty(difficulty, isPq);
+-                
+                 spawnMonster(monst);
+             }
+         }
+@@ -2069,10 +2124,12 @@ public void instanceMapRespawn() {
+             Collections.shuffle(randomSpawn);
+             int spawned = 0;
+             for (SpawnPoint spawnPoint : randomSpawn) {
+-                spawnMonster(spawnPoint.getMonster());
+-                spawned++;
+-                if (spawned >= numShouldSpawn) {
+-                    break;
++                if(spawnPoint.shouldSpawn()) {
++                    spawnMonster(spawnPoint.getMonster());
++                    spawned++;
++                    if (spawned >= numShouldSpawn) {
++                        break;
++                    }
+                 }
+             }
+         }
+@@ -2083,6 +2140,22 @@ public void restoreMapSpawnPoints() {
+             spawnPoint.setDenySpawn(false);
+         }
+     }
++    
++    public void setAllowSpawnPointInBox(boolean allow, Rectangle box) {
++        for(SpawnPoint sp: monsterSpawn)  {
++            if(box.contains(sp.getPosition())) {
++                sp.setDenySpawn(!allow);
++            }
++        }
++    }
++    
++    public void setAllowSpawnPointInRange(boolean allow, Point from, double rangeSq) {
++        for(SpawnPoint sp: monsterSpawn)  {
++            if(from.distanceSq(sp.getPosition()) <= rangeSq) {
++                sp.setDenySpawn(!allow);
++            }
++        }
++    }
+ 
+     public void respawn() {
+         chrRLock.lock();
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 2a9ad2901..2adf05578 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -279,14 +279,20 @@ private String getMapStringName(int mapid) {
+             builder.append("victoria");
+         } else if (mapid >= 200000000 && mapid < 300000000) {
+             builder.append("ossyria");
++        } else if (mapid >= 300000000 && mapid < 400000000) {
++            builder.append("elin");
+         } else if (mapid >= 540000000 && mapid < 560000000) {
+             builder.append("singapore");
+         } else if (mapid >= 600000000 && mapid < 620000000) {
+             builder.append("MasteriaGL");
+-        } else if (mapid >= 670000000 && mapid < 682000000) {
++        } else if (mapid >= 677000000 && mapid < 677100000) {
++            builder.append("Episode1GL");
++        } else if (mapid >= 670000000 && mapid < 690000000) {
+             builder.append("weddingGL");
+         } else if (mapid >= 682000000 && mapid < 683000000) {
+             builder.append("HalloweenGL");
++        } else if (mapid >= 683000000 && mapid < 684000000) {
++            builder.append("event");
+         } else if (mapid >= 800000000 && mapid < 900000000) {
+             builder.append("jp");
+         } else {
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 1b2bffcfb..febc21dd7 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -127,11 +127,11 @@ public void sendSpawnData(MapleClient client) {
+         return MaplePacketCreator.spawnReactor(this);
+     }
+ 
+-	public void forceHitReactor(final byte newState) {
+-		setState((byte) newState);
+-		setTimerActive(false);
+-		map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
+-	}
++    public void forceHitReactor(final byte newState) {
++        setState((byte) newState);
++        setTimerActive(false);
++        map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
++    }
+     
+     public void delayedHitReactor(final MapleClient c, long delay) {
+         TimerManager.getInstance().schedule(new Runnable() {
+@@ -147,49 +147,49 @@ public void hitReactor(MapleClient c) {
+     }
+ 
+     public synchronized void hitReactor(int charPos, short stance, int skillid, MapleClient c) {
+-        try {
+-			if(!this.isAlive()) {
+-				return;
+-			}
+-                        if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid);
+-			if (stats.getType(state) < 999 && stats.getType(state) != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
+-                            if (!(stats.getType(state) == 2 && (stance == 0 || stance == 2))) { //get next state	
+-					for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
+-						List<Integer> activeSkills = stats.getActiveSkills(state, b);
+-						if (activeSkills != null) {
+-							if (!activeSkills.contains(skillid)) continue;
+-						}
+-						state = stats.getNextState(state, b);
+-						if (stats.getNextState(state, b) == -1) {//end of reactor
+-							if (stats.getType(state) < 100) {//reactor broken
+-								if (delay > 0) {
+-									map.destroyReactor(getObjectId());
+-								} else {//trigger as normal
+-									map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-								}
+-							} else {//item-triggered on final step
+-								map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-							}
+-                                                        
+-                                                        if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "REACTOR " + this.getId() + " activated");
+-							ReactorScriptManager.getInstance().act(c, this);
+-						} else { //reactor not broken yet
+-							map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-							if (state == stats.getNextState(state, b)) {//current state = next state, looping reactor
+-								ReactorScriptManager.getInstance().act(c, this);
+-							}
+-						}
+-						break;
+-					}
+-				}
+-			} else {
+-				state++;
+-				map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+-				ReactorScriptManager.getInstance().act(c, this);
+-			}
+-		} catch(Exception e) {
+-			e.printStackTrace();
+-		}
++            try {
++                    if(!this.isAlive()) {
++                            return;
++                    }
++                    if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "Hitted REACTOR " + this.getId() + " with POS " + charPos + " , STANCE " + stance + " , SkillID " + skillid);
++                    if (stats.getType(state) < 999 && stats.getType(state) != -1) {//type 2 = only hit from right (kerning swamp plants), 00 is air left 02 is ground left
++                        if (!(stats.getType(state) == 2 && (stance == 0 || stance == 2))) { //get next state	
++                                    for (byte b = 0; b < stats.getStateSize(state); b++) {//YAY?
++                                            List<Integer> activeSkills = stats.getActiveSkills(state, b);
++                                            if (activeSkills != null) {
++                                                    if (!activeSkills.contains(skillid)) continue;
++                                            }
++                                            state = stats.getNextState(state, b);
++                                            if (stats.getNextState(state, b) == -1) {//end of reactor
++                                                    if (stats.getType(state) < 100) {//reactor broken
++                                                            if (delay > 0) {
++                                                                    map.destroyReactor(getObjectId());
++                                                            } else {//trigger as normal
++                                                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                                            }
++                                                    } else {//item-triggered on final step
++                                                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                                    }
++
++                                                    if(ServerConstants.USE_DEBUG == true) c.getPlayer().dropMessage(5, "REACTOR " + this.getId() + " activated");
++                                                    ReactorScriptManager.getInstance().act(c, this);
++                                            } else { //reactor not broken yet
++                                                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                                                    if (state == stats.getNextState(state, b)) {//current state = next state, looping reactor
++                                                            ReactorScriptManager.getInstance().act(c, this);
++                                                    }
++                                            }
++                                            break;
++                                    }
++                            }
++                    } else {
++                            state++;
++                            map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
++                            ReactorScriptManager.getInstance().act(c, this);
++                    }
++            } catch(Exception e) {
++                    e.printStackTrace();
++            }
+     }
+ 
+     public Rectangle getArea() {

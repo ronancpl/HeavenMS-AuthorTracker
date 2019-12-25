@@ -1,0 +1,116 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 3e52e8a4f..ffe73bef8 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -52,7 +52,7 @@ Testei o script do chscroll crafter.
+ 
+ 10 --- 11 Agosto 2015,
+ NPC crafters, Accessories e chscroll funcionam OK.
+-cORRIGIDO BUG DE CRAFTER Q TIRAVA ITEM SE INCOMPLETO!
++CORRIGIDO BUG DE CRAFTER Q TIRAVA ITEM SE INCOMPLETO!
+ Inclui constante USE_PERFECT_SCROLLING.
+ 
+ 12 --- 14 Agosto 2015,
+@@ -70,4 +70,7 @@ Resolvi alguns problemas com scripts do aviao e do metro.
+ 25 --- 26 Agosto 2015,
+ Mecanismos de evitar queda de HP por mapa (red bean, air bubble, soft white bun) funcionam.
+ Correcao de bug que nao contabilizava queda de hp qdo um char loga em um mapa.
+-Correcao de bug que nao retirava corretamente recursos de projeteis.
+\ No newline at end of file
++Correcao de bug que nao retirava corretamente recursos de projeteis.
++
++6 Novembro 2015,
++Movimentacao no ranking agora eh contabilizado corretamente.
+\ No newline at end of file
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index d222f562e..9325b0773 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -32,10 +32,12 @@
+     public static final boolean USE_PARTY_SEARCH = false;
+     public static final boolean USE_AUTOBAN = false;            //commands the server to detect infractors automatically.
+     public static final boolean USE_ANOTHER_AUTOASSIGN = true;  //based on distributing AP accordingly with higher secondary stat on equipments.
++    public static final boolean USE_REFRESH_RANK_MOVE = true;
+     
+     public static final int MAX_AP = 999;
+     public static final long BLOCK_DUEY_RACE_COND = (long)(0.5 * 1000);
+-    public static final long PET_LOOT_UPON_ATTACK = (long)(0.8 * 1000);    //time the pet must wait before trying to pick items up.
++    public static final long PET_LOOT_UPON_ATTACK = (long)(0.7 * 1000);            //time the pet must wait before trying to pick items up.
++    
+     //Some Gameplay Enhancing Configurations
+     public static final boolean USE_PERFECT_SCROLLING = true;   //scrolls doesn't use slots upon failure.
+     public static final boolean USE_ENHANCED_CHSCROLL = true;   //equips even more powerful with chaos upgrade
+diff --git a/src/net/server/RankingWorker.java b/src/net/server/RankingWorker.java
+index e3740b8c1..ee9a00b55 100644
+--- a/src/net/server/RankingWorker.java
++++ b/src/net/server/RankingWorker.java
+@@ -27,6 +27,7 @@
+ import java.sql.SQLException;
+ import client.MapleJob;
+ import tools.DatabaseConnection;
++import constants.ServerConstants;
+ 
+ /**
+  * @author Matze
+@@ -35,11 +36,17 @@
+ public class RankingWorker implements Runnable {
+     private Connection con;
+     private long lastUpdate = System.currentTimeMillis();
+-
++    
+     public void run() {
+         try {
+             con = DatabaseConnection.getConnection();
+             con.setAutoCommit(false);
++            
++            if(ServerConstants.USE_REFRESH_RANK_MOVE == true) {
++                resetMoveRank(true);
++                resetMoveRank(false);
++            }
++            
+             updateRanking(null);
+             for (int i = 0; i < 3; i += 2) {
+                 for (int j = 1; j < 6; j++) {
+@@ -50,13 +57,22 @@ public void run() {
+             con.setAutoCommit(true);
+             lastUpdate = System.currentTimeMillis();
+         } catch (SQLException ex) {
++            ex.printStackTrace();
++            
+             try {
+                 con.rollback();
+                 con.setAutoCommit(true);
+             } catch (SQLException ex2) {
++                ex2.printStackTrace();
+             }
+         }
+     }
++    
++    private void resetMoveRank(boolean job) throws SQLException {
++        String query = "UPDATE characters SET " + (job == true ? "jobRankMove = 0" : "rankMove = 0");
++        PreparedStatement reset = con.prepareStatement(query);
++        ResultSet rs = reset.executeQuery();
++    }
+ 
+     private void updateRanking(MapleJob job) throws SQLException {
+         String sqlCharSelect = "SELECT c.id, " + (job != null ? "c.jobRank, c.jobRankMove" : "c.rank, c.rankMove") + ", a.lastlogin AS lastlogin, a.loggedin FROM characters AS c LEFT JOIN accounts AS a ON c.accountid = a.id WHERE c.gm = 0 ";
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 2412917fc..6a2ab57eb 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -168,11 +168,11 @@ public void run() {
+         MapleItemInformationProvider.getInstance().getAllItems();
+ 
+         CashItemFactory.getSpecialCashItems();
+-        System.out.println("Items loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
++        System.out.println("Items loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds");
+         
+-		timeToTake = System.currentTimeMillis();
+-		MapleQuest.loadAllQuest();
+-		System.out.println("Quest loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
++	timeToTake = System.currentTimeMillis();
++	MapleQuest.loadAllQuest();
++	System.out.println("Quest loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
+ 		
+ 		
+         try {

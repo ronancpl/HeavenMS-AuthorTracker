@@ -1,0 +1,2453 @@
+diff --git a/.gitignore b/.gitignore
+index ca7e2ab39..c635df16b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,4 +1,4 @@
+-/logs/**
++﻿/logs/**
+ .idea/
+ 
+ # build files
+diff --git a/docs/issues.txt b/docs/issues.txt
+index 6f68216c1..d28e49a51 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -13,6 +13,7 @@ Known issues:
+ - If there are multiple bosses that shows HPBar on the map, if a player hits more than one the HPBar may start flickering on the screen.
+ - Sometimes battleship may behave oddly with the enhanced buff system, making the character d/c in certain scenarios.
+ - Dragon Roar doesn't show the stun effect to players.
++- Some monster status such as freeze and weapon/magic reflect doesn't behave properly in certain scenarios. Freeze seems to not work on mobs with low OID or are starters from server boot time.
+ ---------------------------
+ 
+ ---------------------------
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 02f36dc2e..285c1bb37 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1083,4 +1083,14 @@ Adicionado efeito de dispel de weapondef e magicdef up em mobs ao atacar com Sha
+ Corrigido Shadow Meso consumindo projetil (deveria usar meso somente).
+ Adicionado recompensa de buff ao completar o HolidayPQ.
+ Adicionado drops de itens que dão buffs característicos nos reatores da Zakum Prequest.
+-Scroll shop custom mudou para a NPC Asia em Neo City (anteriormente estava no Spindle).
+\ No newline at end of file
++Scroll shop custom mudou para a NPC Asia em Neo City (anteriormente estava no Spindle).
++
++27 Junho 2018,
++Resolvido um problema no sistema de ganho de EXP que daria ao jogador um valor abaixo do que seria o normal nos casos onde o EXP ganho é baixo.
++Otimizado mob buffs e diseases agora utilizando thread dedicada para lidar com a duração, anteriormente eram criadas novas schedules pra cada instância.
++Refatorado MonitoredLockTypes para agora dar um label específico a cada lock do sistema.
++
++29 - 30 Junho 2018,
++Corrigido quest Milk Jug com NPCs trocados.
++Adicionado um delay na aplicação de efeitos dos skills de mobs, buffs e demais efeitos agora são registrados após o tempo da animação.
++Corrigido Flame Thrower atuando passivamente quando o jogador usa uma skill de ataque.
+\ No newline at end of file
+diff --git a/handbook/Etc.txt b/handbook/Etc.txt
+index 61d29e494..903b1ba09 100644
+--- a/handbook/Etc.txt
++++ b/handbook/Etc.txt
+@@ -241,7 +241,7 @@
+ 4000172 - Three-Tailed Foxtail - A soft foxtail that Three-Tailed Fox removed from itself.
+ 4000173 - Broom - A small broom made from bushes that Blins dropped.
+ 4000174 - Money Envelope - You can sell this envelope for 10,000 meso in the store.
+-4000175 - Minature Pianus - A miniature version of Pianus
++4000175 - Miniature Pianus - A miniature version of Pianus
+ 4000176 - Poisonous Mushroom - A poisonous mushroom that lives on the humongous Zombie Mushroom.
+ 4000177 - Mixed Block - A block from Mix Golem that consists of its chest area.
+ 4000178 - Iron Boar Armor - A small piece of the solid armor from Iron Boar.
+diff --git a/scripts/npc/1012100.js b/scripts/npc/1012100.js
+index 8063e7a86..a132cfce1 100644
+--- a/scripts/npc/1012100.js
++++ b/scripts/npc/1012100.js
+@@ -49,7 +49,7 @@ function start() {
+             if (cm.getLevel() >= 10 && cm.canGetFirstJob(jobType))
+                 cm.sendNext("So you decided to become a #rBowman#k?");
+             else {
+-                cm.sendOk("Train a bit more and I can show you the way of the #rBowman#k.");
++                cm.sendOk("Train a bit more until you reach #blevel 10, " + cm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rBowman#k.");
+                 cm.dispose();
+             }
+         } else if (cm.getLevel() >= 30 && cm.getJobId() == 300) {
+diff --git a/scripts/npc/1022000.js b/scripts/npc/1022000.js
+index 231c84184..a112e93b0 100644
+--- a/scripts/npc/1022000.js
++++ b/scripts/npc/1022000.js
+@@ -50,7 +50,7 @@ function start() {
+             if (cm.getLevel() >= 10 && cm.canGetFirstJob(jobType))
+                 cm.sendNext("Do you want to become a Warrior? You need to meet some criteria in order to do so.#b You should be at least in level 10, with at least 35 in STR#k. Let's see...");
+             else {
+-                cm.sendOk("Train a bit more and I can show you the way of the #rWarrior#k.");
++                cm.sendOk("Train a bit more until you reach #blevel 10, " + cm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rWarrior#k.");
+                 cm.dispose();
+             }
+         } else if (cm.getLevel() >= 30 && cm.getJobId() == 100) {
+diff --git a/scripts/npc/1032001.js b/scripts/npc/1032001.js
+index 527b31602..993eb304f 100644
+--- a/scripts/npc/1032001.js
++++ b/scripts/npc/1032001.js
+@@ -50,7 +50,7 @@ function start() {
+             if (cm.getLevel() >= 8 && cm.canGetFirstJob(jobType))
+                 cm.sendNext("Want to be a magician? There are some standards to meet. because we can't just accept EVERYONE in... #bYour level should be at least 8#k, with getting INT as your top priority. Let's see.");
+             else {
+-                cm.sendOk("Train a bit more and I can show you the way of the #rMagician#k.");
++                cm.sendOk("Train a bit more until you reach #blevel 10, " + cm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rMagician#k.");
+                 cm.dispose();
+             }
+         } else if (cm.getLevel() >= 30 && cm.getJobId() == 200) {
+diff --git a/scripts/npc/1052001.js b/scripts/npc/1052001.js
+index 7ef886ac0..3f76c7fb1 100644
+--- a/scripts/npc/1052001.js
++++ b/scripts/npc/1052001.js
+@@ -49,7 +49,7 @@ function start() {
+             if (cm.getLevel() >= 10 && cm.canGetFirstJob(jobType))
+                 cm.sendNext("Want to be a thief? There are some standards to meet. because we can't just accept EVERYONE in... #bYour level should be at least 10, with your DEX over 25#k. Let's see.");
+             else {
+-                cm.sendOk("Train a bit more and I can show you the way of the #rThief#k.");
++                cm.sendOk("Train a bit more until you reach #blevel 10, " + cm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rThief#k.");
+                 cm.dispose();
+             }
+         } else if (cm.getLevel() >= 30 && cm.getJobId() == 400) {
+diff --git a/scripts/npc/1090000.js b/scripts/npc/1090000.js
+index c0163e07f..575c7aaff 100644
+--- a/scripts/npc/1090000.js
++++ b/scripts/npc/1090000.js
+@@ -49,7 +49,7 @@ function start() {
+             if (cm.getLevel() >= 10 && cm.canGetFirstJob(jobType))
+                 cm.sendNext("Want to be a pirate? There are some standards to meet. because we can't just accept EVERYONE in... #bYour level should be at least 10#k. Let's see.");
+             else {
+-                cm.sendOk("Train a bit more and I can show you the way of the #rPirate#k.");
++                cm.sendOk("Train a bit more until you reach #blevel 10, " + cm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rPirate#k.");
+                 cm.dispose();
+             }
+         } else if (cm.getLevel() >= 30 && cm.getJobId() == 500) {
+diff --git a/scripts/npc/1092090.js b/scripts/npc/1092090.js
+index ed8920180..2dac57632 100644
+--- a/scripts/npc/1092090.js
++++ b/scripts/npc/1092090.js
+@@ -19,34 +19,34 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-status = -1;
+ 
+ function start() {
+-    if(cm.haveItem(4031847))
+-        cm.sendNext("The hungry calf is drinking all the milk! The bottle remains empty...");
+-    else if(cm.haveItem(4031848) || cm.haveItem(4031849) || cm.haveItem(4031850)){
+-        cm.sendNext("The hungry calf is drinking all the milk! The bottle is now empty.");
+-        if(cm.haveItem(4031848))
+-            cm.gainItem(4031848,-1);
+-        else if(cm.haveItem(4031849))
+-            cm.gainItem(4031849, -1);
+-        else
+-            cm.gainItem(4031850, -1);
+-        cm.gainItem(4031847, 1);
++    if(cm.getQuestProgress(2180, 0) == 1) {
++        cm.sendNext("You have taken milk from this cow recently, check another cow.");
+         cm.dispose();
++        return;
+     }
+-}
+-
+-function action(mode, type, selection){
+-    if(mode == -1)
+-        cm.dispose();
+-    else if(mode == 0){
+-        status--;
+-        start();
+-    }else
+-        status++;
+-    if(status == 0)
+-        cm.sendPrev("The hungry calf isn't interested in the empty bottle.");
+-    else if(status == 1)
+-        cm.dispose();
++    
++    if (cm.canHold(4031848) && cm.haveItem(4031847)) {
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now 1/3 full of milk.");
++        cm.gainItem(4031847, -1);
++        cm.gainItem(4031848, 1);
++        
++        cm.setQuestProgress(2180, 0, 1);
++    } else if (cm.canHold(4031849, 1) && cm.haveItem(4031848)) {
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now 2/3 full of milk.");
++        cm.gainItem(4031848, -1);
++        cm.gainItem(4031849, 1);
++        
++        cm.setQuestProgress(2180, 0, 1);
++    } else if (cm.canHold(4031850) && cm.haveItem(4031849)) {
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now completely full of milk.");
++        cm.gainItem(4031849, -1);
++        cm.gainItem(4031850, 1);
++        
++        cm.setQuestProgress(2180, 0, 1);
++    } else {
++        cm.sendNext("Your inventory is full, and there's no room for a milk bottle.");
++    }
++    cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1092091.js b/scripts/npc/1092091.js
+index f6e83bfc2..5d5db97d5 100644
+--- a/scripts/npc/1092091.js
++++ b/scripts/npc/1092091.js
+@@ -20,34 +20,33 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-status = -1;
+-
+ function start() {
+-    if (cm.haveItem(4031847))
+-        cm.sendNext("The hungry calf is drinking all the milk! The bottle remains empty...");
+-    else if (cm.haveItem(4031848) || cm.haveItem(4031849) || cm.haveItem(4031850)) {
+-        cm.sendNext("The hungry calf is drinking all the milk! The bottle is now empty.");
+-        if (cm.haveItem(4031848))
+-            cm.gainItem(4031848,-1);
+-        else if (cm.haveItem(4031849))
+-            cm.gainItem(4031849, -1);
+-        else
+-            cm.gainItem(4031850, -1);
+-        cm.gainItem(4031847, 1);
++    if(cm.getQuestProgress(2180, 0) == 2) {
++        cm.sendNext("You have taken milk from this cow recently, check another cow.");
+         cm.dispose();
++        return;
+     }
+-}
+-
+-function action(mode, type, selection){
+-    if (mode == -1)
+-        cm.dispose();
+-    else if (mode == 0) {
+-        status--;
+-        start();
+-    } else
+-        status++;
+-    if (status == 0)
+-        cm.sendPrev("The hungry calf isn't interested in the empty bottle.");
+-    else if (status == 1)
+-        cm.dispose();
++    
++    if (cm.canHold(4031848) && cm.haveItem(4031847)){
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now 1/3 full of milk.");
++        cm.gainItem(4031847, -1);
++        cm.gainItem(4031848, 1);
++        
++        cm.setQuestProgress(2180, 0, 2);
++    } else if(cm.canHold(4031849) && cm.haveItem(4031848)){
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now 2/3 full of milk.");
++        cm.gainItem(4031848, -1);
++        cm.gainItem(4031849, 1);
++        
++        cm.setQuestProgress(2180, 0, 2);
++    } else if(cm.canHold(4031850) && cm.haveItem(4031849)){
++        cm.sendNext("Now filling up the bottle with milk. The bottle is now completely full of milk.");
++        cm.gainItem(4031849, -1);
++        cm.gainItem(4031850, 1);
++        
++        cm.setQuestProgress(2180, 0, 2);
++    } else {
++        cm.sendNext("Your inventory is full, and there's no room for a milk bottle.");
++    }
++    cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1092094.js b/scripts/npc/1092094.js
+index 27d7a951b..ed8920180 100644
+--- a/scripts/npc/1092094.js
++++ b/scripts/npc/1092094.js
+@@ -19,21 +19,34 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
++status = -1;
+ 
+ function start() {
+-    if (cm.canHold(4031848) && cm.haveItem(4031847)) {
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now 1/3 full of milk.");
+-        cm.gainItem(4031847, -1);
+-        cm.gainItem(4031848, 1);
+-    } else if (cm.canHold(4031849, 1) && cm.haveItem(4031848)) {
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now 2/3 full of milk.");
+-        cm.gainItem(4031848, -1);
+-        cm.gainItem(4031849, 1);
+-    } else if (cm.canHold(4031850) && cm.haveItem(4031849)) {
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now completely full of milk.");
+-        cm.gainItem(4031849, -1);
+-        cm.gainItem(4031850, 1);
+-    } else
+-        cm.sendNext("Your inventory is full, and there's no room for a milk bottle.");
+-    cm.dispose();
++    if(cm.haveItem(4031847))
++        cm.sendNext("The hungry calf is drinking all the milk! The bottle remains empty...");
++    else if(cm.haveItem(4031848) || cm.haveItem(4031849) || cm.haveItem(4031850)){
++        cm.sendNext("The hungry calf is drinking all the milk! The bottle is now empty.");
++        if(cm.haveItem(4031848))
++            cm.gainItem(4031848,-1);
++        else if(cm.haveItem(4031849))
++            cm.gainItem(4031849, -1);
++        else
++            cm.gainItem(4031850, -1);
++        cm.gainItem(4031847, 1);
++        cm.dispose();
++    }
++}
++
++function action(mode, type, selection){
++    if(mode == -1)
++        cm.dispose();
++    else if(mode == 0){
++        status--;
++        start();
++    }else
++        status++;
++    if(status == 0)
++        cm.sendPrev("The hungry calf isn't interested in the empty bottle.");
++    else if(status == 1)
++        cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1092095.js b/scripts/npc/1092095.js
+index f3b9a6dca..f6e83bfc2 100644
+--- a/scripts/npc/1092095.js
++++ b/scripts/npc/1092095.js
+@@ -20,20 +20,34 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++status = -1;
++
+ function start() {
+-    if (cm.canHold(4031848) && cm.haveItem(4031847)){
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now 1/3 full of milk.");
+-        cm.gainItem(4031847, -1);
+-        cm.gainItem(4031848, 1);
+-    } else if(cm.canHold(4031849) && cm.haveItem(4031848)){
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now 2/3 full of milk.");
+-        cm.gainItem(4031848, -1);
+-        cm.gainItem(4031849, 1);
+-    } else if(cm.canHold(4031850) && cm.haveItem(4031849)){
+-        cm.sendNext("Now filling up the bottle with milk. The bottle is now completely full of milk.");
+-        cm.gainItem(4031849, -1);
+-        cm.gainItem(4031850, 1);
++    if (cm.haveItem(4031847))
++        cm.sendNext("The hungry calf is drinking all the milk! The bottle remains empty...");
++    else if (cm.haveItem(4031848) || cm.haveItem(4031849) || cm.haveItem(4031850)) {
++        cm.sendNext("The hungry calf is drinking all the milk! The bottle is now empty.");
++        if (cm.haveItem(4031848))
++            cm.gainItem(4031848,-1);
++        else if (cm.haveItem(4031849))
++            cm.gainItem(4031849, -1);
++        else
++            cm.gainItem(4031850, -1);
++        cm.gainItem(4031847, 1);
++        cm.dispose();
++    }
++}
++
++function action(mode, type, selection){
++    if (mode == -1)
++        cm.dispose();
++    else if (mode == 0) {
++        status--;
++        start();
+     } else
+-        cm.sendNext("Your inventory is full, and there's no room for a milk bottle.");
+-    cm.dispose();
++        status++;
++    if (status == 0)
++        cm.sendPrev("The hungry calf isn't interested in the empty bottle.");
++    else if (status == 1)
++        cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index d0f427fbd..b35a45ff6 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -144,6 +144,7 @@ function writeFeatureTab_Serverpotentials() {
+         addFeature("Enhanced auto-pot system: smart pet potion handle.");
+         addFeature("Enhanced buff system: best buffs effects takes place.");
+         addFeature("Enhanced AP auto-assigner: focus on eqp demands.");
++        addFeature("Consistent experience gain system.");
+         addFeature("NPC crafters won't take items freely anymore.");
+         addFeature("Duey: pkg rcvd popup and many delivery mechanics.");
+         addFeature("Pet pickup gives preference to player attacks.");
+@@ -169,6 +170,7 @@ function writeFeatureTab_AdminGMcommands() {
+ 
+ function writeFeatureTab_CustomNPCs() {
+         addFeature("Spiegelmann: automatized rock-refiner.");
++        addFeature("Asia: scroll & rarities shop NPC.");
+         addFeature("Abdula: lists droppers of needed skill/mastery books.");
+         addFeature("Agent E: accessory crafter.");
+         addFeature("Donation Box: automatized item-buyer.");
+@@ -197,6 +199,7 @@ function writeFeatureTab_Project() {
+         addFeature("Reviewed many Java aspects that needed attention.");
+         addFeature("Reviewed SQL data, eliminating duplicated entries.");
+         addFeature("Protected many flaws with login management system.");
++        addFeature("Developed many survey tools for content management.");
+         addFeature("ThreadTracker: runtime tool for deadlock detection.");
+         addFeature("Heavily reviewed future task management, spawning much less threads and relieving task overload on the TimerManager.");
+ }
+diff --git a/scripts/quest/20101.js b/scripts/quest/20101.js
+index 895361f63..f6d210778 100644
+--- a/scripts/quest/20101.js
++++ b/scripts/quest/20101.js
+@@ -22,8 +22,8 @@ function end(mode, type, selection) {
+     	qm.sendYesNo("Have you made your decision? The decision will be final, so think carefully before deciding what to do. Are you sure you want to become a Dawn Warrior?");
+     } else if (status == 1) {
+         if(!qm.canGetFirstJob(jobType)) {
+-            cm.sendOk("Train a bit more and I can show you the way of the #rDawn Warrior#k.");
+-            cm.dispose();
++            qm.sendOk("Train a bit more until you reach #blevel 10, " + qm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rDawn Warrior#k.");
++            qm.dispose();
+             return;
+         }
+         
+diff --git a/scripts/quest/20102.js b/scripts/quest/20102.js
+index a32faea5d..f4bd37ddc 100644
+--- a/scripts/quest/20102.js
++++ b/scripts/quest/20102.js
+@@ -22,8 +22,8 @@ function end(mode, type, selection) {
+     	qm.sendYesNo("Have you made your decision? The decision will be final, so think carefully before deciding what to do. Are you sure you want to become a Blaze Wizard?");
+     } else if (status == 1) {
+         if(!qm.canGetFirstJob(jobType)) {
+-            cm.sendOk("Train a bit more and I can show you the way of the #rBlaze Wizard#k.");
+-            cm.dispose();
++            qm.sendOk("Train a bit more until you reach #blevel 10, " + qm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rBlaze Wizard#k.");
++            qm.dispose();
+             return;
+         }
+         
+diff --git a/scripts/quest/20103.js b/scripts/quest/20103.js
+index 223632f60..03d54ab4e 100644
+--- a/scripts/quest/20103.js
++++ b/scripts/quest/20103.js
+@@ -22,8 +22,8 @@ function end(mode, type, selection) {
+     	qm.sendYesNo("Have you made your decision? The decision will be final, so think carefully before deciding what to do. Are you sure you want to become a Wind Archer?");
+     } else if (status == 1) {
+         if(!qm.canGetFirstJob(jobType)) {
+-            cm.sendOk("Train a bit more and I can show you the way of the #rWind Archer#k.");
+-            cm.dispose();
++            qm.sendOk("Train a bit more until you reach #blevel 10, " + qm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rWind Archer#k.");
++            qm.dispose();
+             return;
+         }
+         
+diff --git a/scripts/quest/20104.js b/scripts/quest/20104.js
+index 6e1ef777e..a0fc3311a 100644
+--- a/scripts/quest/20104.js
++++ b/scripts/quest/20104.js
+@@ -22,8 +22,8 @@ function end(mode, type, selection) {
+     	qm.sendYesNo("Have you made your decision? The decision will be final, so think carefully before deciding what to do. Are you sure you want to become a Night Walker?");
+     } else if (status == 1) {
+         if(!qm.canGetFirstJob(jobType)) {
+-            cm.sendOk("Train a bit more and I can show you the way of the #rNight Walker#k.");
+-            cm.dispose();
++            qm.sendOk("Train a bit more until you reach #blevel 10, " + qm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rNight Walker#k.");
++            qm.dispose();
+             return;
+         }
+         
+diff --git a/scripts/quest/20105.js b/scripts/quest/20105.js
+index 517578e79..5de72b98f 100644
+--- a/scripts/quest/20105.js
++++ b/scripts/quest/20105.js
+@@ -22,8 +22,8 @@ function end(mode, type, selection) {
+     	qm.sendYesNo("Have you made your decision? The decision will be final, so think carefully before deciding what to do. Are you sure you want to become a Thunder Breaker?");
+     } else if (status == 1) {
+         if(!qm.canGetFirstJob(jobType)) {
+-            cm.sendOk("Train a bit more and I can show you the way of the #rThunder Breaker#k.");
+-            cm.dispose();
++            qm.sendOk("Train a bit more until you reach #blevel 10, " + qm.getFirstJobStatRequirement(jobType) + "#k and I can show you the way of the #rThunder Breaker#k.");
++            qm.dispose();
+             return;
+         }
+         
+diff --git a/scripts/quest/4647.js b/scripts/quest/4647.js
+index b317e99f1..c26f42341 100644
+--- a/scripts/quest/4647.js
++++ b/scripts/quest/4647.js
+@@ -41,7 +41,7 @@ function end(mode, type, selection) {
+ 		if (status == 0) {
+ 			if(qm.haveItem(5460000)) {
+ 				qm.sendOk("You got the Pet Snack! Thanks! You can use these to feed multiple pets at once!");
+-				qm.teachSkill(0008, 1, 1, -1);
++				qm.teachSkill(8, 1, 1, -1);
+ 				qm.gainItem(5460000, -1, false);
+ 				qm.completeQuest();
+ 				qm.dispose();
+diff --git a/scripts/reactor/8001000.js b/scripts/reactor/8001000.js
+index f4f08d7db..6be480351 100644
+--- a/scripts/reactor/8001000.js
++++ b/scripts/reactor/8001000.js
+@@ -20,5 +20,5 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ function act(){
+-        rm.spawnMonster(9400112);
++        rm.spawnMonster(9400112, 1, 420, 160);
+ }
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 06f3974ba..6439a3e49 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -3794,7 +3794,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (3575, 4250001, 1442005, 1, 1, 0, 700),
+ (3576, 4250001, 4000438, 1, 1, 0, 600000),
+ (3577, 4250001, 4130014, 1, 1, 0, 6000),
+-(3578, 5090000, 4000413, 1, 1, 0, 600000),
++(3578, 5090000, 4000413, 1, 1, 0, 200000),
+ (3579, 5090001, 4000412, 1, 1, 0, 600000),
+ (3580, 5100000, 4000048, 1, 1, 0, 600000),
+ (3581, 5100000, 4003005, 1, 1, 0, 200000),
+@@ -7995,7 +7995,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (7772, 8180000, 4004001, 1, 1, 0, 100000),
+ (7773, 8180000, 4004002, 1, 1, 0, 100000),
+ (7774, 8180000, 4004003, 1, 1, 0, 100000),
+-(7775, 8180000, 4000235, 1, 1, 0, 600000),
++(7775, 8180000, 4000235, 1, 1, 0, 200000),
+ (7776, 8180000, 4000244, 1, 1, 0, 20000),
+ (7777, 8180000, 4000245, 1, 1, 0, 20000),
+ (7778, 8180000, 2290003, 1, 1, 0, 5000),
+@@ -8052,7 +8052,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (7829, 8180001, 4004001, 1, 1, 0, 100000),
+ (7830, 8180001, 4004002, 1, 1, 0, 100000),
+ (7831, 8180001, 4004003, 1, 1, 0, 100000),
+-(7832, 8180001, 4000243, 1, 1, 0, 600000),
++(7832, 8180001, 4000243, 1, 1, 0, 200000),
+ (7833, 8180001, 4000244, 1, 1, 0, 20000),
+ (7834, 8180001, 4000245, 1, 1, 0, 20000),
+ (7835, 8180001, 2290018, 1, 1, 0, 5000),
+@@ -10413,10 +10413,10 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (10190, 9400546, 4031681, 1, 1, 4915, 1000000),
+ (10191, 9600005, 4000191, 1, 1, 0, 1000000),
+ (10192, 9600006, 4000192, 1, 1, 0, 1000000),
+-(10193, 8500002, 4031196, 1, 1, 0, 1000000),
+-(10194, 8500002, 4031196, 1, 1, 0, 1000000),
+-(10195, 8500002, 4031196, 1, 1, 0, 187500),
+-(10196, 8500002, 4031196, 1, 1, 0, 125000),
++(10193, 8500002, 4031196, 1, 1, 0, 80000),
++(10194, 8500002, 4031196, 1, 1, 0, 80000),
++(10195, 8500002, 4031196, 1, 1, 0, 80000),
++(10196, 8500002, 4031196, 1, 1, 0, 80000),
+ (10197, 3000006, 4031209, 1, 1, 3072, 500000),
+ (10198, 2230109, 4031209, 1, 1, 3072, 500000),
+ (10199, 2230200, 4031209, 1, 1, 3072, 500000),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 3e39c0a3f..a7cb0be4d 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -15794,15 +15794,15 @@ USE `heavenms`;
+ (6400006, 4030012, 1, 1, 0, 125000), 
+ (6400009, 4030012, 1, 1, 0, 125000), 
+ (9303013, 4030012, 1, 1, 0, 125000), 
+-(8150000, 4031906, 1, 1, 0, 7000), 
+-(9300210, 4031906, 1, 1, 0, 7000), 
+-(9500140, 4031906, 1, 1, 0, 7000), 
+-(9500171, 4031906, 1, 1, 0, 7000), 
+-(9500328, 4031906, 1, 1, 0, 7000), 
+-(9500358, 4031906, 1, 1, 0, 7000), 
+-(6400006, 4031906, 1, 1, 0, 7000), 
+-(6400009, 4031906, 1, 1, 0, 7000), 
+-(9303013, 4031906, 1, 1, 0, 7000), 
++(8150000, 4031906, 1, 1, 0, 400000), 
++(9300210, 4031906, 1, 1, 0, 400000), 
++(9500140, 4031906, 1, 1, 0, 400000), 
++(9500171, 4031906, 1, 1, 0, 400000), 
++(9500328, 4031906, 1, 1, 0, 400000), 
++(9500358, 4031906, 1, 1, 0, 400000), 
++(6400006, 4031906, 1, 1, 0, 400000), 
++(6400009, 4031906, 1, 1, 0, 400000), 
++(9303013, 4031906, 1, 1, 0, 400000), 
+ (8150000, 2043002, 1, 4, 0, 10000), 
+ (9300210, 2043002, 1, 4, 0, 10000), 
+ (9500140, 2043002, 1, 4, 0, 10000), 
+@@ -17473,18 +17473,18 @@ USE `heavenms`;
+ (8200010, 1072225, 1, 1, 0, 700),
+ (8200010, 1082158, 1, 1, 0, 700), 
+ (8200010, 1002646, 1, 1, 0, 700), 
+-(8500002, 4031196, 1, 1, 0, 7000), 
+-(9300214, 4031196, 1, 1, 0, 7000), 
+-(9500180, 4031196, 1, 1, 0, 7000), 
+-(9500181, 4031196, 1, 1, 0, 7000),
+-(9500331, 4031196, 1, 1, 0, 7000), 
+-(9500362, 4031196, 1, 1, 0, 7000), 
+-(8500002, 4031901, 1, 1, 0, 7000), 
+-(9300214, 4031901, 1, 1, 0, 7000), 
+-(9500180, 4031901, 1, 1, 0, 7000), 
+-(9500181, 4031901, 1, 1, 0, 7000), 
+-(9500331, 4031901, 1, 1, 0, 7000), 
+-(9500362, 4031901, 1, 1, 0, 7000), 
++(8500002, 4031196, 1, 1, 0, 80000), 
++(9300214, 4031196, 1, 1, 0, 80000), 
++(9500180, 4031196, 1, 1, 0, 80000), 
++(9500181, 4031196, 1, 1, 0, 80000),
++(9500331, 4031196, 1, 1, 0, 80000), 
++(9500362, 4031196, 1, 1, 0, 80000), 
++(8500002, 4031901, 1, 1, 0, 400000), 
++(9300214, 4031901, 1, 1, 0, 400000), 
++(9500180, 4031901, 1, 1, 0, 400000), 
++(9500181, 4031901, 1, 1, 0, 400000), 
++(9500331, 4031901, 1, 1, 0, 400000), 
++(9500362, 4031901, 1, 1, 0, 400000), 
+ (8500002, 4001084, 1, 1, 0, 7000),
+ (9300214, 4001084, 1, 1, 0, 7000), 
+ (9500180, 4001084, 1, 1, 0, 7000), 
+@@ -20775,7 +20775,7 @@ USE `heavenms`;
+   UPDATE drop_data SET questid=28248 WHERE itemid=4001358;
+   UPDATE drop_data SET questid=28248 WHERE itemid=4001359;
+   UPDATE drop_data SET questid=28175 WHERE itemid=4001342;
+-  UPDATE drop_data SET questid=7777 WHERE itemid=4031906;	#id 7777 for ALL "quest items" with no v83 quest.
++  UPDATE drop_data SET questid=7777 WHERE itemid=4031905;	#id 7777 for ALL "quest items" with no v83 quest.
+   UPDATE drop_data SET chance=0 WHERE itemid=2050099;
+   UPDATE drop_data SET questid=6191 WHERE itemid=4031477;
+   UPDATE drop_data SET questid=6190 WHERE itemid=4001111;
+@@ -21364,7 +21364,7 @@ USE `heavenms`;
+ (9300270, 2022431, 1, 1, 0, 200000),
+ (9300270, 2022432, 1, 1, 0, 200000),
+ (9300270, 2022433, 1, 1, 0, 200000),
+-(6090002, 4000414, 1, 1, 0, 400000),
++(6090002, 4000414, 1, 1, 0, 200000),
+ (9300147, 4001132, 1, 1, 0, 400000),
+ (9300148, 4001133, 1, 1, 0, 100000),
+ (4300012, 4000537, 1, 1, 0, 200000),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index ad3ecc692..60ba02f2b 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -273,10 +273,10 @@
+     private ScheduledFuture<?> extraRecoveryTask = null;
+     private ScheduledFuture<?> chairRecoveryTask = null;
+     private ScheduledFuture<?> pendantOfSpirit = null; //1122017
+-    private Lock chrLock = new MonitoredReentrantLock(MonitoredLockType.CHR, true);
+-    private Lock effLock = new MonitoredReentrantLock(MonitoredLockType.EFF, true);
+-    private Lock petLock = new MonitoredReentrantLock(MonitoredLockType.PET, true); // for quest tasks as well
+-    private Lock prtLock = new MonitoredReentrantLock(MonitoredLockType.PRT);
++    private Lock chrLock = new MonitoredReentrantLock(MonitoredLockType.CHARACTER_CHR, true);
++    private Lock effLock = new MonitoredReentrantLock(MonitoredLockType.CHARACTER_EFF, true);
++    private Lock petLock = new MonitoredReentrantLock(MonitoredLockType.CHARACTER_PET, true); // for quest tasks as well
++    private Lock prtLock = new MonitoredReentrantLock(MonitoredLockType.CHARACTER_PRT);
+     private Map<Integer, Set<Integer>> excluded = new LinkedHashMap<>();
+     private Set<Integer> excludedItems = new LinkedHashSet<>();
+     private static String[] ariantroomleader = new String[3];
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index a01deed9e..9b51e6e69 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -107,8 +107,8 @@
+ 	private byte gender = -1;
+ 	private boolean disconnecting = false;
+ 	private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
+-        private final Lock encoderLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
+-        private static final Lock loginLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
++        private final Lock encoderLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT_ENCODER, true);
++        private static final Lock loginLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT_LOGIN, true);
+ 	private int votePoints;
+ 	private int voteTime = -1;
+ 	private long lastNpcClick;
+diff --git a/src/client/status/MonsterStatusEffect.java b/src/client/status/MonsterStatusEffect.java
+index 8cc2bc3bb..56deeef26 100644
+--- a/src/client/status/MonsterStatusEffect.java
++++ b/src/client/status/MonsterStatusEffect.java
+@@ -23,7 +23,6 @@
+ 
+ import client.Skill;
+ import java.util.Map;
+-import java.util.concurrent.ScheduledFuture;
+ import server.life.MobSkill;
+ import tools.ArrayMap;
+ 
+@@ -33,9 +32,7 @@
+     private Skill skill;
+     private MobSkill mobskill;
+     private boolean monsterSkill;
+-    private ScheduledFuture<?> cancelTask;
+-    private ScheduledFuture<?> damageSchedule;
+-
++    
+     public MonsterStatusEffect(Map<MonsterStatus, Integer> stati, Skill skillId, MobSkill mobskill, boolean monsterSkill) {
+         this.stati = new ArrayMap<>(stati);
+         this.skill = skillId;
+@@ -59,35 +56,10 @@ public boolean isMonsterSkill() {
+         return monsterSkill;
+     }
+ 
+-    public final void cancelTask() {
+-	if (cancelTask != null) {
+-	    cancelTask.cancel(false);
+-	}
+-        cancelTask = null;
+-    }
+-
+-    public ScheduledFuture<?> getCancelTask() {
+-        return cancelTask;
+-    }
+-
+-    public void setCancelTask(ScheduledFuture<?> cancelTask) {
+-        this.cancelTask = cancelTask;
+-    }
+-
+     public void removeActiveStatus(MonsterStatus stat) {
+         stati.remove(stat);
+     }
+ 
+-    public void setDamageSchedule(ScheduledFuture<?> damageSchedule) {
+-        this.damageSchedule = damageSchedule;
+-    }
+-
+-    public void cancelDamageSchedule() {
+-        if (damageSchedule != null) {
+-            damageSchedule.cancel(false);
+-        }
+-    }
+-
+     public MobSkill getMobSkill() {
+         return mobskill;
+     }
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index a76f8c4b2..ad6859229 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -123,6 +123,10 @@
+     public static final int ITEM_LIMIT_ON_MAP = 200;            //Max number of items allowed on a map.
+     public static final int MAP_VISITED_SIZE = 5;               //Max length for last mapids visited by a player. This is used to recover and update drops on these maps accordingly with player actions.
+     
++    //Channel Mob Disease Monitor Configuration
++    public static final int MOB_STATUS_MONITOR_PROC = 200;     //Frequency in milliseconds between each proc on the mob disease monitor schedule.
++    public static final int MOB_STATUS_MONITOR_LIFE = 84;      //Idle proc count the mob disease monitor is allowed to be there before closing it due to inactivity.
++    
+     //Some Gameplay Enhancing Configurations
+     //Scroll Configuration
+     public static final boolean USE_PERFECT_GM_SCROLL = true;   //Scrolls from GMs never uses up slots nor fails.
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 8b7a72497..c7c70e273 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -96,8 +96,8 @@
+     private final Map<Integer, MapleGuild> guilds = new HashMap<>(100);
+     private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
+     private final Lock srvLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+-    private final Lock lgnLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
+-    private final Lock disLock = new MonitoredReentrantLock(MonitoredLockType.SERVER);
++    private final Lock lgnLock = new MonitoredReentrantLock(MonitoredLockType.SERVER_LOGIN);
++    private final Lock disLock = new MonitoredReentrantLock(MonitoredLockType.SERVER_DISEASES);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+     private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
+     private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
+diff --git a/src/net/server/audit/ThreadTracker.java b/src/net/server/audit/ThreadTracker.java
+index 50e0d49f1..9d3ed7dd3 100644
+--- a/src/net/server/audit/ThreadTracker.java
++++ b/src/net/server/audit/ThreadTracker.java
+@@ -233,7 +233,7 @@ public void accessThreadTracker(boolean update, boolean lock, MonitoredLockType
+ 
+                     List<MonitoredLockType> list = threadTracker.get(tid);
+                     for(int i = list.size() - 1; i >= 0; i--) {
+-                        if(lockId.getValue() == list.get(i).getValue()) {
++                        if(lockId.equals(list.get(i))) {
+                             list.remove(i);
+                             break;
+                         }
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index b4c3b4549..ad43f71bd 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -21,6 +21,7 @@
+  */
+ package net.server.channel;
+ 
++import net.server.channel.worker.MobStatusScheduler;
+ import java.io.File;
+ import java.net.InetSocketAddress;
+ import java.util.ArrayList;
+@@ -70,6 +71,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import client.MapleCharacter;
++import client.status.MonsterStatusEffect;
+ import constants.ServerConstants;
+ import server.maps.MapleMiniDungeonInfo;
+ import tools.locks.MonitoredLockType;
+@@ -83,6 +85,7 @@
+     private String ip, serverMessage;
+     private MapleMapFactory mapFactory;
+     private EventScriptManager eventSM;
++    private MobStatusScheduler mobStatusSchedulers[] = new MobStatusScheduler[4];
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+     private List<MapleExpedition> expeditions = new ArrayList<>();
+@@ -149,6 +152,10 @@ public Channel(final int world, final int channel, long startTime) {
+                 dojoTask[i] = null;
+             }
+             
++            for(int i = 0; i < 4; i++) {
++                mobStatusSchedulers[i] = new MobStatusScheduler();
++            }
++            
+             System.out.println("    Channel " + getId() + ": Listening on port " + port);
+         } catch (Exception e) {
+             e.printStackTrace();
+@@ -817,6 +824,34 @@ public void dropMessage(int type, String message) {
+         }
+     }
+     
++    private static int getMobStatusSchedulerIndex(int mapid) {
++        if(mapid >= 250000000) {
++            if(mapid >= 900000000) {
++                return 3;
++            } else {
++                return 2;
++            }
++        } else {
++            if(mapid >= 200000000) {
++                return 1;
++            } else {
++                return 0;
++            }
++        }
++    }
++    
++    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration) {
++        registerMobStatus(mapid, mse, cancelAction, duration, null, -1);
++    }
++    
++    public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration, Runnable overtimeAction, int overtimeDelay) {
++        mobStatusSchedulers[getMobStatusSchedulerIndex(mapid)].registerMobStatus(mse, cancelAction, duration, overtimeAction, overtimeDelay);
++    }
++    
++    public void interruptMobStatus(int mapid, MonsterStatusEffect mse) {
++        mobStatusSchedulers[getMobStatusSchedulerIndex(mapid)].interruptMobStatus(mse);
++    }
++    
+     public void debugMarriageStatus() {
+         System.out.println(" ----- WORLD DATA -----");
+         Server.getInstance().getWorld(world).debugMarriageStatus();
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index c123a4969..aec0ca92f 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -326,6 +326,15 @@ public void run() {
+                     } else if (attack.skill == Outlaw.HOMING_BEACON || attack.skill == Corsair.BULLSEYE) {
+                         player.setMarkedMonster(monster.getObjectId());
+                         player.announce(MaplePacketCreator.giveBuff(1, attack.skill, Collections.singletonList(new Pair<>(MapleBuffStat.HOMING_BEACON, monster.getObjectId()))));
++                    } else if (attack.skill == Outlaw.FLAME_THROWER) {
++                        if (!monster.isBoss()) {
++                            Skill type = SkillFactory.getSkill(Outlaw.FLAME_THROWER);
++                            if (player.getSkillLevel(type) > 0) {
++                                MapleStatEffect DoT = type.getEffect(player.getSkillLevel(type));
++                                MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(Collections.singletonMap(MonsterStatus.POISON, 1), type, null, false);
++                                monster.applyStatus(player, monsterStatusEffect, true, DoT.getDuration(), false);
++                            }
++                        }
+                     }
+                     
+                     if (job == 2111 || job == 2112) {
+@@ -406,15 +415,6 @@ public void run() {
+                                 }
+                             }
+                         }
+-                    } else if (job == 521 || job == 522) { // from what I can gather this is how it should work
+-                    	if (!monster.isBoss()) {
+-                            Skill type = SkillFactory.getSkill(Outlaw.FLAME_THROWER);
+-                            if (player.getSkillLevel(type) > 0) {
+-                                MapleStatEffect DoT = type.getEffect(player.getSkillLevel(type));
+-                                MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(Collections.singletonMap(MonsterStatus.POISON, 1), type, null, false);
+-                                monster.applyStatus(player, monsterStatusEffect, true, DoT.getDuration(), false);
+-                            }
+-                        }
+                     } else if (job >= 311 && job <= 322) {                   	
+                     	if (!monster.isBoss()) {
+                             Skill mortalBlow;
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index b79c423ae..6223b19f3 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -27,6 +27,7 @@
+ import java.util.ArrayList;
+ import java.util.List;
+ import server.life.MapleMonster;
++import server.life.MapleMonsterInformationProvider;
+ //import server.life.MobAttackInfo;
+ //import server.life.MobAttackInfoFactory;
+ import server.life.MobSkill;
+@@ -94,20 +95,27 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 				} else if (toUse.getHP() < percHpLeft) {
+ 					toUse = null;
+ 				} else if (monster.canUseSkill(toUse)) {
+-					toUse.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++                                        int animationTime = MapleMonsterInformationProvider.getInstance().getMobSkillAnimationTime(monster.getId(), Random);
++                                        if(animationTime > 0) {
++                                                toUse.applyDelayedEffect(c.getPlayer(), monster, true, banishPlayers, animationTime);
++                                        } else {
++                                                toUse.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++                                        }
+ 				} else {
+                                         toUse = null;
+                                 }
+ 			} else {
++                                toUse = null; // paliative measure for suspicious mob movement
++                            
++                                /*
+                                 long curtime = System.currentTimeMillis();
+                                 if(curtime >= monster.getNextBasicSkillTime()) {  // dont use the special attack too often, chase the player f3
+-                                        //MobAttackInfo mobAttack = MobAttackInfoFactory.getMobAttackInfo(monster, attackId);
+-                                        //monster.setNextBasicSkillTime(curtime);
+-                                    
+-                                        toUse = null;   // paliative measure for suspicious mob movement
++                                        MobAttackInfo mobAttack = MobAttackInfoFactory.getMobAttackInfo(monster, attackId);
++                                        monster.setNextBasicSkillTime(curtime);
+                                 } else {
+                                         toUse = null;
+                                 }
++                                */
+ 			}
+ 		}
+ 
+diff --git a/src/net/server/channel/worker/MobStatusScheduler.java b/src/net/server/channel/worker/MobStatusScheduler.java
+new file mode 100644
+index 000000000..083ade082
+--- /dev/null
++++ b/src/net/server/channel/worker/MobStatusScheduler.java
+@@ -0,0 +1,148 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import client.status.MonsterStatusEffect;
++import constants.ServerConstants;
++import java.util.HashMap;
++import java.util.ArrayList;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.concurrent.ScheduledFuture;
++import java.util.concurrent.locks.Lock;
++import server.TimerManager;
++import tools.Pair;
++import tools.locks.MonitoredLockType;
++import tools.locks.MonitoredReentrantLock;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobStatusScheduler {
++    private int idleProcs = 0;
++    private Map<MonsterStatusEffect, Pair<Runnable, Long>> registeredMobStatus = new HashMap<>();
++    private Map<MonsterStatusEffect, MobStatusOvertimeEntry> registeredMobStatusOvertime = new HashMap<>();
++    
++    private class MobStatusOvertimeEntry {
++        private int procCount;
++        private int procLimit;
++        private Runnable r;
++        
++        protected MobStatusOvertimeEntry(int delay, Runnable run) {
++            procCount = 0;
++            procLimit = (int)Math.ceil((float) delay / ServerConstants.MOB_STATUS_MONITOR_PROC);
++            r = run;
++        }
++        
++        protected void update() {
++            procCount++;
++            if(procCount >= procLimit) {
++                procCount = 0;
++                r.run();
++            }
++        }
++    }
++    
++    private ScheduledFuture<?> mobStatusSchedule = null;
++    private Lock mobStatusLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_MOBSTATUS, true);
++    private Runnable monitorTask = new Runnable() {
++                                        @Override
++                                        public void run() {
++                                            runMobStatusSchedule();
++                                        }
++                                    };
++    
++    private void runMobStatusSchedule() {
++        mobStatusLock.lock();
++        try {
++            if(registeredMobStatus.isEmpty()) {
++                idleProcs++;
++                
++                if(idleProcs >= ServerConstants.MOB_STATUS_MONITOR_LIFE) {
++                    if(mobStatusSchedule != null) {
++                        mobStatusSchedule.cancel(false);
++                        mobStatusSchedule = null;
++                    }
++                }
++                
++                return;
++            }
++            idleProcs = 0;
++            
++            long timeNow = System.currentTimeMillis();
++            List<MonsterStatusEffect> toRemove = new LinkedList<>();
++            for(Entry<MonsterStatusEffect, Pair<Runnable, Long>> rmd : registeredMobStatus.entrySet()) {
++                Pair<Runnable, Long> r = rmd.getValue();
++                
++                if(r.getRight() < timeNow) {
++                    r.getLeft().run();  // runs the cancel action
++                    toRemove.add(rmd.getKey());
++                }
++            }
++            
++            for(MonsterStatusEffect mse : toRemove) {
++                registeredMobStatus.remove(mse);
++                registeredMobStatusOvertime.remove(mse);
++            }
++            
++            // it's probably ok to use one thread for both management & overtime actions
++            List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
++            for(MobStatusOvertimeEntry mdoe : mdoeList) {
++                mdoe.update();
++            }
++        } finally {
++            mobStatusLock.unlock();
++        }
++    }
++    
++    public void registerMobStatus(MonsterStatusEffect mse, Runnable cancelStatus, long duration, Runnable overtimeStatus, int overtimeDelay) {
++        mobStatusLock.lock();
++        try {
++            idleProcs = 0;
++            if(mobStatusSchedule == null) {
++                mobStatusSchedule = TimerManager.getInstance().register(monitorTask, ServerConstants.MOB_STATUS_MONITOR_PROC, ServerConstants.MOB_STATUS_MONITOR_PROC);
++            }
++            
++            registeredMobStatus.put(mse, new Pair<>(cancelStatus, System.currentTimeMillis() + duration));
++            
++            if(overtimeStatus != null) {
++                MobStatusOvertimeEntry mdoe = new MobStatusOvertimeEntry(overtimeDelay, overtimeStatus);
++                registeredMobStatusOvertime.put(mse, mdoe);
++            }
++        } finally {
++            mobStatusLock.unlock();
++        }
++    }
++    
++    public void interruptMobStatus(MonsterStatusEffect mse) {
++        mobStatusLock.lock();
++        try {
++            Pair<Runnable, Long> rmd = registeredMobStatus.remove(mse);
++            if(rmd != null) rmd.getLeft().run();
++            
++            registeredMobStatusOvertime.remove(mse);
++        } finally {
++            mobStatusLock.unlock();
++        }
++    }
++}
+diff --git a/src/net/server/worker/BaseWorker.java b/src/net/server/worker/BaseWorker.java
+index 283415f47..1b4000533 100644
+--- a/src/net/server/worker/BaseWorker.java
++++ b/src/net/server/worker/BaseWorker.java
+@@ -24,7 +24,7 @@
+ /**
+  * @author Ronan
+  */
+-public class BaseWorker implements Runnable {
++public abstract class BaseWorker implements Runnable {
+     protected World wserv;
+     
+     @Override
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index c2eae5bcf..155f2366f 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -124,7 +124,7 @@
+     
+     private Map<Runnable, Long> registeredTimedMapObjects = new LinkedHashMap<>();
+     private ScheduledFuture<?> timedMapObjectsSchedule;
+-    private Lock timedMapObjectLock = new MonitoredReentrantLock(MonitoredLockType.MAP_OBJS, true);
++    private Lock timedMapObjectLock = new MonitoredReentrantLock(MonitoredLockType.WORLD_MAPOBJS, true);
+     
+     private ScheduledFuture<?> charactersSchedule;
+     private ScheduledFuture<?> marriagesSchedule;
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 6db9031a9..1f5e5e835 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -978,4 +978,23 @@ public boolean canGetFirstJob(int jobType) {
+                         return true;
+                 }
+         }
++        
++        public static String getFirstJobStatRequirement(int jobType) {
++                switch(jobType) {
++                    case 1:
++                        return "STR " + 35;
++                        
++                    case 2:
++                        return "INT " + 20;
++                        
++                    case 3:
++                    case 4:
++                        return "DEX " + 25;
++                        
++                    case 5:
++                        return "DEX " + 20;
++                }
++                
++                return null;
++        }
+ }
+diff --git a/src/scripting/AbstractScriptManager.java b/src/scripting/AbstractScriptManager.java
+index 02c741ed5..2ec8782b1 100644
+--- a/src/scripting/AbstractScriptManager.java
++++ b/src/scripting/AbstractScriptManager.java
+@@ -69,7 +69,7 @@ protected Invocable getInvocable(String path, MapleClient c) {
+             }
+             try (FileReader fr = new FileReader(scriptFile)) {
+             	if (ServerConstants.JAVA_8){
+-            		engine.eval("load('nashorn:mozilla_compat.js');");
++            		engine.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+             	}
+                 engine.eval(fr);
+             } catch (final ScriptException | IOException t) {
+diff --git a/src/scripting/item/ItemScriptManager.java b/src/scripting/item/ItemScriptManager.java
+index 33319d47b..b5d11eade 100644
+--- a/src/scripting/item/ItemScriptManager.java
++++ b/src/scripting/item/ItemScriptManager.java
+@@ -22,6 +22,7 @@
+ package scripting.item;
+ 
+ import client.MapleClient;
++import constants.ServerConstants;
+ import java.io.File;
+ import java.io.FileReader;
+ import java.io.IOException;
+@@ -29,7 +30,6 @@
+ import java.util.HashMap;
+ import java.util.Map;
+ import javax.script.Compilable;
+-import javax.script.CompiledScript;
+ import javax.script.Invocable;
+ import javax.script.ScriptEngine;
+ import javax.script.ScriptEngineFactory;
+@@ -76,8 +76,13 @@ public void getItemScript(MapleClient c, String scriptName) {
+         ScriptEngine portal = sef.getScriptEngine();
+         try {
+             fr = new FileReader(scriptFile);
+-            CompiledScript compiled = ((Compilable) portal).compile(fr);
+-            compiled.eval();
++            
++            // java 8 support here thanks to Arufonsu
++            if (ServerConstants.JAVA_8){
++                    portal.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
++            }
++            
++            ((Compilable) portal).compile(fr).eval();
+ 
+             final Invocable script = ((Invocable) portal);
+             scripts.put(scriptName, script);
+diff --git a/src/scripting/map/MapScriptManager.java b/src/scripting/map/MapScriptManager.java
+index a8ad9d45b..303f1ae1f 100644
+--- a/src/scripting/map/MapScriptManager.java
++++ b/src/scripting/map/MapScriptManager.java
+@@ -22,6 +22,7 @@
+ package scripting.map;
+ 
+ import client.MapleClient;
++import constants.ServerConstants;
+ import java.io.File;
+ import java.io.FileReader;
+ import java.io.IOException;
+@@ -29,7 +30,6 @@
+ import java.util.HashMap;
+ import java.util.Map;
+ import javax.script.Compilable;
+-import javax.script.CompiledScript;
+ import javax.script.Invocable;
+ import javax.script.ScriptEngine;
+ import javax.script.ScriptEngineFactory;
+@@ -80,8 +80,14 @@ public void getMapScript(MapleClient c, String scriptName, boolean firstUser) {
+         ScriptEngine portal = sef.getScriptEngine();
+         try {
+             fr = new FileReader(scriptFile);
+-            CompiledScript compiled = ((Compilable) portal).compile(fr);
+-            compiled.eval();
++            
++            // java 8 support here thanks to Arufonsu
++            if (ServerConstants.JAVA_8){
++                    portal.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
++            }
++            
++            ((Compilable) portal).compile(fr).eval();
++            
+             final Invocable script = ((Invocable) portal);
+             scripts.put(scriptName, script);
+             script.invokeFunction("start", new MapScriptMethods(c));
+diff --git a/src/scripting/portal/PortalScriptManager.java b/src/scripting/portal/PortalScriptManager.java
+index 8875f32a1..fd85fe5cc 100644
+--- a/src/scripting/portal/PortalScriptManager.java
++++ b/src/scripting/portal/PortalScriptManager.java
+@@ -22,6 +22,7 @@
+ package scripting.portal;
+ 
+ import client.MapleClient;
++import constants.ServerConstants;
+ import java.io.File;
+ import java.io.FileReader;
+ import java.io.IOException;
+@@ -65,6 +66,12 @@ private PortalScript getPortalScript(String scriptName) {
+         ScriptEngine portal = sef.getScriptEngine();
+         try {
+             fr = new FileReader(scriptFile);
++            
++            // java 8 support here thanks to Arufonsu
++            if (ServerConstants.JAVA_8){
++                    portal.eval("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
++            }
++            
+             ((Compilable) portal).compile(fr).eval();
+         } catch (ScriptException | IOException | UndeclaredThrowableException e) {
+             FilePrinter.printError(FilePrinter.PORTAL + scriptName + ".txt", e);
+diff --git a/src/server/life/MapleLifeFactory.java b/src/server/life/MapleLifeFactory.java
+index b39005682..5d5f3655d 100644
+--- a/src/server/life/MapleLifeFactory.java
++++ b/src/server/life/MapleLifeFactory.java
+@@ -132,12 +132,23 @@ public static MapleMonster getMonster(int mid) {
+                     stats.setRevives(revives);
+                 }
+                 decodeElementalString(stats, MapleDataTool.getString("elemAttr", monsterInfoData, ""));
+-                MapleData monsterSkillData = monsterInfoData.getChildByPath("skill");
+-                if (monsterSkillData != null) {
++                MapleData monsterSkillInfoData = monsterInfoData.getChildByPath("skill");
++                if (monsterSkillInfoData != null) {
+                     int i = 0;
+                     List<Pair<Integer, Integer>> skills = new ArrayList<>();
+-                    while (monsterSkillData.getChildByPath(Integer.toString(i)) != null) {
+-                        skills.add(new Pair<>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillData, 0))));
++                    while (monsterSkillInfoData.getChildByPath(Integer.toString(i)) != null) {
++                        skills.add(new Pair<>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillInfoData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillInfoData, 0))));
++                        
++                        MapleData monsterSkillData = monsterData.getChildByPath("skill" + i);
++                        if(monsterSkillData != null) {
++                            int animationTime = 0;
++                            for(MapleData effectEntry : monsterSkillData.getChildren()) {
++                                animationTime += MapleDataTool.getIntConvert("delay", effectEntry, 0);
++                            }
++                            
++                            MapleMonsterInformationProvider.getInstance().setMobSkillAnimationTime(mid, i, animationTime);
++                        }
++                        
+                         i++;
+                     }
+                     stats.setSkills(skills);
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index fe9449b7f..c7d3d30a7 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -56,6 +56,7 @@
+ import java.util.concurrent.atomic.AtomicLong;
+ import java.util.concurrent.locks.Lock;
+ import tools.locks.MonitoredReentrantLock;
++import net.server.channel.Channel;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import server.TimerManager;
+@@ -320,7 +321,7 @@ public boolean isAttackedBy(MapleCharacter chr) {
+         return takenDamage.containsKey(chr.getId());
+     }
+ 
+-    private void distributeExperienceToParty(int pid, int exp, int killer, Set<MapleCharacter> underleveled, int minThresholdLevel) {
++    private void distributeExperienceToParty(int pid, float exp, int killer, Set<MapleCharacter> underleveled, int minThresholdLevel) {
+         List<MapleCharacter> members = new LinkedList<>();
+         MapleCharacter pchar = getMap().getAnyCharacterFromParty(pid);
+         if(pchar != null) {
+@@ -353,7 +354,7 @@ private void distributeExperienceToParty(int pid, int exp, int killer, Set<Maple
+             if (level >= minThresholdLevel) {
+                 boolean isKiller = killer == id;
+                 boolean mostDamage = mostDamageCid == id;
+-                int xp = (int) ((0.80f * exp * level) / partyLevel);
++                float xp = ((0.80f * exp * level) / partyLevel);
+                 if (mostDamage) {
+                     xp += (0.20f * exp);
+                 }
+@@ -378,14 +379,14 @@ public void distributeExperience(int killerId) {
+         int minThresholdLevel = calcThresholdLevel(this.getMap().getEventInstance() != null);
+         int exp = getExp();
+         long totalHealth = maxHpPlusHeal.get();
+-        Map<Integer, Integer> expDist = new HashMap<>();
+-        Map<Integer, Integer> partyExp = new HashMap<>();
++        Map<Integer, Float> expDist = new HashMap<>();
++        Map<Integer, Float> partyExp = new HashMap<>();
+         
+         float exp8perHp = (0.8f * exp) / totalHealth;   // 80% of pool is split amongst all the damagers
+         float exp2 = (0.2f * exp);                      // 20% of pool goes to the killer or his/her party
+         
+         for (Entry<Integer, AtomicInteger> damage : takenDamage.entrySet()) {
+-            expDist.put(damage.getKey(), (int) (Math.min((exp8perHp * damage.getValue().get()), Integer.MAX_VALUE)));
++            expDist.put(damage.getKey(), exp8perHp * damage.getValue().get());
+         }
+         
+         Collection<MapleCharacter> chrs = map.getCharacters();
+@@ -393,15 +394,16 @@ public void distributeExperience(int killerId) {
+         for (MapleCharacter mc : chrs) {
+             if (expDist.containsKey(mc.getId())) {
+                 boolean isKiller = (mc.getId() == killerId);
+-                int xp = expDist.get(mc.getId());
++                float xp = expDist.get(mc.getId());
+                 if (isKiller) {
+-                    xp = (int)Math.min(exp2 + xp, Integer.MAX_VALUE);
++                    xp += exp2;
+                 }
++                
+                 MapleParty p = mc.getParty();
+                 if (p != null) {
+                     int pID = p.getId();
+-                    long pXP = (long) xp + (partyExp.containsKey(pID) ? partyExp.get(pID) : 0);
+-                    partyExp.put(pID, (int)Math.min(pXP, Integer.MAX_VALUE));
++                    float pXP = xp + (partyExp.containsKey(pID) ? partyExp.get(pID) : 0);
++                    partyExp.put(pID, pXP);
+                 } else {
+                     if(mc.getLevel() >= minThresholdLevel) {
+                         //NO EXP WILL BE GIVEN for those who are underleveled!
+@@ -413,7 +415,7 @@ public void distributeExperience(int killerId) {
+             }
+         }
+         
+-        for (Entry<Integer, Integer> party : partyExp.entrySet()) {
++        for (Entry<Integer, Float> party : partyExp.entrySet()) {
+             distributeExperienceToParty(party.getKey(), party.getValue(), killerId, underleveled, minThresholdLevel);
+         }
+         
+@@ -422,7 +424,7 @@ public void distributeExperience(int killerId) {
+         }
+     }
+ 
+-    public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKiller, int numExpSharers) {
++    public void giveExpToCharacter(MapleCharacter attacker, float exp, boolean isKiller, int numExpSharers) {
+         if (isKiller) {
+             if (getMap().getEventInstance() != null) {
+                 getMap().getEventInstance().monsterKilled(attacker, this);
+@@ -434,9 +436,10 @@ public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKille
+         
+         int partyExp = 0;
+         if (attacker.getHp() > 0) {
+-            int personalExp = exp * attacker.getExpRate();
++            exp *= attacker.getExpRate();
++            int personalExp = (int) exp;
+ 
+-            if (exp > 0) {
++            if (exp <= Integer.MAX_VALUE) {  // assuming no negative xp here
+                 if (partyModifier > 0.0f) {
+                     partyExp = (int) (personalExp * partyModifier * ServerConstants.PARTY_BONUS_EXP_RATE);
+                 }
+@@ -444,7 +447,7 @@ public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKille
+                 if (holySymbol != null) {
+                     personalExp *= 1.0 + (holySymbol.doubleValue() / 100.0);
+                 }
+-                
++
+                 statiLock.lock();
+                 try {
+                     if (stati.containsKey(MonsterStatus.SHOWDOWN)) {
+@@ -453,6 +456,8 @@ public void giveExpToCharacter(MapleCharacter attacker, int exp, boolean isKille
+                 } finally {
+                     statiLock.unlock();
+                 }
++            } else {
++                personalExp = Integer.MAX_VALUE;
+             }
+             
+             attacker.gainExp(personalExp, partyExp, true, false, isKiller);
+@@ -777,9 +782,9 @@ private int broadcastStatusEffect(final MonsterStatusEffect status) {
+         byte[] packet = MaplePacketCreator.applyMonsterStatus(getObjectId(), status, null);
+         map.broadcastMessage(packet, getPosition());
+         
+-        MapleCharacter controller = getController();
+-        if (controller != null && !controller.isMapObjectVisible(this)) {
+-            controller.getClient().announce(packet);
++        MapleCharacter chrController = getController();
++        if (chrController != null && !chrController.isMapObjectVisible(this)) {
++            chrController.getClient().announce(packet);
+         }
+         
+         return animationTime;
+@@ -832,6 +837,8 @@ public boolean applyStatus(MapleCharacter from, final MonsterStatusEffect status
+             }
+         }
+ 
++        final Channel ch = map.getChannelServer();
++        final int mapid = map.getId();
+         if(statis.size() > 0) {
+             statiLock.lock();
+             try {
+@@ -840,8 +847,7 @@ public boolean applyStatus(MapleCharacter from, final MonsterStatusEffect status
+                     if (oldEffect != null) {
+                         oldEffect.removeActiveStatus(stat);
+                         if (oldEffect.getStati().isEmpty()) {
+-                            oldEffect.cancelTask();
+-                            oldEffect.cancelDamageSchedule();
++                            ch.interruptMobStatus(mapid, oldEffect);
+                         }
+                     }
+                 }
+@@ -850,7 +856,6 @@ public boolean applyStatus(MapleCharacter from, final MonsterStatusEffect status
+             }
+         }
+         
+-        TimerManager timerManager = TimerManager.getInstance();
+         final Runnable cancelTask = new Runnable() {
+ 
+             @Override
+@@ -875,17 +880,21 @@ public void run() {
+                 }
+                 
+                 setVenomMulti(0);
+-                status.cancelDamageSchedule();
+             }
+         };
+         
++        Runnable overtimeAction = null;
++        int overtimeDelay = -1;
++        
+         int animationTime;
+         if (poison) {
+             int poisonLevel = from.getSkillLevel(status.getSkill());
+             int poisonDamage = Math.min(Short.MAX_VALUE, (int) (getMaxHp() / (70.0 - poisonLevel) + 0.999));
+             status.setValue(MonsterStatus.POISON, Integer.valueOf(poisonDamage));
+             animationTime = broadcastStatusEffect(status);
+-            status.setDamageSchedule(timerManager.register(new DamageTask(poisonDamage, from, status, cancelTask, 0), 1000, 1000));
++            
++            overtimeAction = new DamageTask(poisonDamage, from, status, 0);
++            overtimeDelay = 1000;
+         } else if (venom) {
+             if (from.getJob() == MapleJob.NIGHTLORD || from.getJob() == MapleJob.SHADOWER || from.getJob().isA(MapleJob.NIGHTWALKER3)) {
+                 int poisonLevel, matk, jobid = from.getJob().getId();
+@@ -910,7 +919,9 @@ public void run() {
+                 status.setValue(MonsterStatus.VENOMOUS_WEAPON, Integer.valueOf(poisonDamage));
+                 status.setValue(MonsterStatus.POISON, Integer.valueOf(poisonDamage));
+                 animationTime = broadcastStatusEffect(status);
+-                status.setDamageSchedule(timerManager.register(new DamageTask(poisonDamage, from, status, cancelTask, 0), 1000, 1000));
++                
++                overtimeAction = new DamageTask(poisonDamage, from, status, 0);
++                overtimeDelay = 1000;
+             } else {
+                 return false;
+             }
+@@ -919,7 +930,9 @@ public void run() {
+             int webDamage = (int) (getMaxHp() / 50.0 + 0.999);
+             status.setValue(MonsterStatus.SHADOW_WEB, Integer.valueOf(webDamage));
+             animationTime = broadcastStatusEffect(status);
+-            status.setDamageSchedule(timerManager.schedule(new DamageTask(webDamage, from, status, cancelTask, 1), 3500));
++            
++            overtimeAction = new DamageTask(webDamage, from, status, 1);
++            overtimeDelay = 3500;
+             */
+         } else if (status.getSkill().getId() == 4121004 || status.getSkill().getId() == 4221004) { // Ninja Ambush
+             final Skill skill = SkillFactory.getSkill(status.getSkill().getId());
+@@ -928,7 +941,9 @@ public void run() {
+             
+             status.setValue(MonsterStatus.NINJA_AMBUSH, Integer.valueOf(damage));
+             animationTime = broadcastStatusEffect(status);
+-            status.setDamageSchedule(timerManager.register(new DamageTask(damage, from, status, cancelTask, 2), 1000, 1000));
++            
++            overtimeAction = new DamageTask(damage, from, status, 2);
++            overtimeDelay = 1000;
+         } else {
+             animationTime = broadcastStatusEffect(status);
+         }
+@@ -943,12 +958,11 @@ public void run() {
+             statiLock.unlock();
+         }
+         
+-        status.setCancelTask(timerManager.schedule(cancelTask, duration + animationTime - 100));
++        ch.registerMobStatus(mapid, status, cancelTask, duration + animationTime - 100, overtimeAction, overtimeDelay);
+         return true;
+     }
+ 
+     public void applyMonsterBuff(final Map<MonsterStatus, Integer> stats, final int x, int skillId, long duration, MobSkill skill, final List<Integer> reflection) {
+-        TimerManager timerManager = TimerManager.getInstance();
+         final Runnable cancelTask = new Runnable() {
+ 
+             @Override
+@@ -991,7 +1005,8 @@ public void run() {
+         if (controller != null && !controller.isMapObjectVisible(this)) {
+             controller.getClient().announce(packet);
+         }
+-        effect.setCancelTask(timerManager.schedule(cancelTask, duration));
++        
++        map.getChannelServer().registerMobStatus(map.getId(), effect, cancelTask, duration);
+     }
+ 
+     private void debuffMobStat(MonsterStatus stat) {
+@@ -1191,15 +1206,13 @@ public int getBuffToGive() {
+         private final int dealDamage;
+         private final MapleCharacter chr;
+         private final MonsterStatusEffect status;
+-        private final Runnable cancelTask;
+         private final int type;
+         private final MapleMap map;
+ 
+-        private DamageTask(int dealDamage, MapleCharacter chr, MonsterStatusEffect status, Runnable cancelTask, int type) {
++        private DamageTask(int dealDamage, MapleCharacter chr, MonsterStatusEffect status, int type) {
+             this.dealDamage = dealDamage;
+             this.chr = chr;
+             this.status = status;
+-            this.cancelTask = cancelTask;
+             this.type = type;
+             this.map = chr.getMap();
+         }
+@@ -1207,20 +1220,26 @@ private DamageTask(int dealDamage, MapleCharacter chr, MonsterStatusEffect statu
+         @Override
+         public void run() {
+             int curHp = hp.get();
+-            if(curHp <= 1) return;
++            if(curHp <= 1) {
++                map.getChannelServer().interruptMobStatus(map.getId(), status);
++                return;
++            }
+             
+             int damage = dealDamage;
+             if (damage >= curHp) {
+                 damage = curHp - 1;
+                 if (type == 1 || type == 2) {
+-                    cancelTask.run();
+-                    status.getCancelTask().cancel(false);
++                    map.getChannelServer().interruptMobStatus(map.getId(), status);
+                 }
+             }
+             if (damage > 0) {
+                 damage(chr, damage, true);
+-                if (type == 1) {    // ninja ambush (type 2) is already displaying DOT
++                if (type == 1) {
+                     map.broadcastMessage(MaplePacketCreator.damageMonster(getObjectId(), damage), getPosition());
++                } else if (type == 2) {
++                    if(damage < dealDamage) {    // ninja ambush (type 2) is already displaying DOT to the caster
++                        map.broadcastMessage(MaplePacketCreator.damageMonster(getObjectId(), damage), getPosition());
++                    }
+                 }
+             }
+         }
+diff --git a/src/server/life/MapleMonsterInformationProvider.java b/src/server/life/MapleMonsterInformationProvider.java
+index b24a3679f..41eaa84bc 100644
+--- a/src/server/life/MapleMonsterInformationProvider.java
++++ b/src/server/life/MapleMonsterInformationProvider.java
+@@ -53,6 +53,8 @@
+         private final Map<Integer, List<Integer>> dropsChancePool = new HashMap<>();    // thanks to ronan
+         private final Set<Integer> hasNoMultiEquipDrops = new HashSet<>();
+         private final Map<Integer, List<MonsterDropEntry>> extraMultiEquipDrops = new HashMap<>();
++        
++        private final Map<Pair<Integer, Integer>, Integer> mobSkillAnimationTime = new HashMap<>();
+ 
+ 	protected MapleMonsterInformationProvider() {
+ 		retrieveGlobal();
+@@ -223,9 +225,17 @@ private void retrieveGlobal() {
+                 dropsChancePool.put(monsterId, ret);
+ 		return ret;
+ 	}
++        
++        public final void setMobSkillAnimationTime(int monsterId, int skillPos, int animationTime) {
++                mobSkillAnimationTime.put(new Pair<>(monsterId, skillPos), animationTime);
++        }
++        
++        public final Integer getMobSkillAnimationTime(int monsterId, int skillPos) {
++                Integer time = mobSkillAnimationTime.get(new Pair<>(monsterId, skillPos));
++                return time == null ? 0 : time;
++        }
+ 
+-	public static ArrayList<Pair<Integer, String>> getMobsIDsFromName(String search)
+-	{
++	public static ArrayList<Pair<Integer, String>> getMobsIDsFromName(String search) {
+ 		MapleDataProvider dataProvider = MapleDataProviderFactory.getDataProvider(new File("wz/String.wz"));
+ 		ArrayList<Pair<Integer, String>> retMobs = new ArrayList<Pair<Integer, String>>();
+ 		MapleData data = dataProvider.getData("Mob.img");
+@@ -243,8 +253,7 @@ private void retrieveGlobal() {
+ 		return retMobs;
+ 	}
+ 
+-	public static String getMobNameFromId(int id)
+-	{
++	public static String getMobNameFromId(int id) {
+ 		try
+ 		{
+ 			return MapleLifeFactory.getMonster(id).getName();
+@@ -261,8 +270,7 @@ public static String getMobNameFromId(int id)
+ 		}
+ 	}
+         
+-        public static String getMobNameFromID(int id)
+-	{
++        public static String getMobNameFromID(int id) {
+ 		try
+ 		{
+ 			return MapleLifeFactory.getMonster(id).getName();
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 9ea11cd78..032b6ab66 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -32,6 +32,7 @@
+ import constants.GameConstants;
+ import java.util.LinkedList;
+ import java.util.Map;
++import server.TimerManager;
+ import tools.Randomizer;
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
+@@ -103,6 +104,17 @@ public void setLimit(int limit) {
+         this.limit = limit;
+     }
+ 
++    public void applyDelayedEffect(final MapleCharacter player, final MapleMonster monster, final boolean skill, final List<MapleCharacter> banishPlayers, int animationTime) {
++        TimerManager.getInstance().schedule(new Runnable() {
++                                                @Override
++                                                public void run() {
++                                                    if(monster.isAlive()) {
++                                                        applyEffect(player, monster, skill, banishPlayers);
++                                                    }
++                                                }
++                                            }, animationTime);
++    }
++    
+     public void applyEffect(MapleCharacter player, MapleMonster monster, boolean skill, List<MapleCharacter> banishPlayers) {
+         MapleDisease disease = null;
+         Map<MonsterStatus, Integer> stats = new ArrayMap<MonsterStatus, Integer>();
+@@ -282,15 +294,15 @@ public void applyEffect(MapleCharacter player, MapleMonster monster, boolean ski
+                 System.out.println("Unhandled Mob skill: " + skillId);
+                 break;
+         }
+-		if (stats.size() > 0) {
+-		    if (lt != null && rb != null && skill) {
+-				for (MapleMapObject mons : getObjectsInRange(monster, MapleMapObjectType.MONSTER)) {
+-				    ((MapleMonster) mons).applyMonsterBuff(stats, getX(), getSkillId(), getDuration(), this, reflection);
+-				}
+-		    } else {
+-		    	monster.applyMonsterBuff(stats, getX(), getSkillId(), getDuration(), this, reflection);
+-		    }
+-		}        
++        if (stats.size() > 0) {
++            if (lt != null && rb != null && skill) {
++                for (MapleMapObject mons : getObjectsInRange(monster, MapleMapObjectType.MONSTER)) {
++                    ((MapleMonster) mons).applyMonsterBuff(stats, getX(), getSkillId(), getDuration(), this, reflection);
++                }
++            } else {
++                monster.applyMonsterBuff(stats, getX(), getSkillId(), getDuration(), this, reflection);
++            }
++        }
+         if (disease != null) {
+             if (lt != null && rb != null && skill) {
+                 int i = 0;
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 4e37f71fc..c9fcd86f7 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -59,7 +59,6 @@
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+ import java.lang.ref.WeakReference;
+-import java.util.Comparator;
+ import net.server.Server;
+ import net.server.channel.Channel;
+ import scripting.map.MapScriptManager;
+@@ -255,15 +254,43 @@ private static double getRangedDistance() {
+     public int getId() {
+         return mapid;
+     }
++    
++    public Channel getChannelServer() {
++        return Server.getInstance().getWorld(world).getChannel(channel);
++    }
+ 
+     public MapleMap getReturnMap() {
+         if(returnMapId == 999999999) return this;
+-        return Server.getInstance().getWorld(world).getChannel(channel).getMapFactory().getMap(returnMapId);
++        return getChannelServer().getMapFactory().getMap(returnMapId);
+     }
+ 
+     public int getReturnMapId() {
+         return returnMapId;
+     }
++    
++    public MapleMap getForcedReturnMap() {
++        return getChannelServer().getMapFactory().getMap(forcedReturnMap);
++    }
++    
++    public int getForcedReturnId() {
++        return forcedReturnMap;
++    }
++
++    public void setForcedReturnMap(int map) {
++        this.forcedReturnMap = map;
++    }
++
++    public long getTimeLimit() {
++        return timeLimit;
++    }
++
++    public void setTimeLimit(int timeLimit) {
++        this.timeLimit = timeLimit;
++    }
++
++    public int getTimeLeft() {
++        return (int) ((timeLimit - System.currentTimeMillis()) / 1000);
++    }
+ 
+     public void setReactorState() {
+         chrRLock.lock();
+@@ -322,30 +349,6 @@ public boolean isAllReactorState(final int reactorId, final int state) {
+         return true;
+     }
+     
+-    public int getForcedReturnId() {
+-        return forcedReturnMap;
+-    }
+-
+-    public MapleMap getForcedReturnMap() {
+-        return Server.getInstance().getWorld(world).getChannel(channel).getMapFactory().getMap(forcedReturnMap);
+-    }
+-
+-    public void setForcedReturnMap(int map) {
+-        this.forcedReturnMap = map;
+-    }
+-
+-    public long getTimeLimit() {
+-        return timeLimit;
+-    }
+-
+-    public void setTimeLimit(int timeLimit) {
+-        this.timeLimit = timeLimit;
+-    }
+-
+-    public int getTimeLeft() {
+-        return (int) ((timeLimit - System.currentTimeMillis()) / 1000);
+-    }
+-
+     public int getCurrentPartyId() {
+         for (MapleCharacter chr : this.getCharacters()) {
+             if (chr.getPartyId() != -1) {
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 56fd2cd22..5d3e398e7 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -55,7 +55,7 @@
+     private boolean attackHit;
+     private ScheduledFuture<?> timeoutTask = null;
+     private Lock reactorLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR, true);
+-    private Lock hitLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR, true);
++    private Lock hitLock = new MonitoredReentrantLock(MonitoredLockType.REACTOR_HIT, true);
+ 
+     public MapleReactor(MapleReactorStats stats, int rid) {
+         this.evstate = (byte)0;
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 7db90e26e..ca12f0e55 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -3877,12 +3877,13 @@ private static void writeIntMask(final MaplePacketLittleEndianWriter mplew, Map<
+         }
+ 
+         public static byte[] applyMonsterStatus(final int oid, final MonsterStatusEffect mse, final List<Integer> reflection) {
++                Map<MonsterStatus, Integer> stati = mse.getStati();
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.APPLY_MONSTER_STATUS.getValue());
+                 mplew.writeInt(oid);
+                 mplew.writeLong(0);
+-                writeIntMask(mplew, mse.getStati());
+-                for (Map.Entry<MonsterStatus, Integer> stat : mse.getStati().entrySet()) {
++                writeIntMask(mplew, stati);
++                for (Map.Entry<MonsterStatus, Integer> stat : stati.entrySet()) {
+                         mplew.writeShort(stat.getValue());
+                         if (mse.isMonsterSkill()) {
+                                 mplew.writeShort(mse.getMobSkill().getSkillId());
+@@ -3892,7 +3893,7 @@ private static void writeIntMask(final MaplePacketLittleEndianWriter mplew, Map<
+                         }
+                         mplew.writeShort(-1); // might actually be the buffTime but it's not displayed anywhere
+                 }
+-                int size = mse.getStati().size(); // size
++                int size = stati.size(); // size
+                 if (reflection != null) {
+                         for (Integer ref : reflection) {
+                                 mplew.writeInt(ref);
+diff --git a/src/tools/locks/MonitoredLockType.java b/src/tools/locks/MonitoredLockType.java
+index fee7c5ca6..793012204 100644
+--- a/src/tools/locks/MonitoredLockType.java
++++ b/src/tools/locks/MonitoredLockType.java
+@@ -1,6 +1,6 @@
+ /*
+     This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2018 RonanLana
++    Copyleft 2016 - 2018 RonanLana
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU Affero General Public License as
+@@ -25,59 +25,56 @@
+  */
+ 
+ public enum MonitoredLockType {
+-    UNDEFINED(-1),
+-    CHR(0),
+-    EFF(1),
+-    PET(2),
+-    PRT(3),
+-    CLIENT(4),
+-    BOOK(5),
+-    ITEM(6),
+-    INVENTORY(7),
+-    SRVHANDLER_IDLE(8),
+-    SRVHANDLER_TEMP(9),
+-    BUFF_STORAGE(10),
+-    PLAYER_STORAGE(11),
+-    SERVER(12),
+-    MERCHANT(13),
+-    CHANNEL(14),
+-    GUILD(15),
+-    PARTY(16),
+-    WORLD_PARTY(17),
+-    WORLD_OWL(18),
+-    WORLD_PETS(19),
+-    WORLD_MOUNTS(20),
+-    WORLD_PSHOPS(21),
+-    WORLD_MERCHS(21),
+-    EIM(22),
+-    EIM_PARTY(23),
+-    EIM_SCRIPT(24),
+-    EM_LOBBY(25),
+-    EM_QUEUE(26),
+-    CASHSHOP(27),
+-    VISITOR_PSHOP(28),
+-    STORAGE(29),
+-    MOB_EXT(30),
+-    MOB(31),
+-    MOB_STATI(32),
+-    MOBSKILL_FACTORY(33),
+-    PORTAL(34),
+-    VISITOR_MERCH(35),
+-    MAP_CHRS(36),
+-    MAP_OBJS(37),
+-    MAP_FACTORY(38),
+-    MAP_ITEM(39),
+-    MAP_BOUNDS(40),
+-    MINIDUNGEON(41),
+-    REACTOR(42);
+-    
+-    private final int i;
+-    
+-    private MonitoredLockType(int val) {
+-        this.i = val;
+-    }
+-
+-    public int getValue() {
+-        return i;
+-    }
++    UNDEFINED,
++    CHARACTER_CHR,
++    CHARACTER_EFF,
++    CHARACTER_PET,
++    CHARACTER_PRT,
++    CLIENT,
++    CLIENT_ENCODER,
++    CLIENT_LOGIN,
++    BOOK,
++    ITEM,
++    INVENTORY,
++    SRVHANDLER_IDLE,
++    SRVHANDLER_TEMP,
++    BUFF_STORAGE,
++    PLAYER_STORAGE,
++    SERVER,
++    SERVER_LOGIN,
++    SERVER_DISEASES,
++    MERCHANT,
++    CHANNEL,
++    CHANNEL_MOBSTATUS,
++    GUILD,
++    PARTY,
++    WORLD_PARTY,
++    WORLD_OWL,
++    WORLD_PETS,
++    WORLD_MOUNTS,
++    WORLD_PSHOPS,
++    WORLD_MERCHS,
++    WORLD_MAPOBJS,
++    EIM,
++    EIM_PARTY,
++    EIM_SCRIPT,
++    EM_LOBBY,
++    EM_QUEUE,
++    CASHSHOP,
++    VISITOR_PSHOP,
++    STORAGE,
++    MOB_EXT,
++    MOB,
++    MOB_STATI,
++    MOBSKILL_FACTORY,
++    PORTAL,
++    VISITOR_MERCH,
++    MAP_CHRS,
++    MAP_OBJS,
++    MAP_FACTORY,
++    MAP_ITEM,
++    MAP_BOUNDS,
++    MINIDUNGEON,
++    REACTOR,
++    REACTOR_HIT;
+ }
+diff --git a/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar b/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar
+index a81e6a687..c16e02e88 100644
+Binary files a/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar and b/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar differ
+diff --git a/tools/MapleQuestItemFetcher/lib/QuestReport.txt b/tools/MapleQuestItemFetcher/lib/QuestReport.txt
+index 0d20e38d8..8b24fabf1 100644
+--- a/tools/MapleQuestItemFetcher/lib/QuestReport.txt
++++ b/tools/MapleQuestItemFetcher/lib/QuestReport.txt
+@@ -1,5 +1,5 @@
+  # Report File autogenerated from the MapleQuestItemFetcher feature by Ronan Lana.
+- # Generated data takes into account several data info from the underlying DB and the server-side WZ.xmls.
++ # Generated data takes into account several data info from the underlying DB, server source files and the server-side WZ.xmls.
+ 
+ INCORRECT QUESTIDS ON DB
+ 2022055 : -1 -> 9330 EXPIRED
+diff --git a/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java b/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
+index 47e1c9ad8..8302ee5a3 100644
+--- a/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
++++ b/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
+@@ -403,36 +403,29 @@ private static void filterDirectorySearchMatchingData(String path, List<Pair<Int
+         }
+     }
+     
+-    private static boolean foundMatchingDataOnFile(Scanner scan, String searchStr) {
+-        while(scan.hasNext()){
+-            String line = scan.nextLine().toLowerCase();
+-            if(line.contains(searchStr)){
+-                return true;
+-            }
+-        }
+-        
+-        return false;
++    private static boolean foundMatchingDataOnFile(String fileContent, String searchStr) {
++        return fileContent.contains(searchStr);
+     }
+     
+-    
+     private static void fileSearchMatchingData(File file, List<Pair<Integer, Integer>> itemsWithQuest) {
+         try {
+-            Scanner scanner = new Scanner(file);
+-
++            String fileContent = FileUtils.readFileToString(file, "UTF-8");
++            
+             List<Pair<Integer, Integer>> copyItemsWithQuest = new ArrayList<>(itemsWithQuest);
+             for(Pair<Integer, Integer> iq : copyItemsWithQuest) {
+-                scanner.reset();
+-                
+-                if(foundMatchingDataOnFile(scanner, String.valueOf(iq.getLeft()))) {
++                if(foundMatchingDataOnFile(fileContent, String.valueOf(iq.getLeft()))) {
+                     itemsWithQuest.remove(iq);
+                 }
+             }
+-        } catch(FileNotFoundException e) {}
++        } catch(IOException ioe) {
++            System.out.println("Failed to read file: " + file.getAbsolutePath());
++            ioe.printStackTrace();
++        }
+     }
+     
+     private static void printReportFileHeader() {
+         printWriter.println(" # Report File autogenerated from the MapleQuestItemFetcher feature by Ronan Lana.");
+-        printWriter.println(" # Generated data takes into account several data info from the underlying DB and the server-side WZ.xmls.");
++        printWriter.println(" # Generated data takes into account several data info from the underlying DB, server source files and the server-side WZ.xmls.");
+         printWriter.println();
+     }
+     
+diff --git a/wz/Item.wz/Etc/0403.img.xml b/wz/Item.wz/Etc/0403.img.xml
+index c716d243f..124dfea55 100644
+--- a/wz/Item.wz/Etc/0403.img.xml
++++ b/wz/Item.wz/Etc/0403.img.xml
+@@ -9725,10 +9725,8 @@
+         <vector name="origin" x="-1" y="31"/>
+         <int name="z" value="0"/>
+       </canvas>
+-      <int name="price" value="1"/>
+-      <int name="tradeBlock" value="1"/>
+-      <int name="slotMax" value="1"/>
+-      <int name="notSale" value="1"/>
++      <int name="price" value="1700"/>
++      <int name="slotMax" value="100"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04031902">
+@@ -9805,8 +9803,8 @@
+         <vector name="origin" x="-3" y="30"/>
+         <int name="z" value="0"/>
+       </canvas>
+-      <int name="price" value="1"/>
+-      <int name="slotMax" value="1"/>
++      <int name="price" value="1500"/>
++      <int name="slotMax" value="100"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="04031907">
+diff --git a/wz/Map.wz/Map/Map1/101000301.img.xml b/wz/Map.wz/Map/Map1/101000301.img.xml
+index 84e959944..0dedff9a4 100644
+--- a/wz/Map.wz/Map/Map1/101000301.img.xml
++++ b/wz/Map.wz/Map/Map1/101000301.img.xml
+@@ -10,7 +10,7 @@
+     <string name="bgm" value="Bgm01/MoonlightShadow"/>
+     <string name="mapMark" value="Ellinia"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="393340"/>
++    <int name="fieldLimit" value="393342"/>
+     <int name="VRTop" value="-900"/>
+     <int name="VRLeft" value="1230"/>
+     <int name="VRBottom" value="550"/>
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 1d797c4c0..fd93b2cc1 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -1,4 +1,4 @@
+-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
++﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="Act.img">
+   <imgdir name="1000">
+     <imgdir name="1">
+@@ -39231,7 +39231,7 @@
+           <int name="count" value="-50"/>
+         </imgdir>
+         <imgdir name="3">
+-          <int name="id" value="4000150"/>
++          <int name="id" value="4000135"/>
+           <int name="count" value="-50"/>
+         </imgdir>
+         <imgdir name="4">
+@@ -39258,138 +39258,154 @@
+           <int name="id" value="4000176"/>
+           <int name="count" value="-2"/>
+         </imgdir>
++        <imgdir name="10">
++          <int name="count" value="-2"/>
++          <int name="id" value="4000413"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="count" value="-2"/>
++          <int name="id" value="4000414"/>
++        </imgdir>
+         <imgdir name="12">
+-          <int name="id" value="4000175"/>
+           <int name="count" value="-2"/>
++          <int name="id" value="4031901"/>
+         </imgdir>
+         <imgdir name="13">
+-          <int name="id" value="4000138"/>
+           <int name="count" value="-2"/>
++          <int name="id" value="4000224"/>
+         </imgdir>
+         <imgdir name="14">
+-          <int name="id" value="4011007"/>
+           <int name="count" value="-2"/>
++          <int name="id" value="4000235"/>
+         </imgdir>
+         <imgdir name="15">
+-          <int name="id" value="4021009"/>
+           <int name="count" value="-2"/>
++          <int name="id" value="4000243"/>
+         </imgdir>
+         <imgdir name="16">
++          <int name="id" value="4000175"/>
++          <int name="count" value="-2"/>
++        </imgdir>
++        <imgdir name="17">
++          <int name="id" value="4000138"/>
++          <int name="count" value="-2"/>
++        </imgdir>
++        <imgdir name="18">
++          <int name="id" value="4011007"/>
++          <int name="count" value="-2"/>
++        </imgdir>
++        <imgdir name="19">
++          <int name="id" value="4021009"/>
++          <int name="count" value="-2"/>
++        </imgdir>
++        <imgdir name="20">
+           <int name="id" value="4005000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="17">
++        <imgdir name="21">
+           <int name="id" value="4005001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="18">
++        <imgdir name="22">
+           <int name="id" value="4005002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="19">
++        <imgdir name="23">
+           <int name="id" value="4005003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="20">
++        <imgdir name="24">
+           <int name="id" value="4005004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="21">
++        <imgdir name="25">
+           <int name="id" value="4011000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="22">
++        <imgdir name="26">
+           <int name="id" value="4011001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="23">
++        <imgdir name="27">
+           <int name="id" value="4011002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="24">
++        <imgdir name="28">
+           <int name="id" value="4011003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="25">
++        <imgdir name="29">
+           <int name="id" value="4011004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="26">
++        <imgdir name="30">
+           <int name="id" value="4011005"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="27">
++        <imgdir name="31">
+           <int name="id" value="4011006"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="28">
++        <imgdir name="32">
+           <int name="id" value="4021000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="29">
++        <imgdir name="33">
+           <int name="id" value="4021001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="30">
++        <imgdir name="34">
+           <int name="id" value="4021002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="31">
++        <imgdir name="35">
+           <int name="id" value="4021003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="32">
++        <imgdir name="36">
+           <int name="id" value="4021004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="33">
++        <imgdir name="37">
+           <int name="id" value="4021005"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="34">
++        <imgdir name="38">
+           <int name="id" value="4021006"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="35">
++        <imgdir name="39">
+           <int name="id" value="4021007"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="36">
++        <imgdir name="40">
+           <int name="id" value="4021008"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="37">
++        <imgdir name="41">
+           <int name="id" value="1442030"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="38">
++        <imgdir name="42">
+           <int name="id" value="1002033"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="39">
++        <imgdir name="43">
+           <int name="id" value="1050132"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="40">
++        <imgdir name="44">
+           <int name="id" value="1082002"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="41">
++        <imgdir name="45">
+           <int name="id" value="1072169"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="42">
++        <imgdir name="46">
+           <int name="id" value="2049100"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="10">
+-          <int name="count" value="-2"/>
+-          <int name="id" value="4000413"/>
+-        </imgdir>
+-        <imgdir name="11">
+-          <int name="count" value="-2"/>
+-          <int name="id" value="4000414"/>
+-        </imgdir>
+       </imgdir>
+       <int name="exp" value="80000"/>
+       <int name="pop" value="5"/>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index a16066f0d..729f3aff7 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -62651,7 +62651,7 @@
+           <int name="count" value="50"/>
+         </imgdir>
+         <imgdir name="3">
+-          <int name="id" value="4000150"/>
++          <int name="id" value="4000135"/>
+           <int name="count" value="50"/>
+         </imgdir>
+         <imgdir name="4">
+@@ -62678,134 +62678,150 @@
+           <int name="id" value="4000176"/>
+           <int name="count" value="2"/>
+         </imgdir>
++        <imgdir name="10">
++          <int name="count" value="2"/>
++          <int name="id" value="4000413"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="count" value="2"/>
++          <int name="id" value="4000414"/>
++        </imgdir>
+         <imgdir name="12">
+-          <int name="id" value="4000175"/>
+           <int name="count" value="2"/>
++          <int name="id" value="4031901"/>
+         </imgdir>
+         <imgdir name="13">
+-          <int name="id" value="4000138"/>
+           <int name="count" value="2"/>
++          <int name="id" value="4000224"/>
+         </imgdir>
+         <imgdir name="14">
+-          <int name="id" value="4011007"/>
+           <int name="count" value="2"/>
++          <int name="id" value="4000235"/>
+         </imgdir>
+         <imgdir name="15">
+-          <int name="id" value="4021009"/>
+           <int name="count" value="2"/>
++          <int name="id" value="4000243"/>
+         </imgdir>
+         <imgdir name="16">
++          <int name="id" value="4000175"/>
++          <int name="count" value="2"/>
++        </imgdir>
++        <imgdir name="17">
++          <int name="id" value="4000138"/>
++          <int name="count" value="2"/>
++        </imgdir>
++        <imgdir name="18">
++          <int name="id" value="4011007"/>
++          <int name="count" value="2"/>
++        </imgdir>
++        <imgdir name="19">
++          <int name="id" value="4021009"/>
++          <int name="count" value="2"/>
++        </imgdir>
++        <imgdir name="20">
+           <int name="id" value="4005000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="17">
++        <imgdir name="21">
+           <int name="id" value="4005001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="18">
++        <imgdir name="22">
+           <int name="id" value="4005002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="19">
++        <imgdir name="23">
+           <int name="id" value="4005003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="20">
++        <imgdir name="24">
+           <int name="id" value="4005004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="21">
++        <imgdir name="25">
+           <int name="id" value="4011000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="22">
++        <imgdir name="26">
+           <int name="id" value="4011001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="23">
++        <imgdir name="27">
+           <int name="id" value="4011002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="24">
++        <imgdir name="28">
+           <int name="id" value="4011003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="25">
++        <imgdir name="29">
+           <int name="id" value="4011004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="26">
++        <imgdir name="30">
+           <int name="id" value="4011005"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="27">
++        <imgdir name="31">
+           <int name="id" value="4011006"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="28">
++        <imgdir name="32">
+           <int name="id" value="4021000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="29">
++        <imgdir name="33">
+           <int name="id" value="4021001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="30">
++        <imgdir name="34">
+           <int name="id" value="4021002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="31">
++        <imgdir name="35">
+           <int name="id" value="4021003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="32">
++        <imgdir name="36">
+           <int name="id" value="4021004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="33">
++        <imgdir name="37">
+           <int name="id" value="4021005"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="34">
++        <imgdir name="38">
+           <int name="id" value="4021006"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="35">
++        <imgdir name="39">
+           <int name="id" value="4021007"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="36">
++        <imgdir name="40">
+           <int name="id" value="4021008"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="37">
++        <imgdir name="41">
+           <int name="id" value="1442030"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="38">
++        <imgdir name="42">
+           <int name="id" value="1002033"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="39">
++        <imgdir name="43">
+           <int name="id" value="1050132"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="40">
++        <imgdir name="44">
+           <int name="id" value="1082002"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="41">
++        <imgdir name="45">
+           <int name="id" value="1072169"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="10">
+-          <int name="count" value="2"/>
+-          <int name="id" value="4000413"/>
+-        </imgdir>
+-        <imgdir name="11">
+-          <int name="count" value="2"/>
+-          <int name="id" value="4000414"/>
+-        </imgdir>
+       </imgdir>
+     </imgdir>
+     <imgdir name="0">
+diff --git a/wz/Quest.wz/QuestInfo.img.xml b/wz/Quest.wz/QuestInfo.img.xml
+index 6a50e7bcd..a6c91d3fe 100644
+--- a/wz/Quest.wz/QuestInfo.img.xml
++++ b/wz/Quest.wz/QuestInfo.img.xml
+@@ -19525,7 +19525,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+   <imgdir name="8206">
+     <string name="name" value="Ace of Heart&apos;s Secret Ability"/>
+     <string name="0" value="#b#p2041017##k and his partner seems pretty busy recently. Should I check with them on what kind of business they are on now?"/>
+-    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4032474# #t4032474# #c4032474# / #r5#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000150# #t4000150# #c4000150# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000413# #t4000413# #c4000413# / #r2#k\n#i4000414# #t4000414# #c4000414# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
++    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4032474# #t4032474# #c4032474# / #r5#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000135# #t4000135# #c4000135# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000413# #t4000413# #c4000413# / #r2#k\n#i4000414# #t4000414# #c4000414# / #r2#k\n#i4031901# #t4031901# #c4031901# / #r2#k\n#i4000224# #t4000224# #c4000224# / #r2#k\n#i4000235# #t4000235# #c4000235# / #r2#k\n#i4000243# #t4000243# #c4000243# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
+     <string name="2" value="Ace of Hearts helped me make these scrolls... Geez, that was hard. It is repeatable within 3 days, huh?"/>
+     <int name="area" value="50"/>
+   </imgdir>
+diff --git a/wz/String.wz/Etc.img.xml b/wz/String.wz/Etc.img.xml
+index f28b14de7..14f985fcd 100644
+--- a/wz/String.wz/Etc.img.xml
++++ b/wz/String.wz/Etc.img.xml
+@@ -973,8 +973,8 @@
+       <string name="desc" value="You can sell this envelope for 10,000 meso in the store."/>
+     </imgdir>
+     <imgdir name="4000175">
+-      <string name="name" value="Minature Pianus"/>
+-      <string name="desc" value="A miniature version of Pianus"/>
++      <string name="name" value="Miniature Pianus"/>
++      <string name="desc" value="A miniature version of Pianus."/>
+     </imgdir>
+     <imgdir name="4000176">
+       <string name="name" value="Poisonous Mushroom"/>

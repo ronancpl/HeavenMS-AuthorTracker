@@ -1,0 +1,16 @@
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index d1e599ea5..ce17333c4 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -616,7 +616,10 @@ public void monsterKilled(MapleCharacter chr, MapleMonster mob) {
+                         
+                         sL.lock();
+                         try {
+-                                inc = ((Double) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
++                            if(ServerConstants.JAVA_8)
++                                  inc = (int)em.getIv().invokeFunction("monsterValue", this, mob.getId());
++                            else
++                                   inc = ((Double) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
+                         } finally {
+                                 sL.unlock();
+                         }

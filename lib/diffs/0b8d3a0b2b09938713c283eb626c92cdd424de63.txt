@@ -1,0 +1,527 @@
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 5ad8868ef..28e6649bd 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -185,7 +185,7 @@ Exploits patched:
+ * Player being given free access to any character of any account once they have authenticated their account on login phase.
+ * Player being given permission to delete any character of any account once they have authenticated their account on login phase.
+ * Player being able to start/complete any quest freely.
+-* Several assynchronous-oriented explots patched, highlights on those involving Fredrick & Duey.
++* Several assynchronous-oriented exploits patched, highlights on those involving Fredrick & Duey.
+ 
+ Localhost:
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 041c1ddaf..f609ae292 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1019,4 +1019,10 @@ Corrigido hired merchants agora removendo visitantes e dono quando expira.
+ Item maker agora puxa itemid de catalisadores do WZ.
+ Corrigido sistema de evolução de pets passando valor de expiração com overflow pro novo pet, que resultava em pet inativo.
+ Melhorado proteção contra acesso concorrente em mais algumas seções de código de player shop e hired merchants.
+-Adicionado comportamento de substituição de itens ao expirar, cortesia do GabrielSin.
+\ No newline at end of file
++Adicionado comportamento de substituição de itens ao expirar, cortesia do GabrielSin.
++
++07 Junho 2018,
++Corrigido ponteiro nulo ao tentar usar return scroll em mapas como Mu Lung.
++Corrigido um crítico problema de deadlock com o MaplePacketEncoder.
++Corrigido um crítico problema de vazamento de dados na DB referente ao quest status.
++4th job Aran agora usa script de evento, evitando múltiplos jogadores lutando contra múltiplas Mahas.
+\ No newline at end of file
+diff --git a/scripts/event/MahaBattle.js b/scripts/event/MahaBattle.js
+new file mode 100644
+index 000000000..08698a399
+--- /dev/null
++++ b/scripts/event/MahaBattle.js
+@@ -0,0 +1,155 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/**
++ * @author: Ronan
++ * @event: Vs Uncontrollable Maha
++*/
++
++var entryMap = 914020000;
++var exitMap = 140000000;
++var recruitMap = 140000000;
++var clearMap = 140000000;
++
++var minMapId = 914020000;
++var maxMapId = 914020000;
++
++var eventTime = 10;     // 10 minutes
++
++var lobbyRange = [0, 0];
++
++function init() {}
++
++function setup(level, lobbyid) {
++        var eim = em.newInstance("Maha" + lobbyid);
++        eim.setProperty("level", level);
++        eim.setProperty("boss", "0");
++        
++        var mapObj = eim.getInstanceMap(entryMap);
++        mapObj.resetPQ(level);
++        mapObj.instanceMapForceRespawn();
++        
++        respawnStages(eim);
++        eim.startEventTimer(eventTime * 60000);
++        return eim;
++}
++
++function afterSetup(eim) {}
++
++function respawnStages(eim) {}
++
++function playerEntry(eim, player) {
++        var map = eim.getMapInstance(entryMap);
++        player.changeMap(map, map.getPortal(0));
++}
++
++function scheduledTimeout(eim) {
++        end(eim);
++}
++
++function playerUnregistered(eim, player) {}
++
++function playerExit(eim, player) {
++        eim.unregisterPlayer(player);
++        player.changeMap(exitMap, 0);
++}
++
++function playerLeft(eim, player) {
++        if(!eim.isEventCleared()) {
++                playerExit(eim, player);
++        }
++}
++
++function changedMap(eim, player, mapid) {
++        if (mapid < minMapId || mapid > maxMapId) {
++                if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                        eim.unregisterPlayer(player);
++                        end(eim);
++                }
++                else
++                        eim.unregisterPlayer(player);
++        }
++}
++
++function changedLeader(eim, leader) {}
++
++function playerDead(eim, player) {}
++
++function playerRevive(eim, player) { // player presses ok on the death pop up.
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function playerDisconnected(eim, player) {
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
++}
++
++function leftParty(eim, player) {}
++
++function disbandParty(eim) {}
++
++function monsterValue(eim, mobId) {
++        return 1;
++}
++
++function end(eim) {
++        var party = eim.getPlayers();
++        
++        for (var i = 0; i < party.size(); i++) {
++                playerExit(eim, party.get(i));
++        }
++        eim.dispose();
++}
++
++function giveRandomEventReward(eim, player) {
++        eim.giveEventReward(player);
++}
++
++function clearPQ(eim) {
++        eim.stopEventTimer();
++        eim.setEventCleared();
++}
++
++function isMaha(mob) {
++        var mobid = mob.getId();
++        return mobid == 9001014;
++}
++
++function monsterKilled(mob, eim) {
++        if(isMaha(mob)) {
++                eim.clearPQ();
++        }
++}
++
++function allMonstersDead(eim) {}
++
++function cancelSchedule() {}
++
++function dispose(eim) {}
++
+diff --git a/scripts/npc/2060100.js b/scripts/npc/2060100.js
+index 25c8f0019..8608e7552 100644
+--- a/scripts/npc/2060100.js
++++ b/scripts/npc/2060100.js
+@@ -22,11 +22,15 @@
+ //carta
+ function start(){
+     if(cm.isQuestStarted(6301)) {
+-        if (cm.haveItem(4000175))
++        if (cm.haveItem(4000175)) {
++            cm.gainItem(4000175, -1);
+             cm.warp(923000000, 0);
+-        else
++        } else {
+             cm.sendOk("In order to open the crack of dimension you will have to posess one piece of Miniature Pianus. Those could be gained by defeating a Pianus.");
+-    } else
++        }
++    } else {
+         cm.sendOk("I'm #bCarta the sea-witch.#k Don't fool around with me, as I'm known for my habit of turning people into worms.");
++    }
++    
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/21401.js b/scripts/quest/21401.js
+index a55e4536a..a09619994 100644
+--- a/scripts/quest/21401.js
++++ b/scripts/quest/21401.js
+@@ -24,9 +24,11 @@ function start(mode, type, selection) {
+ 	} else if (status == 4) {
+ 		qm.startQuest();
+ 		
+-		var map = qm.getClient().getChannelServer().getMapFactory().getMap(914020000);
+-		spawnMob(-365, 86, 9001014, map);
+-		qm.warp(914020000, 0);
++                var mb = qm.getEventManager("MahaBattle");
++                mb.newInstance("MahaBattle");
++                mb.setProperty("player", qm.getPlayer().getName());
++                mb.startInstance(qm.getPlayer());
++		
+ 		qm.dispose();
+ 	}
+ }
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 226f3f70c..eb1d85ce8 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2032,6 +2032,11 @@ private static void deleteQuestProgressWhereCharacterId(Connection con, int cid)
+             ps.setInt(1, cid);
+             ps.executeUpdate();
+         }
++        
++        try (PreparedStatement ps = con.prepareStatement("DELETE FROM queststatus WHERE characterid = ?")) {
++            ps.setInt(1, cid);
++            ps.executeUpdate();
++        }
+     }
+ 
+     private void deleteWhereCharacterId(Connection con, String sql) throws SQLException {
+@@ -3717,7 +3722,7 @@ public void run() {
+                     MapleBuffStatValueHolder mbsvh = effects.get(statup.getKey());
+                     MapleBuffStatValueHolder statMbsvh = statup.getValue();
+                     
+-                    if(mbsvh == null || mbsvh.value < statMbsvh.value || (mbsvh.value == statMbsvh.value && mbsvh.effect.getStatups().size() < statMbsvh.effect.getStatups().size())) {
++                    if(mbsvh == null || mbsvh.value < statMbsvh.value || (mbsvh.value == statMbsvh.value && mbsvh.effect.getStatups().size() <= statMbsvh.effect.getStatups().size())) {
+                         toDeploy.put(statup.getKey(), statMbsvh);
+                     } else {
+                         if(!isSingletonStatup(statup.getKey())) {
+@@ -5969,7 +5974,6 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 rs = ps.executeQuery();
+                 
+                 Map<Integer, MapleQuestStatus> loadedQuestStatus = new LinkedHashMap<>();
+-                
+                 while (rs.next()) {
+                     MapleQuest q = MapleQuest.getInstance(rs.getShort("quest"));
+                     MapleQuestStatus status = new MapleQuestStatus(q, MapleQuestStatus.Status.getById(rs.getInt("status")));
+@@ -6011,9 +6015,11 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                     }
+                 }
+                 
++                /*
+                 for(MapleQuestStatus mqs : loadedQuestStatus.values()) {
+                     mqs.resetUpdated();
+                 }
++                */
+                 
+                 loadedQuestStatus.clear();
+                 
+@@ -7071,8 +7077,6 @@ public synchronized void saveToDB(boolean notAutosave) {
+                 
+                 synchronized (quests) {
+                     for (MapleQuestStatus q : quests.values()) {
+-                        if(!q.wasUpdated()) continue;
+-                        
+                         ps.setInt(2, q.getQuest().getId());
+                         ps.setInt(3, q.getStatus().getId());
+                         ps.setInt(4, (int) (q.getCompletionTime() / 1000));
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index e820def8b..9b61629e0 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -106,6 +106,7 @@
+ 	private byte gender = -1;
+ 	private boolean disconnecting = false;
+ 	private final Lock lock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
++        private final Lock encoderLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
+         private static final Lock loginLock = new MonitoredReentrantLock(MonitoredLockType.CLIENT, true);
+ 	private int votePoints;
+ 	private int voteTime = -1;
+@@ -1142,6 +1143,14 @@ public void lockClient() {
+         public void unlockClient() {
+                 lock.unlock();
+ 	}
++        
++        public void lockEncoder() {
++                encoderLock.lock();
++	}
++        
++        public void unlockEncoder() {
++                encoderLock.unlock();
++	}
+ 
+ 	private static class CharNameAndId {
+ 
+diff --git a/src/client/MapleQuestStatus.java b/src/client/MapleQuestStatus.java
+index f3cbb0cbb..4eb31ce1f 100644
+--- a/src/client/MapleQuestStatus.java
++++ b/src/client/MapleQuestStatus.java
+@@ -60,7 +60,7 @@ public static Status getById(int id) {
+     }
+     private short questID;
+     private Status status;
+-    private boolean updated;
++    //private boolean updated;   //maybe this can be of use for someone?
+     private final Map<Integer, String> progress = new LinkedHashMap<Integer, String>();
+     private final List<Integer> medalProgress = new LinkedList<Integer>();
+     private int npc;
+@@ -73,7 +73,7 @@ public MapleQuestStatus(MapleQuest quest, Status status) {
+         this.setStatus(status);
+         this.completionTime = System.currentTimeMillis();
+         this.expirationTime = 0;
+-        this.updated = true;
++        //this.updated = true;
+         if (status == Status.STARTED) 
+             registerMobs();      
+     }
+@@ -84,7 +84,7 @@ public MapleQuestStatus(MapleQuest quest, Status status, int npc) {
+         this.setNpc(npc);
+         this.completionTime = System.currentTimeMillis();
+         this.expirationTime = 0;
+-        this.updated = true;
++        //this.updated = true;
+         if (status == Status.STARTED) {
+             registerMobs();
+         }
+@@ -106,17 +106,19 @@ public final void setStatus(Status status) {
+         this.status = status;
+     }
+     
++    /*
+     public boolean wasUpdated() {
+         return updated;
+     }
+     
+-    public void setUpdated() {
++    private void setUpdated() {
+         this.updated = true;
+     }
+     
+     public void resetUpdated() {
+         this.updated = false;
+     }
++    */
+ 
+     public int getNpc() {
+         return npc;
+@@ -130,13 +132,13 @@ private void registerMobs() {
+         for (int i : MapleQuest.getInstance(questID).getRelevantMobs()) {
+             progress.put(i, "000");
+         }
+-        this.setUpdated();
++        //this.setUpdated();
+     }
+ 
+     public boolean addMedalMap(int mapid) {
+         if (medalProgress.contains(mapid)) return false;
+         medalProgress.add(mapid);
+-        this.setUpdated();
++        //this.setUpdated();
+         return true;
+     }
+ 
+@@ -153,7 +155,7 @@ public boolean progress(int id) {
+             int current = Integer.parseInt(progress.get(id));
+             String str = StringUtil.getLeftPaddedStr(Integer.toString(current + 1), '0', 3);
+             progress.put(id, str);
+-            this.setUpdated();
++            //this.setUpdated();
+             return true;
+         }
+         return false;
+@@ -161,7 +163,7 @@ public boolean progress(int id) {
+ 
+     public void setProgress(int id, String pr) {
+         progress.put(id, pr);
+-        this.setUpdated();
++        //this.setUpdated();
+     }
+ 
+     public boolean madeProgress() {
+@@ -221,7 +223,7 @@ public String getInfo() {
+     
+     public void setInfo(String newInfo) {
+         progress.put(0, newInfo);
+-        this.setUpdated();
++        //this.setUpdated();
+     }
+ 
+     public void setForfeited(int forfeited) {
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 8c1ac8692..3e4704406 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -110,7 +110,7 @@
+     public static final int MAX_EVENT_LEVELS = 8;                       //Event has different levels of rewarding system.
+     public static final long BLOCK_NPC_RACE_CONDT = (long)(0.5 * 1000); //Time the player client must wait before reopening a conversation with an NPC.
+     public static final long PET_LOOT_UPON_ATTACK = (long)(0.7 * 1000); //Time the pet must wait before trying to pick items up.
+-    public static final int TOT_MOB_QUEST_REQUIREMENT = 0;              //Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
++    public static final int TOT_MOB_QUEST_REQUIREMENT = 77;              //Overwrites old 999-mobs requirement for the ToT questline with new requirement value, set 0 for default.
+     public static final int MOB_REACTOR_REFRESH_TIME = 30 * 1000;       //Overwrites refresh time for those reactors oriented to inflict damage to bosses (Ice Queen, Riche), set 0 for default.
+     
+     //Dangling Items/Locks Configuration
+diff --git a/src/net/mina/MaplePacketEncoder.java b/src/net/mina/MaplePacketEncoder.java
+index 2024efd0f..2086bca1d 100644
+--- a/src/net/mina/MaplePacketEncoder.java
++++ b/src/net/mina/MaplePacketEncoder.java
+@@ -22,7 +22,6 @@
+ package net.mina;
+ 
+ import client.MapleClient;
+-import java.util.concurrent.locks.Lock;
+ import org.apache.mina.core.buffer.IoBuffer;
+ import org.apache.mina.core.session.IoSession;
+ import org.apache.mina.filter.codec.ProtocolEncoder;
+@@ -36,7 +35,7 @@ public void encode(final IoSession session, final Object message, final Protocol
+         final MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+ 
+         try {
+-            client.lockClient();
++            client.lockEncoder();
+             try {
+                 final MapleAESOFB send_crypto = client.getSendCrypto();
+                 final byte[] input = (byte[]) message;
+@@ -52,7 +51,7 @@ public void encode(final IoSession session, final Object message, final Protocol
+                 
+                 out.write(IoBuffer.wrap(ret));
+             } finally {
+-                client.unlockClient();
++                client.unlockEncoder();
+             }
+ //            System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
+ //            out.write(ByteBuffer.wrap(ret));
+diff --git a/src/net/server/channel/handlers/ItemPickupHandler.java b/src/net/server/channel/handlers/ItemPickupHandler.java
+index 2990e26d5..988d2fc0c 100644
+--- a/src/net/server/channel/handlers/ItemPickupHandler.java
++++ b/src/net/server/channel/handlers/ItemPickupHandler.java
+@@ -44,6 +44,7 @@ public final void handlePacket(final SeekableLittleEndianAccessor slea, final Ma
+         int oid = slea.readInt();
+         MapleCharacter chr = c.getPlayer();
+         MapleMapObject ob = chr.getMap().getMapObject(oid);
++        if(ob == null) return;
+         
+         Point charPos = chr.getPosition();
+         Point obPos = ob.getPosition();
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index d24f14baa..cc5a08d3a 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1037,26 +1037,26 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+         int seconds = localDuration / 1000;
+         MapleMount givemount = null;
+         if (isMonsterRiding()) {
+-            int ridingLevel = 0;
++            int ridingMountId = 0;
+             Item mount = applyfrom.getInventory(MapleInventoryType.EQUIPPED).getItem((short) -18);
+             if (mount != null) {
+-                ridingLevel = mount.getItemId();
++                ridingMountId = mount.getItemId();
+             }
+             if (sourceid == Corsair.BATTLE_SHIP) {
+-                ridingLevel = 1932000;
++                ridingMountId = 1932000;
+             } else if (sourceid == Beginner.SPACESHIP || sourceid == Noblesse.SPACESHIP) {
+-                ridingLevel = 1932000 + applyto.getSkillLevel(sourceid);
++                ridingMountId = 1932000 + applyto.getSkillLevel(sourceid);
+             } else if (sourceid == Beginner.YETI_MOUNT1 || sourceid == Noblesse.YETI_MOUNT1 || sourceid == Legend.YETI_MOUNT1) {
+-                ridingLevel = 1932003;
++                ridingMountId = 1932003;
+             } else if (sourceid == Beginner.YETI_MOUNT2 || sourceid == Noblesse.YETI_MOUNT2 || sourceid == Legend.YETI_MOUNT2) {
+-                ridingLevel = 1932004;
++                ridingMountId = 1932004;
+             } else if (sourceid == Beginner.WITCH_BROOMSTICK || sourceid == Noblesse.WITCH_BROOMSTICK || sourceid == Legend.WITCH_BROOMSTICK) {
+-                ridingLevel = 1932005;
++                ridingMountId = 1932005;
+             } else if (sourceid == Beginner.BALROG_MOUNT || sourceid == Noblesse.BALROG_MOUNT || sourceid == Legend.BALROG_MOUNT) {
+-                ridingLevel = 1932010;
++                ridingMountId = 1932010;
+             } else {
+                 if (applyto.getMount() == null) {
+-                    applyto.mount(ridingLevel, sourceid);
++                    applyto.mount(ridingMountId, sourceid);
+                 }
+                 
+                 applyto.getClient().getWorldServer().registerMountHunger(applyto);
+@@ -1077,7 +1077,7 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+                 givemount = applyto.getMount();
+             }
+             localDuration = sourceid;
+-            localsourceid = ridingLevel;
++            localsourceid = ridingMountId;
+             localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.MONSTER_RIDING, 0));
+         } else if (isSkillMorph()) {
+             localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.MORPH, getMorph(applyto)));
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 39309144e..b170adce3 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -257,6 +257,7 @@ public int getId() {
+     }
+ 
+     public MapleMap getReturnMap() {
++        if(returnMapId == 999999999) return this;
+         return Server.getInstance().getWorld(world).getChannel(channel).getMapFactory().getMap(returnMapId);
+     }
+ 

@@ -1,0 +1,440 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index c99613399..319875a73 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1796,6 +1796,13 @@ Corrigido loot de party não funcionando adequadamente após updates recentes.
+ Implementado loot de party agora atualizando também loots de jogadores ao entrar numa party (pronta permissão de coleta de loots de outros membros da party).
+ Corrigido cooldown de skills de mob não atuando adequadamente.
+ 
++08 - 09 Abril 2019,
++Resolvido problema de deadlock envolvendo acesso a valores de stats de jogadores e diversas operações de despacho de update de stats.
++Corrigido mob skills que não se encontram disponíveis sendo passados para o cliente para serem usados. Resultado disso era efeito visual de skill sendo mostrado ao usuário, habilidade sem ser aplicada em sequência.
++
++12 Abril 2019,
++Corrigido ganho visual do EXP de party ocasionalmente mostrando EXP em amarelo ao jogador em party solo.
++
+ 15 Abril 2019,
+ Iniciado operação de introdução da AriantPQ no fonte, a partir do pull request feito pelo Dragohe4rt.
+ Ajustado Dimensional Door, agora permitindo jogadores a entrar no saguão de entrada da AriantPQ.
+@@ -1807,4 +1814,7 @@ Adicionado mecânica de número de jogadores requerido pelo líder de um lobby n
+ Corrigido jogadores podendo criar/entrar em party dentro de instâncias da AriantPQ.
+ Ajustado instância da AriantPQ para perdurar após o fim das batalhas (acesso a King's room ainda faz parte da instância, para adquirir os valores dos resultados do evento).
+ Ajustado drops de mobs, agora sendo buscado na DB.
+-Ajustado diversas mecânicas da AriantPQ, tais como update visual da pontuação de jogadores (ao dropar itens, ganhar itens, acessar mapa de evento), pontos de batalha persistindo na DB, etc.
+\ No newline at end of file
++Ajustado diversas mecânicas da AriantPQ, tais como update visual da pontuação de jogadores (ao dropar itens, ganhar itens, acessar mapa de evento), pontos de batalha persistindo na DB, etc.
++
++21 Abril 2019,
++Adicionado debug de packets descrito pelo Atoot.
+\ No newline at end of file
+diff --git a/src/client/AbstractMapleCharacterObject.java b/src/client/AbstractMapleCharacterObject.java
+index e1c999c74..6da750484 100644
+--- a/src/client/AbstractMapleCharacterObject.java
++++ b/src/client/AbstractMapleCharacterObject.java
+@@ -32,12 +32,14 @@
+ import net.server.audit.locks.MonitoredReentrantReadWriteLock;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+ import server.maps.AbstractAnimatedMapleMapObject;
++import server.maps.MapleMap;
+ 
+ /**
+  *
+  * @author RonanLana
+  */
+ public abstract class AbstractMapleCharacterObject extends AbstractAnimatedMapleMapObject {
++    protected MapleMap map;
+     protected int str, dex, luk, int_, hp, maxhp, mp, maxmp;
+     protected int hpMpApUsed, remainingAp;
+     protected int[] remainingSp = new int[10];
+@@ -65,6 +67,14 @@ protected void setListener(AbstractCharacterListener listener) {
+         this.listener = listener;
+     }
+     
++    public void setMap(MapleMap map) {
++        this.map = map;
++    }
++    
++    public MapleMap getMap() {
++        return map;
++    }
++    
+     public int getStr() {
+         statRlock.lock();
+         try {
+@@ -202,16 +212,37 @@ private void setHpMpApUsed(int mpApUsed) {
+         this.hpMpApUsed = mpApUsed;
+     }
+     
+-    private void dispatchHpChanged(int oldHp) {
+-        listener.onHpChanged(oldHp);
++    private void dispatchHpChanged(final int oldHp) {
++        Runnable r = new Runnable() {   // thanks BHB (BHB88) for detecting a deadlock case within player stats.
++            @Override
++            public void run() {
++                listener.onHpChanged(oldHp);
++            }
++        };
++        
++        map.registerCharacterStatUpdate(r);
+     }
+     
+     private void dispatchHpmpPoolUpdated() {
+-        listener.onHpmpPoolUpdate();
++        Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                listener.onHpmpPoolUpdate();
++            }
++        };
++        
++        map.registerCharacterStatUpdate(r);
+     }
+     
+     private void dispatchStatPoolUpdateAnnounced() {
+-        listener.onAnnounceStatPoolUpdate();
++        Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                listener.onAnnounceStatPoolUpdate();
++            }
++        };
++        
++        map.registerCharacterStatUpdate(r);
+     }
+     
+     protected void setHp(int newHp) {
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 7e9facfa6..2f7dfab3f 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -229,7 +229,6 @@
+     private MaplePartyCharacter mpc = null;
+     private MapleInventory[] inventory;
+     private MapleJob job = MapleJob.BEGINNER;
+-    private MapleMap map;
+     private MapleMessenger messenger = null;
+     private MapleMiniGame miniGame;
+     private MapleMount maplemount;
+@@ -4847,10 +4846,6 @@ public int getFh() {
+         }
+     }
+ 
+-    public MapleMap getMap() {
+-        return map;
+-    }
+-
+     public int getMapId() {
+         if (map != null) {
+             return map.getId();
+@@ -8713,10 +8708,6 @@ public void setLevel(int level) {
+     public void setMap(int PmapId) {
+         this.mapid = PmapId;
+     }
+-
+-    public void setMap(MapleMap newmap) {
+-        this.map = newmap;
+-    }
+     
+     public void setMessenger(MapleMessenger messenger) {
+         this.messenger = messenger;
+diff --git a/src/constants/CharsetConstants.java b/src/constants/CharsetConstants.java
+index adc928f9e..a00bc90bd 100644
+--- a/src/constants/CharsetConstants.java
++++ b/src/constants/CharsetConstants.java
+@@ -15,7 +15,7 @@
+  
+ public class CharsetConstants {
+    
+-    public static MapleLanguageType MAPLE_TYPE = MapleLanguageType.LANGUAGE_PT_BR;
++    public static MapleLanguageType MAPLE_TYPE = MapleLanguageType.LANGUAGE_US;
+    
+     public enum MapleLanguageType {
+         LANGUAGE_PT_BR(1, "ISO-8859-1"),
+diff --git a/src/constants/OpcodeConstants.java b/src/constants/OpcodeConstants.java
+new file mode 100644
+index 000000000..970be0c24
+--- /dev/null
++++ b/src/constants/OpcodeConstants.java
+@@ -0,0 +1,45 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package constants;
++
++import java.util.Map;
++import java.util.HashMap;
++import net.opcodes.RecvOpcode;
++import net.opcodes.SendOpcode;
++
++/**
++ *
++ * @author Ronan
++ */
++public class OpcodeConstants {
++    public static Map<Integer, String> sendOpcodeNames = new HashMap<>();
++    public static Map<Integer, String> recvOpcodeNames = new HashMap<>();
++    
++    public static void generateOpcodeNames() {
++        for (SendOpcode op : SendOpcode.values()) {
++            sendOpcodeNames.put(op.getValue(), op.name());
++        }
++        
++        for (RecvOpcode op : RecvOpcode.values()) {
++            recvOpcodeNames.put(op.getValue(), op.name());
++        }
++    }
++    
++}
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 49ec85be3..d509bedd4 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -62,6 +62,7 @@
+     public static final boolean USE_DEBUG_SHOW_INFO_EQPEXP = false; //Prints on the cmd all equip exp gain info.
+     public static       boolean USE_DEBUG_SHOW_RCVD_PACKET = false; //Prints on the cmd all received packet ids.
+     public static       boolean USE_DEBUG_SHOW_RCVD_MVLIFE = false; //Prints on the cmd all received move life content.
++    public static final boolean USE_DEBUG_SHOW_PACKET = false;
+     public static       boolean USE_SUPPLY_RATE_COUPONS = true;     //Allows rate coupons to be sold through the Cash Shop.
+     
+     public static final boolean USE_MAXRANGE = true;                //Will send and receive packets from all events on a map, rather than those of only view range.
+diff --git a/src/net/mina/MaplePacketDecoder.java b/src/net/mina/MaplePacketDecoder.java
+index 720c55895..0acffa288 100644
+--- a/src/net/mina/MaplePacketDecoder.java
++++ b/src/net/mina/MaplePacketDecoder.java
+@@ -21,13 +21,20 @@
+ */
+ package net.mina;
+ 
++import constants.ServerConstants;
+ import client.MapleClient;
++import constants.OpcodeConstants;
+ import net.server.coordinator.MapleSessionCoordinator;
+ import org.apache.mina.core.buffer.IoBuffer;
+ import org.apache.mina.core.session.IoSession;
+ import org.apache.mina.filter.codec.CumulativeProtocolDecoder;
+ import org.apache.mina.filter.codec.ProtocolDecoderOutput;
++import tools.HexTool;
+ import tools.MapleAESOFB;
++import tools.data.input.ByteArrayByteStream;
++import tools.data.input.GenericLittleEndianAccessor;
++import net.opcodes.RecvOpcode;
++import tools.FilePrinter;
+ 
+ public class MaplePacketDecoder extends CumulativeProtocolDecoder {
+     private static final String DECODER_STATE_KEY = MaplePacketDecoder.class.getName() + ".STATE";
+@@ -68,8 +75,32 @@ protected boolean doDecode(IoSession session, IoBuffer in, ProtocolDecoderOutput
+             rcvdCrypto.crypt(decryptedPacket);
+             MapleCustomEncryption.decryptData(decryptedPacket);
+             out.write(decryptedPacket);
++            if (ServerConstants.USE_DEBUG_SHOW_PACKET){ // packet traffic log: Atoot's idea, applied using auto-identation thanks to lrenex
++                int packetLen = decryptedPacket.length;
++                int pHeader = readFirstShort(decryptedPacket);
++                String pHeaderStr = Integer.toHexString(pHeader).toUpperCase();
++                String op = lookupSend(pHeader);
++                String Send = "ClientSend:" + op + " [" + pHeaderStr + "] (" + packetLen + ")\r\n";
++                if (packetLen <= 3000) {
++                    String SendTo = Send + HexTool.toString(decryptedPacket) + "\r\n" + HexTool.toStringFromAscii(decryptedPacket);
++                    System.out.println(SendTo);
++                    if (op == null) {
++                        System.out.println("UnknownPacket:" + SendTo);
++                    }
++                } else {
++                    FilePrinter.print(FilePrinter.PACKET_STREAM + MapleSessionCoordinator.getSessionRemoteAddress(session) + ".txt", HexTool.toString(new byte[]{decryptedPacket[0], decryptedPacket[1]}) + "...");
++                }
++            }
+             return true;
+         }
+         return false;
+     }
++    
++    private String lookupSend(int val) {
++        return OpcodeConstants.recvOpcodeNames.get(val);
++    }
++
++    private int readFirstShort(byte[] arr) {
++        return new GenericLittleEndianAccessor(new ByteArrayByteStream(arr)).readShort();
++    }
+ }
+diff --git a/src/net/mina/MaplePacketEncoder.java b/src/net/mina/MaplePacketEncoder.java
+index 2086bca1d..9887244c1 100644
+--- a/src/net/mina/MaplePacketEncoder.java
++++ b/src/net/mina/MaplePacketEncoder.java
+@@ -21,12 +21,20 @@
+  */
+ package net.mina;
+ 
++import constants.ServerConstants;
+ import client.MapleClient;
++import constants.OpcodeConstants;
++import net.opcodes.SendOpcode;
++import net.server.coordinator.MapleSessionCoordinator;
+ import org.apache.mina.core.buffer.IoBuffer;
+ import org.apache.mina.core.session.IoSession;
+ import org.apache.mina.filter.codec.ProtocolEncoder;
+ import org.apache.mina.filter.codec.ProtocolEncoderOutput;
+ import tools.MapleAESOFB;
++import tools.HexTool;
++import tools.data.input.ByteArrayByteStream;
++import tools.data.input.GenericLittleEndianAccessor;
++import tools.FilePrinter;
+ 
+ public class MaplePacketEncoder implements ProtocolEncoder {
+ 
+@@ -39,6 +47,23 @@ public void encode(final IoSession session, final Object message, final Protocol
+             try {
+                 final MapleAESOFB send_crypto = client.getSendCrypto();
+                 final byte[] input = (byte[]) message;
++                if (ServerConstants.USE_DEBUG_SHOW_PACKET) {
++                    int packetLen = input.length;
++                    int pHeader = readFirstShort(input);
++                    String pHeaderStr = Integer.toHexString(pHeader).toUpperCase();
++                    String op = lookupRecv(pHeader);
++                    String Recv = "ServerSend:" + op + " [" + pHeaderStr + "] (" + packetLen + ")\r\n";
++                    if (packetLen <= 50000) {
++                        String RecvTo = Recv + HexTool.toString(input) + "\r\n" + HexTool.toStringFromAscii(input);
++                        System.out.println(RecvTo);
++                        if (op == null) {
++                            System.out.println("UnknownPacket:" + RecvTo);
++                        }
++                    } else {
++                        FilePrinter.print(FilePrinter.PACKET_STREAM + MapleSessionCoordinator.getSessionRemoteAddress(session) + ".txt", HexTool.toString(new byte[]{input[0], input[1]}) + " ...");
++                    }
++                }
++                
+                 final byte[] unencrypted = new byte[input.length];
+                 System.arraycopy(input, 0, unencrypted, 0, input.length);
+                 final byte[] ret = new byte[unencrypted.length + 4];
+@@ -59,6 +84,14 @@ public void encode(final IoSession session, final Object message, final Protocol
+             out.write(IoBuffer.wrap(((byte[]) message)));
+         }
+     }
++    
++    private String lookupRecv(int val) {
++        return OpcodeConstants.sendOpcodeNames.get(val);
++    }
++
++    private int readFirstShort(byte[] arr) {
++        return new GenericLittleEndianAccessor(new ByteArrayByteStream(arr)).readShort();
++    }
+ 
+     @Override
+     public void dispose(IoSession session) throws Exception {}
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index cf3032cdf..25ab73af6 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -86,6 +86,7 @@
+ import client.newyear.NewYearCardRecord;
+ import constants.ItemConstants;
+ import constants.GameConstants;
++import constants.OpcodeConstants;
+ import constants.ServerConstants;
+ import java.util.TimeZone;
+ import net.server.coordinator.MapleSessionCoordinator;
+@@ -969,6 +970,7 @@ public void init() {
+         online = true;
+         
+         MapleSkillbookInformationProvider.getInstance();
++        OpcodeConstants.generateOpcodeNames();
+     }
+ 
+     public static void main(String args[]) {
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 93c2c3035..29822708c 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -126,7 +126,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                                 nextSkillLevel = skillToUse.getRight();
+                                 nextUse = MobSkillFactory.getMobSkill(nextSkillId, nextSkillLevel);
+                                 
+-                                if (!(nextUse != null && nextUse.getHP() >= (int) (((float) monster.getHp() / monster.getMaxHp()) * 100) && mobMp >= nextUse.getMpCon())) {
++                                if (!(nextUse != null && monster.canUseSkill(nextUse) && nextUse.getHP() >= (int) (((float) monster.getHp() / monster.getMaxHp()) * 100) && mobMp >= nextUse.getMpCon())) {
++                                        // thanks OishiiKawaiiDesu for noticing mobs trying to cast skills they are not supposed to be able
++                                        
+                                         nextSkillId = 0;
+                                         nextSkillLevel = 0;
+                                         nextUse = null;
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 9c95f6f22..ed7a46af6 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -541,12 +541,14 @@ private static double calcExperienceStandDevThreshold(Map<MapleCharacter, Float>
+             avgExpReward += exp;
+         }
+         
++        // thanks Simon for finding an issue with solo party player gaining yellow EXP when soloing mobs
++        float realAvgExpReward = avgExpReward;
+         avgExpReward -= exp2;   // clear out the 20% raw exp from last hitting
+         avgExpReward /= personalExpReward.size();
+         
+         float varExpReward = 0.0f;
+         for (Float exp : personalExpReward.values()) {
+-            varExpReward += Math.pow(exp - avgExpReward, 2);
++            varExpReward += Math.pow(exp - realAvgExpReward, 2);
+         }
+         varExpReward /= personalExpReward.size();
+         
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index a6c40a9e8..72ac10b49 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -52,6 +52,7 @@
+             EXPLOITS = "game/exploits/",
+             STORAGE = "game/storage/",
+             PACKET_LOGS = "game/packetlogs/",
++            PACKET_STREAM = "game/packetstream/",
+             FREDRICK = "game/npcs/fredrick/",
+             NPC_UNCODED = "game/npcs/UncodedNPCs.txt",
+             QUEST_UNCODED = "game/quests/UncodedQuests.txt",
+diff --git a/src/tools/HexTool.java b/src/tools/HexTool.java
+index 428baf311..d1853edfc 100644
+--- a/src/tools/HexTool.java
++++ b/src/tools/HexTool.java
+@@ -21,6 +21,7 @@
+ */
+ package tools;
+ 
++import constants.CharsetConstants;
+ import java.io.ByteArrayOutputStream;
+ 
+ public class HexTool {
+@@ -84,4 +85,23 @@ public static String toCompressedString(byte[] bytes) {
+         }
+         return baos.toByteArray();
+     }
++    
++    public static final String toStringFromAscii(final byte[] bytes) {
++        byte[] ret = new byte[bytes.length];
++        for (int x = 0; x < bytes.length; x++) {
++            if (bytes[x] < 32 && bytes[x] >= 0) {
++                ret[x] = '.';
++            } else {
++                int chr = ((short) bytes[x]) & 0xFF;
++                ret[x] = (byte) chr;
++            }
++        }
++        String encode = CharsetConstants.MAPLE_TYPE.getAscii();
++        try {
++            String str = new String(ret, encode);
++            return str;
++        } catch (Exception e) {}
++        return "";
++    }
++
+ }

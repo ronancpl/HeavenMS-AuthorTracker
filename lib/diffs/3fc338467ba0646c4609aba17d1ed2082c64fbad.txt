@@ -1,0 +1,1498 @@
+diff --git a/.gitignore b/.gitignore
+index 1cc190fd0..b49260ecd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -3,4 +3,7 @@
+ /logs/
+ /MapleIdRetriever/nbproject/private/
+ /MapleIdRetriever/dist/
+-/MapleIdRetriever/build/
+\ No newline at end of file
++/MapleIdRetriever/build/
++/MobBookUpdate/nbproject/private/
++/MobBookUpdate/dist/
++/MobBookUpdate/build/
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 331d35f78..29a476cba 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,11 +3,27 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/world/MaplePartyCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/1012113.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/2040047_old.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108004.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108001.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108002.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/KerningPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/1012114.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108005.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/9201134.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/LudiPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/2030010.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/HenesysPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/9040005.js</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/event/EventInstanceManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/BossRushPQ.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/9000037.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/event/EventManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/1012112.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108000.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/maps/MapleMap.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleClient.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/9108003.js</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/BossRushPQ.js b/scripts/event/BossRushPQ.js
+index 7346ea53f..2241c7bb4 100644
+--- a/scripts/event/BossRushPQ.js
++++ b/scripts/event/BossRushPQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Boss Rush PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 1, maxPlayers = 6;
+ var minLevel = 1, maxLevel = 200;
+diff --git a/scripts/event/Ellin.js b/scripts/event/EllinPQ.js
+similarity index 99%
+rename from scripts/event/Ellin.js
+rename to scripts/event/EllinPQ.js
+index e853b8d4f..9a87733b0 100644
+--- a/scripts/event/Ellin.js
++++ b/scripts/event/EllinPQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Ellin PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 4, maxPlayers = 6;
+ var minLevel = 44, maxLevel = 55;
+diff --git a/scripts/event/HenesysPQ.js b/scripts/event/HenesysPQ.js
+index cbf8af191..b95aed05c 100644
+--- a/scripts/event/HenesysPQ.js
++++ b/scripts/event/HenesysPQ.js
+@@ -1,195 +1,209 @@
+-/* 
+-*
+-*Henesys PQ : FightDesign ->RaGEZONE / FXP
+-*
++/**
++ * @author: Ronan
++ * @event: Henesys PQ
+ */
+-// Significant maps (this was already here, helpful though)
+-// 100000200 - Pig Park
+-// 910010000 - 1st Stage
+-// 910010100 - Shortcut
+-// 910010200 - Bonus
+-// 910010300 - Exit
+-// Significant items
+-// 4001101 - Rice Cake
+-// Significant monsters
+-// 9300061 - Bunny
+-// 9300062 - Flyeye
+-// 9300063 - Stirge
+-// 9300064 - Goblin Fires
+-// Significant NPCs
+-// 1012112 - Troy
+-// 1012113 - Tommy
+-// 1012114 - Growlie
+-// map effects
+-// Map/Obj/Effect/quest/gate/3 - warp activation glow
+-// quest/party/clear - CLEAR text
+-// Party1/Clear - clear sound
+-/* INSERT monsterdrops (monsterid,itemid,chance) VALUES (9300061,4001101,1);
+- */
+-
+-
+-importPackage(Packages.net.world);
+-importPackage(Packages.tools);
+-
+-var exitMap;
+-var mainMap;
+-var minPlayers = 3;
+-var pqTime = 10;//10 Minutes
+ 
+-function init() {
+-    exitMap = em.getChannelServer().getMapFactory().getMap(910010400); // <exit>
+-    exitClearMap = em.getChannelServer().getMapFactory().getMap(910010100); // <clear>
+-    mainMap = em.getChannelServer().getMapFactory().getMap(910010000); // <main>
+-    em.setProperty("HPQOpen", "true"); // allows entrance.
+-}
+-
+-function monsterValue(eim, mobId) {
+-    return 1;
+-}
++var isPq = true;
++var minPlayers = 1, maxPlayers = 6;
++var minLevel = 10, maxLevel = 200;
++var entryMap = 910010000;
++var exitMap = 910010300;
++var recruitMap = 100000200;
++var clearMap = 910010100;
+ 
++var minMapId = 910010000;
++var maxMapId = 910010400;
+ 
++var eventTime = 10;     // 10 minutes
+ 
++var lobbyRange = [0, 0];
+ 
+-function setup() {
+-    em.setProperty("HPQOpen", "false")
+-    var eim = em.newInstance("HenesysPQ_" + em.getProperty("latestLeader"));
+-    eim.setProperty("stage", "0");
+-    eim.setProperty("clear", "false");
+-    eim.getMapInstance(910010000).allowSummonState(false);
+-    eim.getMapInstance(910010000).killAllMonsters();
+-    respawn(eim);
+-    var timer = 1000 * 60 * pqTime; // 10 minutes
+-    em.schedule("timeOut", eim, timer);
+-    eim.startEventTimer(timer);
+-    return eim;
++function init() {
++        setEventRequirements();
++}
++
++function setLobbyRange() {
++        return lobbyRange;
++}
++
++function setEventRequirements() {
++        var reqStr = "";
++        
++        reqStr += "\r\n    Number of players: ";
++        if(maxPlayers - minPlayers >= 1) reqStr += minPlayers + " ~ " + maxPlayers;
++        else reqStr += minPlayers;
++        
++        reqStr += "\r\n    Level range: ";
++        if(maxLevel - minLevel >= 1) reqStr += minLevel + " ~ " + maxLevel;
++        else reqStr += minLevel;
++        
++        reqStr += "\r\n    Time limit: ";
++        reqStr += eventTime + " minutes";
++        
++        em.setProperty("party", reqStr);
++}
++
++function setEventExclusives(eim) {
++        var itemSet = [4001095, 4001096, 4001097, 4001098, 4001099, 4001100, 4001101];
++        eim.setExclusiveItems(itemSet);
++}
++
++function setEventRewards(eim) {
++        var itemSet, itemQty, evLevel, expStages;
++
++        evLevel = 1;    //Rewards at clear PQ
++        itemSet = [4001129];
++        itemQty = [1];
++        eim.setEventRewards(evLevel, itemSet, itemQty);
++        
++        expStages = [1600];    //bonus exp given on CLEAR stage signal
++        eim.setEventClearStageExp(expStages);
++}
++
++function getEligibleParty(party) {      //selects, from the given party, the team that is allowed to attempt this event
++        var eligible = [];
++        var hasLeader = false;
++        
++        if(party.size() > 0) {
++                var partyList = party.toArray();
++
++                for(var i = 0; i < party.size(); i++) {
++                        var ch = partyList[i];
++
++                        if(ch.getMapId() == recruitMap && ch.getLevel() >= minLevel && ch.getLevel() <= maxLevel) {
++                                if(ch.isLeader()) hasLeader = true;
++                                eligible.push(ch);
++                        }
++                }
++        }
++        
++        if(!(hasLeader && eligible.length >= minPlayers && eligible.length <= maxPlayers)) eligible = [];
++        return eligible;
++}
++
++function setup(level, lobbyid) {
++        var eim = em.newInstance("Henesys" + lobbyid);
++        eim.setProperty("level", level);
++        eim.setProperty("stage", "0");
++        
++        eim.getInstanceMap(910010000).resetPQ(level);
++        eim.getInstanceMap(910010000).allowSummonState(false);
++        
++        eim.getInstanceMap(910010200).resetPQ(level);
++        
++        respawnStages(eim);
++        eim.startEventTimer(eventTime * 60000);
++        setEventRewards(eim);
++        setEventExclusives(eim);
++        return eim;
++}
++
++function respawnStages(eim) {
++        eim.getInstanceMap(910010000).instanceMapRespawn();
++        eim.getInstanceMap(910010200).instanceMapRespawn();
++        
++        eim.schedule("respawnStages", 15 * 1000);
+ }
+ 
++function playerEntry(eim, player) {
++        var map = eim.getMapInstance(entryMap);
++        player.changeMap(map, map.getPortal(0));
++}
+ 
+-function respawn(eim) {	
+-	var map = eim.getMapInstance(910010000);
+-	if (map.getSummonState()) {	
+-		map.instanceMapRespawn();
+-	}
+-	eim.schedule("respawn", 10000);
++function scheduledTimeout(eim) {
++        if(eim.getProperty("1stageclear") != null) {
++                var curStage = 910010200, toStage = 910010400;
++                eim.warpEventTeam(curStage, toStage);
++        }
++        else {
++                end(eim);
++        }
+ }
+ 
++function playerExit(eim, player) {
++        eim.unregisterPlayer(player);
++        player.changeMap(exitMap, 0);
++}
++
++function changedMap(eim, player, mapid) {
++        if (mapid < minMapId || mapid > maxMapId) {
++                if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                        eim.unregisterPlayer(player);
++                        end(eim);
++                }
++                else
++                        eim.unregisterPlayer(player);
++        }
++}
+ 
+-function playerEntry(eim, player) {
+-    var map = eim.getMapInstance(mainMap.getId());
+-    player.changeMap(map, map.getPortal(0));
++function changedLeader(eim, leader) {
++        var mapid = leader.getMapId();
++        if (!eim.isEventCleared() && (mapid < minMapId || mapid > maxMapId)) {
++                end(eim);
++        }
+ }
+ 
+-function playerDead(eim, player) {
+-    if (player.isAlive()) {
+-        if (eim.isLeader(player)) {
+-            var party = eim.getPlayers();
+-            for (var i = 0; i < party.size(); i++)
+-                playerExit(eim, party.get(i));
+-            eim.dispose();
+-        } else {
+-            var partyz = eim.getPlayers();
+-            if (partyz.size() < minPlayers) {
+-                for (var j = 0; j < partyz.size(); j++)
+-                    playerExit(eim,partyz.get(j));
+-                eim.dispose();
+-            } else
+-                playerExit(eim, player);
++function playerDead(eim, player) {}
++
++function playerRevive(eim, player) { // player presses ok on the death pop up.
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
+         }
+-    }
++        else
++                eim.unregisterPlayer(player);
+ }
+ 
+ function playerDisconnected(eim, player) {
+-    if (eim.isLeader(player)) {
+-        var party = eim.getPlayers();
+-        for (var i = 0; i < party.size(); i++) {
+-            if (party.get(i).equals(player)) {
+-                removePlayer(eim, player);
+-            } else {
+-                playerExit(eim, party.get(i));
+-            }
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
+         }
+-        eim.dispose();
+-    } else {
+-        var partyz = eim.getPlayers();
+-        if (partyz.size() < minPlayers) {
+-            for (var j = 0; j < partyz.size(); j++) {
+-                playerExit(eim,partyz.get(j));
+-			}
+-            eim.dispose();
+-        } else {
+-            playerExit(eim, player);
+-		}
+-    }
++        else
++                eim.unregisterPlayer(player);
+ }
+ 
+ function leftParty(eim, player) {
+-    var party = eim.getPlayers();
+-    if (party.size() < minPlayers) {
+-        for (var i = 0; i < party.size(); i++)
+-            playerExit(eim,party.get(i));
+-        eim.dispose();
+-    }
+-    else
+-        playerExit(eim, player);
++        if (eim.isEventTeamLackingNow(false, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
+ }
+ 
+ function disbandParty(eim) {
+-    
+-    var party = eim.getPlayers();
+-    for (var i = 0; i < party.size(); i++) {
+-        playerExit(eim, party.get(i));
+-    }
+-    eim.dispose();
++        end(eim);
+ }
+ 
+-function playerExitClear(eim, player) {
+-    eim.unregisterPlayer(player);
+-    player.changeMap(exitClearMap, exitClearMap.getPortal(0));
++function monsterValue(eim, mobId) {
++        return 1;
+ }
+ 
+-function playerExit(eim, player) {
+-    eim.unregisterPlayer(player);
+-    player.changeMap(exitMap, exitMap.getPortal(0));
++function end(eim) {
++        var party = eim.getPlayers();
++        for (var i = 0; i < party.size(); i++) {
++                playerExit(eim, party.get(i));
++        }
++        eim.dispose();
+ }
+ 
+-function removePlayer(eim, player) {
+-    eim.unregisterPlayer(player);
+-    player.getMap().removePlayer(player);
+-    player.setMap(exitMap);
++function giveRandomEventReward(eim, player) {
++        eim.giveEventReward(player);
+ }
+ 
+ function clearPQ(eim) {
+-    var party = eim.getPlayers();
+-    for (var i = 0; i < party.size(); i++)
+-        playerExitClear(eim, party.get(i));
+-    eim.dispose();
++        eim.stopEventTimer();
++        eim.setEventCleared();
++        
++        eim.warpEventTeam(910010100);
+ }
+ 
+ function monsterKilled(mob, eim) {}
+ 
+ function allMonstersDead(eim) {}
+ 
+-function dispose() {
+-    em.cancelSchedule();
+-    em.schedule("OpenHPQ", 5000);
+-}
++function cancelSchedule() {}
+ 
+-function cancelSchedule(eim) {
+-	//This needed? It causes problem on reloadevents
+-    //eim.startEventTimer(0);
+-}
+-
+-function timeOut(eim) {
+-    if (eim != null) {
+-        if (eim.getPlayerCount() > 0) {
+-            var pIter = eim.getPlayers().iterator();
+-            while (pIter.hasNext())
+-                playerExit(eim, pIter.next());
+-        }
+-        eim.dispose();
+-    }
+-}
++function dispose(eim) {}
+ 
+-function OpenHPQ() {
+-    em.setProperty("HPQOpen", "true");
+-} 
+\ No newline at end of file
+diff --git a/scripts/event/KerningPQ.js b/scripts/event/KerningPQ.js
+index 0238193a0..d011f3a41 100644
+--- a/scripts/event/KerningPQ.js
++++ b/scripts/event/KerningPQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Kerning PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 3, maxPlayers = 4;
+ var minLevel = 21, maxLevel = 30;
+@@ -90,7 +95,7 @@ function setup(level, lobbyid) {
+ function respawnStages(eim) {    
+         eim.getMapInstance(103000800).instanceMapRespawn();
+         eim.getMapInstance(103000805).instanceMapRespawn();
+-        eim.schedule("respawnStages", 10 * 1000);
++        eim.schedule("respawnStages", 15 * 1000);
+ }
+ 
+ function playerEntry(eim, player) {
+diff --git a/scripts/event/LudiMazePQ.js b/scripts/event/LudiMazePQ.js
+index 604d59c60..9924c47eb 100644
+--- a/scripts/event/LudiMazePQ.js
++++ b/scripts/event/LudiMazePQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Ludibrium Maze PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 3, maxPlayers = 6;
+ var minLevel = 51, maxLevel = 70;
+diff --git a/scripts/event/LudiPQ.js b/scripts/event/LudiPQ.js
+index 846954240..687289163 100644
+--- a/scripts/event/LudiPQ.js
++++ b/scripts/event/LudiPQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Ludibrium PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 5, maxPlayers = 6;
+ var minLevel = 35, maxLevel = 50;
+diff --git a/scripts/event/PiratePQ.js b/scripts/event/PiratePQ.js
+index f077674c7..135b88643 100644
+--- a/scripts/event/PiratePQ.js
++++ b/scripts/event/PiratePQ.js
+@@ -1,3 +1,8 @@
++/**
++ * @author: Ronan
++ * @event: Pirate PQ
++*/
++
+ var isPq = true;
+ var minPlayers = 3, maxPlayers = 6;
+ var minLevel = 55, maxLevel = 100;
+diff --git a/scripts/npc/world0/1012112.js b/scripts/npc/world0/1012112.js
+index 8be448164..7658922a3 100644
+--- a/scripts/npc/world0/1012112.js
++++ b/scripts/npc/world0/1012112.js
+@@ -45,166 +45,84 @@ function action(mode, type, selection) {
+                 else
+                         status--;
+                 
+-                if (status == 0) {
+-                        em = cm.getEventManager("HenesysPQ");
+-                        if(em == null) {
+-                                cm.sendOk("The Henesys PQ has encountered an error.");
+-                                cm.dispose();
+-                                return;
+-                        }
+-                    
+-                        cm.sendSimple("#e#b<Party Quest: Primrose Hill>\r\n#k#n" + em.getProperty("party") + "\r\n\r\nI'm Tory. Inside here is a beautiful hill where the primrose blooms. There's a tiger that lives in the hill, Growlie, and he seems to be looking for something to eat. Would you like to head over to the hill of primrose and join forces with your party members to help Growlie out?#b\r\n#L0#I want to participate in the party quest.\r\n#L1#I want to find party members.\r\n#L2#I would like to hear more details.");
+-                } else if (status == 1) {
+-                        if (selection == 0) {
+-                                if (cm.getParty() == null) {
+-                                        cm.sendOk("Hi there! I'm Tory. This place is covered with mysterious aura of the full moon, and no one person can enter here by him/herself.");
++                if(cm.getMapId() == 100000200) {
++                        if (status == 0) {
++                                em = cm.getEventManager("HenesysPQ");
++                                if(em == null) {
++                                        cm.sendOk("The Henesys PQ has encountered an error.");
+                                         cm.dispose();
+-                                } else if(!cm.isLeader()) {
+-                                        cm.sendOk("If you'd like to enter here, the leader of your party will have to talk to me. Talk to your party leader about this.");
+-                                        cm.dispose();
+-                                } else {
+-                                        var eli = em.getEligibleParty(cm.getParty());
+-                                        if(eli.size() > 0) {
+-                                                if(!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
+-                                                        cm.sendOk("Someone is already attempting the PQ. Please wait for them to finish, or find another channel.");
++                                        return;
++                                }
++
++                                cm.sendSimple("#e#b<Party Quest: Primrose Hill>\r\n#k#n" + em.getProperty("party") + "\r\n\r\nI'm Tory. Inside here is a beautiful hill where the primrose blooms. There's a tiger that lives in the hill, Growlie, and he seems to be looking for something to eat. Would you like to head over to the hill of primrose and join forces with your party members to help Growlie out?#b\r\n#L0#I want to participate in the party quest.\r\n#L1#I want to find party members.\r\n#L2#I would like to hear more details.\r\n#L3#I would like to redeem an event hat.");
++                        } else if (status == 1) {
++                                if (selection == 0) {
++                                        if (cm.getParty() == null) {
++                                                cm.sendOk("Hi there! I'm Tory. This place is covered with mysterious aura of the full moon, and no one person can enter here by him/herself.");
++                                                cm.dispose();
++                                        } else if(!cm.isLeader()) {
++                                                cm.sendOk("If you'd like to enter here, the leader of your party will have to talk to me. Talk to your party leader about this.");
++                                                cm.dispose();
++                                        } else {
++                                                var eli = em.getEligibleParty(cm.getParty());
++                                                if(eli.size() > 0) {
++                                                        if(!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {
++                                                                cm.sendOk("Someone is already attempting the PQ. Please wait for them to finish, or find another channel.");
++                                                        }
+                                                 }
++                                                else {
++                                                        cm.sendOk("You cannot start this party quest yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
++                                                }
++
++                                                cm.dispose();
+                                         }
+-                                        else {
+-                                                cm.sendOk("You cannot start this party quest yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
+-                                        }
+-                                        
++                                } else if (selection == 1) {
++                                        cm.sendOk("Try using a Super Megaphone or asking your buddies or guild to join!");
++                                        cm.dispose();
++                                } else if (selection == 2) {
++                                        cm.sendOk("#e#b<Party Quest: Primrose Hill>#k#n\r\nCollect primrose seeds from the flowers at the bottom part of the map and drop them by the platforms above the stage. Primrose seed color must match to grow the seeds, so test until you find the correct combination. When all the seeds have been planted, that is, starting second part of the mission, scout the Moon Bunny while it prepares Rice Cakes for the hungry Growlie. Once Growlie becomes satisfied, your mission is complete.");
+                                         cm.dispose();
++                                } else {
++                                        cm.sendYesNo("So you want to exchange #b20 #b#t4001129##k for the event-designed hat?");
+                                 }
+-                        } else if (selection == 1) {
+-                                cm.sendOk("Try using a Super Megaphone or asking your buddies or guild to join!");
+-                                cm.dispose();
+                         } else {
+-                                cm.sendOk("#e#b<Party Quest: Primrose Hill>#k#n\r\nCollect primrose seeds from the flowers at the bottom part of the map and drop them by the platforms above the stage. Primrose seed color must match to grow the seeds, so test until you find the correct combination. When all the seeds have been planted, that is, starting second part of the mission, scout the Moon Bunny while it prepares Rice Cakes for the hungry Growlie. Once Growlie becomes satisfied, your mission is complete.");
++                                if(cm.hasItem(4001129, 20)) {
++                                        if(cm.canHold(1002798)) {
++                                                cm.gainItem(4001129, -20);
++                                                cm.gainItem(1002798, 20);
++                                                cm.sendNext("Here it is. Enjoy!");
++                                        }
++                                } else {
++                                        cm.sendNext("You don't have enough #t4001129# to buy it yet!");
++                                }
++                                
+                                 cm.dispose();
+                         }
+-                }
+-        }
+-}
+-
+-/*
+-var status = 0;
+-var chosen = 0;
+-var min = 3;
+-var minLevel = 10;
+-
+-
+-function start() {
+-    status = -1;
+-    action(1, 0, 0);
+-}
+-
+-function action(mode, type, selection) {
+-    if (mode == -1) {
+-        cm.dispose();
+-    } else {
+-        if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+-        if (mode == 1) {
+-            status++;
+-        } else {
+-            status--;
+-        }
+-        if (cm.getPlayer().getMapId() == 100000200) {
+-            if (cm.getParty() == null || !cm.isLeader()) {
+-                if (status == 0) {
+-                    cm.sendNext("Hi there! I'm Tory. This place is covered with mysterious aura of the full moon, and no one person can enter here by him/herself.");
+-                } else if (status == 1) {
+-                    cm.sendOk("If you'd like to enter here, the leader of your party will have to talk to me. Talk to your party leader about this.");
+-                    cm.dispose();
+-                }
+-            } else {
+-                if (status == 0) {
+-                    cm.sendNext("I'm Tory. Inside here is a beautiful hill where the primrose blooms. There's a tiger that lives in the hill, Growlie, and he seems to be looking for something to eat.");
+-                } else if (status == 1) {
+-                    cm.sendSimple("Would you like to head over to the hill of primrose and join forces with your party members to help Growlie out?\r\n#b#L0# Yes, I will go.#l");
+-                } else if (status == 2) {
+-                    var party = cm.getPartyMembers();
+-                    var onmap = 0;
+-                    for (var i = 0; i < party.size(); i++) {
+-                        if (party.get(i).getMap().getId() == 100000200) {
+-                            if (party.get(i).getLevel() < minLevel) {
+-                                cm.sendOk("A member of your party does not meet the level requirement.");
++                } else if (cm.getMapId() == 910010100) {
++                        if (status == 0) {
++                                cm.sendYesNo("Thank you for aiding in the effort of feeding the Growlie. As a matter of fact, your team has already been rewarded for reaching this far. With this problem now solved, there is another issue happening right now, if you are interessed check #bTommy#k there for the info. So, are you returning straight to Henesys now?");
++                        } else if (status == 1) {
++                                if(cm.getEventInstance().giveEventReward(cm.getPlayer())) {
++                                        cm.warp(100000200);
++                                }
++                                else {
++                                        cm.sendOk("It seems you are short on space in one of your inventories. Please check that first to get rewarded properly.");
++                                }
+                                 cm.dispose();
+-                                return;
+-                            }
+-                            onmap++;
+                         }
+-                    }
+-                    if (onmap < min) {
+-                        cm.sendOk("A member of your party is not presently in the map.");
+-                        cm.dispose();
+-                        return;
+-                    }
+-                    if (cm.getClient().getChannelServer().getMapFactory().getMap(910010000).getAllPlayer().size() > 0) {
+-                        cm.sendOk("Someone is already attempting the PQ. Please wait for them to finish, or find another channel.");
+-                        cm.dispose();
+-                        return;
+-                    }
+-                    var em = cm.getEventManager("HenesysPQ");
+-                    if (em == null) { 
+-                        cm.sendOk("This PQ is currently broken. Please report it on the forum!");
+-                        cm.dispose();
+-                        return;
+-                    }
+-
+-                    var prop = em.getProperty("state");
+-                    if (prop == null || prop.equals("0")) { //Start the PQ
+-					    cm.removeHPQItems();
+-                        em.setProperty("latestLeader", cm.getPlayer().getName());
+-                        if(!em.startInstance(cm.getParty(), cm.getPlayer().getMap())) {
+-                            cm.sendOk("A party in your name is already registered in this event.");
+-                            cm.dispose();
+-                            return;
+-                        }
+-                    } else {
+-                        cm.sendOk("Someone is already attempting the PQ. Please wait for them to finish, or find another channel.");
+-                        cm.dispose();
+-                        return;
+-                    }
+-                    cm.dispose();
+-                }
+-            }
+-        } else if (cm.getPlayer().getMap().getId() == 910010100 || cm.getPlayer().getMap().getId() == 910010400) {
+-            if (status == 0) {
+-                cm.sendSimple("I appreciate you giving some rice cakes for the hungry Growlie. It looks like you have nothing else to do now. Would you like to leave this place?\r\n#L0#I want to give you the rest of my rice cakes.#l\r\n#L1#Yes, please get me out of here.#l");
+-            } else if (status == 1) {
+-                chosen = selection;
+-                if (selection == 0) {
+-                    if (cm.getPlayer().getGivenRiceCakes() >= 20) {
+-                        if (cm.getPlayer().getGottenRiceHat()) {
+-                            cm.sendNext("Do you like the hat I gave you? I ate so much of your rice cake that I will have to say no to your offer of rice cake for a little while.");
+-                            cm.dispose();
+-                        } else {
+-                            cm.sendYesNo("I appreciate the thought, but I am okay now. I still have some of the rice cakes you gave me stored at home. To show you my appreciation, I prepared a small gift for you. Would you like to accept it?");
++                } else if (cm.getMapId() == 910010400) {
++                        if (status == 0) {
++                                cm.sendYesNo("So, are you returning to Henesys now?");
++                        } else if (status == 1) {
++                                if(cm.getEventInstance() == null) {
++                                        cm.warp(100000200);
++                                } else if(cm.getEventInstance().giveEventReward(cm.getPlayer())) {
++                                        cm.warp(100000200);
++                                } else {
++                                        cm.sendOk("It seems you are short on space in one of your inventories. Please check that first to get rewarded properly.");
++                                }
++                                cm.dispose();
+                         }
+-                    }
+-                } else if (selection == 1) {
+-                    cm.warp(100000200);
+-                    cm.dispose();
+                 }
+-                cm.dispose();
+-            } else if (status == 2) {
+-                if (chosen == 1) {
+-                    if (cm.canHold(1002798)) { // we will let them try again if they can't
+-                        cm.gainItem(1002798);
+-                        cm.setGottenRiceHat(true);
+-                        cm.sendNext("It will really go well with you. I promise.");
+-                    } else {
+-                        cm.getPlayer().dropMessage(1, "EQUIP inventory full.");
+-                    }
+-                    cm.dispose();
+-                } else if (cm.getPlayer().getGivenRiceCakes() < 20) {
+-                    cm.sendOk("Thank you for rice cake number " + cm.getPlayer().getGivenRiceCakes() + "!! I really appreciate it!");
+-                }
+-            }
+         }
+-    }
+-}
+-*/
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1012113.js b/scripts/npc/world0/1012113.js
+index 79c60a83d..0b3e42dc6 100644
+--- a/scripts/npc/world0/1012113.js
++++ b/scripts/npc/world0/1012113.js
+@@ -20,7 +20,7 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ /**
+- * @author BubblesDev
++ * @author BubblesDev, Ronan
+  * @npc Tommy (HPQ)
+  */
+ var status = 0;
+@@ -30,37 +30,45 @@ function start() {
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode < 1) {
+-        cm.dispose();
+-    } else {
+-        status++;
+-        if (cm.getPlayer().getMap().getId() == 910010100) { //Clear map
+-            if (status == 0) {
+-                cm.sendNext("Hello, there! I'm Tommy. There's a Pig Town nearby where we're standing. The pigs there are rowdy and uncontrollable to the point where they have stolen numerous weapons from travelers. They were kicked out from their towns, and are currently hiding out at the Pig Town.");
+-            } else if (status == 1) {
+-                cm.sendYesNo("What do you think about making your way there with your party members and teach those rowdy pigs a lesson?");
+-            } else if (status == 2) {
+-				cm.warp(910010200);
+-				cm.dispose();
+-				return;
+-            }  
+-        } else if (cm.getPlayer().getMap().getId() == 910010200) { //Bonus map
+-        	if (status == 0) {
+-				cm.sendYesNo("Would you like to exit the bonus now?");
+-        	} else {    				
+-	        	cm.warp(910010400);  
+-				cm.dispose();
+-				return;
+-			}
+-        } else if (cm.getPlayer().getMap().getId() == 910010300) { //Exit map
+-        		if (status == 0) {
+-        			cm.sendOk("You will now be warped out, thank you for helping us!");
+-        		} else {
+-	        		cm.warp(100000200);  
+-	    			cm.dispose();
+-					return;
+-    			}
+-        	}
++        if (mode < 1) {
++                cm.dispose();
++        } else {
++                status++;
++                if (cm.getPlayer().getMap().getId() == 910010100) { //Clear map
++                        if (status == 0) {
++                                cm.sendNext("Hello, there! I'm Tommy. There's a Pig Town nearby where we're standing. The pigs there are rowdy and uncontrollable to the point where they have stolen numerous weapons from travelers. They were kicked out from their towns, and are currently hiding out at the Pig Town.");
++                        } else if (status == 1) {
++                                if(cm.isLeader()) {
++                                        cm.sendYesNo("What do you think about making your way there with your party members and teach those rowdy pigs a lesson?");
++                                }
++                                else {
++                                        cm.sendOk("Interessed? Tell your party leader to talk to me to head there!");
++                                        cm.dispose();
++                                        return;
++                                }
++                        } else if (status == 2) {
++                                cm.getEventInstance().startEventTimer(5 * 60000);                
++                                cm.getEventInstance().warpEventTeam(910010200);
++                                
++                                cm.dispose();
++                                return;
++                        }
++                } else if (cm.getPlayer().getMap().getId() == 910010200) { //Bonus map
++                        if (status == 0) {
++                                cm.sendYesNo("Would you like to exit the bonus now?");
++                        } else {
++                                cm.warp(910010400);
++                                cm.dispose();
++                                return;
++                        }
++                } else if (cm.getPlayer().getMap().getId() == 910010300) { //Exit map
++                        if (status == 0) {
++                                cm.sendOk("You will now be warped out, thank you for helping us!");
++                        } else {
++                                cm.warp(100000200);
++                                cm.dispose();
++                                return;
++                        }
++                }
+         }
+ }
+-	
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1012114.js b/scripts/npc/world0/1012114.js
+index 8122e8573..357cb6289 100644
+--- a/scripts/npc/world0/1012114.js
++++ b/scripts/npc/world0/1012114.js
+@@ -1,104 +1,96 @@
+ /*
+   Growlie (that fatass uhh.. hungry lion or whatever)
+   FightDesign @RageZONE
++
++  Ronan
+   */
+-importPackage(Packages.net.world);
+-importPackage(Packages.tools);
+-importPackage(java.awt);
+ 
+ var status = 0;
+ var chosen = -1;
+ 
++function clearStage(stage, eim) {
++        eim.setProperty(stage + "stageclear", "true");
++        eim.showClearEffect(true);
++
++        eim.giveEventPlayersStageReward(stage);
++}
++
+ function start() {
+-    if (cm.isLeader()) {
+-		var eim = cm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + cm.getParty().getLeader().getName());
+-	    if (eim.getProperty("clear").equals("true")) {
+-		    status = 50;
+-		    cm.sendNext("Mmmm ... this is delicious. Please come see me next time for more #b#t4001101##k. Have a safe trip home!");
+-		} else
+-        cm.sendSimple("Growl! I am Growlie, always ready to protect this place. What brought you here?\r\n#b#L0# Please tell me what this place is all about.#l\r\n#L1# I have brought #t4001101#.#l\r\n#L2# I would like to leave this place.#l");
+-    } else {
+-        cm.sendSimple("Growl! I am Growlie, always ready to protect this place. What brought you here?\r\n#b#L0# Please tell me what this place is all about.#l\r\n#L2# I would like to leave this place.#l");
+-    }
++        status = -1;
++        action(1, 0, 0);
+ }
+ 
+ function action(mode, type, selection) {
+-    if (mode < 0) {
+-        cm.dispose();
+-		return;
+-    } else {
+-	    if (mode == 0 && status == 0) {
+-            cm.dispose();
+-            return;
+-        }
+-        if (mode == 0)
+-            status += chosen == 2 ? 1 : -1;
+-        else
+-            status++;
+-		if (status == 51) {
+-		    var eim = cm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + cm.getParty().getLeader().getName());
+-			eim.clearPQ();
+-            cm.dispose();
+-			return;
+-		}
+-        if (status == 1) {
+-		    if (chosen == -1)
+-			    chosen = selection;
+-            if (chosen == 0) {
+-                cm.sendNext("This place can be best described as the prime spot where you can taste the delicious rice cakes made by Moon Bunny every full moon.");
+-            } else if (chosen == 1) {
+-                if (cm.haveItem(4001101, 10)) {
+-                    cm.sendNext("Oh... isn't this rice cake made by Moon Bunny? Please hand me the rice cake.");
+-                } else {
+-                    cm.sendOk("I advise you to check and make sure that you have indeed gathered up #b10 #t4001101#s#k.");
+-                    cm.dispose();
+-                }
+-            } else if (chosen == 2) {
+-                cm.sendYesNo("Are you sure you want to leave?");
+-            }
+-			else {
+-			    cm.dispose();
+-				return;
+-			}
+-        } else if (status == 2) {
+-            if (chosen == 0) {
+-                cm.sendNextPrev("Gather up the primrose seeds from the primrose leaves all over this area, and plant the seeds at the footing near the crescent moon to see the primrose bloom. There are 6 types of primroses, and all of them require different footings. It is imperative that the footing fits the seed of the flower.");
+-            } else if (chosen == 1) {
+-                cm.sendNext("Mmmm ... this is delicious. Please come see me next time for more #b#t4001101##k. Have a safe trip home!");
+-                cm.gainItem(4001101, -10);
+-                cm.givePartyExp("HenesysPQ");
+-                var eim = cm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + cm.getParty().getLeader().getName());
+-				eim.setProperty("clear", "true");
+-				var map = eim.getMapInstance(cm.getPlayer().getMapId());
+-				map.allowSummonState(false);
+-				map.killAllMonstersNotFriendly();
+-				map.broadcastMessage(MaplePacketCreator.showEffect("quest/party/clear"));
+-				map.broadcastMessage(MaplePacketCreator.playSound("Party1/Clear"));
+-				cm.dispose();
+-            } else {
+-			     if (mode == 1) {
+-			     	var eim = cm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + cm.getParty().getLeader().getName());
+-				 	eim.disbandParty();
+-				 } else {
+-				 	cm.sendOk("You better collect some delicious rice cakes for me then, because time is running out, Growl !");
+-				 }
+-				 cm.dispose();
+-			}
+-        } else if (status == 3) {
+-            if (chosen == 0) {
+-                cm.sendNextPrev("When the flowers of primrose blooms, the full moon will rise, and that's when the Moon Bunnies will appear and start pounding the mill. Your task is to fight off the monsters to make sure that Moon Bunny can concentrate on making the best rice cake possible.");
+-            } else if (chosen == 1) {
+-				var eim = cm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + cm.getParty().getLeader().getName());
+-				eim.clearPQ();
++        if (mode < 0) {
+                 cm.dispose();
+-            }
+-        } else if (status == 4) {
+-            if (chosen == 0) {
+-                cm.sendNextPrev("I would like for you and your party members to cooperate and get me 10 rice cakes. I strongly advise you to get me the rice cakes within the allotted time.");
+-            }
++                return;
+         } else {
+-		    cm.dispose();
+-		}
+-    
+-    }
+-}	
+\ No newline at end of file
++                if (mode == 0 && status == 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 0)
++                        status += ((chosen == 2) ? 1 : -1);
++                else
++                        status++;
++                    
++                if (status == 0) {
++                        if (cm.isLeader()) {
++                                cm.sendSimple("Growl! I am Growlie, always ready to protect this place. What brought you here?\r\n#b#L0# Please tell me what this place is all about.#l\r\n#L1# I have brought #t4001101#.#l\r\n#L2# I would like to leave this place.#l");
++                        } else {
++                                cm.sendSimple("Growl! I am Growlie, always ready to protect this place. What brought you here?\r\n#b#L0# Please tell me what this place is all about.#l\r\n#L2# I would like to leave this place.#l");
++                        }
++                } else if (status == 1) {
++                        if (chosen == -1)
++                                chosen = selection;
++                        if (chosen == 0) {
++                                cm.sendNext("This place can be best described as the prime spot where you can taste the delicious rice cakes made by Moon Bunny every full moon.");
++                        } else if (chosen == 1) {
++                                if (cm.haveItem(4001101, 10)) {
++                                        cm.sendNext("Oh... isn't this rice cake made by Moon Bunny? Please hand me the rice cake. Mmmm ... these seems delicious. Please come see me next time for more #b#t4001101##k. Have a safe trip home!");
++                                } else {
++                                        cm.sendOk("I advise you to check and make sure that you have indeed gathered up #b10 #t4001101#s#k.");
++                                        cm.dispose();
++                                }
++                        } else if (chosen == 2) {
++                                cm.sendYesNo("Are you sure you want to leave?");
++                        }
++                        else {
++                                cm.dispose();
++                                return;
++                        }
++                } else if (status == 2) {
++                        if (chosen == 0) {
++                                cm.sendNextPrev("Gather up the primrose seeds from the primrose leaves all over this area, and plant the seeds at the footing near the crescent moon to see the primrose bloom. There are 6 types of primroses, and all of them require different footings. It is imperative that the footing fits the seed of the flower.");
++                        } else if (chosen == 1) {
++                                cm.gainItem(4001101, -10);
++
++                                var eim = cm.getEventInstance();
++                                clearStage(1, eim);
++
++                                var map = eim.getMapInstance(cm.getPlayer().getMapId());
++                                map.killAllMonstersNotFriendly();
++
++                                eim.clearPQ();
++                                cm.dispose();
++                        } else {
++                                if (mode == 1) {
++                                        cm.warp(910010300);
++                                } else {
++                                        cm.sendOk("You better collect some delicious rice cakes for me then, because time is running out, Growl!");
++                                }
++                                cm.dispose();
++                        }
++                } else if (status == 3) {
++                        if (chosen == 0) {
++                                cm.sendNextPrev("When the flowers of primrose blooms, the full moon will rise, and that's when the Moon Bunnies will appear and start pounding the mill. Your task is to fight off the monsters to make sure that Moon Bunny can concentrate on making the best rice cake possible.");
++                        }
++                } else if (status == 4) {
++                        if (chosen == 0) {
++                                cm.sendNextPrev("I would like for you and your party members to cooperate and get me 10 rice cakes. I strongly advise you to get me the rice cakes within the allotted time.");
++                        }
++                } else {
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2133000.js b/scripts/npc/world0/2133000.js
+index cbbcf6270..badae533b 100644
+--- a/scripts/npc/world0/2133000.js
++++ b/scripts/npc/world0/2133000.js
+@@ -27,7 +27,7 @@ function action(mode, type, selection) {
+                         status--;
+ 
+                 if (status == 0) {
+-                        em = cm.getEventManager("Ellin");
++                        em = cm.getEventManager("EllinPQ");
+                         if(em == null) {
+                                 cm.sendOk("The Ellin PQ has encountered an error.");
+                                 cm.dispose();
+diff --git a/scripts/reactor/9108000.js b/scripts/reactor/9108000.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108000.js
++++ b/scripts/reactor/9108000.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/scripts/reactor/9108001.js b/scripts/reactor/9108001.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108001.js
++++ b/scripts/reactor/9108001.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/scripts/reactor/9108002.js b/scripts/reactor/9108002.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108002.js
++++ b/scripts/reactor/9108002.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/scripts/reactor/9108003.js b/scripts/reactor/9108003.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108003.js
++++ b/scripts/reactor/9108003.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/scripts/reactor/9108004.js b/scripts/reactor/9108004.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108004.js
++++ b/scripts/reactor/9108004.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/scripts/reactor/9108005.js b/scripts/reactor/9108005.js
+index dba034dce..cd257a80a 100644
+--- a/scripts/reactor/9108005.js
++++ b/scripts/reactor/9108005.js
+@@ -1,15 +1,15 @@
+ 
+ function act() {
+-	var em = rm.getEventManager("HenesysPQ").getInstance("HenesysPQ_" + rm.getParty().getLeader().getName());
+-	if (em != null) {
++	var eim = rm.getEventInstance();
++	if (eim != null) {
+ 		var react = rm.getReactor().getMap().getReactorByName("fullmoon");
+-		var stage = parseInt(em.getProperty("stage")) + 1;
++		var stage = parseInt(eim.getProperty("stage")) + 1;
+ 		var newStage = stage.toString();
+-		em.setProperty("stage", newStage);
++		eim.setProperty("stage", newStage);
+ 		react.forceHitReactor(react.getState() + 1);
+-		if (em.getProperty("stage").equals("6")) {
++		if (eim.getProperty("stage").equals("6")) {
+ 			rm.mapMessage(6, "Protect the Moon Bunny!!!");
+-			var map = em.getMapInstance(rm.getReactor().getMap().getId());
++			var map = eim.getMapInstance(rm.getReactor().getMap().getId());
+ 			map.allowSummonState(true);
+ 			map.spawnMonsterOnGroundBelow(9300061, -183, -433);
+ 		}
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 754ed2c80..bf26ebb2d 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -17098,16 +17098,6 @@ INSERT INTO `reactordrops` (`reactordropid`, `reactorid`, `itemid`, `chance`, `q
+ (701, 2612001, 4001135, 1, -1),
+ (754, 200002, 4010001, 1, -1),
+ (753, 200001, 4020001, 1, -1),
+-(704, 9102003, 4001095, 3, -1),
+-(705, 9102003, 4001096, 3, -1),
+-(706, 9102004, 4001096, 3, -1),
+-(707, 9102004, 4001097, 3, -1),
+-(708, 9102005, 4001097, 3, -1),
+-(709, 9102005, 4001098, 3, -1),
+-(710, 9102006, 4001098, 3, -1),
+-(711, 9102006, 4001099, 3, -1),
+-(712, 9102007, 4001099, 3, -1),
+-(713, 9102007, 4001100, 3, -1),
+ (714, 2002001, 4001063, 1, -1),
+ (715, 2002002, 4001052, 1, -1),
+ (716, 2002003, 4001055, 1, -1),
+@@ -17142,7 +17132,6 @@ INSERT INTO `reactordrops` (`reactordropid`, `reactorid`, `itemid`, `chance`, `q
+ (752, 200001, 4010005, 1, -1),
+ (751, 200000, 4020004, 1, -1),
+ (750, 200000, 4010004, 1, -1),
+-(749, 9102002, 4001453, 1, -1),
+ (755, 200002, 4020005, 1, -1),
+ (756, 200003, 4010000, 1, -1),
+ (757, 200003, 4010003, 1, -1),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index cf708d1e7..c643c4463 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19104,13 +19104,17 @@
+   DELETE FROM drop_data WHERE itemid=1302056 AND dropperid < 8000000;
+ 
+   # remove belts dropping from mobs
+-  DELETE FROM drop_data where itemid>=1132000 and itemid<=1132004;
++  DELETE FROM drop_data WHERE itemid>=1132000 AND itemid<=1132004;
++
++  # remove items being dropped from mobs in HPQ
++  DELETE FROM drop_data WHERE dropperid >= 9300061 AND dropperid <= 9300064;
++  DELETE FROM drop_data WHERE dropperid >= 9300081 AND dropperid <= 9300083;
+ 
+   # remove key of dimension dropping outside PQ
+-  DELETE FROM drop_data where itemid=4001023 and dropperid!=9300012;
++  DELETE FROM drop_data WHERE itemid=4001023 AND dropperid!=9300012;
+ 
+   # make Sword Earrings not drop by normal means, just like Shield Earrings
+-  DELETE FROM drop_data where itemid=1032030;
++  DELETE FROM drop_data WHERE itemid=1032030;
+ 
+   # remove every not-card drop from bosses out of their natural habitat
+   DELETE FROM drop_data WHERE dropperid >= 9300184 AND dropperid < 9300215 AND (itemid < 2380000 OR itemid >= 2390000);
+@@ -19192,6 +19196,12 @@
+     (2202004, 2020009, 10, -1),
+     (2202004, 2020011, 15, -1),
+     (2202004, 2020012, 15, -1),
+-    (2202004, 2020013, 15, -1);
++    (2202004, 2020013, 15, -1),
++    (9102002, 4001095, 3, -1),
++    (9102003, 4001096, 3, -1),
++    (9102004, 4001097, 3, -1),
++    (9102005, 4001098, 3, -1),
++    (9102006, 4001099, 3, -1),
++    (9102007, 4001100, 3, -1);
+ 
+   #global data already updated
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 6c07e79bd..e0a9c76cc 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -5054,6 +5054,10 @@ public boolean skillIsCooling(int skillId) {
+     }
+ 
+     public void startFullnessSchedule(final int decrease, final MaplePet pet, int petSlot) {
++        if(isGM() && ServerConstants.GM_PETS_NEVER_HUNGRY || ServerConstants.PETS_NEVER_HUNGRY) {
++            return;
++        }
++        
+         ScheduledFuture<?> schedule;
+         schedule = TimerManager.getInstance().register(new Runnable() {
+             @Override
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index fca50f16c..402b344bf 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -86,17 +86,17 @@
+         try {
+             p.load(new FileInputStream("configuration.ini"));
+ 
+-    //Server Host
+-    ServerConstants.HOST = p.getProperty("HOST");
++            //Server Host
++            ServerConstants.HOST = p.getProperty("HOST");
+ 
+-    //Sql Database
+-    ServerConstants.DB_URL = p.getProperty("URL");
+-    ServerConstants.DB_USER = p.getProperty("DB_USER");
+-    ServerConstants.DB_PASS = p.getProperty("DB_PASS");
++            //Sql Database
++            ServerConstants.DB_URL = p.getProperty("URL");
++            ServerConstants.DB_USER = p.getProperty("DB_USER");
++            ServerConstants.DB_PASS = p.getProperty("DB_PASS");
+ 
+-    //java8 And Shutdownhook
+-    ServerConstants.JAVA_8 = p.getProperty("JAVA8").equalsIgnoreCase("TRUE");
+-    ServerConstants.SHUTDOWNHOOK = p.getProperty("SHUTDOWNHOOK").equalsIgnoreCase("true");
++            //java8 And Shutdownhook
++            ServerConstants.JAVA_8 = p.getProperty("JAVA8").equalsIgnoreCase("TRUE");
++            ServerConstants.SHUTDOWNHOOK = p.getProperty("SHUTDOWNHOOK").equalsIgnoreCase("true");
+ 
+         } catch (Exception e) {
+             e.printStackTrace();
+diff --git a/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java b/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
+index 7dbb651c1..6ec92858e 100644
+--- a/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
++++ b/src/net/server/channel/handlers/MobDamageMobFriendlyHandler.java
+@@ -48,12 +48,22 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		int damage = Randomizer.nextInt(((monster.getMaxHp() / 13 + monster.getPADamage() * 10)) * 2 + 500) / 10; //Beng's formula.
+ 		//  int damage = monster.getStats().getPADamage() + monster.getStats().getPDDamage() - 1;
+ 
++                if (monster.getHp() - damage < 1) {     // friendly dies
++                        if(monster.getId() == 9300102) {
++                                monster.getMap().broadcastMessage(MaplePacketCreator.serverNotice(6, "The Watch Hog has been injured by the aliens. Better luck next time..."));
++                        }
++                        else if (monster.getId() == 9300061) {  //moon bunny
++                                monster.getMap().broadcastMessage(MaplePacketCreator.serverNotice(6, "The Moon Bunny went home because he was sick."));
++                        }
++                        else if(monster.getId() == 9300093) {   //tylus
++                                monster.getMap().broadcastMessage(MaplePacketCreator.serverNotice(6, "Tylus has fallen by the overwhelming forces of this ambush."));
++                        }
++                        
++                        c.getPlayer().getMap().killFriendlies(monster);
++                }
++                
+ 		if (monster.getId() == 9300061) {
+-			if (monster.getHp() - damage < 1) {
+-				monster.getMap().broadcastMessage(MaplePacketCreator.serverNotice(6, "The Moon Bunny went home because he was sick."));
+-				c.getPlayer().getEventInstance().getMapInstance(monster.getMap().getId()).killFriendlies(monster);
+-			}
+-			MapleMap map = c.getPlayer().getEventInstance().getMapInstance(monster.getMap().getId());
++                        MapleMap map = c.getPlayer().getEventInstance().getMapInstance(monster.getMap().getId());
+ 			map.addBunnyHit();
+ 		}
+ 
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 53d524d25..9b5aa775a 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -230,15 +230,15 @@ public void run() {
+         
+         public void stopEventTimer() {
+                 if(event_schedule != null) {
+-                    event_schedule.cancel(false);
+-                    event_schedule = null;
++                        event_schedule.cancel(false);
++                        event_schedule = null;
+                 }
+                 dismissEventTimer();
+         }
+         
+         private void dismissEventTimer() {
+                 for(MapleCharacter chr: getPlayers()) {
+-                    chr.getClient().getSession().write(MaplePacketCreator.removeClock());
++                        chr.getClient().getSession().write(MaplePacketCreator.removeClock());
+                 }
+                 
+                 event_schedule = null;
+@@ -302,7 +302,7 @@ public int getPlayerCount() {
+         private List<MapleCharacter> getPlayerList() {
+                 rL.lock();
+                 try {
+-                    return new LinkedList<>(chars);
++                        return new LinkedList<>(chars);
+                 } finally {
+                         rL.unlock();
+                 }
+@@ -412,8 +412,8 @@ public int getKillCount(MapleCharacter chr) {
+         
+         public void cancelSchedule() {
+             if(event_schedule != null) {
+-                event_schedule.cancel(false);
+-                event_schedule = null;
++                    event_schedule.cancel(false);
++                    event_schedule = null;
+             }
+         }
+ 
+@@ -860,11 +860,14 @@ public final void recoverOpenedGate(MapleCharacter chr, int thisMapId) {
+                 }
+         }
+         
+-        public final void linkToNextStage(int thisStage, String eventFamily, int thisMapId) {
++        public final void giveEventPlayersStageReward(int thisStage) {
+                 List<Integer> list = getClearStageBonus(thisStage);     // will give bonus exp & mesos to everyone in the event
+                 giveEventPlayersExp(list.get(0));
+                 giveEventPlayersMeso(list.get(1));
+-            
++        }
++        
++        public final void linkToNextStage(int thisStage, String eventFamily, int thisMapId) {
++                giveEventPlayersStageReward(thisStage);
+                 thisStage--;    //stages counts from ONE, scripts from ZERO
+             
+                 MapleMap nextStage = getMapInstance(thisMapId);
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index e80cd1c54..55a9b1f94 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -754,7 +754,9 @@ public void monsterCloakingDevice() {
+     }
+ 
+     public void softKillAllMonsters() {
+-        
++        for (SpawnPoint spawnPoint : monsterSpawn) {
++            spawnPoint.setDenySpawn(true);
++        }
+         
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+             MapleMonster monster = (MapleMonster) monstermo;
+@@ -768,6 +770,10 @@ public void softKillAllMonsters() {
+     }
+ 
+     public void killAllMonstersNotFriendly() {
++        for (SpawnPoint spawnPoint : monsterSpawn) {
++            spawnPoint.setDenySpawn(true);
++        }
++        
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+             MapleMonster monster = (MapleMonster) monstermo;
+             if (monster.getStats().isFriendly()) {
+@@ -1453,17 +1459,6 @@ public void addPlayer(final MapleCharacter chr) {
+         }
+         if (mapid == 923010000 && getMonsterById(9300102) == null) { // Kenta's Mount Quest
+             spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(9300102), new Point(77, 426));
+-        } else if (mapid == 910010200) {  // Henesys Party Quest Bonus
+-            chr.announce(MaplePacketCreator.getClock(60 * 5));
+-            TimerManager.getInstance().schedule(new Runnable() {
+-
+-                @Override
+-                public void run() {
+-                    if (chr.getMapId() == 910010200) {
+-                        chr.changeMap(910010400);
+-                    }
+-                }
+-            }, 5 * 60 * 1000);
+         } else if (mapid == 200090060) { // To Rien
+             chr.announce(MaplePacketCreator.getClock(60));
+             TimerManager.getInstance().schedule(new Runnable() {
+@@ -2216,6 +2211,8 @@ public void instanceMapFirstSpawn(int difficulty, boolean isPq) {
+     }
+ 
+     public void instanceMapRespawn() {
++        if(!allowSummons) return;
++        
+         final int numShouldSpawn = (short) ((monsterSpawn.size() - spawnedMonstersOnMap.get()));//Fking lol'd
+         if (numShouldSpawn > 0) {
+             List<SpawnPoint> randomSpawn = new ArrayList<>(monsterSpawn);
+@@ -2256,9 +2253,11 @@ public void setAllowSpawnPointInRange(boolean allow, Point from, double rangeSq)
+     }
+ 
+     public void respawn() {
++        if(!allowSummons) return;
++        
+         chrRLock.lock();
+         try {
+-            if (characters.isEmpty()) {
++            if(characters.isEmpty()) {
+                 return;
+             }
+         }
+@@ -2276,16 +2275,16 @@ public void respawn() {
+         */
+         
+         short numShouldSpawn = (short) ((monsterSpawn.size() - spawnedMonstersOnMap.get()));//Fking lol'd
+-        if (numShouldSpawn > 0) {
++        if(numShouldSpawn > 0) {
+             List<SpawnPoint> randomSpawn = new ArrayList<>(monsterSpawn);
+             Collections.shuffle(randomSpawn);
+             short spawned = 0;
+-            for (SpawnPoint spawnPoint : randomSpawn) {
+-                if (spawnPoint.shouldSpawn()) {
++            for(SpawnPoint spawnPoint : randomSpawn) {
++                if(spawnPoint.shouldSpawn()) {
+                     spawnMonster(spawnPoint.getMonster());
+                     spawned++;
+                     
+-                    if (spawned >= numShouldSpawn) {
++                    if(spawned >= numShouldSpawn) {
+                         break;
+                     }
+                 }

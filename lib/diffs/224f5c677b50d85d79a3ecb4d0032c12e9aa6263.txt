@@ -1,0 +1,90 @@
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index e8eed3bb7..fc3c325ec 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -180,6 +180,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
+   `PQPoints` int(11) NOT NULL DEFAULT '0',
+   `dataString` varchar(64) NOT NULL DEFAULT '',
+   `lastLogoutTime` timestamp NOT NULL DEFAULT '2015-01-01 05:00:00',
++  `lastExpGainTime` timestamp NOT NULL DEFAULT '2015-01-01 05:00:00',
+   `pendantExp` tinyint(1) NOT NULL DEFAULT '0',
+   `jailexpire` bigint(20) NOT NULL DEFAULT '0',
+   PRIMARY KEY (`id`),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index ab1c78007..2775a4f1d 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -314,6 +314,7 @@
+     private int banishMap = -1;
+     private int banishSp = -1;
+     private long banishTime = 0;
++    private long lastExpGainTime;
+     
+     private MapleCharacter() {
+         super.setListener(new AbstractCharacterListener() {
+@@ -2917,7 +2918,11 @@ private synchronized void gainExpInternal(long gain, int equip, int party, boole
+                 }
+             }
+             
+-            if(leftover > 0) gainExpInternal(leftover, equip, party, false, inChat, white);
++            if(leftover > 0) {
++                gainExpInternal(leftover, equip, party, false, inChat, white);
++            } else {
++                lastExpGainTime = System.currentTimeMillis();
++            }
+         }
+     }
+ 
+@@ -6411,6 +6416,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ret.mgc = new MapleGuildCharacter(ret);
+             int buddyCapacity = rs.getInt("buddyCapacity");
+             ret.buddylist = new BuddyList(buddyCapacity);
++            ret.lastExpGainTime = rs.getTimestamp("lastExpGainTime").getTime();
+             
+             ret.getInventory(MapleInventoryType.EQUIP).setSlotLimit(rs.getByte("equipslots"));
+             ret.getInventory(MapleInventoryType.USE).setSlotLimit(rs.getByte("useslots"));
+@@ -7643,7 +7649,7 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+             con.setAutoCommit(false);
+             PreparedStatement ps;
+-            ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, gachaexp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpMpUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, messengerid = ?, messengerposition = ?, mountlevel = ?, mountexp = ?, mounttiredness= ?, equipslots = ?, useslots = ?, setupslots = ?, etcslots = ?,  monsterbookcover = ?, vanquisherStage = ?, dojoPoints = ?, lastDojoStage = ?, finishedDojoTutorial = ?, vanquisherKills = ?, matchcardwins = ?, matchcardlosses = ?, matchcardties = ?, omokwins = ?, omoklosses = ?, omokties = ?, dataString = ?, fquest = ?, jailexpire = ?, partnerId = ?, marriageItemId = ? WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
++            ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, gachaexp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpMpUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, messengerid = ?, messengerposition = ?, mountlevel = ?, mountexp = ?, mounttiredness= ?, equipslots = ?, useslots = ?, setupslots = ?, etcslots = ?,  monsterbookcover = ?, vanquisherStage = ?, dojoPoints = ?, lastDojoStage = ?, finishedDojoTutorial = ?, vanquisherKills = ?, matchcardwins = ?, matchcardlosses = ?, matchcardties = ?, omokwins = ?, omoklosses = ?, omokties = ?, dataString = ?, fquest = ?, jailexpire = ?, partnerId = ?, marriageItemId = ?, lastExpGainTime = ? WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
+             if (gmLevel < 1 && level > 199) {
+                 ps.setInt(1, isCygnus() ? 120 : 200);
+             } else {
+@@ -7756,7 +7762,8 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             ps.setLong(50, jailExpiration);
+             ps.setInt(51, partnerId);
+             ps.setInt(52, marriageItemid);
+-            ps.setInt(53, id);
++            ps.setTimestamp(53, new Timestamp(lastExpGainTime));
++            ps.setInt(54, id);
+ 
+             int updateRows = ps.executeUpdate();
+             ps.close();
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index d73ed7568..cc2c71591 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -784,7 +784,7 @@ private void initWorldPlayerRanking() {
+                 worldQuery = (" AND `characters`.`world` >= 0 AND `characters`.`world` <= " + Math.abs(worldid));
+             }
+             
+-            ps = con.prepareStatement("SELECT `characters`.`name`, `characters`.`level`, `characters`.`world` FROM `characters` LEFT JOIN accounts ON accounts.id = characters.accountid WHERE `characters`.`gm` < 2 AND `accounts`.`banned` = '0'" + worldQuery + " ORDER BY " + (!ServerConstants.USE_WHOLE_SERVER_RANKING ? "world, " : "") + "level DESC, exp DESC LIMIT 50");
++            ps = con.prepareStatement("SELECT `characters`.`name`, `characters`.`level`, `characters`.`world` FROM `characters` LEFT JOIN accounts ON accounts.id = characters.accountid WHERE `characters`.`gm` < 2 AND `accounts`.`banned` = '0'" + worldQuery + " ORDER BY " + (!ServerConstants.USE_WHOLE_SERVER_RANKING ? "world, " : "") + "level DESC, exp DESC, lastExpGainTime ASC LIMIT 50");
+             rs = ps.executeQuery();
+             
+             if (!ServerConstants.USE_WHOLE_SERVER_RANKING) {
+diff --git a/src/net/server/worker/RankingLoginWorker.java b/src/net/server/worker/RankingLoginWorker.java
+index 4df7d05af..32cc51afd 100644
+--- a/src/net/server/worker/RankingLoginWorker.java
++++ b/src/net/server/worker/RankingLoginWorker.java
+@@ -50,7 +50,7 @@ private void updateRanking(int job, int world) throws SQLException {
+         if (job != -1) {
+             sqlCharSelect += "AND c.job DIV 100 = ? ";
+         }
+-        sqlCharSelect += "ORDER BY c.level DESC , c.exp DESC , c.fame DESC , c.meso DESC";
++        sqlCharSelect += "ORDER BY c.level DESC , c.exp DESC , c.lastExpGainTime ASC, c.fame DESC , c.meso DESC";
+         
+         PreparedStatement charSelect = con.prepareStatement(sqlCharSelect);
+         charSelect.setInt(1, world);

@@ -1,0 +1,164 @@
+diff --git a/scripts/npc/9010021.js b/scripts/npc/9010021.js
+index 81942aeac..2d1177d94 100644
+--- a/scripts/npc/9010021.js
++++ b/scripts/npc/9010021.js
+@@ -22,8 +22,46 @@
+ /* 9010021 - Wolf Spirit Ryko
+     @author Ronan
+  */
+- 
++ var status;
++
+ function start() {
+-    cm.sendOk("... I came from distant planes to assist the fight against the #rBlack Magician#k. Right now I search my master, have you seen him?");
+-    cm.dispose();
++    status = -1;
++    if (!Packages.constants.ServerConstants.USE_REBIRTH_SYSTEM) {
++        cm.sendOk("... I came from distant planes to assist the fight against the #rBlack Magician#k. Right now I search my master, have you seen him?");
++        cm.dispose();
++        return;
++    }
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++        status++;
++    } else {
++        cm.dispose();
++        return;
++    }
++    if (status == 0) {
++        cm.sendNext("Come to me when you want to be reborn again. You currently have a total of #r" + cm.getChar().getReborns() + " #krebirths.");
++    } else if (status == 1) {
++        cm.sendSimple("What do you want me to do today: \r\n \r\n #L0##bI want to be rebirthed#l \r\n #L1##bMaybe next time#k#l");
++    } else if (status == 2) {
++        if (selection == 0) {
++            if (cm.getChar().getLevel() == 200) {
++                cm.sendYesNo("Are you sure you want to be rebirthed?");
++            } else {
++                cm.sendOk("You are not level 200, please come back when you hit level 200.");
++                cm.dispose();
++            }
++        } else if (selection == 1) {
++            cm.sendOk("Ok Bye")
++            cm.dispose();
++        }
++    } else if (status == 3 && type == 1) {
++        cm.getChar().executeReborn();
++        cm.sendOk("You have now been reborn. That's a total of #r" + cm.getChar().getReborns() + "#k rebirths");
++        cm.dispose();
++    }
++
++
+ }
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index faa8dc523..a481d7c72 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -107,6 +107,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
++import tools.exceptions.NotEnabledException;
+ import tools.packets.Wedding;
+ import client.autoban.AutobanManager;
+ import client.creator.CharacterFactoryRecipe;
+@@ -9882,4 +9883,66 @@ public void setRewardPoints(int value) {
+             try { con.close(); } catch (Exception e) { /* ignored */ }
+         }
+     }
++
++    public void setReborns(int value) {
++        if (!ServerConstants.USE_REBIRTH_SYSTEM) {
++            yellowMessage("Rebirth system is not enabled!");
++            throw new NotEnabledException();
++        }
++        Connection con = null;
++        PreparedStatement ps = null;
++        try {
++            con = DatabaseConnection.getConnection();
++            ps = con.prepareStatement("UPDATE characters SET reborns=? WHERE id=?;");
++            ps.setInt(1, value);
++            ps.setInt(2, id);
++            ps.executeUpdate();
++        } catch (SQLException e) {
++            e.printStackTrace();
++        } finally {
++            try { ps.close(); } catch (Exception e) { /* ignored */ }
++            try { con.close(); } catch (Exception e) { /* ignored */ }
++        }
++    }
++
++    public void addReborns() {
++        setReborns(getReborns() + 1);
++    }
++
++    public int getReborns() {
++        if (!ServerConstants.USE_REBIRTH_SYSTEM) {
++            yellowMessage("Rebirth system is not enabled!");
++            throw new NotEnabledException();
++        }
++        Connection con = null;
++        PreparedStatement ps = null;
++        try {
++            con = DatabaseConnection.getConnection();
++            ps = con.prepareStatement("SELECT reborns FROM characters WHERE id=?;");
++            ps.setInt(1, id);
++            ResultSet resultSet = ps.executeQuery();
++            resultSet.next();
++            return resultSet.getInt(1);
++        } catch (SQLException e) {
++            e.printStackTrace();
++        } finally {
++            try { ps.close(); } catch (Exception e) { /* ignored */ }
++            try { con.close(); } catch (Exception e) { /* ignored */ }
++        }
++        throw new RuntimeException();
++    }
++
++    public void executeReborn() {
++        if (!ServerConstants.USE_REBIRTH_SYSTEM) {
++            yellowMessage("Rebirth system is not enabled!");
++            throw new NotEnabledException();
++        }
++        if (getLevel() != 200) {
++            return;
++        }
++        addReborns();
++        changeJob(MapleJob.BEGINNER);
++        setLevel(0);
++        levelUp(true);
++    }
+ }
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index d726b8f82..554dc7f76 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -104,6 +104,7 @@
+     public static final boolean USE_BANISHABLE_TOWN_SCROLL = true;  //Enables town scrolls to act as if it's a "player banish", rendering the antibanish scroll effect available.
+     public static final boolean USE_ENABLE_FULL_RESPAWN = true;     //At respawn task, always respawn missing mobs when they're available. Spawn count doesn't depend on how many players are currently there.
+     public static final boolean USE_ENABLE_CHAT_LOG = true;         //Write in-game chat to log
++    public static final boolean USE_REBIRTH_SYSTEM = false;       //Flag to enable/disable rebirth system
+     
+     //Events/PQs Configuration
+     public static final boolean USE_OLD_GMS_STYLED_PQ_NPCS = true;  //Enables PQ NPCs with similar behaviour to old GMS style, that skips info about the PQs and immediately tries to register the party in.
+diff --git a/src/tools/exceptions/NotEnabledException.java b/src/tools/exceptions/NotEnabledException.java
+new file mode 100644
+index 000000000..8f6bd509d
+--- /dev/null
++++ b/src/tools/exceptions/NotEnabledException.java
+@@ -0,0 +1,12 @@
++package tools.exceptions;
++
++public class NotEnabledException extends RuntimeException {
++
++    public NotEnabledException() {
++        super("Feature not enabled, please enable the feature in ServerConstant");
++    }
++
++    public NotEnabledException(String message) {
++        super(message);
++    }
++}

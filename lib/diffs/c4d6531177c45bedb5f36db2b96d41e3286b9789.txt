@@ -1,0 +1,1352 @@
+diff --git a/docs/issues.txt b/docs/issues.txt
+index 86ca538bf..abb0fd94e 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -20,6 +20,7 @@ Missing features list:
+ - Change name/World transfer.
+ - Some pirate skills doesn't work for 3rd parties.
+ - Medal quests.
++- Cache frequently used SQL data.
+ ---------------------------
+ 
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 9200ba06e..2b9d973b3 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1039,4 +1039,14 @@ Corrigido battleship não dando buffs na defesa corretamente.
+ 11 - 12 Junho 2018,
+ Adicionado efeito do usável Happy Birthday pra todos no mapa.
+ Implementado HolidayPQ.
+-Adicionado sistema de sandbox para itens.
+\ No newline at end of file
++Adicionado sistema de sandbox para itens.
++
++13 - 14 Junho 2018,
++Adicionado novo server flag para permitir criar expedições solo.
++Adicionado novo server flag para cooldown reduzido no Hero's Will.
++Adicionado recipes para forjar Mob Crystal lv120 e 130 pelo Maker, usando Maple Leaf e versão de cristal anterior.
++Corrigido Heaven's Hammer e Combo Tempest não mostrando dano aos jogadores.
++Corrigido exploit onde jogadores poderiam criar minirooms em certos casos onde os mesmos não poderiam fazê-lo.
++Quest itens dropados de mobs que não visíveis pelo jogador atacante agora são mostrados mais nas pontas, de forma que o conjunto de drops agora aparente não ter espaço com itens invisíveis no meio.
++Corrigido Horntail não atruibuindo quest progress corretamente para a quest The Last Hour of Horntail.
++Removido skill books agora desnecessários do drop data, uma vez que já foi implementado as quests para conseguir elas.
+\ No newline at end of file
+diff --git a/scripts/event/Aran_3rdmount.js b/scripts/event/Aran_3rdmount.js
+index fce9b80a1..b85b44aef 100644
+--- a/scripts/event/Aran_3rdmount.js
++++ b/scripts/event/Aran_3rdmount.js
+@@ -92,7 +92,11 @@ function clearPQ(eim) {
+     em.setProperty("noEntry","false");
+ }
+ 
+-function monsterKilled(mob, eim) {}
++function monsterKilled(mob, eim) {
++    if(eim.getInstanceMap(entryMap).countMonsters() == 0) {
++        eim.showClearEffect();
++    }
++}
+ 
+ function monsterValue(eim, mobId) {
+         return 1;
+diff --git a/scripts/event/HorntailBattle.js b/scripts/event/HorntailBattle.js
+index 8805e159b..732015e7b 100644
+--- a/scripts/event/HorntailBattle.js
++++ b/scripts/event/HorntailBattle.js
+@@ -214,6 +214,7 @@ function monsterKilled(mob, eim) {
+         eim.showClearEffect(mob.getMap().getId());
+         eim.clearPQ();
+         
++        eim.dispatchUpdateQuestMobCount(8810018, 240060200);
+         mob.getMap().broadcastHorntailVictory();
+     } else if(isHorntailHead(mob)) {
+         var killed = eim.getIntProperty("defeatedHead");
+diff --git a/scripts/npc/2020008.js b/scripts/npc/2020008.js
+index 41d3e3403..41f43aa71 100644
+--- a/scripts/npc/2020008.js
++++ b/scripts/npc/2020008.js
+@@ -54,7 +54,15 @@ function start() {
+         return;
+     }
+     
+-    if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 1)){
++    var jobBase = parseInt(cm.getJobId() / 100);
++    var jobStyle = 1;
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
++        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++            status++;
++            action(1, 0, 1);
++            return;
++        }
++        
+         cm.sendNext("Hi there.");
+         cm.dispose();
+         return;
+@@ -134,6 +142,7 @@ function action(mode, type, selection){
+             if (cm.getPlayer().getLevel() >= 50){
+             	cm.sendNext("Ok, go.");
+                 if(!cm.isQuestStarted(100200)) cm.startQuest(100200);
++                if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS && !cm.isQuestCompleted(100201)) cm.completeQuest(100201);
+             }else
+                 cm.sendNext("You're weak.");
+             cm.dispose();
+diff --git a/scripts/npc/2020009.js b/scripts/npc/2020009.js
+index a7855aba8..a118b1a7b 100644
+--- a/scripts/npc/2020009.js
++++ b/scripts/npc/2020009.js
+@@ -26,11 +26,19 @@ var sel;
+ actionx = {"Mental" : false, "Physical" : false};
+ 
+ function start() {
+-    if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 2)){
+-	    cm.sendNext("Hi there.");
+-		cm.dispose();
+-		return;
+-	}
++    var jobBase = parseInt(cm.getJobId() / 100);
++    var jobStyle = 2;
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
++        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++            status++;
++            action(1, 0, 1);
++            return;
++        }
++        
++        cm.sendNext("Hi there.");
++        cm.dispose();
++        return;
++    }
+     if (cm.haveItem(4031058))
+ 	    actionx["Mental"] = true;
+ 	else if (cm.haveItem(4031057))
+@@ -106,6 +114,7 @@ function action(mode, type, selection){
+                 if (cm.getPlayer().getLevel() >= 50){
+             	    cm.sendNext("Ok, go.");
+                     if(!cm.isQuestStarted(100200)) cm.startQuest(100200);
++                    if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS && !cm.isQuestCompleted(100201)) cm.completeQuest(100201);
+                 }else
+                     cm.sendNext("You're weak.");
+                 cm.dispose();
+diff --git a/scripts/npc/2020010.js b/scripts/npc/2020010.js
+index 5481ba5a1..ad882702c 100644
+--- a/scripts/npc/2020010.js
++++ b/scripts/npc/2020010.js
+@@ -28,11 +28,19 @@ var sel;
+ actionx = {"Mental" : false, "Physical" : false};
+ 
+ function start() {
+-    if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 3)){
+-	    cm.sendNext("Hi there.");
+-		cm.dispose();
+-		return;
+-	}
++    var jobBase = parseInt(cm.getJobId() / 100);
++    var jobStyle = 3;
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
++        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++            status++;
++            action(1, 0, 1);
++            return;
++        }
++        
++        cm.sendNext("Hi there.");
++        cm.dispose();
++        return;
++    }
+     if (cm.haveItem(4031058))
+ 	    actionx["Mental"] = true;
+ 	else if (cm.haveItem(4031057))
+@@ -107,6 +115,7 @@ function action(mode, type, selection){
+             	if (cm.getPlayer().getLevel() >= 50){
+             		cm.sendNext("Ok, go.");
+                 	if(!cm.isQuestStarted(100200)) cm.startQuest(100200);
++                        if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS && !cm.isQuestCompleted(100201)) cm.completeQuest(100201);
+             	}else
+                 	cm.sendNext("You're weak.");
+             	cm.dispose();
+diff --git a/scripts/npc/2020011.js b/scripts/npc/2020011.js
+index 0787818ca..44d0e6203 100644
+--- a/scripts/npc/2020011.js
++++ b/scripts/npc/2020011.js
+@@ -26,7 +26,15 @@ var sel;
+ actionx = {"Mental" : false, "Physical" : false};
+ 
+ function start() {
+-    if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 4)){
++    var jobBase = parseInt(cm.getJobId() / 100);
++    var jobStyle = 4;
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
++        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++            status++;
++            action(1, 0, 1);
++            return;
++        }
++        
+         cm.sendNext("Hi there.");
+         cm.dispose();
+         return;
+@@ -106,6 +114,7 @@ function action(mode, type, selection){
+             if (cm.getPlayer().getLevel() >= 50){
+             	cm.sendNext("Ok, go.");
+                 if(!cm.isQuestStarted(100200)) cm.startQuest(100200);
++                if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS && !cm.isQuestCompleted(100201)) cm.completeQuest(100201);
+             }else
+                 cm.sendNext("You're weak.");
+             cm.dispose();
+diff --git a/scripts/npc/2020013.js b/scripts/npc/2020013.js
+index ee61e8e25..7658c22e9 100644
+--- a/scripts/npc/2020013.js
++++ b/scripts/npc/2020013.js
+@@ -26,7 +26,15 @@ var sel;
+ actionx = {"Mental" : false, "Physical" : false};
+ 
+ function start() {
+-    if (!(cm.getPlayer().getLevel() >= 70 && parseInt(cm.getJobId() / 100) == 5)){
++    var jobBase = parseInt(cm.getJobId() / 100);
++    var jobStyle = 5;
++    if (!(cm.getPlayer().getLevel() >= 70 && jobBase == jobStyle)){
++        if(cm.getPlayer().getLevel() >= 70 && jobBase % 10 == jobStyle) {
++            status++;
++            action(1, 0, 1);
++            return;
++        }
++        
+         cm.sendNext("Hi there.");
+         cm.dispose();
+         return;
+@@ -105,6 +113,7 @@ function action(mode, type, selection){
+             if (cm.getPlayer().getLevel() >= 50){
+             	cm.sendNext("Ok, go.");
+                 if(!cm.isQuestStarted(100200)) cm.startQuest(100200);
++                if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS && !cm.isQuestCompleted(100201)) cm.completeQuest(100201);
+             }else
+                 cm.sendNext("You're weak.");
+             cm.dispose();
+diff --git a/scripts/npc/2042001.js b/scripts/npc/2042001.js
+new file mode 100644
+index 000000000..7488954c2
+--- /dev/null
++++ b/scripts/npc/2042001.js
+@@ -0,0 +1,226 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Spiegelmann
++        Refining NPC: 
++	* Auto ore refiner
++        * 
++        * @author RonanLana
++*/
++
++var status;
++var refineRocks = true;     // enables moon rock, star rock
++var refineCrystals = true;  // enables common crystals
++var refineSpecials = true;  // enables lithium, special crystals
++var feeMultiplier = 7.0;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        var selStr = "The Monster Carnival is currently unavailable, but instead I offer a steadfast #bore refining#k service for you, taxing #r" + ((feeMultiplier * 100) | 0) + "%#k over the usual fee to synthetize them. What will you do?#b";
++                        
++                        var options = new Array("Refine mineral ores","Refine jewel ores");
++                        if(refineCrystals) {
++                            options.push("Refine crystal ores");
++                        }
++                        if(refineRocks) {
++                            options.push("Refine plates/jewels");
++                        }
++                        
++                        for (var i = 0; i < options.length; i++){
++                            selStr += "\r\n#L" + i + "# " + options[i] + "#l";
++                        }
++                        
++                        cm.sendSimple(selStr);
++                } else if(status == 1) {
++                        var allDone;
++                        
++                        if (selection == 0) {
++                                allDone = refineItems(0); // minerals
++                        } else if (selection == 1) {
++                                allDone = refineItems(1); // jewels
++                        } else if (selection == 2 && refineCrystals) {
++                                allDone = refineItems(2); // crystals
++                        } else if (selection == 2 && !refineCrystals || selection == 3) {
++                                allDone = refineRockItems(); // moon/star rock
++                        }
++                        
++                        if(allDone) {
++                            cm.sendOk("Done. Thanks for showing up~.");
++                        } else {
++                            cm.sendOk("Done. Be aware some of the items could not be synthetized because either you have a lack of space on your ETC inventory or there's not enough mesos to cover the fee.");
++                        }
++                        cm.dispose();
++                }
++        }
++}
++
++function getRefineFee(fee) {
++    return ((feeMultiplier * fee) | 0);
++}
++
++function isRefineTarget(refineType, refineItemid) {
++    if(refineType == 0) { //mineral refine
++        return refineItemid >= 4010000 && refineItemid <= 4010007 && !(refineItemid == 4010007 && !refineSpecials);
++    } else if(refineType == 1) { //jewel refine
++        return refineItemid >= 4020000 && refineItemid <= 4020008 && !(refineItemid == 4020008 && !refineSpecials);
++    } else if(refineType == 2) { //crystal refine
++        return refineItemid >= 4004000 && refineItemid <= 4004004 && !(refineItemid == 4004004 && !refineSpecials);
++    }
++    
++    return false;
++}
++
++function getRockRefineTarget(refineItemid) {
++    if(refineItemid >= 4011000 && refineItemid <= 4011006) {
++        return 0;
++    } else if(refineItemid >= 4021000 && refineItemid <= 4021008) {
++        return 1;
++    }
++    
++    return -1;
++}
++
++function refineItems(refineType) {
++    var allDone = true;
++    
++    var refineFees = [[300,300,300,500,500,500,800,270],[500,500,500,500,500,500,500,1000,3000],[5000,5000,5000,5000,1000000]];
++    var itemCount = {};
++    
++    var iter = cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.ETC).iterator();
++    while (iter.hasNext()) {
++        var it = iter.next();
++        var itemid = it.getItemId();
++
++        if(isRefineTarget(refineType, itemid)) {
++            var ic = itemCount[itemid];
++            
++            if(ic != undefined) {
++                itemCount[itemid] += it.getQuantity();
++            } else {
++                itemCount[itemid] = it.getQuantity();
++            }
++        }
++    }
++    
++    for(var key in itemCount) {
++        var itemqty = itemCount[key];
++        var itemid = parseInt(key);
++        
++        var refineQty = ((itemqty / 10) | 0);
++        if(refineQty <= 0) continue;
++        
++        while(true) {
++            itemqty = refineQty * 10;
++        
++            var fee = getRefineFee(refineFees[refineType][(itemid % 100) | 0] * refineQty);
++            if(cm.canHold(itemid + 1000, refineQty) && cm.getMeso() >= fee) {
++                cm.gainMeso(-fee);
++                cm.gainItem(itemid, -itemqty);
++                cm.gainItem(itemid + (itemid != 4010007 ? 1000 : 1001), refineQty);
++                
++                break;
++            } else if(refineQty <= 1) {
++                allDone = false;
++                break;
++            } else {
++                refineQty--;
++            }
++        }
++    }
++    
++    return allDone;
++}
++
++function refineRockItems() {
++    var allDone = true;
++    var minItems = [[0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0]];
++    var minRocks = [2147483647, 2147483647];
++    
++    var rockItems = [4011007, 4021009];
++    var rockFees = [10000, 15000];
++
++    var iter = cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.ETC).iterator();
++    while (iter.hasNext()) {
++        var it = iter.next();
++        var itemid = it.getItemId();
++        var rockRefine = getRockRefineTarget(itemid);
++        if(rockRefine >= 0) {
++            var rockItem = ((itemid % 100) | 0);
++            var itemqty = it.getQuantity();
++            
++            minItems[rockRefine][rockItem] += itemqty;
++        }
++    }
++    
++    for(var i = 0; i < minRocks.length; i++) {
++        for(var j = 0; j < minItems[i].length; j++) {
++            if(minRocks[i] > minItems[i][j]) {
++                minRocks[i] = minItems[i][j];
++            }
++        }
++        if(minRocks[i] <= 0 || minRocks[i] == 2147483647) continue;
++        
++        var refineQty = minRocks[i];
++        while(true) {
++            var fee = getRefineFee(rockFees[i] * refineQty);
++            if(cm.canHold(rockItems[i], refineQty) && cm.getMeso() >= fee) {
++                cm.gainMeso(-fee);
++
++                var j;
++                if(i == 0) {
++                    for(j = 4011000; j < 4011007; j++) {
++                        cm.gainItem(j, -refineQty);
++                    }
++                    cm.gainItem(j, refineQty);
++                } else {
++                    for(j = 4021000; j < 4021009; j++) {
++                        cm.gainItem(j, -refineQty);
++                    }
++                    cm.gainItem(j, refineQty);
++                }
++                
++                break;
++            } else if(refineQty <= 1) {
++                allDone = false;
++                break;
++            } else {
++                refineQty--;
++            }
++        }
++    }
++    
++    return allDone;
++}
+diff --git a/scripts/npc/2042002.js b/scripts/npc/2042002.js
+new file mode 100644
+index 000000000..7488954c2
+--- /dev/null
++++ b/scripts/npc/2042002.js
+@@ -0,0 +1,226 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Spiegelmann
++        Refining NPC: 
++	* Auto ore refiner
++        * 
++        * @author RonanLana
++*/
++
++var status;
++var refineRocks = true;     // enables moon rock, star rock
++var refineCrystals = true;  // enables common crystals
++var refineSpecials = true;  // enables lithium, special crystals
++var feeMultiplier = 7.0;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        var selStr = "The Monster Carnival is currently unavailable, but instead I offer a steadfast #bore refining#k service for you, taxing #r" + ((feeMultiplier * 100) | 0) + "%#k over the usual fee to synthetize them. What will you do?#b";
++                        
++                        var options = new Array("Refine mineral ores","Refine jewel ores");
++                        if(refineCrystals) {
++                            options.push("Refine crystal ores");
++                        }
++                        if(refineRocks) {
++                            options.push("Refine plates/jewels");
++                        }
++                        
++                        for (var i = 0; i < options.length; i++){
++                            selStr += "\r\n#L" + i + "# " + options[i] + "#l";
++                        }
++                        
++                        cm.sendSimple(selStr);
++                } else if(status == 1) {
++                        var allDone;
++                        
++                        if (selection == 0) {
++                                allDone = refineItems(0); // minerals
++                        } else if (selection == 1) {
++                                allDone = refineItems(1); // jewels
++                        } else if (selection == 2 && refineCrystals) {
++                                allDone = refineItems(2); // crystals
++                        } else if (selection == 2 && !refineCrystals || selection == 3) {
++                                allDone = refineRockItems(); // moon/star rock
++                        }
++                        
++                        if(allDone) {
++                            cm.sendOk("Done. Thanks for showing up~.");
++                        } else {
++                            cm.sendOk("Done. Be aware some of the items could not be synthetized because either you have a lack of space on your ETC inventory or there's not enough mesos to cover the fee.");
++                        }
++                        cm.dispose();
++                }
++        }
++}
++
++function getRefineFee(fee) {
++    return ((feeMultiplier * fee) | 0);
++}
++
++function isRefineTarget(refineType, refineItemid) {
++    if(refineType == 0) { //mineral refine
++        return refineItemid >= 4010000 && refineItemid <= 4010007 && !(refineItemid == 4010007 && !refineSpecials);
++    } else if(refineType == 1) { //jewel refine
++        return refineItemid >= 4020000 && refineItemid <= 4020008 && !(refineItemid == 4020008 && !refineSpecials);
++    } else if(refineType == 2) { //crystal refine
++        return refineItemid >= 4004000 && refineItemid <= 4004004 && !(refineItemid == 4004004 && !refineSpecials);
++    }
++    
++    return false;
++}
++
++function getRockRefineTarget(refineItemid) {
++    if(refineItemid >= 4011000 && refineItemid <= 4011006) {
++        return 0;
++    } else if(refineItemid >= 4021000 && refineItemid <= 4021008) {
++        return 1;
++    }
++    
++    return -1;
++}
++
++function refineItems(refineType) {
++    var allDone = true;
++    
++    var refineFees = [[300,300,300,500,500,500,800,270],[500,500,500,500,500,500,500,1000,3000],[5000,5000,5000,5000,1000000]];
++    var itemCount = {};
++    
++    var iter = cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.ETC).iterator();
++    while (iter.hasNext()) {
++        var it = iter.next();
++        var itemid = it.getItemId();
++
++        if(isRefineTarget(refineType, itemid)) {
++            var ic = itemCount[itemid];
++            
++            if(ic != undefined) {
++                itemCount[itemid] += it.getQuantity();
++            } else {
++                itemCount[itemid] = it.getQuantity();
++            }
++        }
++    }
++    
++    for(var key in itemCount) {
++        var itemqty = itemCount[key];
++        var itemid = parseInt(key);
++        
++        var refineQty = ((itemqty / 10) | 0);
++        if(refineQty <= 0) continue;
++        
++        while(true) {
++            itemqty = refineQty * 10;
++        
++            var fee = getRefineFee(refineFees[refineType][(itemid % 100) | 0] * refineQty);
++            if(cm.canHold(itemid + 1000, refineQty) && cm.getMeso() >= fee) {
++                cm.gainMeso(-fee);
++                cm.gainItem(itemid, -itemqty);
++                cm.gainItem(itemid + (itemid != 4010007 ? 1000 : 1001), refineQty);
++                
++                break;
++            } else if(refineQty <= 1) {
++                allDone = false;
++                break;
++            } else {
++                refineQty--;
++            }
++        }
++    }
++    
++    return allDone;
++}
++
++function refineRockItems() {
++    var allDone = true;
++    var minItems = [[0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0]];
++    var minRocks = [2147483647, 2147483647];
++    
++    var rockItems = [4011007, 4021009];
++    var rockFees = [10000, 15000];
++
++    var iter = cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.ETC).iterator();
++    while (iter.hasNext()) {
++        var it = iter.next();
++        var itemid = it.getItemId();
++        var rockRefine = getRockRefineTarget(itemid);
++        if(rockRefine >= 0) {
++            var rockItem = ((itemid % 100) | 0);
++            var itemqty = it.getQuantity();
++            
++            minItems[rockRefine][rockItem] += itemqty;
++        }
++    }
++    
++    for(var i = 0; i < minRocks.length; i++) {
++        for(var j = 0; j < minItems[i].length; j++) {
++            if(minRocks[i] > minItems[i][j]) {
++                minRocks[i] = minItems[i][j];
++            }
++        }
++        if(minRocks[i] <= 0 || minRocks[i] == 2147483647) continue;
++        
++        var refineQty = minRocks[i];
++        while(true) {
++            var fee = getRefineFee(rockFees[i] * refineQty);
++            if(cm.canHold(rockItems[i], refineQty) && cm.getMeso() >= fee) {
++                cm.gainMeso(-fee);
++
++                var j;
++                if(i == 0) {
++                    for(j = 4011000; j < 4011007; j++) {
++                        cm.gainItem(j, -refineQty);
++                    }
++                    cm.gainItem(j, refineQty);
++                } else {
++                    for(j = 4021000; j < 4021009; j++) {
++                        cm.gainItem(j, -refineQty);
++                    }
++                    cm.gainItem(j, refineQty);
++                }
++                
++                break;
++            } else if(refineQty <= 1) {
++                allDone = false;
++                break;
++            } else {
++                refineQty--;
++            }
++        }
++    }
++    
++    return allDone;
++}
+diff --git a/scripts/npc/2083000.js b/scripts/npc/2083000.js
+index 20e50edf9..f59c817e1 100644
+--- a/scripts/npc/2083000.js
++++ b/scripts/npc/2083000.js
+@@ -24,10 +24,6 @@
+  */
+ 
+ var status = 0;
+-var minLevel = 80;
+-var maxLevel = 255;
+-var minPlayers = 1;
+-var maxPlayers = 6;
+ 
+ function start() {
+     status = -1;
+@@ -49,6 +45,13 @@ function action(mode, type, selection) {
+         if (status == 0) {
+             if(cm.haveItem(4001086)) {
+                 cm.sendYesNo("Do you want to access #b#m240050400##k right now?");
++            } else if(Packages.constants.ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS) {
++                if(canBypassHTPQ()) {
++                    cm.sendYesNo("Do you want to access #b#m240050400##k right now?");
++                } else {
++                    cm.sendOk("Those who don't have the #r#t4001086##k must prove their valor before challenging #bHorntail#k. Come here holding the #r3 certificates#k that proves you're worthy to || the task.");    // NPC picture is so long it goes through some section of text, || to fill up that space
++                    cm.dispose();
++                }
+             } else {
+                 cm.sendOk("Those who don't have the #r#t4001086##k must prove their valor before challenging #bHorntail#k.");
+                 cm.dispose();
+@@ -60,5 +63,7 @@ function action(mode, type, selection) {
+         }
+     }
+ }
+-					
+-					
++
++function canBypassHTPQ() {
++    return cm.haveItem(4001083) && cm.haveItem(4001084) && cm.haveItem(4001085);
++}
+\ No newline at end of file
+diff --git a/scripts/npc/9000037.js b/scripts/npc/9000037.js
+index 8822be13d..e3c805a0d 100644
+--- a/scripts/npc/9000037.js
++++ b/scripts/npc/9000037.js
+@@ -136,7 +136,7 @@ function action(mode, type, selection) {
+                                 cm.dispose();
+                         } else if(state == 2) {
+                                 var restSpot = ((cm.getMapId() - 1) % 5) + 1;
+-                                cm.getPlayer().getEventInstance().addEventTimer(restSpot * 4 * 60000);  // adds (restspot number * 4) minutes
++                                cm.getPlayer().getEventInstance().restartEventTimer(restSpot * 4 * 60000);  // adds (restspot number * 4) minutes
+                                 cm.getPlayer().getEventInstance().warpEventTeam(970030100 + cm.getEventInstance().getIntProperty("lobby") + (500 * restSpot));
+                                 
+                                 cm.dispose();
+diff --git a/scripts/quest/3514.js b/scripts/quest/3514.js
+index 98ed1d529..3da41bc37 100644
+--- a/scripts/quest/3514.js
++++ b/scripts/quest/3514.js
+@@ -25,6 +25,8 @@
+ 
+ importPackage(Packages.client);
+ 
++var status = -1;
++
+ function start(mode, type, selection) {
+         if(qm.getPlayer().getMeso() >= 1000000) {
+             if(qm.canHold(2022337, 1)) {
+@@ -48,21 +50,36 @@ function usedPotion(ch) {
+ }
+ 
+ function end(mode, type, selection) {
+-        if(!usedPotion(qm.getPlayer())) {
+-                if(qm.haveItem(2022337)) {
+-                        qm.sendOk("Are you scared to drink the potion? I can assure you it has only a minor #rside effect#k.");
+-                } else {
+-                        if(qm.canHold(2022337)) {
+-                                qm.gainItem(2022337, 1);
+-                                qm.sendOk("Lost it? Luckily for you I managed to recover it back. Take it.");
++        if (mode == 0 && type == 0) {
++		status--;
++	} else if (mode == -1) {
++		qm.dispose();
++		return;
++	} else {
++		status++;
++	}
++    
++        if(status == 0) {
++                if(!usedPotion(qm.getPlayer())) {
++                        if(qm.haveItem(2022337)) {
++                                qm.sendOk("Are you scared to drink the potion? I can assure you it has only a minor #rside effect#k.");
+                         } else {
+-                                qm.sendOk("Lost it? Luckily for you I managed to recover it back. Make a room to get it.");
++                                if(qm.canHold(2022337)) {
++                                        qm.gainItem(2022337, 1);
++                                        qm.sendOk("Lost it? Luckily for you I managed to recover it back. Take it.");
++                                } else {
++                                        qm.sendOk("Lost it? Luckily for you I managed to recover it back. Make a room to get it.");
++                                }
+                         }
++                        
++                        qm.dispose();
++                        return;
++                } else {
++                        qm.sendOk("It seems the potion worked and your emotions are no longer frozen. And, oh, my... You're ailing bad, #bpurge#k that out quickly.");
+                 }
+-	} else {
+-		qm.sendOk("It seems the potion worked and your emotions are no longer frozen. And, oh, my... You're ailing bad, #bpurge#k that out quickly.");
++        } else if(status == 1) {
+                 qm.gainExp(891500 * qm.getPlayer().getExpRate());
+-		qm.completeQuest(3514);
+-	}
+-        qm.dispose();
++                qm.completeQuest(3514);
++                qm.dispose();
++        }
+ }
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 76915e3ac..b8f54aa31 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -19546,19 +19546,6 @@ USE `heavenms`;
+ (9500319, 2020019, 5, 20, 0, 40000),
+ (9500319, 2020020, 5, 20, 0, 40000),
+ (9500319, 1052166, 1, 1, 0, 4000),
+-(9500319, 2280000, 1, 1, 0, 4000),
+-(9500319, 2280001, 1, 1, 0, 4000),
+-(9500319, 2280002, 1, 1, 0, 4000),
+-(9500319, 2280003, 1, 1, 0, 4000),
+-(9500319, 2280004, 1, 1, 0, 4000),
+-(9500319, 2280005, 1, 1, 0, 4000),
+-(9500319, 2280006, 1, 1, 0, 4000),
+-(9500319, 2280007, 1, 1, 0, 4000),
+-(9500319, 2280008, 1, 1, 0, 4000),
+-(9500319, 2280009, 1, 1, 0, 4000),
+-(9500319, 2280010, 1, 1, 0, 4000),
+-(9500319, 2280011, 1, 1, 0, 4000),
+-(9500319, 2280012, 1, 1, 0, 4000),
+ (9500319, 2044712, 1, 1, 0, 4000),
+ (9500319, 2044612, 1, 1, 0, 4000),
+ (9500319, 2044512, 1, 1, 0, 4000),
+@@ -20293,12 +20280,6 @@ USE `heavenms`;
+ 
+   # add more skill/mastery books
+   INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
+-(9400014, 2280000, 1, 1, 0, 40000),
+-(8150000, 2280001, 1, 1, 0, 40000),
+-(9400121, 2280002, 1, 1, 0, 40000),
+-(9300028, 2280003, 1, 1, 0, 100000),
+-(8150100, 2280011, 1, 1, 0, 1000),
+-(8220009, 2280012, 1, 1, 0, 40000),
+ (8150000, 2280013, 1, 1, 0, 40000),
+ (8200005, 2280014, 1, 1, 0, 1000),
+ (9300028, 2280015, 1, 1, 0, 100000),
+@@ -20372,12 +20353,6 @@ USE `heavenms`;
+ (9400582, 2290135, 1, 1, 0, 1000),
+ (9400593, 2290138, 1, 1, 0, 40000),
+ (8200002, 2290139, 1, 1, 0, 1000),
+-(8190004, 2280000, 1, 1, 0, 1000),
+-(9400300, 2280001, 1, 1, 0, 100000),
+-(8200012, 2280002, 1, 1, 0, 1000),
+-(8140511, 2280003, 1, 1, 0, 1000),
+-(8200005, 2280011, 1, 1, 0, 1000),
+-(9420513, 2280012, 1, 1, 0, 40000),
+ (8190003, 2280013, 1, 1, 0, 1000),
+ (9400121, 2280014, 1, 1, 0, 40000),
+ (8200001, 2280015, 1, 1, 0, 1000),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index fcce53ed9..d29aa46de 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -198,7 +198,7 @@
+     private int expRate = 1, mesoRate = 1, dropRate = 1, expCoupon = 1, mesoCoupon = 1, dropCoupon = 1;
+     private int omokwins, omokties, omoklosses, matchcardwins, matchcardties, matchcardlosses;
+     private int owlSearch;
+-    private long lastfametime, lastUsedCashItem, lastHealed, lastBuyback, lastDeathtime, lastMesoDrop = -1, jailExpiration = -1;
++    private long lastfametime, lastUsedCashItem, lastHealed, lastBuyback = 0, lastDeathtime, lastMesoDrop = -1, jailExpiration = -1;
+     private transient int localmaxhp, localmaxmp, localstr, localdex, localluk, localint_, magic, watk;
+     private boolean hidden, canDoor = true, berserk, hasMerchant, hasSandboxItem = false, whiteChat = false;
+     private int linkedLevel = 0;
+@@ -1729,14 +1729,17 @@ public final void pickupItem(MapleMapObject ob, int petIndex) {     // yes, one
+                                 if (mesosamm > 50000 * this.getMesoRate()) {
+                                     return;
+                                 }
++                                
++                                MapleMap thisMap = this.getMap();
+                                 int partynum = 0;
+-                                for (MaplePartyCharacter partymem : this.party.getMembers()) {
+-                                    if (partymem.isOnline() && partymem.getMapId() == this.getMap().getId() && partymem.getChannel() == client.getChannel()) {
++                                Collection<MaplePartyCharacter> mpcs = this.party.getMembers();
++                                for (MaplePartyCharacter partymem : mpcs) {
++                                    if (partymem.getPlayer().isLoggedinWorld() && partymem.getMapId() == thisMap.getId() && partymem.getChannel() == client.getChannel()) {
+                                         partynum++;
+                                     }
+                                 }
+-                                for (MaplePartyCharacter partymem : this.party.getMembers()) {
+-                                    if (partymem.isOnline() && partymem.getMapId() == this.getMap().getId()) {
++                                for (MaplePartyCharacter partymem : mpcs) {
++                                    if (partymem.getPlayer().isLoggedinWorld() && partymem.getMapId() == thisMap.getId()) {
+                                         MapleCharacter somecharacter = client.getChannelServer().getPlayerStorage().getCharacterById(partymem.getId());
+                                         if (somecharacter != null) {
+                                             somecharacter.gainMeso(mesosamm / partynum, true, true, false);
+@@ -5213,6 +5216,10 @@ private void applyBuybackFee(int fee, boolean usingMesos) {
+         }
+     }
+     
++    private long getNextBuybackTime() {
++        return lastBuyback + ServerConstants.BUYBACK_COOLDOWN_MINUTES * 60 * 1000;
++    }
++    
+     public boolean couldBuyback() {  // Ronan's buyback system
+         long timeNow = System.currentTimeMillis();
+         
+@@ -5221,7 +5228,7 @@ public boolean couldBuyback() {  // Ronan's buyback system
+             return false;
+         }
+         
+-        long nextBuybacktime = lastBuyback + ServerConstants.BUYBACK_COOLDOWN_MINUTES * 60 * 1000;
++        long nextBuybacktime = getNextBuybackTime();
+         if(timeNow < nextBuybacktime) {
+             long timeLeft = nextBuybacktime - timeNow;
+             int seconds = (int) Math.floor(timeLeft / 1000) % 60;
+@@ -5840,14 +5847,15 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ret.mgc = new MapleGuildCharacter(ret);
+             int buddyCapacity = rs.getInt("buddyCapacity");
+             ret.buddylist = new BuddyList(buddyCapacity);
++            
+             ret.getInventory(MapleInventoryType.EQUIP).setSlotLimit(rs.getByte("equipslots"));
+             ret.getInventory(MapleInventoryType.USE).setSlotLimit(rs.getByte("useslots"));
+             ret.getInventory(MapleInventoryType.SETUP).setSlotLimit(rs.getByte("setupslots"));
+             ret.getInventory(MapleInventoryType.ETC).setSlotLimit(rs.getByte("etcslots"));
++            
++            byte sandboxCheck = 0x0;
+             for (Pair<Item, MapleInventoryType> item : ItemFactory.INVENTORY.loadItems(ret.id, !channelserver)) {
+-                if(MapleInventoryManipulator.isSandboxItem(item.getLeft())) {
+-                    ret.setHasSandboxItem();
+-                }
++                sandboxCheck |= item.getLeft().getFlag();
+                 
+                 ret.getInventory(item.getRight()).addFromDB(item.getLeft());
+                 Item itemz = item.getLeft();
+@@ -5872,6 +5880,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                     }
+                 }
+             }
++            if((sandboxCheck & ItemConstants.SANDBOX) == ItemConstants.SANDBOX) ret.setHasSandboxItem();
+             
+             World wserv = Server.getInstance().getWorld(ret.world);
+             
+@@ -6072,10 +6081,11 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 ps = con.prepareStatement("SELECT SkillID,StartTime,length FROM cooldowns WHERE charid = ?");
+                 ps.setInt(1, ret.getId());
+                 rs = ps.executeQuery();
++                long curTime = System.currentTimeMillis();
+                 while (rs.next()) {
+                     final int skillid = rs.getInt("SkillID");
+                     final long length = rs.getLong("length"), startTime = rs.getLong("StartTime");
+-                    if (skillid != 5221999 && (length + startTime < System.currentTimeMillis())) {
++                    if (skillid != 5221999 && (length + startTime < curTime)) {
+                         continue;
+                     }
+                     ret.giveCoolDowns(skillid, startTime, length);
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 3e4704406..435bb8894 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -75,6 +75,7 @@
+     public static final boolean USE_MULTIPLE_SAME_EQUIP_DROP = true;//Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
+     public static final boolean USE_BANISHABLE_TOWN_SCROLL = true;  //Enables town scrolls to act as if it's a "player banish", rendering the antibanish scroll effect available.
+     public static final boolean USE_OLD_GMS_STYLED_PQ_NPCS = true;  //Enables PQ NPCs with similar behaviour to old GMS style, that skips info about the PQs and immediately tries to register the party in.
++    public static final boolean USE_ENABLE_SOLO_EXPEDITIONS = true; //Enables start expeditions with any number of players. This will also bypass all the Zakum prequest.
+     
+     //Announcement Configuration
+     public static final boolean USE_ANNOUNCE_SHOPITEMSOLD = false;  //Automatic message sent to owner when an item from the Player Shop or Hired Merchant is sold.
+@@ -137,6 +138,9 @@
+     public static final boolean USE_ULTRA_RECOVERY = true;      //Massive recovery amounts overtime.
+     public static final boolean USE_ULTRA_THREE_SNAILS = true;  //Massive damage on shell toss.
+     
++    //Other Skills Configuration
++    public static final boolean USE_FAST_REUSE_HERO_WILL = true;//Greatly reduce cooldown on Hero's Will.
++    
+     //Character Configuration
+     public static final boolean USE_ADD_SLOTS_BY_LEVEL = true;  //Slots are added each 20 levels.
+     public static final boolean USE_ADD_RATES_BY_LEVEL = true;  //Rates are added each 20 levels.
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index a331393ff..99210b695 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -487,17 +487,17 @@ public void run() {
+                     }
+                     if (attack.skill == Paladin.HEAVENS_HAMMER) {
+                         if(!monster.isBoss()) {
+-                            map.damageMonster(player, monster, monster.getHp() - 1);
++                            damageMonsterWithSkill(player, map, monster, monster.getHp() - 1, attack.skill, 1777);
+                         } else {
+                             int HHDmg = (player.calculateMaxBaseDamage(player.getTotalWatk()) * (SkillFactory.getSkill(Paladin.HEAVENS_HAMMER).getEffect(player.getSkillLevel(SkillFactory.getSkill(Paladin.HEAVENS_HAMMER))).getDamage() / 100));
+-                            map.damageMonster(player, monster, (int) (Math.floor(Math.random() * (HHDmg / 5) + HHDmg * .8)));
++                            damageMonsterWithSkill(player, map, monster, (int) (Math.floor(Math.random() * (HHDmg / 5) + HHDmg * .8)), attack.skill, 1777);
+                         }
+                     } else if (attack.skill == Aran.COMBO_TEMPEST) {
+                         if(!monster.isBoss()) {
+-                            map.damageMonster(player, monster, monster.getHp());
++                            damageMonsterWithSkill(player, map, monster, monster.getHp(), attack.skill, 0);
+                         } else {
+                             int TmpDmg = (player.calculateMaxBaseDamage(player.getTotalWatk()) * (SkillFactory.getSkill(Aran.COMBO_TEMPEST).getEffect(player.getSkillLevel(SkillFactory.getSkill(Aran.COMBO_TEMPEST))).getDamage() / 100));
+-                            map.damageMonster(player, monster, (int) (Math.floor(Math.random() * (TmpDmg / 5) + TmpDmg * .8)));
++                            damageMonsterWithSkill(player, map, monster, (int) (Math.floor(Math.random() * (TmpDmg / 5) + TmpDmg * .8)), attack.skill, 0);
+                         }
+                     } else {
+                         if(attack.skill == Aran.BODY_PRESSURE) {
+@@ -534,6 +534,26 @@ public void run() {
+         }
+     }
+ 
++    private static void damageMonsterWithSkill(final MapleCharacter attacker, final MapleMap map, final MapleMonster monster, final int damage, int skillid, int fixedTime) {
++        int animationTime;
++        
++        if(fixedTime == 0) animationTime = SkillFactory.getSkill(skillid).getAnimationTime();
++        else animationTime = fixedTime;
++        
++        if(animationTime > 0) { // be sure to only use LIMITED ATTACKS with animation time here
++            TimerManager.getInstance().schedule(new Runnable() {
++                @Override
++                public void run() {
++                    map.broadcastMessage(MaplePacketCreator.damageMonster(monster.getObjectId(), damage), monster.getPosition());
++                    map.damageMonster(attacker, monster, damage);
++                }
++            }, animationTime);
++        } else {
++            map.broadcastMessage(MaplePacketCreator.damageMonster(monster.getObjectId(), damage), monster.getPosition());
++            map.damageMonster(attacker, monster, damage);
++        }
++    }
++    
+     protected AttackInfo parseDamage(LittleEndianAccessor lea, MapleCharacter chr, boolean ranged, boolean magic) {    
+     	//2C 00 00 01 91 A1 12 00 A5 57 62 FC E2 75 99 10 00 47 80 01 04 01 C6 CC 02 DD FF 5F 00
+         AttackInfo ret = new AttackInfo();
+diff --git a/src/net/server/channel/handlers/PlayerInteractionHandler.java b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+index 6886a1649..728292d78 100644
+--- a/src/net/server/channel/handlers/PlayerInteractionHandler.java
++++ b/src/net/server/channel/handlers/PlayerInteractionHandler.java
+@@ -117,6 +117,16 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         final MapleCharacter chr = c.getPlayer();
+         
+         if (mode == Action.CREATE.getCode()) {
++            if(!chr.isAlive()) {    // thanks GabrielSin for pointing this
++                chr.getClient().announce(MaplePacketCreator.getMiniRoomError(4));
++                return;
++            }
++            
++            if(chr.getEventInstance() != null) {
++                chr.getClient().announce(MaplePacketCreator.getMiniRoomError(5));
++                return;
++            }
++            
+             byte createType = slea.readByte();
+             if (createType == 3) {// trade
+                 MapleTrade.startTrade(chr);
+@@ -585,8 +595,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         } else if (mode == Action.BAN_PLAYER.getCode()) {
+             slea.skip(1);
+             
+-            if (chr.getPlayerShop() != null && chr.getPlayerShop().isOwner(chr)) {
+-                chr.getPlayerShop().banPlayer(slea.readMapleAsciiString());
++            MaplePlayerShop shop = chr.getPlayerShop();
++            if (shop != null && shop.isOwner(chr)) {
++                shop.banPlayer(slea.readMapleAsciiString());
+             }
+         } else if (mode == Action.EXPEL.getCode()) {
+             MapleMiniGame miniGame = chr.getMiniGame();
+diff --git a/src/net/server/channel/handlers/SpecialMoveHandler.java b/src/net/server/channel/handlers/SpecialMoveHandler.java
+index df6be698b..b9483ac93 100644
+--- a/src/net/server/channel/handlers/SpecialMoveHandler.java
++++ b/src/net/server/channel/handlers/SpecialMoveHandler.java
+@@ -36,6 +36,7 @@
+ import client.Skill;
+ import client.SkillFactory;
+ import constants.GameConstants;
++import constants.ServerConstants;
+ import constants.skills.Brawler;
+ import constants.skills.Corsair;
+ import constants.skills.DarkKnight;
+@@ -82,8 +83,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (chr.skillIsCooling(skillid)) {
+                 return;
+             } else if (skillid != Corsair.BATTLE_SHIP) {
+-                c.announce(MaplePacketCreator.skillCooldown(skillid, effect.getCooldown()));
+-                chr.addCooldown(skillid, System.currentTimeMillis(), effect.getCooldown() * 1000);
++                int cooldownTime = effect.getCooldown();
++                if(MapleStatEffect.isHerosWill(skillid) && ServerConstants.USE_FAST_REUSE_HERO_WILL) {
++                    cooldownTime /= 60;
++                }
++                
++                c.announce(MaplePacketCreator.skillCooldown(skillid, cooldownTime));
++                chr.addCooldown(skillid, System.currentTimeMillis(), cooldownTime * 1000);
+             }
+         }
+         if (skillid == Hero.MONSTER_MAGNET || skillid == Paladin.MONSTER_MAGNET || skillid == DarkKnight.MONSTER_MAGNET) { // Monster Magnet
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 93f222621..7ca91b32e 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1444,27 +1444,32 @@ private boolean isDispel() {
+ 
+     private boolean isCureAllAbnormalStatus() {
+         if (skill) {
+-            switch (sourceid) {
+-                case Hero.HEROS_WILL:
+-                case Paladin.HEROS_WILL:
+-                case DarkKnight.HEROS_WILL:
+-                case FPArchMage.HEROS_WILL:
+-                case ILArchMage.HEROS_WILL:
+-                case Bishop.HEROS_WILL:
+-                case Bowmaster.HEROS_WILL:
+-                case Marksman.HEROS_WILL:
+-                case NightLord.HEROS_WILL:
+-                case Shadower.HEROS_WILL:
+-                case Buccaneer.PIRATES_RAGE:
+-                case Aran.HEROS_WILL:
+-                    return true;
+-                default:
+-                    return false;
+-            }
++            return isHerosWill(sourceid);
+         } else if (sourceid == 2022544) return true;
+         
+         return false;
+     }
++    
++    public static boolean isHerosWill(int skillid) {
++        switch(skillid) {
++            case Hero.HEROS_WILL:
++            case Paladin.HEROS_WILL:
++            case DarkKnight.HEROS_WILL:
++            case FPArchMage.HEROS_WILL:
++            case ILArchMage.HEROS_WILL:
++            case Bishop.HEROS_WILL:
++            case Bowmaster.HEROS_WILL:
++            case Marksman.HEROS_WILL:
++            case NightLord.HEROS_WILL:
++            case Shadower.HEROS_WILL:
++            case Buccaneer.PIRATES_RAGE:
++            case Aran.HEROS_WILL:
++                return true;
++
++            default:
++                return false;
++        }
++    }
+ 
+     private boolean isDash() {
+         return skill && (sourceid == Pirate.DASH || sourceid == ThunderBreaker.DASH || sourceid == Beginner.SPACE_DASH || sourceid == Noblesse.SPACE_DASH);
+diff --git a/src/server/expeditions/MapleExpeditionType.java b/src/server/expeditions/MapleExpeditionType.java
+index 291a258c4..eaa664689 100644
+--- a/src/server/expeditions/MapleExpeditionType.java
++++ b/src/server/expeditions/MapleExpeditionType.java
+@@ -22,6 +22,8 @@
+ 
+ package server.expeditions;
+ 
++import constants.ServerConstants;
++
+ /**
+ *
+ * @author SharpAceX(Alan)
+@@ -55,7 +57,7 @@ private MapleExpeditionType(int minSize, int maxSize, int minLevel, int maxLevel
+     }
+ 
+     public int getMinSize() {
+-    	return minSize;
++    	return !ServerConstants.USE_ENABLE_SOLO_EXPEDITIONS ? minSize : 1;
+     }
+     
+     public int getMaxSize() {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index d8e2f619e..4e37f71fc 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -583,14 +583,18 @@ public static String getRoundedCoordinate(double angle) {
+         return new Pair<>(getRoundedCoordinate(angle), Integer.valueOf((int)distn));
+     }
+ 
+-    private static void sortDropEntries(List<MonsterDropEntry> from, List<MonsterDropEntry> item, List<MonsterDropEntry> quest) {
++    private static void sortDropEntries(List<MonsterDropEntry> from, List<MonsterDropEntry> item, List<MonsterDropEntry> visibleQuest, List<MonsterDropEntry> otherQuest, MapleCharacter chr) {
+         MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+         
+         for(MonsterDropEntry mde : from) {
+             if(!ii.isQuestItem(mde.itemId)) {
+                 item.add(mde);
+             } else {
+-                quest.add(mde);
++                if(chr.needQuestItem(mde.questid, mde.itemId)) {
++                    visibleQuest.add(mde);
++                } else {
++                    otherQuest.add(mde);
++                }
+             }
+         }
+     }
+@@ -690,8 +694,9 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob, f
+         final MapleMonsterInformationProvider mi = MapleMonsterInformationProvider.getInstance();
+         
+         final List<MonsterDropEntry>  dropEntry = new ArrayList<>();
+-        final List<MonsterDropEntry> questEntry = new ArrayList<>();
+-        sortDropEntries(mi.retrieveEffectiveDrop(mob.getId()), dropEntry, questEntry);
++        final List<MonsterDropEntry> visibleQuestEntry = new ArrayList<>();
++        final List<MonsterDropEntry> otherQuestEntry = new ArrayList<>();
++        sortDropEntries(mi.retrieveEffectiveDrop(mob.getId()), dropEntry, visibleQuestEntry, otherQuestEntry, chr);
+         
+         // Normal Drops
+         d = dropItemsFromMonsterOnMap(dropEntry, pos, d, chRate, droptype, mobpos, chr, mob);
+@@ -701,7 +706,8 @@ private void dropFromMonster(final MapleCharacter chr, final MapleMonster mob, f
+         d = dropGlobalItemsFromMonsterOnMap(globalEntry, pos, d, droptype, mobpos, chr, mob);
+         
+         // Quest Drops
+-        dropItemsFromMonsterOnMap(questEntry, pos, d, chRate, droptype, mobpos, chr, mob);
++        d = dropItemsFromMonsterOnMap(visibleQuestEntry, pos, d, chRate, droptype, mobpos, chr, mob);
++        dropItemsFromMonsterOnMap(otherQuestEntry, pos, d, chRate, droptype, mobpos, chr, mob);
+     }
+     
+     public void dropItemsFromMonster(List<MonsterDropEntry> list, final MapleCharacter chr, final MapleMonster mob) {
+diff --git a/wz/Etc.wz/ItemMake.img.xml b/wz/Etc.wz/ItemMake.img.xml
+index 498a33ef8..5a6e886d8 100644
+--- a/wz/Etc.wz/ItemMake.img.xml
++++ b/wz/Etc.wz/ItemMake.img.xml
+@@ -1573,6 +1573,42 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <imgdir name="04260007">
++      <int name="reqLevel" value="105"/>
++      <int name="reqSkillLevel" value="3"/>
++      <int name="itemNum" value="5"/>
++      <int name="reqItem" value="4001126"/>
++      <int name="tuc" value="0"/>
++      <int name="meso" value="2000000"/>
++      <imgdir name="recipe">
++        <imgdir name="0">
++          <int name="item" value="4260006"/>
++          <int name="count" value="100"/>
++        </imgdir>
++        <imgdir name="1">
++          <int name="item" value="4001126"/>
++          <int name="count" value="5"/>
++        </imgdir>
++      </imgdir>
++    </imgdir>
++    <imgdir name="04260008">
++      <int name="reqLevel" value="105"/>
++      <int name="reqSkillLevel" value="3"/>
++      <int name="itemNum" value="10"/>
++      <int name="reqItem" value="4001126"/>
++      <int name="tuc" value="0"/>
++      <int name="meso" value="5000000"/>
++      <imgdir name="recipe">
++        <imgdir name="0">
++          <int name="item" value="4260007"/>
++          <int name="count" value="50"/>
++        </imgdir>
++        <imgdir name="1">
++          <int name="item" value="4001126"/>
++          <int name="count" value="5"/>
++        </imgdir>
++      </imgdir>
++    </imgdir>
+   </imgdir>
+   <imgdir name="1">
+     <imgdir name="01002028">
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index c38df3af5..0eba3c7dd 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -27173,6 +27173,8 @@
+   <imgdir name="28002">
+     <imgdir name="0">
+       <int name="npc" value="9105003"/>
++      <int name="lvmax" value="51"/>
++      <int name="lvmin" value="21"/>
+     </imgdir>
+     <imgdir name="1">
+       <int name="npc" value="2020005"/>
+diff --git a/wz/Quest.wz/Say.img.xml b/wz/Quest.wz/Say.img.xml
+index 916ef0ff2..28760b388 100644
+--- a/wz/Quest.wz/Say.img.xml
++++ b/wz/Quest.wz/Say.img.xml
+@@ -3455,7 +3455,7 @@
+   <imgdir name="7778">
+     <imgdir name="0">
+       <string name="0" value="Hey, do you have a minute? This is Showa Town, a humble town famous for the rich veggies market and movie productions of the most finest quality in the world of Maple."/>
+-      <string name="1" value="However, the streets around here have always been surrounded by an air of incertainty, as if anywhere you go eyes are gazing at you, watching you, stalking you. Somebody ready to assault you at any moment, at the slightest drop of guard. Troublesome, no?"/>
++      <string name="1" value="However, the streets around here have always been surrounded by an air of uncertainty, as if anywhere you go eyes are gazing at you, watching you, stalking you. Somebody ready to assault you at any moment, at the slightest drop of guard. Troublesome, no?"/>
+       <string name="2" value="The patrolling in the region has had their golden age quite a time ago, now it&apos;s just like nothing. That&apos;s because of the emergent #rShowa gang#k, that took control of the city at the very moment they started to act."/>
+       <string name="3" value="Now, listen my plea. We, citizens of good, must take arms against the tyranny that befell over us! To end this, we must gather together to form a counter-task force against these mafia guys. Mind to join us?"/>
+       <imgdir name="yes">
+@@ -3467,6 +3467,11 @@
+     </imgdir>
+     <imgdir name="1">
+       <string name="0" value="Ah, there you are. Thank you for bringing an end to their tyranny. Now Showa will finally shine again for the tourists that will start to come for the local specialties. There is your grand prize, enjoy!"/>
++      <imgdir name="stop">
++        <imgdir name="item">
++          <string name="0" value="It doesn&apos;t look like the streets are clear yet..."/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="1030">
+diff --git a/wz/String.wz/Npc.img.xml b/wz/String.wz/Npc.img.xml
+index c2a12efe7..8a32ff461 100644
+--- a/wz/String.wz/Npc.img.xml
++++ b/wz/String.wz/Npc.img.xml
+@@ -5354,6 +5354,7 @@
+     <string name="n0" value="Happy Holidays! Did you hear what happened to Happyville?"/>
+     <string name="n1" value="Can you believe that someone is trying to ruin it for everyone here at Happyville?"/>
+     <string name="func" value="Christmas Party Quest NPC"/>
++    <string name="d0" value="Happy Holidays!"/>
+   </imgdir>
+   <imgdir name="9105004">
+     <string name="name" value="Snow Spirit"/>
+@@ -5498,16 +5499,19 @@
+     <string name="name" value="Skai"/>
+     <string name="n0" value="A movie premier!"/>
+     <string name="n1" value="I&apos;m the lead actress!"/>
++    <string name="d0" value="Hey, did you know I am the lead actress on the movie they are going to premier tonight?"/>
+   </imgdir>
+   <imgdir name="9120007">
+     <string name="name" value="Furano"/>
+     <string name="n0" value="Hey, no pushing!"/>
+     <string name="n1" value="Please line up!"/>
++    <string name="d0" value="Everyone willing to see the movie, please line up here to get your tickets!"/>
+   </imgdir>
+   <imgdir name="9120008">
+     <string name="name" value="Tsuri"/>
+     <string name="n0" value="This has been fished out by yours truly."/>
+     <string name="n1" value="Fishing is the best!"/>
++    <string name="d0" value="Hey, what&apos;s up? Cheap prices for fishes only here, take a look around and you will see what I&apos;m talking about."/>
+   </imgdir>
+   <imgdir name="9120009">
+     <string name="name" value="Yuse"/>
+@@ -5539,21 +5543,25 @@
+     <string name="name" value="Boss Kitty"/>
+     <string name="n0" value="Hooo~"/>
+     <string name="n1" value="Haaaah!"/>
++    <string name="d0" value="Meeeeow. ... hohohohoho~"/>
+   </imgdir>
+   <imgdir name="9120014">
+     <string name="name" value="Popo"/>
+     <string name="n0" value="It&apos;s windy..."/>
+     <string name="n1" value="We shall protect this town to the fullest!"/>
++    <string name="d0" value="I am #p91200214#, from the Police dept. of Showa Town. Do you need something?"/>
+   </imgdir>
+   <imgdir name="9120015">
+     <string name="name" value="Konpei"/>
+     <string name="n0" value="Enthusiasm alone won&apos;t get it done here. Don&apos;t bother us."/>
+     <string name="n1" value="I&apos;m not here to test your strength. This is life-and-death situation!!"/>
++    <string name="d0" value="Don&apos;t talk to me if you are just as weak-willed as the people that lives around here."/>
+   </imgdir>
+   <imgdir name="9120016">
+     <string name="name" value="Mariwaka"/>
+     <string name="n0" value="Say hello to the soon-to-be leading actress in a movie!"/>
+     <string name="n1" value="My gosh, why is the wind so strong!"/>
++    <string name="d0" value="Standing there is #p9120006#, the lead actress of the upcoming movie, and a friend of mine. She&apos;s so nice!"/>
+   </imgdir>
+   <imgdir name="9120017">
+     <string name="name" value="Poni Chai"/>

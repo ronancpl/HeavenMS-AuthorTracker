@@ -1,0 +1,405 @@
+diff --git a/config.yaml b/config.yaml
+index 7a8ac3c06..1f41bb8df 100644
+--- a/config.yaml
++++ b/config.yaml
+@@ -214,6 +214,7 @@ server:
+     USE_DEBUG_SHOW_PACKET: false
+     USE_SUPPLY_RATE_COUPONS: true       #Allows rate coupons to be sold through the Cash Shop.
+     USE_IP_VALIDATION: true             #Enables IP checking when logging in.
++    USE_CHARACTER_ACCOUNT_CHECK: false  #Enables one-character-per-account check when logging in. This might be resource intensive.
+ 
+     USE_MAXRANGE: true                  #Will send and receive packets from all events on a map, rather than those of only view range.
+     USE_MAXRANGE_ECHO_OF_HERO: true
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 4cd46d258..d0663f13a 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -2233,4 +2233,8 @@ Revisado lógica booleana na detecção de foothold abaixo, não realizando múl
+ Revisado lógica recente de uso de petid único levando a lançamento de exceção (transações de DB implica retirada de item de pet do CS storage na DB antes de colocar o mesmo no inventário).
+ Corrigido portal relacionado a quest em Ariant inesperadamente levando jogadores à passagem secreta de Sleepywood, em caso de conclusão de questline da mesma.
+ Corrigido loop em scripts de quest de associação a Alcadno/Zenumist em Magatia.
+-Adicionado utilização de dispose em quest scripts para o comando homônimo.
+\ No newline at end of file
++Adicionado utilização de dispose em quest scripts para o comando homônimo.
++
++30 Outubro 2019,
++Corrigido bug em scripts (que possivelmente passou a ocorrer ao utilizar Java8) relacionado ao tentar utilizar métodos da biblioteca Math sem corresponder parâmetros com a assinatura adequada.
++Corrigido entrega de itemid inesperado em script relacionado a EllinPQ.
+\ No newline at end of file
+diff --git a/scripts/npc/2090004.js b/scripts/npc/2090004.js
+index e7dc6ff8e..c4fd17583 100644
+--- a/scripts/npc/2090004.js
++++ b/scripts/npc/2090004.js
+@@ -217,7 +217,7 @@ function action(mode, type, selection) {
+                                         complete = false;
+ 			}
+                         
+-                        if(java.lang.Math.random() >= 0.9) //A lucky find! Scroll 60%
++                        if(Math.random() >= 0.9) //A lucky find! Scroll 60%
+                             item += 1;
+ 
+ 			if (!complete || !cm.canHold(item, 1))
+@@ -251,7 +251,7 @@ function action(mode, type, selection) {
+                         var reward;
+                         if (rewdSet[selectedItem] instanceof Array) {
+                                 var length = rewdSet[selectedItem][1] - rewdSet[selectedItem][0];
+-                                reward = rewdSet[selectedItem][0] + java.lang.Math.round(java.lang.Math.random() * length);
++                                reward = rewdSet[selectedItem][0] + Math.round(Math.random() * length);
+                         }
+                         else reward = rewdSet[selectedItem];
+ 
+diff --git a/scripts/npc/2131001.js b/scripts/npc/2131001.js
+index ae9629790..0c5ed72e0 100644
+--- a/scripts/npc/2131001.js
++++ b/scripts/npc/2131001.js
+@@ -13,13 +13,14 @@ function action(mode, type, selection) {
+ 	return;
+     }
+     if (status == 0) {
+-        cm.sendSimple("My name is Pergen, I am the strongest magician around these parts.#b\r\n#L0#Hey, take these rubbles. You can perform your magic on them.#l");
++        cm.sendSimple("My name is #p2131001#, I am the strongest magician around these parts.#b\r\n#L0#Hey, take these rubbles. You can perform your magic on them.#l");
+     } else if (status == 1) {
+ 	if (!cm.haveItem(exchangeItem, 100)) {
+ 	    cm.sendNext("You don't have enough... I need at least 100.");
+ 	    cm.dispose();
+ 	} else {
+-	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100));
++            // thanks yuxaij for noticing a few methods having parameters not matching the expected Math library function parameter types
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, Math.min(300, cm.itemQuantity(exchangeItem) / 100));
+ 	}
+     } else if (status == 2) { 
+ 	if (selection >= 1 && selection <= cm.itemQuantity(exchangeItem) / 100) {
+diff --git a/scripts/npc/2131002.js b/scripts/npc/2131002.js
+index 9d32980e3..6a7cff98f 100644
+--- a/scripts/npc/2131002.js
++++ b/scripts/npc/2131002.js
+@@ -5,6 +5,6 @@
+ */
+ 
+ function start(){
+-	cm.sendOk("My name is Euryth... As you can see, I am a fairy. People tell me I do not act fairy-like, but... I like making things out of metal objects. Shhh, don't tell this to anyone, but I also like MMA.");
++	cm.sendOk("My name is #p2131002#... As you can see, I am a fairy. People tell me I do not act fairy-like, but... I like making things out of metal objects. Shhh, don't tell this to anyone, but I also like MMA.");
+ 	cm.dispose();
+ 	}
+\ No newline at end of file
+diff --git a/scripts/npc/2131003.js b/scripts/npc/2131003.js
+index 1c69b58d6..dd5be16d1 100644
+--- a/scripts/npc/2131003.js
++++ b/scripts/npc/2131003.js
+@@ -19,7 +19,7 @@ function action(mode, type, selection) {
+ 	    cm.sendNext("You don't have enough... I need at least 100.");
+ 	    cm.dispose();
+ 	} else {
+-	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100));
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, Math.min(300, cm.itemQuantity(exchangeItem) / 100));
+ 	}
+     } else if (status == 2) { 
+ 	if (selection >= 1 && selection <= cm.itemQuantity(exchangeItem) / 100) {
+diff --git a/scripts/npc/2131005.js b/scripts/npc/2131005.js
+index 4a1742962..e51c35030 100644
+--- a/scripts/npc/2131005.js
++++ b/scripts/npc/2131005.js
+@@ -19,7 +19,7 @@ function action(mode, type, selection) {
+ 	    cm.sendNext("You don't have enough... I need at least 100.");
+ 	    cm.dispose();
+ 	} else {
+-	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100));
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, Math.min(300, cm.itemQuantity(exchangeItem) / 100));
+ 	}
+     } else if (status == 2) { 
+ 	if (selection >= 1 && selection <= cm.itemQuantity(exchangeItem) / 100) {
+diff --git a/scripts/npc/2131006.js b/scripts/npc/2131006.js
+index c2910b80f..a19b09324 100644
+--- a/scripts/npc/2131006.js
++++ b/scripts/npc/2131006.js
+@@ -19,7 +19,7 @@ function action(mode, type, selection) {
+ 	    cm.sendNext("You don't have enough... I need at least 100.");
+ 	    cm.dispose();
+ 	} else {
+-	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100));
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, Math.min(300, cm.itemQuantity(exchangeItem) / 100));
+ 	}
+     } else if (status == 2) { 
+ 	if (selection >= 1 && selection <= cm.itemQuantity(exchangeItem) / 100) {
+diff --git a/scripts/npc/2131007.js b/scripts/npc/2131007.js
+index d145bd084..fffc7fb56 100644
+--- a/scripts/npc/2131007.js
++++ b/scripts/npc/2131007.js
+@@ -19,7 +19,7 @@ function action(mode, type, selection) {
+ 	    cm.sendNext("You don't have enough... I need at least 100.");
+ 	    cm.dispose();
+ 	} else {
+-	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, java.lang.Math.min(300, cm.itemQuantity(exchangeItem) / 100));
++	    cm.sendGetNumber("Hey, that's a good idea! I can give you #i4310000#Perfect Pitch for each 100 #i" + exchangeItem + "##t" + exchangeItem + "# you give me. How many do you want? (Current Items: " + cm.itemQuantity(exchangeItem) + ")", Math.min(300, cm.itemQuantity(exchangeItem) / 100), 1, Math.min(300, cm.itemQuantity(exchangeItem) / 100));
+ 	}
+     } else if (status == 2) { 
+ 	if (selection >= 1 && selection <= cm.itemQuantity(exchangeItem) / 100) {
+diff --git a/scripts/npc/2133000.js b/scripts/npc/2133000.js
+index 68ec44771..e5b3de290 100644
+--- a/scripts/npc/2133000.js
++++ b/scripts/npc/2133000.js
+@@ -111,9 +111,9 @@ function action(mode, type, selection) {
+                                        cm.dispose();
+                                 }
+                         } else if (selection == 2){
+-                                if (cm.haveItem(1032061) && !cm.haveItem(1032101) && cm.haveItem(4001198, 10)) {
++                                if (cm.haveItem(1032061) && !cm.haveItem(1032072) && cm.haveItem(4001198, 10)) {
+                                         cm.gainItem(1032061,-1);
+-                                        cm.gainItem(1032101, 1);
++                                        cm.gainItem(1032072, 1);    // thanks yuxaij for noticing unexpected itemid here
+                                         cm.gainItem(4001198, -10);
+                                         cm.dispose();
+                                 } else {
+diff --git a/scripts/npc/9000011.js b/scripts/npc/9000011.js
+index fab198124..67dbb825b 100644
+--- a/scripts/npc/9000011.js
++++ b/scripts/npc/9000011.js
+@@ -127,7 +127,7 @@ function action(mode, type, selection) {
+ 					cm.dispose();
+ 					return;
+ 			}
+-			var rand = java.lang.Math.floor(java.lang.Math.random() * pri.length);
++			var rand = Math.floor(Math.random() * pri.length);
+ 			if (!cm.haveItem(ite, quan)) {
+ 				cm.sendOk("You need #b" + quan + " #t" + ite + "##k to exchange it with item.");
+ 			} else if (cm.getInventory(1).getNextFreeSlot() <= -1 || cm.getInventory(2).getNextFreeSlot() <= -1 || cm.getInventory(3).getNextFreeSlot() <= -1 || cm.getInventory(4).getNextFreeSlot() <= -1) {
+diff --git a/scripts/npc/9201115.js b/scripts/npc/9201115.js
+index 05405fd3f..a8c036ad8 100644
+--- a/scripts/npc/9201115.js
++++ b/scripts/npc/9201115.js
+@@ -35,11 +35,11 @@ function action(mode, type, selection) {
+                                 cm.mapMessage(6, "Engarde! Master Guardians approach!");
+                                 for (var i = 0; i < 10; i++) {
+                                         var mob = eim.getMonster(9400594);
+-                                        cm.getMap().spawnMonsterOnGroundBelow(mob, new java.awt.Point(-1337 + (java.lang.Math.random() * 1337), 276));
++                                        cm.getMap().spawnMonsterOnGroundBelow(mob, new java.awt.Point(-1337 + (Math.random() * 1337), 276));
+                                 }
+                                 for (var i = 0; i < 20; i++) {
+                                         var mob = eim.getMonster(9400582);
+-                                        cm.getMap().spawnMonsterOnGroundBelow(mob, new java.awt.Point(-1337 + (java.lang.Math.random() * 1337), 276));
++                                        cm.getMap().spawnMonsterOnGroundBelow(mob, new java.awt.Point(-1337 + (Math.random() * 1337), 276));
+                                 }
+                                 eim.setIntProperty("glpq6", 1);
+                                 cm.dispose();
+diff --git a/scripts/portal/party6_stage501.js b/scripts/portal/party6_stage501.js
+index 887accb9f..2788e39c8 100644
+--- a/scripts/portal/party6_stage501.js
++++ b/scripts/portal/party6_stage501.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "02st");
+diff --git a/scripts/portal/party6_stage502.js b/scripts/portal/party6_stage502.js
+index 259846a77..2b9dc73d0 100644
+--- a/scripts/portal/party6_stage502.js
++++ b/scripts/portal/party6_stage502.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "03st");
+diff --git a/scripts/portal/party6_stage503.js b/scripts/portal/party6_stage503.js
+index 38bd839b2..29706f649 100644
+--- a/scripts/portal/party6_stage503.js
++++ b/scripts/portal/party6_stage503.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "04st");
+diff --git a/scripts/portal/party6_stage504.js b/scripts/portal/party6_stage504.js
+index 4ec4244a8..94b7f6d51 100644
+--- a/scripts/portal/party6_stage504.js
++++ b/scripts/portal/party6_stage504.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "05st");
+diff --git a/scripts/portal/party6_stage505.js b/scripts/portal/party6_stage505.js
+index afdd71b34..5ae1c318d 100644
+--- a/scripts/portal/party6_stage505.js
++++ b/scripts/portal/party6_stage505.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "06st");
+diff --git a/scripts/portal/party6_stage506.js b/scripts/portal/party6_stage506.js
+index 7b57c7125..1078adff0 100644
+--- a/scripts/portal/party6_stage506.js
++++ b/scripts/portal/party6_stage506.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "07st");
+diff --git a/scripts/portal/party6_stage507.js b/scripts/portal/party6_stage507.js
+index 44e43aeb1..e8f41aa0a 100644
+--- a/scripts/portal/party6_stage507.js
++++ b/scripts/portal/party6_stage507.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "08st");
+diff --git a/scripts/portal/party6_stage508.js b/scripts/portal/party6_stage508.js
+index 5f930d209..acade52b7 100644
+--- a/scripts/portal/party6_stage508.js
++++ b/scripts/portal/party6_stage508.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "09st");
+diff --git a/scripts/portal/party6_stage509.js b/scripts/portal/party6_stage509.js
+index 886fcf046..57c8694fc 100644
+--- a/scripts/portal/party6_stage509.js
++++ b/scripts/portal/party6_stage509.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "10st");
+diff --git a/scripts/portal/party6_stage510.js b/scripts/portal/party6_stage510.js
+index 777fc0ded..6632bbd4d 100644
+--- a/scripts/portal/party6_stage510.js
++++ b/scripts/portal/party6_stage510.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "11st");
+diff --git a/scripts/portal/party6_stage511.js b/scripts/portal/party6_stage511.js
+index 253bd5100..93c7f56cf 100644
+--- a/scripts/portal/party6_stage511.js
++++ b/scripts/portal/party6_stage511.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "12st");
+diff --git a/scripts/portal/party6_stage512.js b/scripts/portal/party6_stage512.js
+index cef1f8877..8c91b2940 100644
+--- a/scripts/portal/party6_stage512.js
++++ b/scripts/portal/party6_stage512.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "13st");
+diff --git a/scripts/portal/party6_stage513.js b/scripts/portal/party6_stage513.js
+index 15828f258..a27b6cb44 100644
+--- a/scripts/portal/party6_stage513.js
++++ b/scripts/portal/party6_stage513.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "14st");
+diff --git a/scripts/portal/party6_stage514.js b/scripts/portal/party6_stage514.js
+index a2c4ffa18..903971ec1 100644
+--- a/scripts/portal/party6_stage514.js
++++ b/scripts/portal/party6_stage514.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "15st");
+diff --git a/scripts/portal/party6_stage515.js b/scripts/portal/party6_stage515.js
+index 221db8bc2..4c3f689ad 100644
+--- a/scripts/portal/party6_stage515.js
++++ b/scripts/portal/party6_stage515.js
+@@ -1,5 +1,5 @@
+ function enter(pi) {
+-    if (java.lang.Math.random() < 0.1) {
++    if (Math.random() < 0.1) {
+ 	pi.playPortalSound(); pi.warp(930000300,"16st");
+     } else {
+ 	pi.playPortalSound(); pi.warp(930000300, "01st");
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index c0cb3037d..868307b06 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -16473,14 +16473,13 @@ CREATE TABLE IF NOT EXISTS `pets` (
+   PRIMARY KEY (`petid`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+-ALTER TABLE `inventoryitems` ADD CONSTRAINT `fk_itempetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE SET NULL ;  # thanks Optimist for noticing queries over petid taking too long, shavit for pointing out an improvement using foreign key
+ 
+ CREATE TABLE IF NOT EXISTS `petignores` (
+   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+   `petid` int(11) unsigned NOT NULL ,
+   `itemid` int(10) unsigned NOT NULL ,
+   PRIMARY KEY (`id`),
+-  CONSTRAINT `fk_petignorepetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE CASCADE
++  CONSTRAINT `fk_petignorepetid` FOREIGN KEY (`petid`) REFERENCES `pets` (`petid`) ON DELETE CASCADE    # thanks Optimist for noticing queries over petid taking too long, shavit for pointing out an improvement using foreign key
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
+ CREATE TABLE IF NOT EXISTS `playerdiseases` (
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 792e3da9a..84ed70721 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1233,7 +1233,7 @@ public boolean acceptToS() {
+ 	}
+         
+         public void checkChar(int accid) {  /// issue with multiple chars from same account login found by shavit, resinate
+-            if (true) {
++            if (!YamlConfig.config.server.USE_CHARACTER_ACCOUNT_CHECK) {
+                 return;
+             }
+             
+diff --git a/src/config/ServerConfig.java b/src/config/ServerConfig.java
+index b8b0a59df..9ad310a29 100644
+--- a/src/config/ServerConfig.java
++++ b/src/config/ServerConfig.java
+@@ -58,6 +58,7 @@
+     public boolean USE_DEBUG_SHOW_PACKET;
+     public boolean USE_SUPPLY_RATE_COUPONS;
+     public boolean USE_IP_VALIDATION;
++    public boolean USE_CHARACTER_ACCOUNT_CHECK;
+ 
+     public boolean USE_MAXRANGE;
+     public boolean USE_MAXRANGE_ECHO_OF_HERO;
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 6e8aad2b2..e66377b9f 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -28,7 +28,6 @@
+ import java.util.Calendar;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
+-import config.ServerConfig;
+ import config.YamlConfig;
+ import org.apache.mina.core.service.IoHandlerAdapter;
+ import org.apache.mina.core.session.IdleStatus;

@@ -1,0 +1,150 @@
+diff --git a/src/net/server/channel/handlers/CouponCodeHandler.java b/src/net/server/channel/handlers/CouponCodeHandler.java
+index 32c53365a..ee852650e 100644
+--- a/src/net/server/channel/handlers/CouponCodeHandler.java
++++ b/src/net/server/channel/handlers/CouponCodeHandler.java
+@@ -31,6 +31,7 @@
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
++import java.util.Arrays;
+ import java.util.HashMap;
+ import java.util.LinkedList;
+ import java.util.List;
+@@ -63,7 +64,6 @@
+         ResultSet rs = ps.executeQuery();
+         while (rs.next()) {
+             int type = rs.getInt("type"), quantity = rs.getInt("quantity");
+-            
+             if (type < 5) {
+                 Integer i = couponPoints.get(type);
+                 if (i != null) {
+@@ -195,8 +195,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (type < 0) {
+                     c.announce(MaplePacketCreator.showCashShopMessage((byte) parseCouponResult(type)));
+                 } else {
+-                    List<Item> couponPackage = new LinkedList<>();
+-
++                    List<Item> cashItems = new LinkedList<Item>();
++                    List<Pair<Integer, Integer>> items = new LinkedList<Pair<Integer, Integer>>();
++                    int nxCredit = 0;
++                    int maplePoints = 0;
++                    int nxPrepaid = 0;
++                    int mesos = 0;
++                    
+                     for (Pair<Integer, Pair<Integer, Integer>> p : codeRes.getRight()) {
+                         type = p.getLeft();
+                         int quantity = p.getRight().getRight();
+@@ -204,18 +209,26 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         CashShop cs = c.getPlayer().getCashShop();
+                         switch (type) {
+                             case 0:
++                                c.getPlayer().gainMeso(quantity, false); //mesos
++                                mesos += quantity;
++                                break;
+                             case 4:
+                                 cs.gainCash(1, quantity);    //nxCredit
++                                nxCredit += quantity;
+                                 break;
+                             case 1:
+                                 cs.gainCash(2, quantity);    //maplePoint
++                                maplePoints += quantity;
+                                 break;
+                             case 2:
+                                 cs.gainCash(4, quantity);    //nxPrepaid
++                                nxPrepaid += quantity;
+                                 break;
+                             case 3:
+                                 cs.gainCash(1, quantity);
++                                nxCredit += quantity;
+                                 cs.gainCash(4, (quantity / 5000));
++                                nxPrepaid += quantity / 5000;
+                                 break;
+ 
+                             default:
+@@ -234,22 +247,28 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                                     Item it = CashShop.generateCouponItem(item, qty);
+ 
+                                     cs.addToInventory(it);
+-                                    couponPackage.add(it);
++                                    cashItems.add(it);
+                                 } else {
+                                     MapleInventoryManipulator.addById(c, item, qty, "", -1);
++                                    items.add(new Pair<Integer, Integer>((int)qty, item));
+                                 }
+-
+-                                //c.announce(MaplePacketCreator.showCouponRedeemedItem(item));
+                                 break;
+                         }
+                     }
+-
+-                    if (!couponPackage.isEmpty()) {
+-                        c.announce(MaplePacketCreator.showBoughtCashPackage(couponPackage, c.getAccID()));
+-                    } else {
++                    if(cashItems.size() > 255) {
++                        List<Item> oldList = cashItems;
++                        cashItems = Arrays.asList(new Item[255]);
++                        int index = 0;
++                        for(Item item : oldList) {
++                            cashItems.set(index, item);
++                            index++;
++                        }
++                    }
++                    if (nxCredit != 0 || nxPrepaid != 0) { //coupon packet can only show maple points (afaik)
+                         c.announce(MaplePacketCreator.showBoughtQuestItem(0));
++                    } else {
++                        c.announce(MaplePacketCreator.showCouponRedeemedItems(c.getAccID(), maplePoints, mesos, cashItems, items));
+                     }
+-
+                     c.enableCSActions();
+                 }
+             } finally {
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 0192563b4..fb9eb0231 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -6112,12 +6112,12 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+         
++        
+         public static byte[] sendNameTransferCheck(boolean canUseName) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CASHSHOP_CHECK_NAME_CHANGE.getValue());
+                 mplew.writeShort(0);
+                 mplew.writeBool(!canUseName);
+-                
+                 return mplew.getPacket();
+         }
+         
+@@ -6219,16 +6219,23 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+         
+-        public static byte[] showCouponRedeemedItem(int itemid) {
++        public static byte[] showCouponRedeemedItems(int accountId, int maplePoints, int mesos, List<Item> cashItems, List<Pair<Integer, Integer>> items) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.CASHSHOP_OPERATION.getValue());
+-                mplew.writeShort(0x49); //v72
+-                mplew.writeInt(0);
+-                mplew.writeInt(1);
+-                mplew.writeShort(1);
+-                mplew.writeShort(0x1A);
+-                mplew.writeInt(itemid);
+-                mplew.writeInt(0);
++                mplew.write(0x59);
++                mplew.write((byte)cashItems.size());
++                for(Item item : cashItems) {
++                    addCashItemInformation(mplew, item, accountId);
++                }
++                mplew.writeInt(maplePoints);
++                mplew.writeInt(items.size());
++                for(Pair<Integer, Integer> itemPair : items) {
++                    int quantity = itemPair.getLeft();
++                    mplew.writeShort((short) quantity); //quantity (0 = 1 for cash items)
++                    mplew.writeShort(0x1F); //0 = ?, >=0x20 = ?, <0x20 = ? (does nothing?)
++                    mplew.writeInt(itemPair.getRight());
++                }
++                mplew.writeInt(mesos);
+                 return mplew.getPacket();
+         }
+ 

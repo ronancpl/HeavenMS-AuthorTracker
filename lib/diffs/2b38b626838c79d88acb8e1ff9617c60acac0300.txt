@@ -1,0 +1,2179 @@
+diff --git a/dist/MapleSolaxia.jar b/dist/MapleSolaxia.jar
+index 6255e4a8d..192a00441 100644
+Binary files a/dist/MapleSolaxia.jar and b/dist/MapleSolaxia.jar differ
+diff --git a/docs/feature_list.txt b/docs/feature_list.txt
+index 5e9514529..8c3dd5247 100644
+--- a/docs/feature_list.txt
++++ b/docs/feature_list.txt
+@@ -103,5 +103,6 @@ Project:
+ * Fixed/added some missing packets for MoveEnvironment, summons and others.
+ * Reviewed many Java object aspects that needed concurrency protection.
+ * Heavily reviewed future task management inside the project. Way less trivial schedules are spawned now, relieving task overload on the TimerManager.
++* ThreadTracker: embedded auditing tool for run-time deadlock scanning throughout the server source (relies heavily on memory usage, designed only for debugging purposes).
+ 
+ ---------------------------
+\ No newline at end of file
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index a15f24b3f..1a5d0290c 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -669,4 +669,9 @@ Corrigido GM shop sendo liberado pra jogadores em Amherst.
+ 13 - 14 Novembro 2017,
+ Modificado ID de jogador agora começando em 20,000,000, evitando assim clash de id de jogador (que tb representa seu OID) com OIDs de objetos do mapa.
+ Nova ferramenta: MapleSkillMakerFetcher. A ferramenta lê info pertinente às descrições de itens feitos pelo Maker e as compila numa tabela, pra ser usada na DB.
+-Corrigida questline de mounts e skills de Aran.
+\ No newline at end of file
++Corrigida questline de mounts e skills de Aran.
++
++15 Novembro 2017,
++Implementado sistema de auditoria de deadlocks: ThreadTracker.
++Corrigido bug onde jogadores recebem dano de mobs de mapas anteriores (que acarretavam em problemas com OID e natureza dos objetos).
++Corrigido alguns problemas com exceção sendo lançada ao tentar desligar o server.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 3287222d2..11ac3455f 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -2,6 +2,9 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="2"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/ServerConstants.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/quest/2314.js b/scripts/quest/2314.js
+index ea35393d5..bd9a8ac7c 100644
+--- a/scripts/quest/2314.js
++++ b/scripts/quest/2314.js
+@@ -22,7 +22,7 @@ function start(mode, type, selection) {
+ 		}
+ 	}
+ 	if (status == 0)
+-		qm.sendYesNo("In order to rescue the princess, you must first navigate the Mushroom Forest. King Pepe set up a powerful barrier forbidding anyone from entering the castle. Please investigate this matter for us.");
++		qm.sendAcceptDecline("In order to rescue the princess, you must first navigate the Mushroom Forest. King Pepe set up a powerful barrier forbidding anyone from entering the castle. Please investigate this matter for us.");
+ 	if (status == 1)
+ 		qm.sendNext("You'll run into the barrier at the Mushroom Forest by heading east of where you are standing right now. Please be careful. I hear that the area is infested with crazy, fear-inducing monsters.");
+ 	if(status == 2){
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 135ce5bbb..7a5cfa5f0 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18793,7 +18793,6 @@ USE `maplesolaxia`;
+ (3400004,4000542,1,1,0,400000),
+ (3400005,4032508,1,1,2273,999999),
+ (3400006,4000543,1,1,0,400000),
+-(3400007,4032508,1,1,2273,999999),
+ (3400008,4000544,1,1,0,400000),
+ (4300001,1302009,1,1,0,700),
+ (4300001,1312007,1,1,0,700),
+@@ -18939,7 +18938,7 @@ USE `maplesolaxia`;
+ (4300006,4000525,1,1,0,600000),
+ (4300006,4004000,1,1,0,10000),
+ (4300006,4020008,1,1,0,9000),
+-(4300006,4032506,1,1,2277,999999),
++(4300006,4032506,1,1,2277,80000),
+ (4300007,1302009,1,1,0,700),
+ (4300007,1312007,1,1,0,700),
+ (4300007,1322016,1,1,0,700),
+@@ -18976,7 +18975,7 @@ USE `maplesolaxia`;
+ (4300007,4000526,1,1,0,600000),
+ (4300007,4004000,1,1,0,10000),
+ (4300007,4020008,1,1,0,9000),
+-(4300007,4032506,1,1,2277,999999),
++(4300007,4032506,1,1,2277,80000),
+ (4300008,1302009,1,1,0,700),
+ (4300008,1312007,1,1,0,700),
+ (4300008,1322016,1,1,0,700),
+@@ -19013,7 +19012,7 @@ USE `maplesolaxia`;
+ (4300008,4000527,1,1,0,400000),
+ (4300008,4004000,1,1,0,10000),
+ (4300008,4020008,1,1,0,9000),
+-(4300008,4032506,1,1,2277,999999),
++(4300008,4032506,1,1,2277,80000),
+ (4300009,1302009,1,1,0,700),
+ (4300009,1312007,1,1,0,700),
+ (4300009,1322016,1,1,0,700),
+@@ -19207,7 +19206,6 @@ USE `maplesolaxia`;
+ (3400004,0,60,80,0,400000),
+ (3400005,0,80,85,0,400000),
+ (3400006,0,80,90,0,400000),
+-(3400007,0,90,100,0,400000),
+ (3400008,0,100,110,0,400000),
+ (4300001,0,100,120,0,400000),
+ (4300003,0,100,120,0,400000),
+@@ -19792,7 +19790,28 @@ USE `maplesolaxia`;
+ (2230111, 4032147, 1, 1, 20723, 40000),
+ (9300378, 4001272, 1, 1, 0, 400000),
+ (9300378, 4032324, 1, 1, 21736, 40000),
+-(9300344, 4032322, 1, 1, 21731, 999999);
++(9300344, 4032322, 1, 1, 21731, 999999),
++(3400008, 1302008, 1, 1, 0, 8500),
++(3400008, 1412004, 1, 1, 0, 8500),
++(3400008, 1422007, 1, 1, 0, 8500),
++(3400008, 1442009, 1, 1, 0, 8500),
++(3400008, 1332010, 1, 1, 0, 8500),
++(3400008, 1372001, 1, 1, 0, 8500),
++(3400008, 1382002, 1, 1, 0, 8500),
++(3400008, 1002013, 1, 1, 0, 8500),
++(3400008, 1002152, 1, 1, 0, 8500),
++(3400008, 1061047, 1, 1, 0, 8500),
++(3400008, 1072090, 1, 1, 0, 8500),
++(3400008, 1002137, 1, 1, 0, 8500),
++(3400008, 1040023, 1, 1, 0, 8500),
++(3400008, 1040072, 1, 1, 0, 8500),
++(3400008, 1060062, 1, 1, 0, 8500),
++(3400008, 1082049, 1, 1, 0, 8500),
++(3400008, 1082072, 1, 1, 0, 8500),
++(3400008, 1072081, 1, 1, 0, 8500),
++(3400008, 1332031, 1, 1, 0, 8500),
++(3400008, 1482003, 1, 1, 0, 8500),
++(3400008, 4032508, 1, 1, 2273, 80000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 7dae8d914..6acef3a1b 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -45,7 +45,7 @@
+ import java.util.Map.Entry;
+ import java.util.Set;
+ import java.util.Comparator;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.atomic.AtomicInteger;
+@@ -154,6 +154,7 @@
+ import net.server.channel.handlers.PartyOperationHandler;
+ import scripting.item.ItemScriptManager;
+ import server.maps.MapleMapItem;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
+     private static NumberFormat nf = new DecimalFormat("#,###,###,###");
+@@ -270,10 +271,10 @@
+     private ScheduledFuture<?> extraRecoveryTask = null;
+     private ScheduledFuture<?> chairRecoveryTask = null;
+     private ScheduledFuture<?> pendantOfSpirit = null; //1122017
+-    private Lock chrLock = new ReentrantLock(true);
+-    private Lock effLock = new ReentrantLock(true);
+-    private Lock petLock = new ReentrantLock(true); // for quest tasks as well
+-    private Lock prtLock = new ReentrantLock();
++    private Lock chrLock = new MonitoredReentrantLock(MonitoredEnums.CHR, true);
++    private Lock effLock = new MonitoredReentrantLock(MonitoredEnums.EFF, true);
++    private Lock petLock = new MonitoredReentrantLock(MonitoredEnums.PET, true); // for quest tasks as well
++    private Lock prtLock = new MonitoredReentrantLock(MonitoredEnums.PRT);
+     private Map<Integer, Set<Integer>> excluded = new LinkedHashMap<>();
+     private Set<Integer> excludedItems = new LinkedHashSet<>();
+     private List<MapleRing> crushRings = new ArrayList<>();
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 6b3068888..2880cb178 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -42,7 +42,7 @@
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ 
+ import javax.script.ScriptEngine;
+ 
+@@ -77,6 +77,7 @@
+ import tools.HexTool;
+ import tools.MapleAESOFB;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleClient {
+ 
+@@ -108,7 +109,7 @@
+ 	private int picattempt = 0;
+ 	private byte gender = -1;
+ 	private boolean disconnecting = false;
+-	private final Lock lock = new ReentrantLock(true);
++	private final Lock lock = new MonitoredReentrantLock(MonitoredEnums.CLIENT, true);
+ 	private int votePoints;
+ 	private int voteTime = -1;
+ 	private long lastNpcClick;
+@@ -832,7 +833,7 @@ public final synchronized void disconnect(boolean shutdown, boolean cashshop) {/
+                             
+                                 removePlayer();
+                                 player.saveCooldowns();
+-                                player.saveToDB();
++                                player.saveToDB(true);
+                             
+ 				player = null;
+ 				return;
+diff --git a/src/client/MonsterBook.java b/src/client/MonsterBook.java
+index ef76f911c..7dc541bdb 100644
+--- a/src/client/MonsterBook.java
++++ b/src/client/MonsterBook.java
+@@ -31,16 +31,17 @@
+ import java.util.Map.Entry;
+ import java.util.Set;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ public final class MonsterBook {
+     private int specialCard = 0;
+     private int normalCard = 0;
+     private int bookLevel = 1;
+     private Map<Integer, Integer> cards = new LinkedHashMap<>();
+-    private Lock lock = new ReentrantLock();
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.BOOK);
+ 
+     private Set<Entry<Integer, Integer>> getCardSet() {
+         lock.lock();
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index 2215d6df6..c6c33e124 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -346,7 +346,7 @@ public static boolean executeSolaxiaCommandLv0(Channel cserv, Server srv, MapleC
+                     
+ 		case "time":
+ 			DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+-			dateFormat.setTimeZone(TimeZone.getTimeZone("-GMT3"));
++			dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
+ 			player.yellowMessage("Solaxia Server Time: " + dateFormat.format(new Date()));
+ 			break;
+                     
+@@ -741,7 +741,7 @@ public static boolean executeSolaxiaCommandLv1(Channel cserv, Server srv, MapleC
+ 			player.yellowMessage("Players on this map:");
+ 			for (MapleMapObject mmo : player.getMap().getPlayers()) {
+ 				MapleCharacter chr = (MapleCharacter) mmo;
+-				player.dropMessage(5, ">> " + chr.getName());
++				player.dropMessage(5, ">> " + chr.getName() + " - " + chr.getId() + " - Oid: " + chr.getObjectId());
+ 			}
+ 			player.yellowMessage("NPCs on this map:");
+ 			for (MapleMapObject npcs : player.getMap().getMapObjects()) {
+@@ -755,7 +755,7 @@ public static boolean executeSolaxiaCommandLv1(Channel cserv, Server srv, MapleC
+ 				if (mobs instanceof MapleMonster) {
+ 					MapleMonster mob = (MapleMonster) mobs;
+ 					if(mob.isAlive()){
+-						player.dropMessage(5, ">> " + mob.getName() + " - " + mob.getId());
++						player.dropMessage(5, ">> " + mob.getName() + " - " + mob.getId() + " - Oid: " + mob.getObjectId());
+ 					}
+ 				}
+ 			}
+diff --git a/src/client/inventory/ItemFactory.java b/src/client/inventory/ItemFactory.java
+index 6812e6355..74bf99554 100644
+--- a/src/client/inventory/ItemFactory.java
++++ b/src/client/inventory/ItemFactory.java
+@@ -27,9 +27,11 @@
+ import java.sql.Statement;
+ import java.util.ArrayList;
+ import java.util.List;
+-import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.locks.Lock;
++import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.Pair;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -45,7 +47,7 @@
+     MERCHANT(6, false);
+     private final int value;
+     private final boolean account;
+-    private static final ReentrantLock lock = new ReentrantLock(true);
++    private static final Lock lock = new MonitoredReentrantLock(MonitoredEnums.ITEM, true);
+ 
+     private ItemFactory(int value, boolean account) {
+         this.value = value;
+diff --git a/src/client/inventory/MapleInventory.java b/src/client/inventory/MapleInventory.java
+index cf0a925d2..f9a02fa14 100644
+--- a/src/client/inventory/MapleInventory.java
++++ b/src/client/inventory/MapleInventory.java
+@@ -30,7 +30,7 @@
+ import java.util.Map.Entry;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ 
+ import tools.Pair;
+ import client.MapleCharacter;
+@@ -39,6 +39,7 @@
+ import server.MapleItemInformationProvider;
+ import server.MapleInventoryManipulator;
+ import tools.FilePrinter;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -50,7 +51,7 @@
+     private byte slotLimit;
+     private MapleInventoryType type;
+     private boolean checked = false;
+-    private Lock lock = new ReentrantLock(true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.INVENTORY, true);
+     
+     public MapleInventory(MapleCharacter mc, MapleInventoryType type, byte slotLimit) {
+         this.owner = mc;
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 1ff812035..776921eb9 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -8,10 +8,12 @@
+     public static String DB_URL = "";
+     public static String DB_USER = "";
+     public static String DB_PASS = "";
+-    public static final boolean DB_EXPERIMENTAL_POOL = true;   //[EXPERIMENTAL] Installs a connection pool to hub DB connections. Set false to default.
++    public static final boolean DB_EXPERIMENTAL_POOL = true;    //[EXPERIMENTAL] Installs a connection pool to hub DB connections. Set false to default.
++    public static final boolean USE_THREAD_TRACKER = true;      //[WARNING] This deadlock auditing thing will bloat the memory as fast as the time frame one takes to lose track of a raindrop on a tempesting day. Only for debug purposes.
+ 	
+     //World And Version
+     public static short VERSION = 83;
++    public static String TIMEZONE = "-GMT3";
+     public static String[] WORLD_NAMES = {"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcenia", "Kastia", "Judis", "Plana", "Kalluna", "Stius", "Croa", "Medere"};
+ 
+     //Login Configuration
+@@ -85,6 +87,7 @@
+     //Dangling Items Configuration
+     public static final int ITEM_EXPIRE_TIME  = 3 * 60 * 1000;  //Time before items start disappearing. Recommended to be set up to 3 minutes.
+     public static final int ITEM_MONITOR_TIME = 5 * 60 * 1000;  //Interval between item monitoring tasks on maps, which checks for dangling (null) item objects on the map item history.
++    public static final int LOCK_MONITOR_TIME = 30 * 1000;      //Waiting time for a lock to be released. If it reach timed out, a critical server deadlock has made present.
+     public static final int ITEM_EXPIRE_CHECK = 10 * 1000;      //Interval between item expiring tasks on maps, which checks and makes disappear expired items.
+     public static final int ITEM_LIMIT_ON_MAP = 200;            //Max number of items allowed on a map.
+     
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 7107ade5a..af55d9a69 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -43,13 +43,14 @@
+ import constants.ServerConstants;
+ 
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.ScheduledFuture;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import server.TimerManager;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleServerHandler extends IoHandlerAdapter {
+ 
+@@ -58,8 +59,8 @@
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+     private static AtomicLong sessionId = new AtomicLong(7777);
+     
+-    private Lock idleLock = new ReentrantLock(true);
+-    private Lock tempLock = new ReentrantLock(true);
++    private Lock idleLock = new MonitoredReentrantLock(MonitoredEnums.SHANDLER_IDLE, true);
++    private Lock tempLock = new MonitoredReentrantLock(MonitoredEnums.SHANDLER_TEMP, true);
+     private Map<MapleClient, Long> idleSessions = new HashMap<>(100);
+     private Map<MapleClient, Long> tempIdleSessions = new HashMap<>();
+     private ScheduledFuture<?> idleManager = null;
+diff --git a/src/net/mina/MaplePacketEncoder.java b/src/net/mina/MaplePacketEncoder.java
+index e8c30a96e..2024efd0f 100644
+--- a/src/net/mina/MaplePacketEncoder.java
++++ b/src/net/mina/MaplePacketEncoder.java
+@@ -35,27 +35,28 @@
+     public void encode(final IoSession session, final Object message, final ProtocolEncoderOutput out) throws Exception {
+         final MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+ 
+-        if (client != null) {
+-            final MapleAESOFB send_crypto = client.getSendCrypto();
+-            final byte[] input = (byte[]) message;
+-            final byte[] unencrypted = new byte[input.length];
+-            System.arraycopy(input, 0, unencrypted, 0, input.length);
+-            final byte[] ret = new byte[unencrypted.length + 4];
+-            final byte[] header = send_crypto.getPacketHeader(unencrypted.length);
+-            MapleCustomEncryption.encryptData(unencrypted);
+-
++        try {
+             client.lockClient();
+             try {
++                final MapleAESOFB send_crypto = client.getSendCrypto();
++                final byte[] input = (byte[]) message;
++                final byte[] unencrypted = new byte[input.length];
++                System.arraycopy(input, 0, unencrypted, 0, input.length);
++                final byte[] ret = new byte[unencrypted.length + 4];
++                final byte[] header = send_crypto.getPacketHeader(unencrypted.length);
++                MapleCustomEncryption.encryptData(unencrypted);
++            
+                 send_crypto.crypt(unencrypted);
+                 System.arraycopy(header, 0, ret, 0, 4);
+                 System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
++                
+                 out.write(IoBuffer.wrap(ret));
+             } finally {
+                 client.unlockClient();
+             }
+ //            System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
+ //            out.write(ByteBuffer.wrap(ret));
+-        } else {
++        } catch (NullPointerException npe) {
+             out.write(IoBuffer.wrap(((byte[]) message)));
+         }
+     }
+diff --git a/src/net/server/PlayerBuffStorage.java b/src/net/server/PlayerBuffStorage.java
+index 1de55ec04..d1b8d3bca 100644
+--- a/src/net/server/PlayerBuffStorage.java
++++ b/src/net/server/PlayerBuffStorage.java
+@@ -25,7 +25,8 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredReentrantLock;
+ 
+ /**
+  *
+@@ -33,7 +34,7 @@
+  */
+ public class PlayerBuffStorage {
+     private int id = (int) (Math.random() * 100);
+-    private final Lock lock = new ReentrantLock(true);    
++    private final Lock lock = new MonitoredReentrantLock(MonitoredEnums.BUFF_STORAGE, true);    
+     private Map<Integer, List<PlayerBuffValueHolder>> buffs = new HashMap<>();
+ 
+     public void addBuffsToStorage(int chrid, List<PlayerBuffValueHolder> toStore) {
+diff --git a/src/net/server/PlayerStorage.java b/src/net/server/PlayerStorage.java
+index 3b0c807f3..59093ea8e 100644
+--- a/src/net/server/PlayerStorage.java
++++ b/src/net/server/PlayerStorage.java
+@@ -26,12 +26,14 @@
+ import java.util.Iterator;
+ import java.util.LinkedHashMap;
+ import java.util.Map;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
++import tools.locks.MonitoredEnums;
+ 
+ public class PlayerStorage {
+-    private final ReentrantReadWriteLock locks = new ReentrantReadWriteLock(true);
++    private final ReentrantReadWriteLock locks = new MonitoredReentrantReadWriteLock(MonitoredEnums.PLAYER_STORAGE, true);
+     private final ReadLock rlock = locks.readLock();
+     private final WriteLock wlock = locks.writeLock();
+     private final Map<Integer, MapleCharacter> storage = new LinkedHashMap<>();
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 45d71ac0d..d33d7a241 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -33,15 +33,16 @@
+ import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.Iterator;
+-import java.util.LinkedHashMap;
++import java.util.HashMap;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Properties;
+ import java.util.Set;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.locks.Lock;
++import java.util.concurrent.ScheduledFuture;
+ 
+ import net.MapleServerHandler;
+ import net.mina.MapleCodecFactory;
+@@ -70,11 +71,13 @@
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ import java.util.Calendar;
++import net.server.audit.ThreadTracker;
+ import server.quest.MapleQuest;
++import tools.locks.MonitoredEnums;
+ 
+ public class Server implements Runnable {
+     private static final Set<Integer> activeFly = new HashSet<>();
+-    private static final Map<Integer, Integer> couponRates = new LinkedHashMap<>();
++    private static final Map<Integer, Integer> couponRates = new HashMap<>(30);
+     private static final List<Integer> activeCoupons = new LinkedList<>();
+     
+     private IoAcceptor acceptor;
+@@ -83,11 +86,12 @@
+     private final Properties subnetInfo = new Properties();
+     private static Server instance = null;
+     private List<Pair<Integer, String>> worldRecommendedList = new LinkedList<>();
+-    private final Map<Integer, MapleGuild> guilds = new LinkedHashMap<>();
+-    private final Map<MapleClient, Long> inLoginState = new LinkedHashMap<>();
+-    private final Lock srvLock = new ReentrantLock();
++    private final Map<Integer, MapleGuild> guilds = new HashMap<>(100);
++    private final Map<MapleClient, Long> inLoginState = new HashMap<>(100);
++    private final Lock srvLock = new MonitoredReentrantLock(MonitoredEnums.SERVER);
+     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
+-    private final Map<Integer, MapleAlliance> alliances = new LinkedHashMap<>();
++    private final Map<Integer, MapleAlliance> alliances = new HashMap<>(100);
++    
+     private boolean online = false;
+     public static long uptime = System.currentTimeMillis();
+     
+@@ -301,7 +305,9 @@ public void run() {
+ 	timeToTake = System.currentTimeMillis();
+ 	MapleQuest.loadAllQuest();
+ 	System.out.println("Quest loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds\r\n");
+-		
++	
++        if(ServerConstants.USE_THREAD_TRACKER) ThreadTracker.getInstance().registerThreadTrackerTask();
++        
+         try {
+             Integer worldCount = Math.min(ServerConstants.WORLD_NAMES.length, Integer.parseInt(p.getProperty("worlds")));
+             
+@@ -317,7 +323,7 @@ public void run() {
+ 
+                 worldRecommendedList.add(new Pair<>(i, p.getProperty("whyamirecommended" + i)));
+                 worlds.add(world);
+-                channels.add(new LinkedHashMap<Integer, String>());
++                channels.add(new HashMap<Integer, String>());
+                 for (int j = 0; j < Integer.parseInt(p.getProperty("channels" + i)); j++) {
+                     int channelid = j + 1;
+                     Channel channel = new Channel(i, channelid);
+@@ -807,6 +813,8 @@ public void run() {
+                             }
+                         }
+                     }*/
++                    
++                    if(ServerConstants.USE_THREAD_TRACKER) ThreadTracker.getInstance().cancelThreadTrackerTask();
+ 
+                     TimerManager.getInstance().purge();
+                     TimerManager.getInstance().stop();
+diff --git a/src/net/server/audit/ThreadTracker.java b/src/net/server/audit/ThreadTracker.java
+new file mode 100644
+index 000000000..d79b3d3f7
+--- /dev/null
++++ b/src/net/server/audit/ThreadTracker.java
+@@ -0,0 +1,281 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package net.server.audit;
++
++import java.text.DateFormat;
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.Set;
++import java.util.TimeZone;
++import java.util.concurrent.ScheduledFuture;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.Lock;
++import java.util.concurrent.locks.ReentrantLock;
++import server.TimerManager;
++import tools.FilePrinter;
++import tools.locks.MonitoredEnums;
++import constants.ServerConstants;
++
++/**
++ *
++ * @author RonanLana
++ * 
++ * This tool has the main purpose of auditing deadlocks throughout the server and must be used only for debugging. The flag is USE_THREAD_TRACKER.
++ */
++public class ThreadTracker {
++    private static ThreadTracker instance = null;
++    private final Lock ttLock = new ReentrantLock(true);
++    
++    private final Map<Long, List<MonitoredEnums>> threadTracker = new HashMap<>();
++    private final Map<Long, Integer> threadUpdate = new HashMap<>();
++    private final Map<Long, Thread> threads = new HashMap<>();
++    
++    private final Map<Long, AtomicInteger> lockCount = new HashMap<>();
++    private final Map<Long, MonitoredEnums> lockIds = new HashMap<>();
++    private final Map<Long, Long> lockThreads = new HashMap<>();
++    private final Map<Long, Byte> lockUpdate = new HashMap<>();
++    
++    private final Map<MonitoredEnums, Map<Long, Integer>> locks = new HashMap<>();
++    ScheduledFuture<?> threadTrackerSchedule;
++    
++    private String printThreadTrackerState(String dateFormat) {
++        
++        Map<MonitoredEnums, List<Integer>> lockValues = new HashMap<>();
++        Set<Long> executingThreads = new HashSet<>();
++        
++        for(Map.Entry<Long, AtomicInteger> lock : lockCount.entrySet()) {
++            if(lock.getValue().get() != 0) {
++                executingThreads.add(lockThreads.get(lock.getKey()));
++                
++                MonitoredEnums lockId = lockIds.get(lock.getKey());
++                List<Integer> list = lockValues.get(lockId);
++                
++                if(list == null) {
++                    list = new ArrayList<>();
++                    lockValues.put(lockId, list);
++                }
++                
++                list.add(lock.getValue().get());
++            }
++        }
++        
++        
++        String s = "----------------------------\r\n" + dateFormat + "\r\n    ";
++        s += "Lock-thread usage count:";
++        for(Map.Entry<MonitoredEnums, List<Integer>> lock : lockValues.entrySet()) {
++            s += ("\r\n  " + lock.getKey().name() + ": ");
++            
++            for(Integer i : lock.getValue()) {
++                s += (i + " ");
++            }
++        }
++        s += "\r\n\r\nThread opened lock path:";
++        
++        for(Long tid : executingThreads) {
++            s += "\r\n";
++            for(MonitoredEnums lockid : threadTracker.get(tid)) {
++                s += (lockid.name() + " ");
++            }
++            s += "|";
++        }
++        
++        s += "\r\n\r\n";
++        
++        return s;
++    }
++    
++    private static String printThreadLog(List<MonitoredEnums> stillLockedPath, String dateFormat) {
++        String s = "----------------------------\r\n" + dateFormat + "\r\n    ";
++        for(MonitoredEnums lock : stillLockedPath) {
++            s += (lock.name() + " ");
++        }
++        s += "\r\n\r\n";
++        
++        return s;
++    }
++    
++    private static String printThreadStack(StackTraceElement[] list, String dateFormat) {
++        String s = "----------------------------\r\n" + dateFormat + "\r\n";
++        for(int i = 0; i < list.length; i++) {
++            s += ("    " + list[i].toString() + "\r\n");
++        }
++        
++        return s;
++    }
++    
++    public void accessThreadTracker(boolean update, boolean lock, MonitoredEnums lockId, long lockOid) {
++        ttLock.lock();
++        try {
++            if(update) {
++                if(!lock) { // update tracker
++                    List<Long> toRemove = new ArrayList<>();
++
++                    for(Long l : threadUpdate.keySet()) {
++                        int next = threadUpdate.get(l) + 1;
++                        if(next == 4) {
++                            List<MonitoredEnums> tt = threadTracker.get(l);
++
++                            if(tt.isEmpty()) {
++                                toRemove.add(l);
++                            } else {
++                                DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
++                                dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
++                                String df = dateFormat.format(new Date());
++
++                                FilePrinter.print(FilePrinter.DEADLOCK_LOCKS, printThreadLog(tt, df));
++                                FilePrinter.print(FilePrinter.DEADLOCK_STACK, printThreadStack(threads.get(l).getStackTrace(), df));
++                            }
++                        }
++
++                        threadUpdate.put(l, next);
++                    }
++
++                    for(Long l : toRemove) {
++                        threadTracker.remove(l);
++                        threadUpdate.remove(l);
++                        threads.remove(l);
++
++                        for(Map<Long, Integer> threadLock : locks.values()) {
++                            threadLock.remove(l);
++                        }
++                    }
++
++                    toRemove.clear();
++
++                    for(Entry<Long, Byte> it : lockUpdate.entrySet()) {
++                        byte val = (byte)(it.getValue() + 1);
++
++                        if(val < 60) {  // free the structure after 60 silent updates
++                            lockUpdate.put(it.getKey(), val);
++                        } else {
++                            toRemove.add(it.getKey());
++                        }
++                    }
++
++                    for(Long l : toRemove) {
++                        lockCount.remove(l);
++                        lockIds.remove(l);
++                        lockThreads.remove(l);
++                        lockUpdate.remove(l);
++                    }
++                } else {    // print status
++                    DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
++                    dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
++
++                    FilePrinter.printError(FilePrinter.DEADLOCK_STATE, printThreadTrackerState(dateFormat.format(new Date())));
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_STATE, "[" + dateFormat.format(new Date()) + "] Presenting current lock path for lockid " + lockId.name() + ".\r\n" + printLockStatus(lockId) + "\r\n-------------------------------\r\n");
++                }
++            } else {
++                long tid = Thread.currentThread().getId();
++
++                if(lock) {
++                    AtomicInteger c = lockCount.get(lockOid);
++                    if(c == null) {
++                        c = new AtomicInteger(0);
++                        lockCount.put(lockOid, c);
++                        lockIds.put(lockOid, lockId);
++                        lockThreads.put(lockOid, tid);
++                        lockUpdate.put(lockOid, (byte) 0);
++                    }
++                    c.incrementAndGet();
++
++                    List<MonitoredEnums> list = threadTracker.get(tid);
++                    if(list == null) {
++                        list = new ArrayList<>(20);
++                        threadTracker.put(tid, list);
++                        threadUpdate.put(tid, 0);
++                        threads.put(tid, Thread.currentThread());
++                    }
++                    list.add(lockId);
++
++                    Map<Long, Integer> threadLock = locks.get(lockId);
++                    if(threadLock == null) {
++                        threadLock = new HashMap<>(5);
++                        locks.put(lockId, threadLock);
++                    }
++
++                    Integer lc = threadLock.get(tid);
++                    if(lc != null) {
++                        threadLock.put(tid, lc + 1);
++                    } else {
++                        threadLock.put(tid, 1);
++                    }
++                }
++                else {
++                    AtomicInteger c = lockCount.get(lockOid);
++                    c.decrementAndGet();
++                    lockUpdate.put(lockOid, (byte) 0);
++
++                    List<MonitoredEnums> list = threadTracker.get(tid);
++                    for(int i = list.size() - 1; i >= 0; i--) {
++                        if(lockId.getValue() == list.get(i).getValue()) {
++                            list.remove(i);
++                            break;
++                        }
++                    }
++
++                    Map<Long, Integer> threadLock = locks.get(lockId);
++                    threadLock.put(tid, threadLock.get(tid) - 1);
++                }
++            }
++        } finally {
++            ttLock.unlock();
++        }
++    }
++    
++    private String printLockStatus(MonitoredEnums lockId) {
++        String s = "";
++        
++        for(Long threadid : locks.get(lockId).keySet()) {
++            for(MonitoredEnums lockid : threadTracker.get(threadid)) {
++                s += ("  " + lockid.name());
++            }
++            
++            s += " |\r\n";
++        }
++        
++        return s;
++    }
++    
++    public void registerThreadTrackerTask() {
++        threadTrackerSchedule = TimerManager.getInstance().register(new Runnable() {
++            @Override
++            public void run() {
++                accessThreadTracker(true, false, MonitoredEnums.UNDEFINED, -1);
++            }
++        }, 10000, 10000);
++    }
++    
++    public void cancelThreadTrackerTask() {
++        threadTrackerSchedule.cancel(false);
++    }
++    
++    public static ThreadTracker getInstance() {
++        if (instance == null) {
++            instance = new ThreadTracker();
++        }
++        return instance;
++    }
++}
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index 859a32c10..e2cad9d0e 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -33,7 +33,8 @@
+ import java.util.Set;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -67,6 +68,7 @@
+ import client.MapleCharacter;
+ import constants.ServerConstants;
+ import server.maps.MapleMiniDungeonInfo;
++import tools.locks.MonitoredEnums;
+ 
+ public final class Channel {
+ 
+@@ -90,11 +92,11 @@
+     private Map<Integer, Integer> dojoParty = new HashMap<>();
+     private Map<Integer, MapleMiniDungeon> dungeons = new HashMap<>();
+     
+-    private ReentrantReadWriteLock merchantLock = new ReentrantReadWriteLock(true);
++    private ReentrantReadWriteLock merchantLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MERCHANT, true);
+     private ReadLock merchRlock = merchantLock.readLock();
+     private WriteLock merchWlock = merchantLock.writeLock();
+     
+-    private Lock lock = new ReentrantLock(true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.CHANNEL, true);
+     
+     public Channel(final int world, final int channel) {
+         this.world = world;
+diff --git a/src/net/server/channel/handlers/ReportHandler.java b/src/net/server/channel/handlers/ReportHandler.java
+index f45bc24e3..4493b0682 100644
+--- a/src/net/server/channel/handlers/ReportHandler.java
++++ b/src/net/server/channel/handlers/ReportHandler.java
+@@ -84,7 +84,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 	public void addReport(int reporterid, int victimid, int reason, String description, String chatlog) {
+ 		Calendar calendar = Calendar.getInstance();
+ 		Timestamp currentTimestamp = new java.sql.Timestamp(calendar.getTime().getTime());
+-		Connection con = null;
++		Connection con;
+ 		try {
+                         con = DatabaseConnection.getConnection();
+ 			PreparedStatement ps = con.prepareStatement("INSERT INTO reports (`reporttime`, `reporterid`, `victimid`, `reason`, `chatlog`, `description`) VALUES (?, ?, ?, ?, ?, ?)");
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 9f1e5e975..5f05e51ce 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -51,6 +51,7 @@
+ import server.life.MobSkill;
+ import server.life.MobSkillFactory;
+ import server.maps.MapleMap;
++import server.maps.MapleMapObject;
+ import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.Randomizer;
+@@ -78,9 +79,17 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 	    oid = slea.readInt();
+             
+             try {
+-                attacker = (MapleMonster) map.getMapObject(oid);
+-                List<loseItem> loseItems;
++                MapleMapObject mmo = map.getMapObject(oid);
++                if(mmo instanceof MapleMonster) {
++                    attacker = (MapleMonster) mmo;
++                    if(attacker.getId() != monsteridfrom) {
++                        attacker = null;
++                    }
++                }
++                
+                 if (attacker != null) {
++                    List<loseItem> loseItems;
++                    
+                     if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
+                         return;
+                     }
+@@ -119,10 +128,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             } catch(ClassCastException e) {
+                 //this happens due to mob on last map damaging player just before changing maps
+                 
+-                if(ServerConstants.USE_DEBUG) {
+-                    e.printStackTrace();
+-                    FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Attacker is not a mob-type, rather is a " + map.getMapObject(oid).getClass().getName() + " entity.");
+-                }
++                e.printStackTrace();
++                FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Attacker is not a mob-type, rather is a " + map.getMapObject(oid).getClass().getName() + " entity.");
+                 
+                 return;
+             }
+diff --git a/src/net/server/guild/MapleGuild.java b/src/net/server/guild/MapleGuild.java
+index 32b8bbd6f..9af59bc7f 100644
+--- a/src/net/server/guild/MapleGuild.java
++++ b/src/net/server/guild/MapleGuild.java
+@@ -36,12 +36,13 @@
+ import java.util.Set;
+ 
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ 
+ import net.server.Server;
+ import net.server.channel.Channel;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleGuild {
+     public final static int CREATE_GUILD_COST = 1500000;
+@@ -52,7 +53,7 @@
+     }
+     
+     private final List<MapleGuildCharacter> members;
+-    private final Lock membersLock = new ReentrantLock(true);
++    private final Lock membersLock = new MonitoredReentrantLock(MonitoredEnums.GUILD, true);
+     
+     private String rankTitles[] = new String[5]; // 1 = master, 2 = jr, 5 = lowest member
+     private String name, notice;
+diff --git a/src/net/server/world/MapleParty.java b/src/net/server/world/MapleParty.java
+index 7af35b31d..4aa24d2ec 100644
+--- a/src/net/server/world/MapleParty.java
++++ b/src/net/server/world/MapleParty.java
+@@ -30,8 +30,9 @@
+ import java.util.Map.Entry;
+ import java.util.Map;
+ import java.util.Comparator;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import java.util.concurrent.locks.Lock;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleParty {
+     private int id;
+@@ -43,7 +44,7 @@
+     private Map<Integer, Integer> histMembers = new HashMap<>();
+     private int nextEntry = 0;
+     
+-    private Lock lock = new ReentrantLock(true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.PARTY, true);
+     
+     public MapleParty(int id, MaplePartyCharacter chrfor) {
+         this.leaderId = chrfor.getId();
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index bd809eb63..9b38d60c0 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -43,7 +43,7 @@
+ import java.util.Map.Entry;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import java.util.Set;
+ import java.util.HashSet;
+ import java.util.concurrent.ScheduledFuture;
+@@ -68,6 +68,7 @@
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -89,25 +90,25 @@
+     
+     private Map<Integer, MapleParty> parties = new HashMap<>();
+     private AtomicInteger runningPartyId = new AtomicInteger();
+-    private Lock partyLock = new ReentrantLock(true);
++    private Lock partyLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PARTY, true);
+     
+     private Map<Integer, Integer> owlSearched = new LinkedHashMap<>();
+-    private Lock owlLock = new ReentrantLock();
++    private Lock owlLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_OWL);
+     
+-    private Lock activePetsLock = new ReentrantLock(true);
++    private Lock activePetsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PETS, true);
+     private Map<Integer, Byte> activePets = new LinkedHashMap<>();
+     private ScheduledFuture<?> petsSchedule;
+     private long petUpdate;
+     
+-    private Lock activeMountsLock = new ReentrantLock(true);
++    private Lock activeMountsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_MOUNTS, true);
+     private Map<Integer, Byte> activeMounts = new LinkedHashMap<>();
+     private ScheduledFuture<?> mountsSchedule;
+     private long mountUpdate;
+     
+-    private Lock activePlayerShopsLock = new ReentrantLock(true);
++    private Lock activePlayerShopsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_PSHOPS, true);
+     private Map<Integer, MaplePlayerShop> activePlayerShops = new LinkedHashMap<>();
+     
+-    private Lock activeMerchantsLock = new ReentrantLock(true);
++    private Lock activeMerchantsLock = new MonitoredReentrantLock(MonitoredEnums.WORLD_MERCHS, true);
+     private Map<Integer, Pair<MapleHiredMerchant, Byte>> activeMerchants = new LinkedHashMap<>();
+     private long merchantUpdate;
+     
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 32b7992f6..c01bb7f3c 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -35,7 +35,8 @@
+ import java.util.Iterator;
+ import java.util.Properties;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -69,6 +70,7 @@
+ import server.life.MapleLifeFactory;
+ import server.life.MapleNPC;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -90,12 +92,12 @@
+         private List<Integer> mapIds = new LinkedList<>();
+         private List<Boolean> isInstanced = new LinkedList<>();
+         
+-        private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
++        private final ReentrantReadWriteLock lock = new MonitoredReentrantReadWriteLock(MonitoredEnums.EIM, true);
+         private final ReadLock rL = lock.readLock();
+         private final WriteLock wL = lock.writeLock();
+         
+-        private final Lock pL = new ReentrantLock(true);
+-        private final Lock sL = new ReentrantLock();
++        private final Lock pL = new MonitoredReentrantLock(MonitoredEnums.EIM_PARTY, true);
++        private final Lock sL = new MonitoredReentrantLock(MonitoredEnums.EIM_SCRIPT, true);
+         
+         private ScheduledFuture<?> event_schedule = null;
+         private boolean disposed = false;
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index cb38e3de7..060482e8c 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -53,7 +53,8 @@
+ import java.util.LinkedList;
+ import java.util.Queue;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredReentrantLock;
+ 
+ /**
+  *
+@@ -74,8 +75,8 @@
+     private Integer readyId = 0;
+     private Properties props = new Properties();
+     private String name;
+-    private Lock lobbyLock = new ReentrantLock();
+-    private Lock queueLock = new ReentrantLock();
++    private Lock lobbyLock = new MonitoredReentrantLock(MonitoredEnums.EM_LOBBY);
++    private Lock queueLock = new MonitoredReentrantLock(MonitoredEnums.EM_QUEUE);
+ 
+     private static final int maxLobbys = 8;     // an event manager holds up to this amount of concurrent lobbys
+     
+diff --git a/src/server/CashShop.java b/src/server/CashShop.java
+index dd9e279bb..5417ffb4f 100644
+--- a/src/server/CashShop.java
++++ b/src/server/CashShop.java
+@@ -31,7 +31,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ 
+ import provider.MapleData;
+ import provider.MapleDataProvider;
+@@ -46,6 +46,7 @@
+ import client.inventory.MaplePet;
+ import constants.ItemConstants;
+ import java.util.Collections;
++import tools.locks.MonitoredEnums;
+ 
+ /*
+  * @author Flav
+@@ -241,7 +242,7 @@ public static void reloadSpecialCashItems() {//Yay?
+     private List<Item> inventory = new ArrayList<>();
+     private List<Integer> wishList = new ArrayList<>();
+     private int notes = 0;
+-    private Lock lock = new ReentrantLock();
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.CASHSHOP);
+ 
+     public CashShop(int accountId, int characterId, int jobType) throws SQLException {
+         this.accountId = accountId;
+diff --git a/src/server/MaplePlayerShop.java b/src/server/MaplePlayerShop.java
+index 8a401f318..2828c43ef 100644
+--- a/src/server/MaplePlayerShop.java
++++ b/src/server/MaplePlayerShop.java
+@@ -32,13 +32,14 @@
+ import java.util.Map;
+ import java.util.concurrent.atomic.AtomicBoolean;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import net.SendOpcode;
+ import server.maps.AbstractMapleMapObject;
+ import server.maps.MapleMapObjectType;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.data.output.MaplePacketLittleEndianWriter;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -55,7 +56,7 @@
+     private List<String> bannedList = new ArrayList<>();
+     private List<Pair<MapleCharacter, String>> chatLog = new LinkedList<>();
+     private Map<Integer, Byte> chatSlot = new LinkedHashMap<>();
+-    private Lock visitorLock = new ReentrantLock(true);
++    private Lock visitorLock = new MonitoredReentrantLock(MonitoredEnums.VISITOR_PSHOP, true);
+ 
+     public MaplePlayerShop(MapleCharacter owner, String description) {
+         this.setPosition(owner.getPosition());
+diff --git a/src/server/MapleStorage.java b/src/server/MapleStorage.java
+index 78f73049a..a082ab124 100644
+--- a/src/server/MapleStorage.java
++++ b/src/server/MapleStorage.java
+@@ -34,10 +34,11 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -50,7 +51,7 @@
+     private byte slots;
+     private Map<MapleInventoryType, List<Item>> typeItems = new HashMap<>();
+     private List<Item> items;
+-    private Lock lock = new ReentrantLock(true);
++    private Lock lock = new MonitoredReentrantLock(MonitoredEnums.STORAGE, true);
+ 
+     private MapleStorage(int id, byte slots, int meso) {
+         this.id = id;
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index bc86e8e43..7de4519fa 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -51,7 +51,8 @@
+ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.atomic.AtomicLong;
+-import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.locks.Lock;
++import tools.locks.MonitoredReentrantLock;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import server.TimerManager;
+@@ -62,6 +63,7 @@
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleMonster extends AbstractLoadedMapleLife {
+     private ChangeableStats ostats = null;  //unused, v83 WZs offers no support for changeable stats.
+@@ -84,9 +86,9 @@
+     private int team;
+     private final HashMap<Integer, AtomicInteger> takenDamage = new HashMap<>();
+ 
+-    private ReentrantLock externalLock = new ReentrantLock();
+-    private ReentrantLock monsterLock = new ReentrantLock(true);
+-    private ReentrantLock statiLock = new ReentrantLock();
++    private Lock externalLock = new MonitoredReentrantLock(MonitoredEnums.MOB_EXT);
++    private Lock monsterLock = new MonitoredReentrantLock(MonitoredEnums.MOB, true);
++    private Lock statiLock = new MonitoredReentrantLock(MonitoredEnums.MOB_STATI);
+ 
+     public MapleMonster(int id, MapleMonsterStats stats) {
+         super(id);
+diff --git a/src/server/life/MobSkillFactory.java b/src/server/life/MobSkillFactory.java
+index 17176608d..8874b4e95 100644
+--- a/src/server/life/MobSkillFactory.java
++++ b/src/server/life/MobSkillFactory.java
+@@ -27,6 +27,7 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -34,6 +35,7 @@
+ import provider.MapleDataProvider;
+ import provider.MapleDataProviderFactory;
+ import provider.MapleDataTool;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -44,7 +46,7 @@
+     private static Map<String, MobSkill> mobSkills = new HashMap<String, MobSkill>();
+     private final static MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Skill.wz"));
+     private static MapleData skillRoot = dataSource.getData("MobSkill.img");
+-    private final static ReentrantReadWriteLock dataLock = new ReentrantReadWriteLock();
++    private final static ReentrantReadWriteLock dataLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MOBSKILL_FACTORY);
+     private final static ReadLock rL = dataLock.readLock();
+     private final static WriteLock wL = dataLock.writeLock();
+ 
+diff --git a/src/server/maps/MapleGenericPortal.java b/src/server/maps/MapleGenericPortal.java
+index 28e40640a..3b454f681 100644
+--- a/src/server/maps/MapleGenericPortal.java
++++ b/src/server/maps/MapleGenericPortal.java
+@@ -27,7 +27,8 @@
+ import server.MaplePortal;
+ import tools.MaplePacketCreator;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredEnums;
++import tools.locks.MonitoredReentrantLock;
+ 
+ public class MapleGenericPortal implements MaplePortal {
+ 
+@@ -117,7 +118,7 @@ public void setScriptName(String scriptName) {
+         
+         if(scriptName != null) {
+             if(scriptLock == null) {
+-                scriptLock = new ReentrantLock(false);
++                scriptLock = new MonitoredReentrantLock(MonitoredEnums.PORTAL, false);
+             }
+         } else {
+             scriptLock = null;
+diff --git a/src/server/maps/MapleHiredMerchant.java b/src/server/maps/MapleHiredMerchant.java
+index 44c265b1e..2bcd3a752 100644
+--- a/src/server/maps/MapleHiredMerchant.java
++++ b/src/server/maps/MapleHiredMerchant.java
+@@ -37,7 +37,7 @@
+ import java.util.List;
+ import java.util.concurrent.atomic.AtomicBoolean;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import net.server.Server;
+ import server.MapleInventoryManipulator;
+ import server.MapleItemInformationProvider;
+@@ -45,6 +45,7 @@
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -63,7 +64,7 @@
+     private List<SoldItem> sold = new LinkedList<>();
+     private AtomicBoolean open = new AtomicBoolean();
+     private MapleMap map;
+-    private Lock visitorLock = new ReentrantLock(true);
++    private Lock visitorLock = new MonitoredReentrantLock(MonitoredEnums.VISITOR_MERCH, true);
+ 
+     public MapleHiredMerchant(final MapleCharacter owner, int itemId, String desc) {
+         this.setPosition(owner.getPosition());
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 9a8cb474c..92c945647 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -52,6 +52,7 @@
+ import java.util.Random;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.atomic.AtomicInteger;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -78,13 +79,14 @@
+ import server.life.SpawnPoint;
+ import server.partyquest.MonsterCarnival;
+ import server.partyquest.MonsterCarnivalParty;
+-import server.partyquest.Pyramid;
++//import server.partyquest.Pyramid;
+ import scripting.event.EventInstanceManager;
+ import server.life.MonsterListener;
+ import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+ import tools.Randomizer;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleMap {
+     private static final List<MapleMapObjectType> rangedMapobjectTypes = Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.ITEM, MapleMapObjectType.NPC, MapleMapObjectType.MONSTER, MapleMapObjectType.DOOR, MapleMapObjectType.SUMMON, MapleMapObjectType.REACTOR);
+@@ -161,11 +163,11 @@ public MapleMap(int mapid, int world, int channel, int returnMapId, float monste
+         if (this.monsterRate == 0) {
+             this.monsterRate = 1;
+         }
+-        final ReentrantReadWriteLock chrLock = new ReentrantReadWriteLock(true);
++        final ReentrantReadWriteLock chrLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_CHRS, true);
+         chrRLock = chrLock.readLock();
+         chrWLock = chrLock.writeLock();
+ 
+-        final ReentrantReadWriteLock objectLock = new ReentrantReadWriteLock(true);
++        final ReentrantReadWriteLock objectLock = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_OBJS, true);
+         objectRLock = objectLock.readLock();
+         objectWLock = objectLock.writeLock();
+     }
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 556794dca..f692af109 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -33,6 +33,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Collection;
++import tools.locks.MonitoredReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -46,6 +47,7 @@
+ import scripting.event.EventInstanceManager;
+ import tools.DatabaseConnection;
+ import tools.StringUtil;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleMapFactory {
+ 
+@@ -64,7 +66,7 @@ public MapleMapFactory(EventInstanceManager eim, MapleDataProvider source, Maple
+         this.channel = channel;
+         this.event = eim;
+         
+-        ReentrantReadWriteLock rrwl = new ReentrantReadWriteLock();
++        ReentrantReadWriteLock rrwl = new MonitoredReentrantReadWriteLock(MonitoredEnums.MAP_FACTORY);
+         this.mapsRLock = rrwl.readLock();
+         this.mapsWLock = rrwl.writeLock();
+     }
+diff --git a/src/server/maps/MapleMapItem.java b/src/server/maps/MapleMapItem.java
+index 68cf6228b..0a389b779 100644
+--- a/src/server/maps/MapleMapItem.java
++++ b/src/server/maps/MapleMapItem.java
+@@ -24,8 +24,10 @@
+ import client.MapleClient;
+ import client.inventory.Item;
+ import java.awt.Point;
+-import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.locks.Lock;
++import tools.locks.MonitoredReentrantLock;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ public class MapleMapItem extends AbstractMapleMapObject {
+ 
+@@ -35,7 +37,7 @@
+     protected byte type;
+     protected boolean pickedUp = false, playerDrop;
+     protected long dropTime;
+-    private ReentrantLock itemLock = new ReentrantLock();
++    private Lock itemLock = new MonitoredReentrantLock(MonitoredEnums.MAP_ITEM);
+ 
+     public MapleMapItem(Item item, Point position, MapleMapObject dropper, MapleCharacter owner, byte type, boolean playerDrop) {
+ 	setPosition(position);
+diff --git a/src/server/maps/MapleMiniDungeon.java b/src/server/maps/MapleMiniDungeon.java
+index 315ad3e09..8349a9286 100644
+--- a/src/server/maps/MapleMiniDungeon.java
++++ b/src/server/maps/MapleMiniDungeon.java
+@@ -25,8 +25,9 @@
+ import java.util.ArrayList;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ import tools.MaplePacketCreator;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -35,7 +36,7 @@
+ public class MapleMiniDungeon {
+     List<MapleCharacter> players = new ArrayList<>();
+     ScheduledFuture<?> timeoutTask = null;
+-    Lock lock = new ReentrantLock(true);
++    Lock lock = new MonitoredReentrantLock(MonitoredEnums.MINIDUNGEON, true);
+     
+     int baseMap;
+     long expireTime;
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 6db3be376..73baba289 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -29,12 +29,13 @@
+ 
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
++import tools.locks.MonitoredReentrantLock;
+ 
+ import scripting.reactor.ReactorScriptManager;
+ import server.TimerManager;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
++import tools.locks.MonitoredEnums;
+ 
+ /**
+  *
+@@ -53,7 +54,7 @@
+     private boolean shouldCollect;
+     private boolean attackHit;
+     private ScheduledFuture<?> timeoutTask = null;
+-    private Lock reactorLock = new ReentrantLock(true);
++    private Lock reactorLock = new MonitoredReentrantLock(MonitoredEnums.REACTOR, true);
+ 
+     public MapleReactor(MapleReactorStats stats, int rid) {
+         this.evstate = (byte)0;
+diff --git a/src/tools/FilePrinter.java b/src/tools/FilePrinter.java
+index 340129765..df0195d24 100644
+--- a/src/tools/FilePrinter.java
++++ b/src/tools/FilePrinter.java
+@@ -44,7 +44,11 @@
+             QUEST_UNCODED = "uncodedQuests.txt",
+             AUTOSAVING_CHARACTER = "saveCharAuto.txt",
+             SAVING_CHARACTER = "saveChar.txt",
+-            USED_COMMANDS = "usedCommands.txt";//more to come (maps)
++            USED_COMMANDS = "usedCommands.txt",
++            DEADLOCK_ERROR = "deadlocks.txt",
++            DEADLOCK_STACK = "deadlocks/path.txt",
++            DEADLOCK_LOCKS = "deadlocks/locks.txt",
++            DEADLOCK_STATE = "deadlocks/state.txt";
+     
+     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //for file system purposes, it's nice to use yyyy-MM-dd
+     private static final String FILE_PATH = "logs/" + sdf.format(Calendar.getInstance().getTime()) + "/"; // + sdf.format(Calendar.getInstance().getTime()) + "/"
+diff --git a/src/tools/locks/MonitoredEnums.java b/src/tools/locks/MonitoredEnums.java
+new file mode 100644
+index 000000000..aaa0b4dc2
+--- /dev/null
++++ b/src/tools/locks/MonitoredEnums.java
+@@ -0,0 +1,81 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package tools.locks;
++
++/**
++ *
++ * @author RonanLana
++ */
++
++public enum MonitoredEnums {
++    UNDEFINED(-1),
++    CHR(0),
++    EFF(1),
++    PET(2),
++    PRT(3),
++    CLIENT(4),
++    BOOK(5),
++    ITEM(6),
++    INVENTORY(7),
++    SHANDLER_IDLE(8),
++    SHANDLER_TEMP(9),
++    BUFF_STORAGE(10),
++    PLAYER_STORAGE(11),
++    SERVER(12),
++    MERCHANT(13),
++    CHANNEL(14),
++    GUILD(15),
++    PARTY(16),
++    WORLD_PARTY(17),
++    WORLD_OWL(18),
++    WORLD_PETS(19),
++    WORLD_MOUNTS(20),
++    WORLD_PSHOPS(21),
++    WORLD_MERCHS(21),
++    EIM(22),
++    EIM_PARTY(23),
++    EIM_SCRIPT(24),
++    EM_LOBBY(25),
++    EM_QUEUE(26),
++    CASHSHOP(27),
++    VISITOR_PSHOP(28),
++    STORAGE(29),
++    MOB_EXT(30),
++    MOB(31),
++    MOB_STATI(32),
++    MOBSKILL_FACTORY(33),
++    PORTAL(34),
++    VISITOR_MERCH(35),
++    MAP_CHRS(36),
++    MAP_OBJS(37),
++    MAP_FACTORY(38),
++    MAP_ITEM(39),
++    MINIDUNGEON(40),
++    REACTOR(41);
++    
++    private final int i;
++    
++    private MonitoredEnums(int val) {
++        this.i = val;
++    }
++
++    public int getValue() {
++        return i;
++    }
++}
+diff --git a/src/tools/locks/MonitoredReadLock.java b/src/tools/locks/MonitoredReadLock.java
+new file mode 100644
+index 000000000..7c5c1be51
+--- /dev/null
++++ b/src/tools/locks/MonitoredReadLock.java
+@@ -0,0 +1,147 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package tools.locks;
++
++import constants.ServerConstants;
++import java.text.DateFormat;
++import java.text.SimpleDateFormat;
++import java.util.Date;
++import java.util.TimeZone;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.Lock;
++import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.ScheduledFuture;
++import server.TimerManager;
++import net.server.Server;
++import net.server.audit.ThreadTracker;
++
++import tools.FilePrinter;
++
++/**
++ *
++ * @author RonanLana
++ */
++public class MonitoredReadLock extends ReentrantReadWriteLock.ReadLock {
++    private ScheduledFuture<?> timeoutSchedule = null;
++    private StackTraceElement[] deadlockedState = null;
++    private final MonitoredEnums id;
++    private final int hashcode;
++    private final Lock state = new ReentrantLock(true);
++    private final AtomicInteger reentrantCount = new AtomicInteger(0);
++    
++    public MonitoredReadLock(MonitoredReentrantReadWriteLock lock) {
++        super(lock);
++        this.id = lock.id;
++        hashcode = this.hashCode();
++    }
++    
++    @Override
++    public void lock() {
++        super.lock();
++        
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            if(deadlockedState != null) {
++                DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
++                dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
++
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                deadlockedState = null;
++            }
++
++            registerLocking();
++        }
++    }
++    
++    @Override
++    public void unlock() {
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            unregisterLocking();
++        }
++        super.unlock();
++    }
++    
++    @Override
++    public boolean tryLock() {
++        if(super.tryLock()) {
++            if(ServerConstants.USE_THREAD_TRACKER) {
++                if(deadlockedState != null) {
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                    deadlockedState = null;
++                }
++
++                registerLocking();
++            }
++            return true;
++        } else {
++            return false;
++        }
++    }
++    
++    private void registerLocking() {
++        state.lock();
++        try {
++            ThreadTracker.getInstance().accessThreadTracker(false, true, id, hashcode);
++        
++            if(reentrantCount.incrementAndGet() == 1) {
++                final Thread t = Thread.currentThread();
++                timeoutSchedule = TimerManager.getInstance().schedule(new Runnable() {
++                    @Override
++                    public void run() {
++                        issueDeadlock(t);
++                    }
++                }, ServerConstants.LOCK_MONITOR_TIME);
++            }
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void unregisterLocking() {
++        state.lock();
++        try {
++            if(reentrantCount.decrementAndGet() == 0) {
++                if(timeoutSchedule != null) {
++                    timeoutSchedule.cancel(false);
++                    timeoutSchedule = null;
++                }
++            }
++            
++            ThreadTracker.getInstance().accessThreadTracker(false, false, id, hashcode);
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void issueDeadlock(Thread t) {
++        deadlockedState = t.getStackTrace();
++        //super.unlock();
++    }
++    
++    private static String printStackTrace(StackTraceElement[] list) {
++        String s = "";
++        for(int i = 0; i < list.length; i++) {
++            s += ("    " + list[i].toString() + "\r\n");
++        }
++        
++        return s;
++    }
++}
+diff --git a/src/tools/locks/MonitoredReentrantLock.java b/src/tools/locks/MonitoredReentrantLock.java
+new file mode 100644
+index 000000000..6934b92ae
+--- /dev/null
++++ b/src/tools/locks/MonitoredReentrantLock.java
+@@ -0,0 +1,150 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package tools.locks;
++
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.Lock;
++import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.ScheduledFuture;
++import constants.ServerConstants;
++import java.text.DateFormat;
++import java.text.SimpleDateFormat;
++import java.util.Date;
++import java.util.TimeZone;
++import server.TimerManager;
++import net.server.Server;
++import net.server.audit.ThreadTracker;
++import tools.FilePrinter;
++
++/**
++ *
++ * @author RonanLana
++ */
++public class MonitoredReentrantLock extends ReentrantLock {
++    private ScheduledFuture<?> timeoutSchedule = null;
++    private StackTraceElement[] deadlockedState = null;
++    private final MonitoredEnums id;
++    private final int hashcode;
++    private final Lock state = new ReentrantLock(true);
++    private final AtomicInteger reentrantCount = new AtomicInteger(0);
++   
++    public MonitoredReentrantLock(MonitoredEnums id) {
++        super();
++        this.id = id;
++        hashcode = this.hashCode();
++    }
++            
++    public MonitoredReentrantLock(MonitoredEnums id, boolean fair) {
++        super(fair);
++        this.id = id;
++        hashcode = this.hashCode();
++    }
++    
++    @Override
++    public void lock() {
++        super.lock();
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            if(deadlockedState != null) {
++                DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
++                dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
++
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                deadlockedState = null;
++            }
++
++            registerLocking();
++        }
++    }
++    
++    @Override
++    public void unlock() {
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            unregisterLocking();
++        }
++        super.unlock();
++    }
++    
++    @Override
++    public boolean tryLock() {
++        if(super.tryLock()) {
++            if(ServerConstants.USE_THREAD_TRACKER) {
++                if(deadlockedState != null) {
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                    deadlockedState = null;
++                }
++
++                registerLocking();
++            }
++            return true;
++        } else {
++            return false;
++        }
++    }
++    
++    private void registerLocking() {
++        state.lock();
++        try {
++            ThreadTracker.getInstance().accessThreadTracker(false, true, id, hashcode);
++        
++            if(reentrantCount.incrementAndGet() == 1) {
++                final Thread t = Thread.currentThread();
++                timeoutSchedule = TimerManager.getInstance().schedule(new Runnable() {
++                    @Override
++                    public void run() {
++                        issueDeadlock(t);
++                    }
++                }, ServerConstants.LOCK_MONITOR_TIME);
++            }
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void unregisterLocking() {
++        state.lock();
++        try {
++            if(reentrantCount.decrementAndGet() == 0) {
++                if(timeoutSchedule != null) {
++                    timeoutSchedule.cancel(false);
++                    timeoutSchedule = null;
++                }
++            }
++            
++            ThreadTracker.getInstance().accessThreadTracker(false, false, id, hashcode);
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void issueDeadlock(Thread t) {
++        deadlockedState = t.getStackTrace();
++        //super.unlock();
++    }
++    
++    private static String printStackTrace(StackTraceElement[] list) {
++        String s = "";
++        for(int i = 0; i < list.length; i++) {
++            s += ("    " + list[i].toString() + "\r\n");
++        }
++        
++        return s;
++    }
++}
+diff --git a/src/tools/locks/MonitoredReentrantReadWriteLock.java b/src/tools/locks/MonitoredReentrantReadWriteLock.java
+new file mode 100644
+index 000000000..30203327a
+--- /dev/null
++++ b/src/tools/locks/MonitoredReentrantReadWriteLock.java
+@@ -0,0 +1,49 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package tools.locks;
++
++import java.util.concurrent.locks.ReentrantReadWriteLock;
++
++/**
++ *
++ * @author RonanLana
++ */
++public class MonitoredReentrantReadWriteLock extends ReentrantReadWriteLock {
++    public final MonitoredEnums id;
++    
++    public MonitoredReentrantReadWriteLock(MonitoredEnums id) {
++        super();
++        this.id = id;
++    }
++            
++    public MonitoredReentrantReadWriteLock(MonitoredEnums id, boolean fair) {
++        super(fair);
++        this.id = id;
++    }
++    
++    @Override
++    public ReadLock readLock() {
++        return super.readLock();
++    }
++    
++    @Override
++    public WriteLock writeLock() {
++        return super.writeLock();
++    }
++}
+diff --git a/src/tools/locks/MonitoredWriteLock.java b/src/tools/locks/MonitoredWriteLock.java
+new file mode 100644
+index 000000000..5c9344ce9
+--- /dev/null
++++ b/src/tools/locks/MonitoredWriteLock.java
+@@ -0,0 +1,145 @@
++/*
++ *     This file is part of the MapleSolaxiaV2 Maple Story Server
++ *
++ * Copyright (C) 2017 RonanLana
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++package tools.locks;
++
++import constants.ServerConstants;
++import java.text.DateFormat;
++import java.text.SimpleDateFormat;
++import java.util.Date;
++import java.util.TimeZone;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.ReentrantReadWriteLock;
++import java.util.concurrent.locks.Lock;
++import java.util.concurrent.locks.ReentrantLock;
++import java.util.concurrent.ScheduledFuture;
++import server.TimerManager;
++import net.server.Server;
++import net.server.audit.ThreadTracker;
++import tools.FilePrinter;
++
++/**
++ *
++ * @author RonanLana
++ */
++public class MonitoredWriteLock extends ReentrantReadWriteLock.WriteLock {
++    private ScheduledFuture<?> timeoutSchedule = null;
++    private StackTraceElement[] deadlockedState = null;
++    private final MonitoredEnums id;
++    private final int hashcode;
++    private final Lock state = new ReentrantLock(true);
++    private final AtomicInteger reentrantCount = new AtomicInteger(0);
++
++    public MonitoredWriteLock(MonitoredReentrantReadWriteLock lock) {
++        super(lock);
++        this.id = lock.id;
++        hashcode = this.hashCode();
++    }
++    
++    @Override
++    public void lock() {
++        super.lock();
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            if(deadlockedState != null) {
++                DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
++                dateFormat.setTimeZone(TimeZone.getTimeZone(ServerConstants.TIMEZONE));
++
++                //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "[CRITICAL] " + dateFormat.format(new Date()) + " Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                deadlockedState = null;
++            }
++
++            registerLocking();
++        }
++    }
++    
++    @Override
++    public void unlock() {
++        if(ServerConstants.USE_THREAD_TRACKER) {
++            unregisterLocking();
++        }
++        super.unlock();
++    }
++    
++    @Override
++    public boolean tryLock() {
++        if(super.tryLock()) {
++            if(ServerConstants.USE_THREAD_TRACKER) {
++                if(deadlockedState != null) {
++                    //FilePrinter.printError(FilePrinter.DEADLOCK_ERROR, "Deadlock occurred when trying to use the '" + id.name() + "' lock resources:\r\n" + printStackTrace(deadlockedState) + "\r\n\r\n");
++                    ThreadTracker.getInstance().accessThreadTracker(true, true, id, hashcode);
++                    deadlockedState = null;
++                }
++
++                registerLocking();
++            }
++            return true;
++        } else {
++            return false;
++        }
++    }
++    
++    private void registerLocking() {
++        state.lock();
++        try {
++            ThreadTracker.getInstance().accessThreadTracker(false, true, id, hashcode);
++        
++            if(reentrantCount.incrementAndGet() == 1) {
++                final Thread t = Thread.currentThread();
++                timeoutSchedule = TimerManager.getInstance().schedule(new Runnable() {
++                    @Override
++                    public void run() {
++                        issueDeadlock(t);
++                    }
++                }, ServerConstants.LOCK_MONITOR_TIME);
++            }
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void unregisterLocking() {
++        state.lock();
++        try {
++            if(reentrantCount.decrementAndGet() == 0) {
++                if(timeoutSchedule != null) {
++                    timeoutSchedule.cancel(false);
++                    timeoutSchedule = null;
++                }
++            }
++            
++            ThreadTracker.getInstance().accessThreadTracker(false, false, id, hashcode);
++        } finally {
++            state.unlock();
++        }
++    }
++    
++    private void issueDeadlock(Thread t) {
++        deadlockedState = t.getStackTrace();
++        //super.unlock();
++    }
++    
++    private static String printStackTrace(StackTraceElement[] list) {
++        String s = "";
++        for(int i = 0; i < list.length; i++) {
++            s += ("    " + list[i].toString() + "\r\n");
++        }
++        
++        return s;
++    }
++}
+diff --git a/tools/MapleIdRetriever/dist/MapleIdRetriever.jar b/tools/MapleIdRetriever/dist/MapleIdRetriever.jar
+index 52739d2da..dc790fed4 100644
+Binary files a/tools/MapleIdRetriever/dist/MapleIdRetriever.jar and b/tools/MapleIdRetriever/dist/MapleIdRetriever.jar differ
+diff --git a/tools/MapleIdRetriever/lib/fetch.txt b/tools/MapleIdRetriever/lib/fetch.txt
+index 598b0863a..ff68f13fc 100644
+--- a/tools/MapleIdRetriever/lib/fetch.txt
++++ b/tools/MapleIdRetriever/lib/fetch.txt
+@@ -1,14 +1,24 @@
+-Red Potion
+-Lemon
+-W. Ramen
+-Elixir
+-Mana Elixir
+-Mushroom Miso Ramen
+-Power Elixir
+-Lunar Gloves
+-LeFay Jester
+-Eclipse Earrings
+-Herculean Crown
+-Lockewood Hat
+-Pickpocket Pilfer
+-Eclipse Cloak
+\ No newline at end of file
++Gladius
++Niam
++Titan
++Crescent Polearm
++Iron Dagger
++White Crusader Chainmail (Male)
++Wizard Wand
++Wizard Staff
++Golden Pride
++Blue Guiltian
++Red Amorian Skirt (Female)
++Red Salt Shoes
++Green Pole-Feather Hat
++Black Bennis Chainmail (Male)
++Red Legolier (Male)
++Blue Legolier Pants (Male)
++Green Marker
++Gold Brace
++Green Hunter Boots
++Dragon Toenail
++Rouge Way
++Guardian Katara
++Justice Katara
++Norman Grip
+diff --git a/tools/MapleIdRetriever/lib/result.txt b/tools/MapleIdRetriever/lib/result.txt
+index e69de29bb..766d1fdfe 100644
+--- a/tools/MapleIdRetriever/lib/result.txt
++++ b/tools/MapleIdRetriever/lib/result.txt
+@@ -0,0 +1,20 @@
++1302008 
++1412004 
++1422007 
++1442009 
++1332010 
++1372001 
++1382002 
++1002013 
++1002152 
++1061047 
++1072090 
++1002137 
++1040023 
++1040072 
++1060062 
++1082049 
++1082072 
++1072081 
++1332031 
++1482003 
+diff --git a/tools/MapleIdRetriever/nbproject/private/private.properties b/tools/MapleIdRetriever/nbproject/private/private.properties
+index 1c5af62ef..646b67057 100644
+--- a/tools/MapleIdRetriever/nbproject/private/private.properties
++++ b/tools/MapleIdRetriever/nbproject/private/private.properties
+@@ -1,2 +1,2 @@
+ compile.on.save=true
+-user.properties.file=C:\\Users\\USER\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
++user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
+diff --git a/tools/MapleIdRetriever/src/mapleidretriever/MapleIdRetriever.java b/tools/MapleIdRetriever/src/mapleidretriever/MapleIdRetriever.java
+index 4d6bd5722..64b37e93c 100644
+--- a/tools/MapleIdRetriever/src/mapleidretriever/MapleIdRetriever.java
++++ b/tools/MapleIdRetriever/src/mapleidretriever/MapleIdRetriever.java
+@@ -41,9 +41,11 @@
+  * Set whether you are first installing the handbook on the SQL Server (TRUE) or just fetching whatever is on your "fetch.txt"
+  * file (FALSE) on the INSTALL_SQLTABLE property and build the project. With all done, run the Java executable.
+  * 
++ * Expected installing time: 30 minutes
++ * 
+  */
+ public class MapleIdRetriever {
+-    private final static boolean INSTALL_SQLTABLE = true;
++    private final static boolean INSTALL_SQLTABLE = false;
+     
+     static String host = "jdbc:mysql://localhost:3306/maplesolaxia";
+     static String driver = "com.mysql.jdbc.Driver";
+@@ -83,7 +85,12 @@ private static void parseMapleHandbookLine(String line) throws SQLException {
+         
+         if(tokens.length > 1) {
+             PreparedStatement ps = con.prepareStatement("INSERT INTO `handbook` (`id`, `name`) VALUES (?, ?)");
+-            ps.setInt(1, Integer.parseInt(tokens[0]));
++            try {
++                ps.setInt(1, Integer.parseInt(tokens[0]));
++            } catch (NumberFormatException npe) {   // odd...
++                String num = tokens[0].substring(1);
++                ps.setInt(1, Integer.parseInt(num));
++            }
+             ps.setString(2, tokens[1]);
+             ps.execute();
+         }

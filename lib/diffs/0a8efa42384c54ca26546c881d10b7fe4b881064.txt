@@ -1,0 +1,207 @@
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 645d8bada..a2443057c 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
+   `rewardpoints` int(11) NOT NULL DEFAULT '0',
+   `votepoints` int(11) NOT NULL DEFAULT '0',
+   `hwid` varchar(12) NOT NULL DEFAULT '',
++  `lingua` int(1) NOT NULL DEFAULT '2',
+   PRIMARY KEY (`id`),
+   UNIQUE KEY `name` (`name`),
+   KEY `ranking1` (`id`,`banned`),
+@@ -17443,7 +17444,7 @@ CREATE TABLE IF NOT EXISTS `rings` (
+ CREATE TABLE IF NOT EXISTS `savedlocations` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+   `characterid` int(11) NOT NULL,
+-  `locationtype` enum('FREE_MARKET','WORLDTOUR','FLORINA','INTRO','SUNDAY_MARKET','MIRROR','EVENT','BOSSPQ','HAPPYVILLE','DEVELOPER') NOT NULL,
++  `locationtype` enum('FREE_MARKET','WORLDTOUR','FLORINA','INTRO','SUNDAY_MARKET','MIRROR','EVENT','BOSSPQ','HAPPYVILLE','DEVELOPER','MONSTER_CARNIVAL') NOT NULL,
+   `map` int(11) NOT NULL,
+   `portal` int(11) NOT NULL,
+   PRIMARY KEY (`id`)
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index b36adb2f8..146f65eb1 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -9598,7 +9598,6 @@ public boolean isVipTrockMap(int id) {
+     private MapleFitness fitness;
+     private MapleOla ola;
+     private long snowballattack;
+-    private int lingua = 0;// 0 PTB  1 ESP  2 ENG
+     public static final List<String> itens = new ArrayList();
+     public static final List<Item> item = new ArrayList();
+ 
+@@ -10174,12 +10173,24 @@ public void setChallenged(boolean challenged) {
+         this.challenged = challenged;
+     }
+ 
+-    public void setLingua(int a) {
+-        this.lingua = a;
++    public void setLingua(int num) {
++        getClient().setLingua(num);
++        try {
++            Connection con = DatabaseConnection.getConnection();
++            try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET lingua = ? WHERE id = ?")) {
++                ps.setInt(1, num);
++                ps.setInt(2, getClient().getAccID());
++                ps.executeUpdate();
++            } finally {
++                con.close();
++            }
++        } catch (SQLException e) {
++            e.printStackTrace();
++        }
+     }
+-
++    
+     public int getLingua() {
+-        return lingua;
++        return getClient().getLingua();
+     }
+ 
+     public void setItens(String item) {
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index ec62f10fe..2df77a0e2 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -124,6 +124,7 @@
+     private int visibleWorlds;
+     private long lastNpcClick;
+     private long sessionId;
++    private int lingua = 0;
+ 
+     public MapleClient(MapleAESOFB send, MapleAESOFB receive, IoSession session) {
+         this.send = send;
+@@ -535,7 +536,7 @@ public int login(String login, String pwd, String nibbleHwid) {
+         ResultSet rs = null;
+         try {
+             con = DatabaseConnection.getConnection();
+-            ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos FROM accounts WHERE name = ?");
++            ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos, lingua FROM accounts WHERE name = ?");
+             ps.setString(1, login);
+             rs = ps.executeQuery();
+             if (rs.next()) {
+@@ -546,6 +547,7 @@ public int login(String login, String pwd, String nibbleHwid) {
+                 pic = rs.getString("pic");
+                 gender = rs.getByte("gender");
+                 characterSlots = rs.getByte("characterslots");
++                lingua = rs.getInt("lingua");
+                 String passhash = rs.getString("password");
+                 byte tos = rs.getByte("tos");
+ 
+@@ -1528,4 +1530,12 @@ public boolean canBypassPin() {
+     public boolean canBypassPic() {
+         return MapleLoginBypassCoordinator.getInstance().canLoginBypass(getNibbleHWID(), accId, true);
+     }
++
++    public int getLingua() {
++        return lingua;
++    }
++
++    public void setLingua(int lingua) {
++        this.lingua = lingua;
++    }
+ }
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index 012a784ef..285b0da74 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -178,6 +178,7 @@ private void registerLv0Commands(){
+         addCommand("uptime", UptimeCommand.class);
+         addCommand("gacha", GachaCommand.class);
+         addCommand("dispose", DisposeCommand.class);
++        addCommand("changel", ChangeLinguaCommand.class);
+         addCommand("equiplv",  EquipLvCommand.class);
+         addCommand("showrates", ShowRatesCommand.class);
+         addCommand("rates", RatesCommand.class);
+diff --git a/src/client/command/commands/gm0/ChangeLinguaCommand.java b/src/client/command/commands/gm0/ChangeLinguaCommand.java
+new file mode 100644
+index 000000000..219279a99
+--- /dev/null
++++ b/src/client/command/commands/gm0/ChangeLinguaCommand.java
+@@ -0,0 +1,42 @@
++/*
++    This file is part of the HeavenMS MapleStory Server, commands OdinMS-based
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++/*
++   @Author: Arthur L - Refactored command content into modules
++*/
++package client.command.commands.gm0;
++
++import client.command.Command;
++import client.MapleClient;
++
++public class ChangeLinguaCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient c, String[] params) {
++        if (params.length < 1) {
++            c.getPlayer().yellowMessage("Syntax: !changel <0=ptb, 1=esp, 2=eng>");
++            return;
++        }
++        c.setLingua(Integer.parseInt(params[0]));
++    }
++}
+diff --git a/src/constants/LinguaConstants.java b/src/constants/LinguaConstants.java
+index f583c24b0..af1089d60 100644
+--- a/src/constants/LinguaConstants.java
++++ b/src/constants/LinguaConstants.java
+@@ -1,15 +1,10 @@
+-/*
+- * To change this license header, choose License Headers in Project Properties.
+- * To change this template file, choose Tools | Templates
+- * and open the template in the editor.
+- */
+ package constants;
+ 
+ import client.MapleCharacter;
+ 
+ /**
+  *
+- * @author Drago
++ * @author Drago - Dragohe4rt
+  */
+ public class LinguaConstants {
+ 	// Portugues
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index be3e956bb..5c83c3228 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -939,7 +939,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+             applyto.removeAllCooldownsExcept(Buccaneer.TIME_LEAP, true);
+         } else if (cp != 0 && applyto.getMonsterCarnival() != null) {
+             applyto.gainCP(cp);
+-        } else if (nuffSkill != 0 && applyto.getParty() != null && applyto.getMap().isCPQMap()) {
++        } else if (nuffSkill != 0 && applyto.getParty() != null && applyto.getMap().isCPQMap()) { // by Drago-Dragohe4rt
+             final MCSkill skil = MapleCarnivalFactory.getInstance().getSkill(nuffSkill);
+             if (skil != null) {
+                 final MapleDisease dis = skil.getDisease();
+@@ -964,7 +964,7 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+                     }
+                 }
+             }
+-        } else if (cureDebuffs.size() > 0) {
++        } else if (cureDebuffs.size() > 0) { // by Drago-Dragohe4rt
+             for (final MapleDisease debuff : cureDebuffs) {
+                 if (applyfrom.getParty() != null) {
+                     for (MaplePartyCharacter chrs : applyfrom.getParty().getPartyMembers()) {

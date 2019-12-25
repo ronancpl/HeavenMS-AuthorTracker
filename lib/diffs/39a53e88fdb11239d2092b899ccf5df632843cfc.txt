@@ -1,0 +1,156 @@
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index e0a9c76cc..b7f7db9c0 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1330,6 +1330,19 @@ public void controlMonster(MapleMonster monster, boolean aggro) {
+     public int countItem(int itemid) {
+         return inventory[MapleItemInformationProvider.getInstance().getInventoryType(itemid).ordinal()].countById(itemid);
+     }
++    
++    public boolean canHold(int itemid) {
++        return canHold(itemid, 1);
++    }
++        
++    public boolean canHold(int itemid, int quantity) {
++        if(haveItem(itemid)) {
++            if(getItemQuantity(itemid, false) + quantity <= MapleItemInformationProvider.getInstance().getSlotMax(client, itemid))
++                return true;
++        }
++
++        return getInventory(MapleItemInformationProvider.getInstance().getInventoryType(itemid)).getNextFreeSlot() > -1;
++    }
+ 
+     public void decreaseBattleshipHp(int decrease) {
+         this.battleshipHp -= decrease;
+diff --git a/src/net/server/channel/handlers/CashOperationHandler.java b/src/net/server/channel/handlers/CashOperationHandler.java
+index 794bd581b..63eead3e3 100644
+--- a/src/net/server/channel/handlers/CashOperationHandler.java
++++ b/src/net/server/channel/handlers/CashOperationHandler.java
+@@ -38,6 +38,7 @@
+ import server.CashShop.CashItemFactory;
+ import server.MapleInventoryManipulator;
+ import server.MapleItemInformationProvider;
++import tools.FilePrinter;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+@@ -53,12 +54,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             return;
+         }
+         final int action = slea.readByte();
++        
+         if (action == 0x03 || action == 0x1E) {
+             slea.readByte();
+             final int useNX = slea.readInt();
+             final int snCS = slea.readInt();
+             CashItem cItem = CashItemFactory.getItem(snCS);
+             if (cItem == null || !cItem.isOnSale() || cs.getCash(useNX) < cItem.getPrice()) {
++                FilePrinter.printError(FilePrinter.ITEM, "Denied to sell cash item with SN " + cItem.getSN());
+                 return;
+             }
+             if (action == 0x03) { // Item
+@@ -185,17 +188,18 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (chr.getInventory(MapleItemInformationProvider.getInstance().getInventoryType(item.getItemId())).addItem(item) != -1) {
+                 cs.removeFromInventory(item);
+                 c.announce(MaplePacketCreator.takeFromCashInventory(item));
+-				if(item instanceof Equip) {
+-					Equip equip = (Equip) item;
+- 					if(equip.getRingId() >= 0) {
+-						MapleRing ring = MapleRing.loadFromDb(equip.getRingId());
+-						if (ring.getItemId() > 1112012) {
+-                            chr.addFriendshipRing(ring);
+-                        } else {
+-                            chr.addCrushRing(ring);
++                
++                if(item instanceof Equip) {
++                        Equip equip = (Equip) item;
++                        if(equip.getRingId() >= 0) {
++                                MapleRing ring = MapleRing.loadFromDb(equip.getRingId());
++                                if (ring.getItemId() > 1112012) {
++                                        chr.addFriendshipRing(ring);
++                                } else {
++                                        chr.addCrushRing(ring);
++                                }
+                         }
+-					}
+-				}
++                }
+             }
+         } else if (action == 0x0E) { // Put into Cash Inventory
+             int cashId = slea.readInt();
+@@ -250,8 +254,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             c.announce(MaplePacketCreator.showCash(c.getPlayer()));
+         } else if (action == 0x20) { // everything is 1 meso...
+             int itemId = CashItemFactory.getItem(slea.readInt()).getItemId();
++            
+             if (chr.getMeso() > 0) {
+-                if (itemId == 4031180 || itemId == 4031192 || itemId == 4031191) {
++                if (chr.canHold(itemId)) {
+                     chr.gainMeso(-1, false);
+                     MapleInventoryManipulator.addById(c, itemId, (short) 1);
+                     c.announce(MaplePacketCreator.showBoughtQuestItem(itemId));
+diff --git a/src/net/server/channel/handlers/SpecialMoveHandler.java b/src/net/server/channel/handlers/SpecialMoveHandler.java
+index b81550354..b04800c74 100644
+--- a/src/net/server/channel/handlers/SpecialMoveHandler.java
++++ b/src/net/server/channel/handlers/SpecialMoveHandler.java
+@@ -124,7 +124,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             if (skill.getId() != Priest.MYSTIC_DOOR || chr.canDoor()) {
+                 skill.getEffect(skillLevel).applyTo(c.getPlayer(), pos);
+             } else {
+-                chr.message("Please wait 5 seconds before casting Mystic Door again");
++                chr.message("Please wait 5 seconds before casting Mystic Door again.");
+                 c.announce(MaplePacketCreator.enableActions());
+             }
+         } else {
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 1ace8c74d..f0312fda5 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -58,6 +58,8 @@
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         MapleCharacter player = c.getPlayer();
+         if (System.currentTimeMillis() - player.getLastUsedCashItem() < 3000) {
++            player.dropMessage(1, "You have used a cash item recently. Wait a moment and try again.");
++            c.announce(MaplePacketCreator.enableActions());
+             return;
+         }
+         player.setLastUsedCashItem(System.currentTimeMillis());
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index ef624941a..d4233e875 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -188,17 +188,12 @@ public int getItemQuantity(int itemid) {
+         }
+ 
+ 	public boolean canHold(int itemid) {
+-            return canHold(itemid, 1);
+-	}
++                return canHold(itemid, 1);
++        }
+         
+         public boolean canHold(int itemid, int quantity) {
+-            if(haveItem(itemid)) {
+-                if(getPlayer().getItemQuantity(itemid, false) + quantity <= MapleItemInformationProvider.getInstance().getSlotMax(c, itemid))
+-                    return true;
+-            }
+-            
+-            return getPlayer().getInventory(MapleItemInformationProvider.getInstance().getInventoryType(itemid)).getNextFreeSlot() > -1;
+-	}
++                return getPlayer().canHold(itemid, quantity);
++        }
+      
+         //---- \/ \/ \/ \/ \/ \/ \/  NOT TESTED  \/ \/ \/ \/ \/ \/ \/ \/ \/ ----
+         
+diff --git a/wz/Etc.wz/Commodity.img.xml b/wz/Etc.wz/Commodity.img.xml
+index 8c92c704e..4fbc9f16c 100644
+--- a/wz/Etc.wz/Commodity.img.xml
++++ b/wz/Etc.wz/Commodity.img.xml
+@@ -6200,7 +6200,7 @@
+     <int name="Period" value="90"/>
+     <int name="Priority" value="9"/>
+     <int name="Gender" value="2"/>
+-    <int name="OnSale" value="0"/>
++    <int name="OnSale" value="1"/>
+     <int name="Class" value="2"/>
+   </imgdir>
+   <imgdir name="616">

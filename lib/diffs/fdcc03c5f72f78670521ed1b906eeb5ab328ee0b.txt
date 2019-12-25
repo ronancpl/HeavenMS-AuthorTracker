@@ -1,0 +1,26 @@
+diff --git a/scripts/npc/9000011.js b/scripts/npc/9000011.js
+index 8b92bc305..ecd29e15d 100644
+--- a/scripts/npc/9000011.js
++++ b/scripts/npc/9000011.js
+@@ -49,7 +49,7 @@ function action(mode, type, selection) {
+ 				} else if (!cm.canHold()) {
+ 					cm.sendNext("Save up some space in your inventory.");
+ 				} else if (cm.getChannelServer().getEvent() > -1 && !cm.haveItem(4031019)) {
+-					cm.saveReturnLocation("EVENT");
++					cm.getPlayer().saveLocation("EVENT");
+ 					cm.getPlayer().setChalkboard(null);
+ 					marr.setCustomData("" + cm.getCurrentTime());
+ 					cm.warp(cm.getChannelServer().getEvent(), cm.getChannelServer().getEvent() == 109080000 || cm.getChannelServer().getEvent() == 109080010 ? 0 : "join00");
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index ac00770da..5eb65e07e 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -1089,4 +1089,8 @@ public static String getFirstJobStatRequirement(int jobType) {
+         public void npcTalk(int npcid, String message) {
+                 c.announce(MaplePacketCreator.getNPCTalk(npcid, (byte) 0, message, "00 00", (byte) 0));
+         }
++
++    public long getCurrentTime() {
++	    return System.currentTimeMillis();
++    }    
+ }

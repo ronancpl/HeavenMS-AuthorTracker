@@ -1,0 +1,251 @@
+diff --git a/docs/feature_list.md b/docs/feature_list.md
+index 4df4f51b3..4d4e83270 100644
+--- a/docs/feature_list.md
++++ b/docs/feature_list.md
+@@ -1,4 +1,5 @@
+ #**HeavenMS _(MapleSolaxiaV2)_**
++
+ Credits:
+ 
+ Ronan - Developer
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 10e4a7354..1353a0880 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,7 +3,22 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="2"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/handlers/login/LoginPasswordHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/1092016.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/2221003.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/maps/PlayerNPCs.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/ServerConstants.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/1072008.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/reactor/1202000.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/quest/3526.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/4jrush.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/CathedralWedding.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/UseSummonBagHandler.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/12101.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/credits.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/quest/20314.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/quest/QuestScriptManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/2100009.js</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/npc/credits.js b/scripts/npc/credits.js
+index 8412c3ad5..faff85cac 100644
+--- a/scripts/npc/credits.js
++++ b/scripts/npc/credits.js
+@@ -11,7 +11,7 @@ var name_tree = [];
+ var role_tree = [];
+ var name_cursor, role_cursor;
+ 
+-var servers = ["HeavenMS", "MapleSolaxia", "MoopleDEV", "MetroMS", "BubblesDEV", "ThePackII", "OdinMS"];
++var servers = ["HeavenMS", "MapleSolaxia", "MoopleDEV", "MetroMS", "BubblesDEV", "ThePackII", "OdinMS", "Contributors"];
+ var servers_history = [];
+ 
+ function addPerson(name, role) {
+@@ -54,7 +54,8 @@ function writeServerStaff_MetroMS() {
+ }
+ 
+ function writeServerStaff_BubblesDEV() {
+-        addPerson("Deagan", "Developer");
++        addPerson("Deagan", "Administrator");
++        addPerson("XxOsirisxX", "Developer");
+         setHistory(2009, 2009);
+ }
+ 
+@@ -64,10 +65,27 @@ function writeServerStaff_ThePackII() {
+ }
+ 
+ function writeServerStaff_OdinMS() {
+-        addPerson("Serpendiem", "Developer");
++        addPerson("Serpendiem", "Administrator");
++        addPerson("Frz", "Developer");
++        addPerson("Patrick", "Developer");
++        addPerson("Matze", "Developer");
++        addPerson("Vimes", "Developer");
+         setHistory(2007, 2008);
+ }
+ 
++function writeServerStaff_Contributors() {
++        addPerson("Jvlaple", "Contributor");
++        addPerson("Stereo", "Contributor");
++        addPerson("Lerk", "Contributor");
++        addPerson("Leifde", "Contributor");
++        addPerson("ThreeStep", "Contributor");
++        addPerson("RMZero213", "Contributor");
++        addPerson("aaroncsn", "Contributor");
++        addPerson("xQuasar", "Contributor");
++        addPerson("Xterminator", "Contributor");
++        addPerson("XoticStory", "Contributor");
++}
++
+ function writeAllServerStaffs() {
+         for(var i = 0; i < servers.length; i++) {
+                 name_cursor = [];
+@@ -105,10 +123,10 @@ function action(mode, type, selection) {
+                         for(var i = 0; i < servers.length; i++) {
+                             var hist = servers_history[i];
+                             
+-                            if(hist.length > 0) {
++                            if(hist && hist.length > 0) {
+                                 sendStr += "#L" + i + "##b" + servers[i] + "#k  --  " + ((hist[0] != hist[1]) ? hist[0] + " ~ " + hist[1] : hist[0]) + "#l\r\n";
+                             } else {
+-                                sendStr += "#L" + i + "#" + servers[i] + "#l\r\n";
++                                sendStr += "#L" + i + "##b" + servers[i] + "#k#l\r\n";
+                             }
+                         }
+ 
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index d159f4e73..244d24aa4 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -340,7 +340,7 @@ private static void hardsetItemStats(Equip equip, short stat) {
+             equip.setFlag(flag);
+         }
+         
+-        public static boolean executeSolaxiaCommandLv0(Channel cserv, Server srv, MapleClient c, String[] sub) { //Player
++        public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, MapleClient c, String[] sub) { //Player
+                 MapleCharacter player = c.getPlayer();
+             
+                 switch(sub[0]) {
+@@ -676,7 +676,7 @@ public static boolean executeSolaxiaCommandLv0(Channel cserv, Server srv, MapleC
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommandLv1(Channel cserv, Server srv, MapleClient c, String[] sub) { //Donator
++        public static boolean executeHeavenMsCommandLv1(Channel cserv, Server srv, MapleClient c, String[] sub) { //Donator
+                 MapleCharacter player = c.getPlayer();
+             
+                 switch(sub[0]) {                
+@@ -763,7 +763,7 @@ public static boolean executeSolaxiaCommandLv1(Channel cserv, Server srv, MapleC
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommandLv2(Channel cserv, Server srv, MapleClient c, String[] sub) { //JrGM
++        public static boolean executeHeavenMsCommandLv2(Channel cserv, Server srv, MapleClient c, String[] sub) { //JrGM
+                 MapleCharacter player = c.getPlayer();
+                 MapleCharacter victim;
+                 Skill skill;
+@@ -1219,7 +1219,7 @@ else if (type.equals("cash")) {
+                     
+                 case "maxstat":
+ 			final String[] s = {"setstat", String.valueOf(Short.MAX_VALUE)};
+-			executeSolaxiaCommandLv2(cserv, srv, c, s);
++			executeHeavenMsCommandLv2(cserv, srv, c, s);
+                         player.loseExp(player.getExp(), false, false);
+ 			player.setLevel(255);
+                         
+@@ -1407,7 +1407,7 @@ else if (type.equals("cash")) {
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommandLv3(Channel cserv, Server srv, MapleClient c, String[] sub) { //GM
++        public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, MapleClient c, String[] sub) { //GM
+                 MapleCharacter player = c.getPlayer();
+                 MapleCharacter victim;
+             
+@@ -2132,7 +2132,7 @@ public void run() {
+         }
+         
+         
+-        public static boolean executeSolaxiaCommandLv4(Channel cserv, Server srv, MapleClient c, String[] sub) { //SuperGM
++        public static boolean executeHeavenMsCommandLv4(Channel cserv, Server srv, MapleClient c, String[] sub) { //SuperGM
+                 MapleCharacter player = c.getPlayer();
+         
+                 switch(sub[0]) {
+@@ -2338,7 +2338,7 @@ public static boolean executeSolaxiaCommandLv4(Channel cserv, Server srv, MapleC
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommandLv5(Channel cserv, Server srv, MapleClient c, String[] sub) { //Developer
++        public static boolean executeHeavenMsCommandLv5(Channel cserv, Server srv, MapleClient c, String[] sub) { //Developer
+                 MapleCharacter player = c.getPlayer();
+                 MapleMonster monster;
+         
+@@ -2443,7 +2443,7 @@ public static boolean executeSolaxiaCommandLv5(Channel cserv, Server srv, MapleC
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommandLv6(Channel cserv, Server srv, MapleClient c, String[] sub) { //Admin
++        public static boolean executeHeavenMsCommandLv6(Channel cserv, Server srv, MapleClient c, String[] sub) { //Admin
+                 MapleCharacter player = c.getPlayer();
+                 MapleCharacter victim;
+         
+@@ -2603,7 +2603,7 @@ public static boolean executeSolaxiaCommandLv6(Channel cserv, Server srv, MapleC
+                 return true;
+         }
+         
+-        public static boolean executeSolaxiaCommand(Channel cserv, Server srv, MapleClient c, String[] sub, int gmLevel) {
++        public static boolean executeHeavenMsCommand(Channel cserv, Server srv, MapleClient c, String[] sub, int gmLevel) {
+                 if(gmLevel == -1) {
+                         c.getPlayer().yellowMessage("Command '" + sub[0] + "' is not available. See @commands for a list of available commands.");
+                         return false;
+@@ -2612,34 +2612,34 @@ public static boolean executeSolaxiaCommand(Channel cserv, Server srv, MapleClie
+                 boolean executedCommand;
+                 switch(gmLevel) {
+                 case 0: //Player
+-                        executedCommand = executeSolaxiaCommandLv0(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv0(cserv, srv, c, sub);
+                         break;
+ 
+                 case 1: //Donator
+-                        executedCommand = executeSolaxiaCommandLv1(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv1(cserv, srv, c, sub);
+                         break;
+ 
+                 case 2: //JrGM
+-                        executedCommand = executeSolaxiaCommandLv2(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv2(cserv, srv, c, sub);
+                         break;
+ 
+                 case 3: //GM
+-                        executedCommand = executeSolaxiaCommandLv3(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv3(cserv, srv, c, sub);
+                         break;
+ 
+                 case 4: //SuperGM
+-                        executedCommand = executeSolaxiaCommandLv4(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv4(cserv, srv, c, sub);
+                         break;
+ 
+                 case 5: //Developer
+-                        executedCommand = executeSolaxiaCommandLv5(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv5(cserv, srv, c, sub);
+                         break;
+ 
+                 default:    //Admin
+-                        executedCommand = executeSolaxiaCommandLv6(cserv, srv, c, sub);
++                        executedCommand = executeHeavenMsCommandLv6(cserv, srv, c, sub);
+                 }
+             
+-                if(!executedCommand) return executeSolaxiaCommand(cserv, srv, c, sub, gmLevel - 1);
++                if(!executedCommand) return executeHeavenMsCommand(cserv, srv, c, sub, gmLevel - 1);
+                 else return true;
+         }
+         
+@@ -2647,7 +2647,7 @@ public static boolean executeSolaxiaPlayerCommand(MapleClient c, String[] sub, c
+ 		Channel cserv = c.getChannelServer();
+ 		Server srv = Server.getInstance();
+                 
+-                return executeSolaxiaCommand(cserv, srv, c, sub, c.getPlayer().gmLevel());
++                return executeHeavenMsCommand(cserv, srv, c, sub, c.getPlayer().gmLevel());
+         }
+         
+         private static String joinStringFrom(String arr[], int start) {
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 46893cdbb..f81d9ae77 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -179,4 +179,4 @@
+             System.exit(0);
+         }
+     }
+-}
++}
+\ No newline at end of file

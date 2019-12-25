@@ -1,0 +1,69 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index aa13d1a79..8e83dce20 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1765,4 +1765,7 @@ Corrigido comando "forcevac" guardando no inventário mas não usando (como deve
+ Revisado novamente login, para o caso onde accId = 0 estava sendo atribuído e então conta estava sendo rechecada, assim gerando conflito ao tentar logar.
+ Adicionado update de estado de login no módulo de disconnect, para também atualizar estado da conta quando a mesma não se encontra já logada ou em transição.
+ Corrigido NPC da CPQ2, saída abrupta, não retornando jogadores devidamente para o saguão de espera.
+-Corrigido bug na CPQ em tempo estendido não mostrando devidamente o efeito visual de fim de partida.
+\ No newline at end of file
++Corrigido bug na CPQ em tempo estendido não mostrando devidamente o efeito visual de fim de partida.
++
++27 Março 2019,
++Corrigido possibilidade de bloqueio de volta do jogador ao jogo, ao utilizar o sistema de MTS/Cash Shop. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 9dcade52f..c61a5cb16 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -487,6 +487,7 @@ public void setEnteredChannelWorld() {
+     }
+     
+     public void setAwayFromChannelWorld() {
++        client.getSession().setAttribute(MapleClient.CLIENT_CASH_SHOP);
+         setAwayFromChannelWorld(false);
+     }
+             
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 11d6945ba..34a5f4e76 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -91,6 +91,7 @@
+         public static final String CLIENT_HWID = "HWID";
+         public static final String CLIENT_NIBBLEHWID = "HWID2";
+         public static final String CLIENT_REMOTE_ADDRESS = "REMOTE_IP";
++        public static final String CLIENT_CASH_SHOP = "CASH_SHOP";
+ 	private MapleAESOFB send;
+ 	private MapleAESOFB receive;
+ 	private final IoSession session;
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index bd924fb78..c0abe6959 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -150,11 +150,9 @@ private void closeMapleSession(IoSession session) {
+         MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+         if (client != null) {
+             try {
+-                boolean inCashShop = false;
+-                if (client.getPlayer() != null) {
+-                    inCashShop = client.getPlayer().getCashShop().isOpened();
++                if (!session.containsAttribute(MapleClient.CLIENT_CASH_SHOP)) {
++                    client.disconnect(false, false);
+                 }
+-                client.disconnect(false, inCashShop);
+             } catch (Throwable t) {
+                 FilePrinter.printError(FilePrinter.ACCOUNT_STUCK, t);
+             } finally {
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index f58b1a0d4..7d86d574b 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -42,7 +42,6 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             if (mc.cannotEnterCashShop()) {
+                 c.announce(MaplePacketCreator.enableActions());
+                 return;
+-                
+             }
+             
+             if(mc.getEventInstance() != null) {

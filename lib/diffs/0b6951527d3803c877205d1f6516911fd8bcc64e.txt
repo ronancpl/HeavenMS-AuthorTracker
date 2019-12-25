@@ -1,0 +1,97 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 8e83dce20..5e062c1ec 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1768,4 +1768,7 @@ Corrigido NPC da CPQ2, saída abrupta, não retornando jogadores devidamente par
+ Corrigido bug na CPQ em tempo estendido não mostrando devidamente o efeito visual de fim de partida.
+ 
+ 27 Março 2019,
+-Corrigido possibilidade de bloqueio de volta do jogador ao jogo, ao utilizar o sistema de MTS/Cash Shop. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
+\ No newline at end of file
++Corrigido possibilidade de bloqueio de volta do jogador ao jogo, ao utilizar o sistema de MTS/Cash Shop. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
++
++28 Março 2019,
++Corrigido possibilidade de congelamento de tela ao tentar trocar de canais. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index c61a5cb16..5982fee93 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -487,7 +487,6 @@ public void setEnteredChannelWorld() {
+     }
+     
+     public void setAwayFromChannelWorld() {
+-        client.getSession().setAttribute(MapleClient.CLIENT_CASH_SHOP);
+         setAwayFromChannelWorld(false);
+     }
+             
+@@ -505,6 +504,10 @@ private void setAwayFromChannelWorld(boolean disconnect) {
+         }
+     }
+     
++    public void setSessionTransitionState() {
++        client.getSession().setAttribute(MapleClient.CLIENT_TRANSITION);
++    }
++    
+     public long getPetLootCd() {
+         return petLootCd;
+     }
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 34a5f4e76..c76de7b74 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -91,7 +91,7 @@
+         public static final String CLIENT_HWID = "HWID";
+         public static final String CLIENT_NIBBLEHWID = "HWID2";
+         public static final String CLIENT_REMOTE_ADDRESS = "REMOTE_IP";
+-        public static final String CLIENT_CASH_SHOP = "CASH_SHOP";
++        public static final String CLIENT_TRANSITION = "TRANSITION";
+ 	private MapleAESOFB send;
+ 	private MapleAESOFB receive;
+ 	private final IoSession session;
+@@ -1474,6 +1474,7 @@ public void changeChannel(int channel) {
+                 player.unregisterChairBuff();
+ 		server.getPlayerBuffStorage().addBuffsToStorage(player.getId(), player.getAllBuffs());
+                 server.getPlayerBuffStorage().addDiseasesToStorage(player.getId(), player.getAllDiseases());
++                player.setSessionTransitionState();
+                 player.setDisconnectedFromChannelWorld();
+                 player.notifyMapTransferToPartner(-1);
+                 player.removeIncomingInvites();
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index c0abe6959..13d7ede8b 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -150,7 +150,8 @@ private void closeMapleSession(IoSession session) {
+         MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+         if (client != null) {
+             try {
+-                if (!session.containsAttribute(MapleClient.CLIENT_CASH_SHOP)) {
++                // client freeze issues on session transition states found thanks to yolinlin, Omo Oppa, Nozphex
++                if (!session.containsAttribute(MapleClient.CLIENT_TRANSITION)) {
+                     client.disconnect(false, false);
+                 }
+             } catch (Throwable t) {
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index 7d86d574b..69c8fe3a3 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -65,6 +65,7 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             mc.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(mc.getId(), mc.getAllBuffs());
+             Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(mc.getId(), mc.getAllDiseases());
++            mc.setSessionTransitionState();
+             mc.setAwayFromChannelWorld();
+             mc.notifyMapTransferToPartner(-1);
+             mc.removeIncomingInvites();
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index 4bab7b410..e658dc34b 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -91,6 +91,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             chr.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(chr.getId(), chr.getAllBuffs());
+             Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(chr.getId(), chr.getAllDiseases());
++            chr.setSessionTransitionState();
+             chr.setAwayFromChannelWorld();
+             chr.notifyMapTransferToPartner(-1);
+             chr.removeIncomingInvites();

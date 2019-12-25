@@ -1,0 +1,2038 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 285c1bb37..73a827c00 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1093,4 +1093,18 @@ Refatorado MonitoredLockTypes para agora dar um label específico a cada lock do
+ 29 - 30 Junho 2018,
+ Corrigido quest Milk Jug com NPCs trocados.
+ Adicionado um delay na aplicação de efeitos dos skills de mobs, buffs e demais efeitos agora são registrados após o tempo da animação.
+-Corrigido Flame Thrower atuando passivamente quando o jogador usa uma skill de ataque.
+\ No newline at end of file
++Corrigido Flame Thrower atuando passivamente quando o jogador usa uma skill de ataque.
++
++01 Julho 2018,
++Implementado um sistema abstrato de temporizador para channels (otimizado para rodar numa única thread). A ideia é que quaisquer temporizadores a ser instalado num canal use uma extensão dessa classe.
++Implementado sistema de detecção de animação-em-andamento de mobs, buscando evitar assim spam de uso de habilidades pelos mobs.
++Server agora verifica se o mob está com alguma animação sendo rodada e baseado nisso informa ao cliente se o mob pode ou não enviar requisições de mob skill a ser ativada juntamente ao MoveLifeHandler.
++
++02 Julho 2018,
++Melhorado proteção contra acesso concorrente nos registros de listeners de MapleMonster.
++Melhorado liberação de recursos ao finalizar objeto MapleMonster.
++
++03 - 04 Julho 2018,
++Adicionado server flag que permite usar clean slates mesmo em equipamentos sem slots vazios (onde falhou o scroll).
++Corrigido um possível ponto crítico de deadlock com MapleServerHandler.
++Adicionado portal SFX para vários portais scriptados que ainda faltavam o efeito.
+\ No newline at end of file
+diff --git a/nbproject/project.properties b/nbproject/project.properties
+index 1d9f2418e..b250ad800 100644
+--- a/nbproject/project.properties
++++ b/nbproject/project.properties
+@@ -93,7 +93,7 @@ run.classpath=\
+ # Space-separated list of JVM arguments used when running the project.
+ # You may also define separate properties like run-sys-prop.name=value instead of -Dname=value.
+ # To set system properties for unit tests define test-sys-prop.name=value:
+-run.jvmargs=
++run.jvmargs=-Xmx2048m -Dwzpath=wz/
+ run.test.classpath=\
+     ${javac.test.classpath}:\
+     ${build.test.classes.dir}
+diff --git a/scripts/npc/9270043.js b/scripts/npc/9270043.js
+index 253e9152c..35eb96999 100644
+--- a/scripts/npc/9270043.js
++++ b/scripts/npc/9270043.js
+@@ -19,7 +19,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-//Gachaphon
++//Gachapon
+ 
+ var ids = [2000004,2020012,2000005,2030007,2022027,2040001,2041002, 2040805, 2040702, 2043802, 2040402, 2043702, 1302022, 1322021, 1322026, 1302026, 1442017, 1082147, 1102043, 1442016, 1402012, 1302027, 1322027, 1322025, 1312012, 1062000, 1332020, 1302028, 1372002, 1002033, 1092022, 1302021, 1102041, 1102042, 1322024, 1082148, 1002012, 1322012, 1322022, 1002020, 1302013, 1082146, 1442014, 1002096, 1302017, 1442012, 1322010, 1442011, 1442018, 1092011, 1092014, 1302003, 1432001, 1312011, 1002088, 1041020, 1322015, 1442004, 1422008, 1302056, 1432000, 1382001, 1041053, 1060014, 1050053, 1051032, 1050073, 1061036, 1002253, 1002034, 1051025, 1050067, 1051052, 1002072, 1002144, 1051054, 1050069, 1372007, 1050056, 1050074, 1002254, 1002274, 1002218, 1051055, 1382010, 1002246, 1050039, 1382007, 1372000, 1002013, 1050072, 1002036, 1002243, 1372008, 1382008, 1382011, 1092021, 1051034, 1050047, 1040019, 1041031, 1051033, 1002153, 1002252, 1051024, 1002153, 1050068, 1382003, 1382006, 1050055, 1051031, 1050025, 1002155, 1002245, 1452004, 1452023, 1060057, 1040071, 1002137, 1462009, 1452017, 1040025, 1041027, 1452005, 1452007, 1061057, 1472006, 1472019, 1060084, 1472028, 1002179, 1082074, 1332015, 1432001, 1060071, 1472007, 1472002, 1051009, 1061037, 1332016, 1332034, 1472020, 1102084, 1102086, 1102042, 1032026, 1082149];
+ var status = 0;
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index b35a45ff6..f7baa36cb 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -116,6 +116,7 @@ function writeFeatureTab_MonstersMapsReactors() {
+         addFeature("C. Balrog's boat approaching visual effect functional.");
+         addFeature("Maps having everlasting items no longer expires them.");
+         addFeature("PQs, Taxis and events warps players to random SPs.");
++        addFeature("Uncovered missing portal SFX on scripted portals.");
+         addFeature("PQ boxes sprays items when opened, GMS-like.");
+         addFeature("Reactors pick items up smartly from the field.");
+         addFeature("Reviewed Masteria, W. Tour, N. Desert and Neo City.");
+@@ -199,8 +200,9 @@ function writeFeatureTab_Project() {
+         addFeature("Reviewed many Java aspects that needed attention.");
+         addFeature("Reviewed SQL data, eliminating duplicated entries.");
+         addFeature("Protected many flaws with login management system.");
+-        addFeature("Developed many survey tools for content management.");
++        addFeature("Developed many survey tools for content profiling.");
+         addFeature("ThreadTracker: runtime tool for deadlock detection.");
++        addFeature("Channel, World and Server-wide timer management.");
+         addFeature("Heavily reviewed future task management, spawning much less threads and relieving task overload on the TimerManager.");
+ }
+ 
+@@ -240,7 +242,7 @@ function action(mode, type, selection) {
+                         status--;
+     
+                 if (status == 0) {
+-                        var sendStr = "HeavenMS was developed on the timespan of 3 years, based on where Solaxia left. On the meantime many nice features emerged, development aimed to get back the old GMS experience. Now many of these so-long missing features are gracefully presented to you in the shape of this server. Long live MapleStory!!\r\n\r\nThese are the features of #bHeavenMS#k:\r\n\r\n";
++                        var sendStr = "HeavenMS was developed on the timespan of 3 years, based on where Solaxia left. On the meantime many nice features emerged, development aimed to get back the old GMS experience. Now many of these so-long missing features are gracefully presented to you in the shape of this server. Long live MapleStory!!\r\n\r\nThese are the features from #bHeavenMS#k:\r\n\r\n";
+                         for(var i = 0; i < tabs.length; i++) {
+                             sendStr += "#L" + i + "##b" + tabs[i] + "#k#l\r\n";
+                         }
+diff --git a/scripts/portal/hontale_Bopen.js b/scripts/portal/hontale_Bopen.js
+index d8577d964..2ca2ce3b7 100644
+--- a/scripts/portal/hontale_Bopen.js
++++ b/scripts/portal/hontale_Bopen.js
+@@ -40,7 +40,8 @@ function enter(pi) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+             return false;
+-        }else {
++        } else {
++            pi.playPortalSound();
+             pi.getPlayer().changeMap(target, targetPortal);
+             return true;
+         }
+@@ -56,7 +57,8 @@ function enter(pi) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+             return false;
+-        }else {
++        } else {
++            pi.playPortalSound();
+             pi.getPlayer().changeMap(target, targetPortal);
+             return true;
+         }
+@@ -72,7 +74,8 @@ function enter(pi) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+             return false;
+-        }else {
++        } else {
++            pi.playPortalSound();
+             pi.getPlayer().changeMap(target, targetPortal);
+             return true;
+         }
+@@ -88,7 +91,8 @@ function enter(pi) {
+             // do nothing; send message to player
+             pi.getPlayer().dropMessage(6, "Horntail\'s Seal is Blocking this Door.");
+             return false;
+-        }else {
++        } else {
++            pi.playPortalSound();
+             pi.getPlayer().changeMap(target, targetPortal);
+             return true;
+         }
+@@ -104,6 +108,7 @@ function enter(pi) {
+             if (pi.haveItem(4001092) && pi.isEventLeader()) {
+                 eim.showClearEffect();
+                 pi.getPlayer().dropMessage(6, "The leader's key break the seal for a flash...");
++                pi.playPortalSound();
+                 pi.getPlayer().changeMap(target, targetPortal);
+                 eim.setIntProperty("5stageclear", 1);
+                 return true;
+@@ -111,7 +116,8 @@ function enter(pi) {
+                 pi.getPlayer().dropMessage(6, "Horntail\'s Seal is blocking this door. Only the leader with the key can lift this seal.");
+                 return false;
+             }
+-        }else {
++        } else {
++            pi.playPortalSound();
+             pi.getPlayer().changeMap(target, targetPortal);
+             return true;
+         }
+diff --git a/scripts/portal/hontale_C.js b/scripts/portal/hontale_C.js
+index e0fa7ee5f..3f6f08795 100644
+--- a/scripts/portal/hontale_C.js
++++ b/scripts/portal/hontale_C.js
+@@ -39,6 +39,7 @@ function enter(pi) {
+             return false;
+         }
+         
++        pi.playPortalSound();
+         eim.warpEventTeam(target);
+         return true;
+     } else {
+diff --git a/scripts/portal/kpq0.js b/scripts/portal/kpq0.js
+index 313ce2bdf..18112930d 100644
+--- a/scripts/portal/kpq0.js
++++ b/scripts/portal/kpq0.js
+@@ -28,6 +28,7 @@ function enter(pi) {
+     var target = eim.getMapInstance(103000801);
+ 
+     if (eim.getProperty("1stageclear") != null) {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, target.getPortal("st00"));
+         return true;
+     }
+diff --git a/scripts/portal/kpq1.js b/scripts/portal/kpq1.js
+index 7b27dcb2d..b41259baf 100644
+--- a/scripts/portal/kpq1.js
++++ b/scripts/portal/kpq1.js
+@@ -28,6 +28,7 @@ function enter(pi) {
+     var eim = pi.getPlayer().getEventInstance();
+     var target = eim.getMapInstance(103000802);
+     if (eim.getProperty("2stageclear") != null) {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, target.getPortal("st00"));
+         return true;
+     }
+diff --git a/scripts/portal/kpq2.js b/scripts/portal/kpq2.js
+index 713229218..9e95c3bfb 100644
+--- a/scripts/portal/kpq2.js
++++ b/scripts/portal/kpq2.js
+@@ -27,6 +27,7 @@ function enter(pi) {
+     var eim = pi.getPlayer().getEventInstance();
+     var target = eim.getMapInstance(103000803);
+     if (eim.getProperty("3stageclear") != null) {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, target.getPortal("st00"));
+         return true;
+     }
+diff --git a/scripts/portal/kpq3.js b/scripts/portal/kpq3.js
+index 838e80725..9a57b8357 100644
+--- a/scripts/portal/kpq3.js
++++ b/scripts/portal/kpq3.js
+@@ -28,6 +28,7 @@ function enter(pi) {
+     var eim = pi.getPlayer().getEventInstance();
+     var target = eim.getMapInstance(103000804);
+     if (eim.getProperty("4stageclear") != null) {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, target.getPortal("st00"));
+         return true;
+     }
+diff --git a/scripts/portal/kpq4.js b/scripts/portal/kpq4.js
+index cc2f378dc..940f3c388 100644
+--- a/scripts/portal/kpq4.js
++++ b/scripts/portal/kpq4.js
+@@ -27,6 +27,7 @@ function enter(pi) {
+     var eim = pi.getPlayer().getEventInstance();
+     var target = eim.getMapInstance(103000805);
+     if (eim.getProperty("5stageclear") != null) {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, target.getPortal("st00"));
+         return true;
+     }
+diff --git a/scripts/portal/lpq0.js b/scripts/portal/lpq0.js
+index d93479428..1d0ee1c6e 100644
+--- a/scripts/portal/lpq0.js
++++ b/scripts/portal/lpq0.js
+@@ -35,6 +35,7 @@ function enter(pi) {
+         return false;
+     }
+     else {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, targetPortal);
+         return true;
+     }
+diff --git a/scripts/portal/lpq1.js b/scripts/portal/lpq1.js
+index 113139a4a..3ad14c4a3 100644
+--- a/scripts/portal/lpq1.js
++++ b/scripts/portal/lpq1.js
+@@ -35,6 +35,7 @@ function enter(pi) {
+         return false;
+     }
+     else {
++        pi.playPortalSound();
+         pi.getPlayer().changeMap(target, targetPortal);
+         return true;
+     }
+diff --git a/scripts/portal/lpq2.js b/scripts/portal/lpq2.js
+index fea16934d..7833a3509 100644
+--- a/scripts/portal/lpq2.js
++++ b/scripts/portal/lpq2.js
+@@ -36,6 +36,7 @@ function enter(pi) {
+ 		return false;
+         }
+ 	else {
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+ 	}
+diff --git a/scripts/portal/lpq3.js b/scripts/portal/lpq3.js
+index 728fa61e1..7182a41bb 100644
+--- a/scripts/portal/lpq3.js
++++ b/scripts/portal/lpq3.js
+@@ -36,6 +36,7 @@ function enter(pi) {
+ 		return false;
+         }
+ 	else {
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+ 	}
+diff --git a/scripts/portal/lpq4.js b/scripts/portal/lpq4.js
+index d6323e471..3ac0e0256 100644
+--- a/scripts/portal/lpq4.js
++++ b/scripts/portal/lpq4.js
+@@ -36,6 +36,7 @@ function enter(pi) {
+ 		return false;
+         }
+ 	else {
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+ 	}
+diff --git a/scripts/portal/lpq5.js b/scripts/portal/lpq5.js
+index 961cef852..2320535d2 100644
+--- a/scripts/portal/lpq5.js
++++ b/scripts/portal/lpq5.js
+@@ -40,6 +40,7 @@ function enter(pi) {
+ 		if(eim.getProperty("6stageclear") == null) {
+ 			eim.setProperty("6stageclear", "true");
+ 		}
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+ 	}
+diff --git a/scripts/portal/lpq6.js b/scripts/portal/lpq6.js
+index 9aa193d9d..0d80d7a11 100644
+--- a/scripts/portal/lpq6.js
++++ b/scripts/portal/lpq6.js
+@@ -27,6 +27,7 @@ function enter(pi) {
+ 	var eim = pi.getPlayer().getEventInstance();
+ 	var target = eim.getMapInstance(922010800);
+ 	if (eim.getProperty("7stageclear") != null) {
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, target.getPortal("st00"));
+ 		return true;
+ 	} else
+diff --git a/scripts/portal/lpq7.js b/scripts/portal/lpq7.js
+index 05221f2f2..4d37be40c 100644
+--- a/scripts/portal/lpq7.js
++++ b/scripts/portal/lpq7.js
+@@ -37,6 +37,7 @@ function enter(pi) {
+ 		return false;
+         }
+ 	else {
++                pi.playPortalSound();
+ 		pi.getPlayer().changeMap(target, targetPortal);
+ 		return true;
+ 	}
+diff --git a/scripts/portal/party3_gardenin.js b/scripts/portal/party3_gardenin.js
+index 4ab499afd..1f2148a2e 100644
+--- a/scripts/portal/party3_gardenin.js
++++ b/scripts/portal/party3_gardenin.js
+@@ -1,5 +1,6 @@
+ function enter(pi) {
+ 	if (pi.getPlayer().getParty() != null && pi.isEventLeader() && pi.haveItem(4001055,1)) {
++                pi.playPortalSound();
+                 pi.getEventInstance().warpEventTeam(920010100);
+                 return true;
+ 	} else {
+diff --git a/scripts/portal/party6_out.js b/scripts/portal/party6_out.js
+index a6c1e9021..cd0ca2aef 100644
+--- a/scripts/portal/party6_out.js
++++ b/scripts/portal/party6_out.js
+@@ -3,6 +3,7 @@ function enter(pi) {
+     
+         if (eim.isEventCleared()) {
+                 if(pi.isEventLeader()) {
++                        pi.playPortalSound();
+                         eim.warpEventTeam(930000800);
+                         return true;
+                 } else {
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index ad6859229..c3cbd70cd 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -133,12 +133,13 @@
+     public static final boolean USE_PERFECT_SCROLLING = true;   //Scrolls doesn't use slots upon failure.
+     public static final boolean USE_ENHANCED_CHSCROLL = true;   //Equips even more powerful with chaos upgrade.
+     public static final boolean USE_ENHANCED_CRAFTING = true;   //Apply chaos scroll on every equip crafted.
++    public static final boolean USE_ENHANCED_CLNSLATE = true;   //Clean slates can be applied to recover successfully used slots as well.
+     public static final int SCROLL_CHANCE_RATE = 10;            //Number of rolls for success on a scroll, set 0 for default.
+     public static final int CHSCROLL_STAT_RATE = 3;             //Number of rolls of stat upgrade on a successfully applied chaos scroll, set 1 for default.
+     public static final int CHSCROLL_STAT_RANGE = 6;            //Stat upgrade range (-N, N) on chaos scrolls.
+     
+     //Beginner Skills Configuration
+-    public static final boolean USE_ULTRA_NIMBLE_FEET = true;   //Haste-like speed & jump upgrade.
++    public static final boolean USE_ULTRA_NIMBLE_FEET = true;   //Massive speed & jump upgrade.
+     public static final boolean USE_ULTRA_RECOVERY = true;      //Massive recovery amounts overtime.
+     public static final boolean USE_ULTRA_THREE_SNAILS = true;  //Massive damage on shell toss.
+     
+diff --git a/src/net/MapleServerHandler.java b/src/net/MapleServerHandler.java
+index 0217b9ef0..b8ffcac68 100644
+--- a/src/net/MapleServerHandler.java
++++ b/src/net/MapleServerHandler.java
+@@ -189,10 +189,12 @@ public void sessionIdle(final IoSession session, final IdleStatus status) throws
+     
+     private void registerIdleSession(MapleClient c) {
+         if(idleLock.tryLock()) {
+-            idleSessions.put(c, System.currentTimeMillis());
+-            c.announce(MaplePacketCreator.getPing());
+-            
+-            idleLock.unlock();
++            try {
++                idleSessions.put(c, System.currentTimeMillis());
++                c.announce(MaplePacketCreator.getPing());
++            } finally {
++                idleLock.unlock();
++            }
+         } else {
+             tempLock.lock();
+             try {
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index ad43f71bd..9ae7c78f5 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -21,7 +21,6 @@
+  */
+ package net.server.channel;
+ 
+-import net.server.channel.worker.MobStatusScheduler;
+ import java.io.File;
+ import java.net.InetSocketAddress;
+ import java.util.ArrayList;
+@@ -43,9 +42,12 @@
+ 
+ import net.MapleServerHandler;
+ import net.mina.MapleCodecFactory;
++
++import net.server.PlayerStorage;
+ import net.server.Server;
++import net.server.channel.worker.*;
++
+ import net.server.world.World;
+-import net.server.PlayerStorage;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ 
+@@ -86,6 +88,8 @@
+     private MapleMapFactory mapFactory;
+     private EventScriptManager eventSM;
+     private MobStatusScheduler mobStatusSchedulers[] = new MobStatusScheduler[4];
++    private MobAnimationScheduler mobAnimationSchedulers[] = new MobAnimationScheduler[4];
++    private OverallScheduler channelSchedulers[] = new OverallScheduler[4];
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+     private List<MapleExpedition> expeditions = new ArrayList<>();
+@@ -154,6 +158,8 @@ public Channel(final int world, final int channel, long startTime) {
+             
+             for(int i = 0; i < 4; i++) {
+                 mobStatusSchedulers[i] = new MobStatusScheduler();
++                mobAnimationSchedulers[i] = new MobAnimationScheduler();
++                channelSchedulers[i] = new OverallScheduler();
+             }
+             
+             System.out.println("    Channel " + getId() + ": Listening on port " + port);
+@@ -824,7 +830,7 @@ public void dropMessage(int type, String message) {
+         }
+     }
+     
+-    private static int getMobStatusSchedulerIndex(int mapid) {
++    private static int getChannelSchedulerIndex(int mapid) {
+         if(mapid >= 250000000) {
+             if(mapid >= 900000000) {
+                 return 3;
+@@ -845,11 +851,23 @@ public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cance
+     }
+     
+     public void registerMobStatus(int mapid, MonsterStatusEffect mse, Runnable cancelAction, long duration, Runnable overtimeAction, int overtimeDelay) {
+-        mobStatusSchedulers[getMobStatusSchedulerIndex(mapid)].registerMobStatus(mse, cancelAction, duration, overtimeAction, overtimeDelay);
++        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].registerMobStatus(mse, cancelAction, duration, overtimeAction, overtimeDelay);
+     }
+     
+     public void interruptMobStatus(int mapid, MonsterStatusEffect mse) {
+-        mobStatusSchedulers[getMobStatusSchedulerIndex(mapid)].interruptMobStatus(mse);
++        mobStatusSchedulers[getChannelSchedulerIndex(mapid)].interruptMobStatus(mse);
++    }
++    
++    public boolean registerMobOnAnimationEffect(int mapid, int mobHash, long delay) {
++        return mobAnimationSchedulers[getChannelSchedulerIndex(mapid)].registerAnimationMode(mobHash, delay);
++    }
++    
++    public void registerOverallAction(int mapid, Runnable runAction, long delay) {
++        channelSchedulers[getChannelSchedulerIndex(mapid)].registerDelayedAction(runAction, delay);
++    }
++    
++    public void forceRunOverallAction(int mapid, Runnable runAction) {
++        channelSchedulers[getChannelSchedulerIndex(mapid)].forceRunDelayedAction(runAction);
+     }
+     
+     public void debugMarriageStatus() {
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 6223b19f3..817325869 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -43,6 +43,7 @@
+ /**
+  * @author Danny (Leifde)
+  * @author ExtremeDevilz
++ * @author Ronan (HeavenMS)
+  */
+ public final class MoveLifeHandler extends AbstractMovementPacketHandler {
+ 	@Override
+@@ -76,49 +77,62 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 
+ 		int nextCastSkill = useSkillId;
+ 		int nextCastSkillLevel = useSkillLevel;
+-		
++                
+ 		MobSkill toUse = null;
+-		
+-		int percHpLeft = (int) (((float) monster.getHp() / monster.getMaxHp()) * 100);
++                int rndSkill = -1;
+                 
+-		if (nextMovementCouldBeSkill && monster.getNoSkills() > 0) {
+-			int Random = Randomizer.nextInt(monster.getNoSkills());
+-			Pair<Integer, Integer> skillToUse = monster.getSkills().get(Random);
+-			nextCastSkill = skillToUse.getLeft();
+-			nextCastSkillLevel = skillToUse.getRight();
+-			toUse = MobSkillFactory.getMobSkill(nextCastSkill, nextCastSkillLevel);
++                if(monster.getNoSkills() > 0) {
++                        if(nextMovementCouldBeSkill) {
++                                rndSkill = Randomizer.nextInt(monster.getNoSkills());
++                        }
++                } else {
++                        nextMovementCouldBeSkill = false;
++                }
++		
++                if(monster.applyAnimationIfRoaming((attackId - 13) / 2, rndSkill)) {
++                        if (rndSkill > -1) {
++                                Pair<Integer, Integer> skillToUse = monster.getSkills().get(rndSkill);
++                                nextCastSkill = skillToUse.getLeft();
++                                nextCastSkillLevel = skillToUse.getRight();
++                                toUse = MobSkillFactory.getMobSkill(nextCastSkill, nextCastSkillLevel);
+ 
+-			if (isSkill || isAttack) {
+-				if (nextCastSkill != toUse.getSkillId() || nextCastSkillLevel != toUse.getSkillLevel()) {
+-					//toUse.resetAnticipatedSkill();
+-					return;
+-				} else if (toUse.getHP() < percHpLeft) {
+-					toUse = null;
+-				} else if (monster.canUseSkill(toUse)) {
+-                                        int animationTime = MapleMonsterInformationProvider.getInstance().getMobSkillAnimationTime(monster.getId(), Random);
+-                                        if(animationTime > 0) {
+-                                                toUse.applyDelayedEffect(c.getPlayer(), monster, true, banishPlayers, animationTime);
++                                if (isSkill || isAttack) {
++                                        int percHpLeft = (int) (((float) monster.getHp() / monster.getMaxHp()) * 100);
++                                        if (nextCastSkill != toUse.getSkillId() || nextCastSkillLevel != toUse.getSkillLevel()) {
++                                                //toUse.resetAnticipatedSkill();
++                                                return;
++                                        } else if (toUse.getHP() < percHpLeft) {
++                                                toUse = null;
++                                        } else if (monster.canUseSkill(toUse)) {
++                                                int animationTime = MapleMonsterInformationProvider.getInstance().getMobSkillAnimationTime(monster.getId(), rndSkill);
++                                                if(animationTime > 0) {
++                                                        toUse.applyDelayedEffect(c.getPlayer(), monster, true, banishPlayers, animationTime);
++                                                } else {
++                                                        toUse.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++                                                }
+                                         } else {
+-                                                toUse.applyEffect(c.getPlayer(), monster, true, banishPlayers);
++                                                toUse = null;
+                                         }
+-				} else {
+-                                        toUse = null;
+-                                }
+-			} else {
+-                                toUse = null; // paliative measure for suspicious mob movement
+-                            
+-                                /*
+-                                long curtime = System.currentTimeMillis();
+-                                if(curtime >= monster.getNextBasicSkillTime()) {  // dont use the special attack too often, chase the player f3
+-                                        MobAttackInfo mobAttack = MobAttackInfoFactory.getMobAttackInfo(monster, attackId);
+-                                        monster.setNextBasicSkillTime(curtime);
+                                 } else {
+-                                        toUse = null;
+-                                }
+-                                */
+-			}
+-		}
++                                        toUse = null; // paliative measure for suspicious mob movement
+ 
++                                        /*
++                                        long curtime = System.currentTimeMillis();
++                                        if(curtime >= monster.getNextBasicSkillTime()) {  // dont use the special attack too often, chase the player f3
++                                                MobAttackInfo mobAttack = MobAttackInfoFactory.getMobAttackInfo(monster, attackId);
++                                                monster.setNextBasicSkillTime(curtime);
++                                        } else {
++                                                toUse = null;
++                                        }
++                                        */
++                                }
++                        }
++                } else {
++                        if(rndSkill > -1) {
++                                nextMovementCouldBeSkill = false;
++                        }
++                }
++                
+ 		slea.readByte();
+ 		slea.readInt(); // whatever
+ 		short start_x = slea.readShort(); // hmm.. startpos?
+diff --git a/src/net/server/channel/handlers/ScrollHandler.java b/src/net/server/channel/handlers/ScrollHandler.java
+index 260533092..b246fb9f6 100644
+--- a/src/net/server/channel/handlers/ScrollHandler.java
++++ b/src/net/server/channel/handlers/ScrollHandler.java
+@@ -35,6 +35,7 @@
+ import java.util.List;
+ import net.AbstractMaplePacketHandler;
+ import client.inventory.manipulator.MapleInventoryManipulator;
++import constants.ServerConstants;
+ import server.MapleItemInformationProvider;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -91,9 +92,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             }
+         }
+         
+-        if (ItemConstants.isCleanSlate(scroll.getItemId()) && !(toScroll.getLevel() + toScroll.getUpgradeSlots() < ii.getEquipStats(toScroll.getItemId()).get("tuc"))) { //upgrade slots can be over because of hammers
++        if (ItemConstants.isCleanSlate(scroll.getItemId()) && !ii.canUseCleanSlate(toScroll)) {
+             return;
+         }
++        
+         Equip scrolled = (Equip) ii.scrollEquipWithId(toScroll, scroll.getItemId(), whiteScroll, 0, c.getPlayer().isGM());
+         ScrollResult scrollSuccess = Equip.ScrollResult.FAIL; // fail
+         if (scrolled == null) {
+diff --git a/src/net/server/channel/worker/BaseScheduler.java b/src/net/server/channel/worker/BaseScheduler.java
+new file mode 100644
+index 000000000..9a1f88ba5
+--- /dev/null
++++ b/src/net/server/channel/worker/BaseScheduler.java
+@@ -0,0 +1,131 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import constants.ServerConstants;
++import java.util.Collections;
++import java.util.HashMap;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.concurrent.ScheduledFuture;
++import java.util.concurrent.locks.Lock;
++import server.TimerManager;
++import tools.Pair;
++import tools.locks.MonitoredLockType;
++import tools.locks.MonitoredReentrantLock;
++
++/**
++ *
++ * @author Ronan
++ */
++public abstract class BaseScheduler {
++    private int idleProcs = 0;
++    private List<SchedulerListener> listeners = new LinkedList<>();
++    private Map<Object, Pair<Runnable, Long>> registeredEntries = new HashMap<>();
++    
++    private ScheduledFuture<?> schedulerTask = null;
++    private Lock schedulerLock;
++    private Runnable monitorTask = new Runnable() {
++                                        @Override
++                                        public void run() {
++                                            runBaseSchedule();
++                                        }
++                                    };
++    
++    protected BaseScheduler(MonitoredLockType lockType) {
++        schedulerLock = new MonitoredReentrantLock(lockType, true);
++    }
++    
++    protected void addListener(SchedulerListener listener) {
++        listeners.add(listener);
++    }
++    
++    private void runBaseSchedule() {
++        schedulerLock.lock();
++        try {
++            if(registeredEntries.isEmpty()) {
++                idleProcs++;
++                
++                if(idleProcs >= ServerConstants.MOB_STATUS_MONITOR_LIFE) {
++                    if(schedulerTask != null) {
++                        schedulerTask.cancel(false);
++                        schedulerTask = null;
++                    }
++                }
++                
++                return;
++            }
++            idleProcs = 0;
++            
++            long timeNow = System.currentTimeMillis();
++            List<Object> toRemove = new LinkedList<>();
++            for(Entry<Object, Pair<Runnable, Long>> rmd : registeredEntries.entrySet()) {
++                Pair<Runnable, Long> r = rmd.getValue();
++                
++                if(r.getRight() < timeNow) {
++                    r.getLeft().run();  // runs the cancel action
++                    toRemove.add(rmd.getKey());
++                }
++            }
++            
++            for(Object mse : toRemove) {
++                registeredEntries.remove(mse);
++            }
++            
++            dispatchRemovedEntries(toRemove, true);
++        } finally {
++            schedulerLock.unlock();
++        }
++    }
++    
++    private void dispatchRemovedEntries(List<Object> toRemove, boolean fromUpdate) {
++        for (SchedulerListener listener : listeners.toArray(new SchedulerListener[listeners.size()])) {
++            listener.removedScheduledEntries(toRemove, fromUpdate);
++        }
++    }
++    
++    protected void registerEntry(Object key, Runnable removalAction, long duration) {
++        schedulerLock.lock();
++        try {
++            idleProcs = 0;
++            if(schedulerTask == null) {
++                schedulerTask = TimerManager.getInstance().register(monitorTask, ServerConstants.MOB_STATUS_MONITOR_PROC, ServerConstants.MOB_STATUS_MONITOR_PROC);
++            }
++            
++            registeredEntries.put(key, new Pair<>(removalAction, System.currentTimeMillis() + duration));
++        } finally {
++            schedulerLock.unlock();
++        }
++    }
++    
++    protected void interruptEntry(Object key) {
++        schedulerLock.lock();
++        try {
++            Pair<Runnable, Long> rm = registeredEntries.remove(key);
++            if(rm != null) rm.getLeft().run();
++            
++            dispatchRemovedEntries(Collections.singletonList(key), false);
++        } finally {
++            schedulerLock.unlock();
++        }
++    }
++}
+diff --git a/src/net/server/channel/worker/MobAnimationScheduler.java b/src/net/server/channel/worker/MobAnimationScheduler.java
+new file mode 100644
+index 000000000..887d71d9e
+--- /dev/null
++++ b/src/net/server/channel/worker/MobAnimationScheduler.java
+@@ -0,0 +1,74 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import tools.locks.MonitoredLockType;
++
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++import java.util.concurrent.locks.Lock;
++import tools.locks.MonitoredReentrantLock;
++
++/**
++ *
++ * @author Ronan
++ */
++public class MobAnimationScheduler extends BaseScheduler {
++    Set<Integer> onAnimationMobs = new HashSet<>(1000);
++    private Lock animationLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_MOBANIMAT, true);
++    
++    private static Runnable r = new Runnable() {
++        @Override
++        public void run() {}    // do nothing
++    };
++    
++    public MobAnimationScheduler() {
++        super(MonitoredLockType.CHANNEL_MOBACTION);
++        
++        super.addListener(new SchedulerListener() {
++            @Override
++            public void removedScheduledEntries(List<Object> toRemove, boolean update) {
++                animationLock.lock();
++                try {
++                    for(Object hashObj : toRemove) {
++                        Integer mobHash = (Integer) hashObj;
++                        onAnimationMobs.remove(mobHash);
++                    }
++                } finally {
++                    animationLock.unlock();
++                }
++            }
++        });
++    }
++    
++    public boolean registerAnimationMode(Integer mobHash, long animationTime) {
++        animationLock.lock();
++        try {
++            if(onAnimationMobs.contains(mobHash)) return false;
++            
++            registerEntry(mobHash, r, animationTime);
++            onAnimationMobs.add(mobHash);
++            return true;
++        } finally {
++            animationLock.unlock();
++        }
++    }
++}
+diff --git a/src/net/server/channel/worker/MobStatusScheduler.java b/src/net/server/channel/worker/MobStatusScheduler.java
+index 083ade082..d4774670b 100644
+--- a/src/net/server/channel/worker/MobStatusScheduler.java
++++ b/src/net/server/channel/worker/MobStatusScheduler.java
+@@ -23,14 +23,9 @@
+ import constants.ServerConstants;
+ import java.util.HashMap;
+ import java.util.ArrayList;
+-import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.Map.Entry;
+-import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.Lock;
+-import server.TimerManager;
+-import tools.Pair;
+ import tools.locks.MonitoredLockType;
+ import tools.locks.MonitoredReentrantLock;
+ 
+@@ -38,10 +33,9 @@
+  *
+  * @author Ronan
+  */
+-public class MobStatusScheduler {
+-    private int idleProcs = 0;
+-    private Map<MonsterStatusEffect, Pair<Runnable, Long>> registeredMobStatus = new HashMap<>();
++public class MobStatusScheduler extends BaseScheduler {
+     private Map<MonsterStatusEffect, MobStatusOvertimeEntry> registeredMobStatusOvertime = new HashMap<>();
++    private Lock overtimeStatusLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_OVTSTATUS, true);
+     
+     private class MobStatusOvertimeEntry {
+         private int procCount;
+@@ -63,86 +57,49 @@ protected void update() {
+         }
+     }
+     
+-    private ScheduledFuture<?> mobStatusSchedule = null;
+-    private Lock mobStatusLock = new MonitoredReentrantLock(MonitoredLockType.CHANNEL_MOBSTATUS, true);
+-    private Runnable monitorTask = new Runnable() {
+-                                        @Override
+-                                        public void run() {
+-                                            runMobStatusSchedule();
+-                                        }
+-                                    };
+-    
+-    private void runMobStatusSchedule() {
+-        mobStatusLock.lock();
+-        try {
+-            if(registeredMobStatus.isEmpty()) {
+-                idleProcs++;
+-                
+-                if(idleProcs >= ServerConstants.MOB_STATUS_MONITOR_LIFE) {
+-                    if(mobStatusSchedule != null) {
+-                        mobStatusSchedule.cancel(false);
+-                        mobStatusSchedule = null;
++    public MobStatusScheduler() {
++        super(MonitoredLockType.CHANNEL_MOBSTATUS);
++        
++        super.addListener(new SchedulerListener() {
++            @Override
++            public void removedScheduledEntries(List<Object> toRemove, boolean update) {
++                overtimeStatusLock.lock();
++                try {
++                    for(Object mseo : toRemove) {
++                        MonsterStatusEffect mse = (MonsterStatusEffect) mseo;
++                        registeredMobStatusOvertime.remove(mse);
+                     }
++                    
++                    if(update) {
++                        // it's probably ok to use one thread for both management & overtime actions
++                        List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
++                        for(MobStatusOvertimeEntry mdoe : mdoeList) {
++                            mdoe.update();
++                        }
++                    }
++                } finally {
++                    overtimeStatusLock.unlock();
+                 }
+-                
+-                return;
+-            }
+-            idleProcs = 0;
+-            
+-            long timeNow = System.currentTimeMillis();
+-            List<MonsterStatusEffect> toRemove = new LinkedList<>();
+-            for(Entry<MonsterStatusEffect, Pair<Runnable, Long>> rmd : registeredMobStatus.entrySet()) {
+-                Pair<Runnable, Long> r = rmd.getValue();
+-                
+-                if(r.getRight() < timeNow) {
+-                    r.getLeft().run();  // runs the cancel action
+-                    toRemove.add(rmd.getKey());
+-                }
+-            }
+-            
+-            for(MonsterStatusEffect mse : toRemove) {
+-                registeredMobStatus.remove(mse);
+-                registeredMobStatusOvertime.remove(mse);
+             }
+-            
+-            // it's probably ok to use one thread for both management & overtime actions
+-            List<MobStatusOvertimeEntry> mdoeList = new ArrayList<>(registeredMobStatusOvertime.values());
+-            for(MobStatusOvertimeEntry mdoe : mdoeList) {
+-                mdoe.update();
+-            }
+-        } finally {
+-            mobStatusLock.unlock();
+-        }
++        });
+     }
+     
+     public void registerMobStatus(MonsterStatusEffect mse, Runnable cancelStatus, long duration, Runnable overtimeStatus, int overtimeDelay) {
+-        mobStatusLock.lock();
+-        try {
+-            idleProcs = 0;
+-            if(mobStatusSchedule == null) {
+-                mobStatusSchedule = TimerManager.getInstance().register(monitorTask, ServerConstants.MOB_STATUS_MONITOR_PROC, ServerConstants.MOB_STATUS_MONITOR_PROC);
+-            }
++        if(overtimeStatus != null) {
++            MobStatusOvertimeEntry mdoe = new MobStatusOvertimeEntry(overtimeDelay, overtimeStatus);
+             
+-            registeredMobStatus.put(mse, new Pair<>(cancelStatus, System.currentTimeMillis() + duration));
+-            
+-            if(overtimeStatus != null) {
+-                MobStatusOvertimeEntry mdoe = new MobStatusOvertimeEntry(overtimeDelay, overtimeStatus);
++            overtimeStatusLock.lock();
++            try {
+                 registeredMobStatusOvertime.put(mse, mdoe);
++            } finally {
++                overtimeStatusLock.unlock();
+             }
+-        } finally {
+-            mobStatusLock.unlock();
+         }
++        
++        registerEntry(mse, cancelStatus, duration);
+     }
+     
+     public void interruptMobStatus(MonsterStatusEffect mse) {
+-        mobStatusLock.lock();
+-        try {
+-            Pair<Runnable, Long> rmd = registeredMobStatus.remove(mse);
+-            if(rmd != null) rmd.getLeft().run();
+-            
+-            registeredMobStatusOvertime.remove(mse);
+-        } finally {
+-            mobStatusLock.unlock();
+-        }
++        interruptEntry(mse);
+     }
+ }
+diff --git a/src/net/server/channel/worker/OverallScheduler.java b/src/net/server/channel/worker/OverallScheduler.java
+new file mode 100644
+index 000000000..444566fbf
+--- /dev/null
++++ b/src/net/server/channel/worker/OverallScheduler.java
+@@ -0,0 +1,40 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import tools.locks.MonitoredLockType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class OverallScheduler extends BaseScheduler {
++    public OverallScheduler() {
++        super(MonitoredLockType.CHANNEL_OVERALL);
++    }
++    
++    public void registerDelayedAction(Runnable runAction, long delay) {
++        registerEntry(runAction, runAction, delay);
++    }
++    
++    public void forceRunDelayedAction(Runnable runAction) {
++        interruptEntry(runAction);
++    }
++}
+diff --git a/src/net/server/channel/worker/SchedulerListener.java b/src/net/server/channel/worker/SchedulerListener.java
+new file mode 100644
+index 000000000..d1149a8f5
+--- /dev/null
++++ b/src/net/server/channel/worker/SchedulerListener.java
+@@ -0,0 +1,30 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package net.server.channel.worker;
++
++import java.util.List;
++
++/**
++ *
++ * @author Ronan
++ */
++public interface SchedulerListener {
++    public void removedScheduledEntries(List<Object> entries, boolean update);
++}
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 0b49e7a70..2379f79af 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -929,14 +929,17 @@ private void scrollEquipWithChaos(Equip nEquip, int range) {
+         }
+     }
+     
++    public boolean canUseCleanSlate(Equip nEquip) {
++        Map<String, Integer> eqstats = this.getEquipStats(nEquip.getItemId());
++        return ServerConstants.USE_ENHANCED_CLNSLATE || nEquip.getLevel() + nEquip.getUpgradeSlots() < eqstats.get("tuc");
++    }
++    
+     public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll, int vegaItemId, boolean isGM) {
+         boolean assertGM = (isGM && ServerConstants.USE_PERFECT_GM_SCROLL);
+         
+         if (equip instanceof Equip) {
+             Equip nEquip = (Equip) equip;
+-            
+             Map<String, Integer> stats = this.getEquipStats(scrollId);
+-            Map<String, Integer> eqstats = this.getEquipStats(equip.getItemId());
+             
+             if (((nEquip.getUpgradeSlots() > 0 || ItemConstants.isCleanSlate(scrollId))) || assertGM) {
+                 double prop = (double)stats.get("success");
+@@ -963,7 +966,7 @@ public Item scrollEquipWithId(Item equip, int scrollId, boolean usingWhiteScroll
+                         case 2049001:
+                         case 2049002:
+                         case 2049003:
+-                            if (nEquip.getLevel() + nEquip.getUpgradeSlots() < eqstats.get("tuc")) {
++                            if (canUseCleanSlate(nEquip)) {
+                                 nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() + 1));
+                             }
+                             break;
+diff --git a/src/server/life/MapleLifeFactory.java b/src/server/life/MapleLifeFactory.java
+index 5d5f3655d..c9f2de66a 100644
+--- a/src/server/life/MapleLifeFactory.java
++++ b/src/server/life/MapleLifeFactory.java
+@@ -139,10 +139,10 @@ public static MapleMonster getMonster(int mid) {
+                     while (monsterSkillInfoData.getChildByPath(Integer.toString(i)) != null) {
+                         skills.add(new Pair<>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillInfoData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillInfoData, 0))));
+                         
+-                        MapleData monsterSkillData = monsterData.getChildByPath("skill" + i);
+-                        if(monsterSkillData != null) {
++                        MapleData monsterSkillData = monsterData.getChildByPath("skill" + (i + 1));
++                        if (monsterSkillData != null) {
+                             int animationTime = 0;
+-                            for(MapleData effectEntry : monsterSkillData.getChildren()) {
++                            for (MapleData effectEntry : monsterSkillData.getChildren()) {
+                                 animationTime += MapleDataTool.getIntConvert("delay", effectEntry, 0);
+                             }
+                             
+@@ -153,6 +153,19 @@ public static MapleMonster getMonster(int mid) {
+                     }
+                     stats.setSkills(skills);
+                 }
++                
++                int i = 0;
++                MapleData monsterAttackData;
++                while ((monsterAttackData = monsterData.getChildByPath("attack" + (i + 1))) != null) {
++                    int animationTime = 0;
++                    for (MapleData effectEntry : monsterAttackData.getChildren()) {
++                        animationTime += MapleDataTool.getIntConvert("delay", effectEntry, 0);
++                    }
++
++                    MapleMonsterInformationProvider.getInstance().setMobAttackAnimationTime(mid, i, animationTime);
++                    i++;
++                }
++                
+                 MapleData banishData = monsterInfoData.getChildByPath("ban");
+                 if (banishData != null) {
+                     stats.setBanishInfo(new BanishInfo(MapleDataTool.getString("banMsg", banishData), MapleDataTool.getInt("banMap/0/field", banishData, -1), MapleDataTool.getString("banMap/0/portal", banishData, "sp")));
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index c7d3d30a7..0898a1502 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -95,6 +95,7 @@
+     private Lock externalLock = new MonitoredReentrantLock(MonitoredLockType.MOB_EXT);
+     private Lock monsterLock = new MonitoredReentrantLock(MonitoredLockType.MOB, true);
+     private Lock statiLock = new MonitoredReentrantLock(MonitoredLockType.MOB_STATI);
++    private Lock animationLock = new MonitoredReentrantLock(MonitoredLockType.MOB_ANI);
+ 
+     public MapleMonster(int id, MapleMonsterStats stats) {
+         super(id);
+@@ -230,6 +231,28 @@ public void setHpZero() {     // force HP = 0
+         applyAndGetHpDamage(Integer.MAX_VALUE, false);
+     }
+     
++    public boolean applyAnimationIfRoaming(int attackPos, int skillPos) {   // roam: not casting attack or skill animations
++        if(!animationLock.tryLock()) return false;
++        
++        try {
++            long animationTime;
++        
++            if(skillPos < 0) {
++                animationTime = MapleMonsterInformationProvider.getInstance().getMobAttackAnimationTime(this.getId(), attackPos);
++            } else {
++                animationTime = MapleMonsterInformationProvider.getInstance().getMobSkillAnimationTime(this.getId(), skillPos);
++            }
++
++            if(animationTime > 0) {
++                return map.getChannelServer().registerMobOnAnimationEffect(map.getId(), this.hashCode(), animationTime);
++            } else {
++                return true;
++            }
++        } finally {
++            animationLock.unlock();
++        }
++    }
++    
+     public synchronized Integer applyAndGetHpDamage(int delta, boolean stayAlive) {
+         int curHp = hp.get();
+         if (curHp <= 0) {       // this monster is already dead
+@@ -469,15 +492,15 @@ public void giveExpToCharacter(MapleCharacter attacker, float exp, boolean isKil
+     public MapleCharacter killBy(final MapleCharacter killer) {
+         distributeExperience(killer != null ? killer.getId() : 0);
+ 
+-        MapleCharacter controller = getController();
+-        if (controller != null) { // this can/should only happen when a hidden gm attacks the monster
+-            controller.announce(MaplePacketCreator.stopControllingMonster(this.getObjectId()));
+-            controller.stopControllingMonster(this);
++        MapleCharacter chrController = getController();
++        if (chrController != null) { // this can/should only happen when a hidden gm attacks the monster
++            chrController.announce(MaplePacketCreator.stopControllingMonster(this.getObjectId()));
++            chrController.stopControllingMonster(this);
+         }
+ 
+         final List<Integer> toSpawn = this.getRevives(); // this doesn't work (?)
+         if (toSpawn != null) {
+-            final MapleMap reviveMap = killer.getMap();
++            final MapleMap reviveMap = map;
+             if (toSpawn.contains(9300216) && reviveMap.getId() > 925000000 && reviveMap.getId() < 926000000) {
+                 reviveMap.broadcastMessage(MaplePacketCreator.playSound("Dojang/clear"));
+                 reviveMap.broadcastMessage(MaplePacketCreator.showEffect("dojang/end/clear"));
+@@ -571,7 +594,7 @@ private void dispatchUpdateQuestMobCount() {
+         }
+     }
+     
+-    public void dispatchMonsterKilled(boolean hasKiller) {
++    public synchronized void dispatchMonsterKilled(boolean hasKiller) {
+         if(!hasKiller) {
+             dispatchUpdateQuestMobCount();
+         }
+@@ -584,19 +607,52 @@ public void dispatchMonsterKilled(boolean hasKiller) {
+             }
+         }
+         
+-        for (MonsterListener listener : listeners.toArray(new MonsterListener[listeners.size()])) {
++        MonsterListener[] listenersList;
++        statiLock.lock();
++        try {
++            listenersList = listeners.toArray(new MonsterListener[listeners.size()]);
++        } finally {
++            statiLock.unlock();
++        }
++        
++        for (MonsterListener listener : listenersList) {
+             listener.monsterKilled(getAnimationTime("die1"));
+         }
++        
++        statiLock.lock();
++        try {
++            stati.clear();
++            alreadyBuffed.clear();
++            listeners.clear();
++        } finally {
++            statiLock.unlock();
++        }
+     }
+     
+     private void dispatchMonsterDamaged(MapleCharacter from, int trueDmg) {
+-        for (MonsterListener listener : listeners.toArray(new MonsterListener[listeners.size()])) {
++        MonsterListener[] listenersList;
++        statiLock.lock();
++        try {
++            listenersList = listeners.toArray(new MonsterListener[listeners.size()]);
++        } finally {
++            statiLock.unlock();
++        }
++        
++        for (MonsterListener listener : listenersList) {
+             listener.monsterDamaged(from, trueDmg);
+         }
+     }
+     
+     private void dispatchMonsterHealed(int trueHeal) {
+-        for (MonsterListener listener : listeners.toArray(new MonsterListener[listeners.size()])) {
++        MonsterListener[] listenersList;
++        statiLock.lock();
++        try {
++            listenersList = listeners.toArray(new MonsterListener[listeners.size()]);
++        } finally {
++            statiLock.unlock();
++        }
++        
++        for (MonsterListener listener : listenersList) {
+             listener.monsterHealed(trueHeal);
+         }
+     }
+@@ -653,7 +709,12 @@ public void switchController(MapleCharacter newController, boolean immediateAggr
+     }
+ 
+     public void addListener(MonsterListener listener) {
+-        listeners.add(listener);
++        statiLock.lock();
++        try {
++            listeners.add(listener);
++        } finally {
++            statiLock.unlock();
++        }
+     }
+ 
+     public boolean isControllerHasAggro() {
+diff --git a/src/server/life/MapleMonsterInformationProvider.java b/src/server/life/MapleMonsterInformationProvider.java
+index 41eaa84bc..7e4325e89 100644
+--- a/src/server/life/MapleMonsterInformationProvider.java
++++ b/src/server/life/MapleMonsterInformationProvider.java
+@@ -54,6 +54,7 @@
+         private final Set<Integer> hasNoMultiEquipDrops = new HashSet<>();
+         private final Map<Integer, List<MonsterDropEntry>> extraMultiEquipDrops = new HashMap<>();
+         
++        private final Map<Pair<Integer, Integer>, Integer> mobAttackAnimationTime = new HashMap<>();
+         private final Map<Pair<Integer, Integer>, Integer> mobSkillAnimationTime = new HashMap<>();
+ 
+ 	protected MapleMonsterInformationProvider() {
+@@ -226,6 +227,15 @@ private void retrieveGlobal() {
+ 		return ret;
+ 	}
+         
++        public final void setMobAttackAnimationTime(int monsterId, int attackPos, int animationTime) {
++                mobAttackAnimationTime.put(new Pair<>(monsterId, attackPos), animationTime);
++        }
++        
++        public final Integer getMobAttackAnimationTime(int monsterId, int attackPos) {
++                Integer time = mobAttackAnimationTime.get(new Pair<>(monsterId, attackPos));
++                return time == null ? 0 : time;
++        }
++        
+         public final void setMobSkillAnimationTime(int monsterId, int skillPos, int animationTime) {
+                 mobSkillAnimationTime.put(new Pair<>(monsterId, skillPos), animationTime);
+         }
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 032b6ab66..91ef97293 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -105,14 +105,16 @@ public void setLimit(int limit) {
+     }
+ 
+     public void applyDelayedEffect(final MapleCharacter player, final MapleMonster monster, final boolean skill, final List<MapleCharacter> banishPlayers, int animationTime) {
+-        TimerManager.getInstance().schedule(new Runnable() {
+-                                                @Override
+-                                                public void run() {
+-                                                    if(monster.isAlive()) {
+-                                                        applyEffect(player, monster, skill, banishPlayers);
+-                                                    }
+-                                                }
+-                                            }, animationTime);
++        Runnable toRun = new Runnable() {
++                            @Override
++                            public void run() {
++                                if(monster.isAlive()) {
++                                    applyEffect(player, monster, skill, banishPlayers);
++                                }
++                            }
++                        };
++        
++        monster.getMap().getChannelServer().registerOverallAction(monster.getMap().getId(), toRun, animationTime);
+     }
+     
+     public void applyEffect(MapleCharacter player, MapleMonster monster, boolean skill, List<MapleCharacter> banishPlayers) {
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 5d3e398e7..786762b65 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -193,7 +193,7 @@ private void tryForceHitReactor(final byte newState) {  // weak hit state signal
+             this.resetReactorActions(newState);
+             map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
+         } finally {
+-            this.unlockReactor();
++            this.reactorLock.unlock();
+         }
+     }
+     
+diff --git a/src/tools/dropspider/DataTool.java b/src/tools/dropspider/DataTool.java
+new file mode 100644
+index 000000000..b412da3c6
+--- /dev/null
++++ b/src/tools/dropspider/DataTool.java
+@@ -0,0 +1,129 @@
++/*
++ * To change this template, choose Tools | Templates
++ * and open the template in the editor.
++ */
++package tools.dropspider;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.Map;
++import provider.MapleData;
++import provider.MapleDataDirectoryEntry;
++import provider.MapleDataFileEntry;
++import provider.MapleDataProvider;
++import provider.MapleDataProviderFactory;
++import provider.MapleDataTool;
++import server.MapleItemInformationProvider;
++import tools.Pair;
++
++/**
++ *
++ * @author Simon
++ */
++public class DataTool {
++    private static Map<String, Integer> hardcodedMobs = new HashMap<>();
++    
++    private static ArrayList<Pair<Integer, String>> npc_list = null;
++    private static LinkedList<Pair<Integer, String>> mob_pairs = null;
++    private static MapleDataProvider data = MapleDataProviderFactory.getDataProvider(MapleDataProviderFactory.fileInWZPath("Mob.wz"));
++    private static HashSet<Integer> bosses = null;
++
++    public static void setHardcodedMobNames() {
++        hardcodedMobs.put("Red Slime [2]", 7120103);
++        hardcodedMobs.put("Gold Slime", 7120105);
++        hardcodedMobs.put("Nibelung [3]", 8220015);
++    }
++    
++    public static void addMonsterIdsFromHardcodedName(List<Integer> monster_ids, String monster_name) {
++        Integer id = hardcodedMobs.get(monster_name);
++        if(id != null) {
++            monster_ids.add(id);
++        }
++    }
++    
++    public static ArrayList<Integer> monsterIdsFromName(String name) {
++        MapleData data = null;
++        MapleDataProvider dataProvider = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/" + "String.wz"));
++        ArrayList<Integer> ret = new ArrayList<>();
++        data = dataProvider.getData("Mob.img");
++        if (mob_pairs == null) {
++            mob_pairs = new LinkedList<>();
++            for (MapleData mobIdData : data.getChildren()) {
++                int mobIdFromData = Integer.parseInt(mobIdData.getName());
++                String mobNameFromData = MapleDataTool.getString(mobIdData.getChildByPath("name"), "NO-NAME");
++                mob_pairs.add(new Pair<>(mobIdFromData, mobNameFromData));
++            }
++        }
++        for (Pair<Integer, String> mobPair : mob_pairs) {
++            if (mobPair.getRight().toLowerCase().equals(name.toLowerCase())) {
++                ret.add(mobPair.getLeft());
++            }
++        }
++        return ret;
++    }
++
++    private static void populateBossList() {
++        bosses = new HashSet<>();
++        MapleDataDirectoryEntry mob_data = data.getRoot();
++        for (MapleDataFileEntry mdfe : mob_data.getFiles()) {
++            MapleData boss_candidate = data.getData(mdfe.getName());
++            MapleData monsterInfoData = boss_candidate.getChildByPath("info");
++            int mid = Integer.valueOf(boss_candidate.getName().replaceAll("[^0-9]", ""));
++            boolean boss = MapleDataTool.getIntConvert("boss", monsterInfoData, 0) > 0 || mid == 8810018 || mid == 9410066;
++            if (boss) {
++                bosses.add(mid);
++            }
++        }
++    }
++
++    public static boolean isBoss(int mid) {
++        if (bosses == null) {
++            populateBossList();
++        }
++        return bosses.contains(mid);
++    }
++
++    public static ArrayList<Integer> itemIdsFromName(String name) {
++
++        ArrayList<Integer> ret = new ArrayList<>();
++        for (Pair<Integer, String> itemPair : MapleItemInformationProvider.getInstance().getAllItems()) {
++            String item_name = itemPair.getRight().toLowerCase().replaceAll("\\&quot;", "");
++            item_name = item_name.replaceAll("'", "");
++            item_name = item_name.replaceAll("\\'", "");
++
++            name = name.toLowerCase().replaceAll("\\&quot;", "");
++            name = name.replaceAll("'", "");
++            name = name.replaceAll("\\'", "");
++
++            if (item_name.equals(name)) {
++                ret.add(itemPair.getLeft());
++                return ret;
++            }
++        }
++        return ret;
++    }
++
++    public static ArrayList<Integer> npcIdsFromName(String name) {
++        MapleDataProvider dataProvider = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/" + "String.wz"));
++        ArrayList<Integer> ret = new ArrayList<>();
++        if (npc_list == null) {
++            ArrayList<Pair<Integer, String>> searchList = new ArrayList<>();
++            for (MapleData searchData : dataProvider.getData("Npc.img").getChildren()) {
++                int searchFromData = Integer.parseInt(searchData.getName());
++                String infoFromData = MapleDataTool.getString(searchData.getChildByPath("name"), "NO-NAME");
++                searchList.add(new Pair<>(searchFromData, infoFromData));
++            }
++            npc_list = searchList;
++        }
++        for (Pair<Integer, String> searched : npc_list) {
++            if (searched.getRight().toLowerCase().contains(name.toLowerCase())) {
++                ret.add(searched.getLeft());
++            }
++        }
++        return ret;
++    }
++}
+diff --git a/src/tools/dropspider/DropEntry.java b/src/tools/dropspider/DropEntry.java
+new file mode 100644
+index 000000000..63caf8f9f
+--- /dev/null
++++ b/src/tools/dropspider/DropEntry.java
+@@ -0,0 +1,177 @@
++/*
++ * To change this template, choose Tools | Templates
++ * and open the template in the editor.
++ */
++package tools.dropspider;
++
++import client.inventory.MapleInventoryType;
++import constants.ItemConstants;
++
++/**
++ *
++ * @author Simon
++ */
++public class DropEntry {
++    private int version;
++    private int item_id;
++    private int monster_id;
++    private int chance;
++    private int mindrop;
++    private int maxdrop;
++
++    public DropEntry(int item_id, int monster_id, int version) {
++        this.item_id = item_id;
++        this.monster_id = monster_id;
++        mindrop = 1;
++        maxdrop = 1;
++        chance = calculateChance(item_id);
++        this.version = version;
++    }
++
++    private int calculateChance(int item_id) {
++        MapleInventoryType mit = ItemConstants.getInventoryType(item_id);
++        boolean boss = DataTool.isBoss(monster_id);
++        int number = (item_id / 1000) % 1000;
++        switch (mit) {
++            case EQUIP:
++                if (boss) {
++                    return 40000;
++                }
++                return 700;
++            case USE:
++                if (boss) {
++                    mindrop = 1;
++                    maxdrop = 4;
++                }
++                switch (number) {
++                    case 0: // normal potions
++                        mindrop = 1;
++                        if (version > 98) {
++                            maxdrop = 5;
++                        }
++                        return 40000;
++                    case 1: // watermelons, pills, speed potions, etc
++                    case 2: // same thing
++                        return 10000;
++                    case 3: // advanced potions from crafting (should not drop)
++                    case 4: // same thing
++                    case 11: // poison mushroom
++                    case 28: // cool items
++                    case 30: // return scrolls
++                    case 46: // gallant scrolls
++                        return 0;
++                    case 10: // strange potions like apples, eggs
++                    case 12: // drakes blood, sap of ancient tree (rare use)
++                    case 20: // salad, fried chicken, dews
++                    case 22: // air bubbles and stuff. ALSO nependeath honey but oh well
++                    case 50: // antidotes and stuff
++                        return 3000;
++                    case 290: // mastery books
++                        if(boss)
++                            return 40000;
++                        else
++                            return 1000;
++                    case 40: // Scrolls
++                    case 41: // Scrolls
++                    case 43: // Scrolls
++                    case 44: // Scrolls
++                    case 48: // pet scrolls
++                        if(boss)
++                            return 10000;
++                        else
++                            return 750;
++                    case 100: // summon bags
++                    case 101: // summon bags
++                    case 102: // summon bags
++                    case 109: // summon bags
++                    case 120: // pet food
++                    case 211: // cliffs special potion
++                    case 240: // rings
++                    case 270: // pheromone, additional weird stuff
++                    case 310: // teleport rock
++                    case 320: // weird drops
++                    case 390: // weird
++                    case 430: // Scripted items
++                    case 440: // jukebox
++                    case 460: // magnifying glass
++                    case 470: // golden hammer
++                    case 490: // crystanol
++                    case 500: // sp reset
++                        return 0;
++                    case 47: // tablets from dragon rider
++                        return 220000;
++                    case 49: // clean slats, potential scroll, ees
++                    case 70: // throwing stars
++                    case 210: // rare monster piece drops
++                    case 330: // bullets
++                        if(boss)
++                            return 2500;
++                        else
++                            return 400;
++                    case 60: // bow arrows
++                    case 61: // crossbow arrows
++                        mindrop = 10;
++                        maxdrop = 50;
++                        return 10000;
++                    case 213: // boss transfrom
++                        return 100000;
++                    case 280: // skill books
++                        if(boss)
++                            return 20000;
++                        else
++                            return 1000;
++                    case 381: // monster book things
++                    case 382:
++                    case 383:
++                    case 384:
++                    case 385:
++                    case 386:
++                    case 387:
++                    case 388:
++                        return 20000;
++                    case 510: // recipes
++                    case 511:
++                    case 512:
++                        return 10000;
++                    default:
++                        return 0;
++
++                }
++            case ETC:
++                switch (number) {
++                    case 0: // monster pieces
++                        return 200000;
++                    case 4: // crystal ores
++                    case 130: // simulators
++                    case 131: // manuals
++                        return 3000;
++                    case 30: // game pieces
++                        return 10000;
++                    case 32: // misc items
++                        return 10000;
++                    default:
++                        return 7000;
++                }
++            default:
++                return 7000;
++        }
++    }
++
++    public String getQuerySegment() {
++        StringBuilder sb = new StringBuilder();
++        sb.append("(");
++        sb.append(monster_id);
++        sb.append(", ");
++        sb.append(item_id);
++        sb.append(", ");
++        sb.append(mindrop);//min
++        sb.append(", ");
++        sb.append(maxdrop);//max
++        sb.append(", ");
++        sb.append(0);//quest
++        sb.append(", ");
++        sb.append(chance);
++        sb.append(")");
++        return sb.toString();
++    }
++}
+\ No newline at end of file
+diff --git a/src/tools/dropspider/Errors.java b/src/tools/dropspider/Errors.java
+new file mode 100644
+index 000000000..887607791
+--- /dev/null
++++ b/src/tools/dropspider/Errors.java
+@@ -0,0 +1,19 @@
++package tools.dropspider;
++
++import java.util.LinkedList;
++
++public class Errors {
++    
++    public String mobName;
++    public LinkedList<String> wrong = new LinkedList<>();
++    
++    public String createErrorLog() {
++        StringBuilder sb = new StringBuilder();
++        
++        for (String w : wrong) {
++            sb.append(mobName).append(" : ").append(w).append("\r\n");
++        }
++        
++        return sb.toString();
++    }
++}
+diff --git a/src/tools/dropspider/Main.java b/src/tools/dropspider/Main.java
+new file mode 100644
+index 000000000..3b28fd60d
+--- /dev/null
++++ b/src/tools/dropspider/Main.java
+@@ -0,0 +1,339 @@
++/*
++ * To change this template, choose Tools | Templates
++ * and open the template in the editor.
++ */
++package tools.dropspider;
++
++import java.io.BufferedWriter;
++import java.io.File;
++import java.io.FileWriter;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.PrintWriter;
++import java.net.Authenticator;
++import java.net.MalformedURLException;
++import java.net.URL;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.Iterator;
++import java.util.Scanner;
++import javax.net.ssl.HttpsURLConnection;
++
++/**
++ *
++ * @author Simon
++ */
++
++//NOTE: this tool is currently unsupported since HS started using HTTPS. Missing proper SSL certificates to access Hidden-Street's website.
++public class Main {
++
++    private static ArrayList<DropEntry> drop_entries = new ArrayList<>();
++    private static HashMap<String, Errors> problems = new HashMap<>();
++//    private static final String TEST_STRING = " <a href=\"/items/leftover/ligator-skin\" alt=\"/tip.php?nid=2138\">Ligator Skin</a>, <a href=\"/items/leftover/the-magic-rock\" alt=\"/tip.php?nid=3954\">The Magic Rock</a>, <a href=\"/items/quest/witch-grass-leaves\" alt=\"/tip.php?nid=6129\">Witch Grass Leaves</a>    </td> ";
++    private static final String BASE_URL = "https://bbb.hidden-street.net";
++    private static final int VERSION = 83;
++    private static String[] pages = {"1-10", "11-20", "21-30", "31-40", "41-50", "51-60", "61-70", "71-80", "81-90", "91-100"};
++    private static String[] additionalPages88 = {"101-150", "151-200"};
++    private static String[] additionalPagesBB = {"101-120,", "121-140", "141-160", "161-180", "181-200"};
++
++    public static void main(String[] args) {
++        System.setProperty("wzpath", "wz");
++        
++        //DataTool.setHardcodedMobNames();
++        //parsePage("https://bbb.hidden-street.net/monster/nibelung-3");
++        
++        crawlProgram();
++        
++        dumpQuery();
++        dumpErrors();
++    }
++    
++    private static void crawlProgram() {
++        //parseMonsterSection(TEST_STRING);
++        for (String s : pages) {
++            crawlPage("https://bbb.hidden-street.net/monster/" + s);
++        }
++        if (VERSION > 92) { // big bang
++            for (String s : additionalPagesBB) {
++                crawlPage("https://bbb.hidden-street.net/monster/" + s);
++            }
++            crawlPage("https://bbb.hidden-street.net/monster/101-120?page=1"); //page 1's bugged
++        } else {
++            for (String s : additionalPages88) {
++                crawlPage("https://bbb.hidden-street.net/monster/" + s);
++            }
++        }
++    }
++
++    private static void crawlPage(String url) { //recursive method
++        try {
++            URL page = new URL(url);
++            //Authenticator.setDefault( new MyAuthenticator());   // todo keystore/truststore pass
++            HttpsURLConnection http = (HttpsURLConnection)page.openConnection();
++            http.setAllowUserInteraction(true);
++            http.setRequestMethod("GET");
++            http.connect();
++
++            InputStream is = http.getInputStream();
++            Scanner s = new Scanner(is);
++            String temp_data = "";
++            while (s.hasNext()) {
++                temp_data += s.nextLine() + "\n";
++            }
++            s.close();
++            is.close();
++            while (temp_data.contains("class=\"monster\">")) {
++                String monster_section = getStringBetween(temp_data, "class=\"monster\">", "</table>");
++                parseMonsterSection(monster_section);
++                temp_data = trimUntil(temp_data, "</table>");
++            }
++            if (temp_data.contains("Go to next page")) {
++                String next_url_segment = getStringBetween(temp_data, "<li class=\"pager-next\"><a href=\"", "\" title=\"Go to next page");
++                String next_url = BASE_URL + next_url_segment;
++                crawlPage(next_url);
++            } else {
++                System.out.println("Finished crawling section.");
++            }
++        } catch (MalformedURLException mue) {
++            mue.printStackTrace();
++            System.out.println("Error parsing URL: " + url);
++            return;
++        } catch (IOException ioe) {
++            ioe.printStackTrace();
++            System.out.println("Error reading from URL: " + ioe.getLocalizedMessage());
++            return;
++        }
++    }
++    
++    private static void parsePage(String url) { //unit method
++        try {
++            URL page = new URL(url);
++            InputStream is = page.openStream();
++            Scanner s = new Scanner(is);
++            String temp_data = "";
++            while (s.hasNext()) {
++                temp_data += s.nextLine() + "\n";
++            }
++            s.close();
++            is.close();
++            while (temp_data.contains("class=\"monster\">")) {
++                String monster_section = getStringBetween(temp_data, "class=\"monster\">", "</table>");
++                parseMonsterSection(monster_section);
++                temp_data = trimUntil(temp_data, "</table>");
++            }
++            if (temp_data.contains("Go to next page")) {
++                String next_url_segment = getStringBetween(temp_data, "<li class=\"pager-next\"><a href=\"", "\" title=\"Go to next page");
++                String next_url = BASE_URL + next_url_segment;
++                //crawlPage(next_url);
++            } else {
++                System.out.println("Finished parsing section.");
++            }
++        } catch (MalformedURLException mue) {
++            mue.printStackTrace();
++            System.out.println("Error parsing URL: " + url);
++            return;
++        } catch (IOException ioe) {
++            ioe.printStackTrace();
++            System.out.println("Error reading from URL: " + ioe.getLocalizedMessage());
++            return;
++        }
++    }
++
++    private static void parseMonsterSection(String html_data) {
++        String monster_name = getStringBetween(html_data, "alt=\"", "\" title=");
++        System.out.println(monster_name);
++        //  System.out.println(html_data);
++        //parse etc drop
++        parseItemSection(getStringBetween(html_data, "Etc. drop:</strong>", "</td>"), monster_name);
++
++        //parse useable drop
++        parseItemSection(getStringBetween(html_data, "Useable drop:</strong>", "</td>"), monster_name);
++
++        //parse ore drop
++        parseItemSection(getStringBetween(html_data, "Ore drop:</strong>", "</td>"), monster_name);
++
++        //parse equips
++        parseItemSection(getStringBetween(html_data, "Common equipment:</strong>", "</div>"), monster_name);
++        parseItemSection(getStringBetween(html_data, "Warrior equipment:</strong>", "</div>"), monster_name);
++        parseItemSection(getStringBetween(html_data, "Magician equipment:</strong>", "</div>"), monster_name);
++        parseItemSection(getStringBetween(html_data, "Bowman equipment:</strong>", "</div>"), monster_name);
++        parseItemSection(getStringBetween(html_data, "Thief equipment:</strong>", "</div>"), monster_name);
++        parseItemSection(getStringBetween(html_data, "Pirate equipment:</strong>", "</div>"), monster_name);
++
++        //System.out.println(monster_name);
++    }
++
++    private static void parseItemSection(String html_data, String monster_name) {
++        String temp_data = html_data;
++        while (temp_data.contains("<a href")) {
++            //  System.out.println("Temp_data: " + temp_data);
++            String s1 = trimUntil(temp_data, ">");
++            String item_name = getStringBetween(s1, "", "</a>");
++            temp_data = trimUntil(temp_data, "</a>");
++
++            boolean gender_equip = false;
++            if (item_name.contains("(M)") || item_name.contains("(F)")) {
++                item_name = item_name.replaceAll("(\\(M\\))|(\\(F\\))", "");
++                gender_equip = true;
++            }
++            item_name = item_name.replaceAll("Throwing-Star", "Throwing-Stars").trim();
++            item_name = item_name.replaceAll("for Magic Attack", "for Magic Att.").trim();
++            item_name = item_name.replaceAll("\\(50%\\)", "").trim();
++            item_name = item_name.replaceAll("\\(70%\\)", "").trim();
++            item_name = item_name.replaceAll("\\'s", "").trim();
++            
++            
++            monster_name = monster_name.replaceAll("Horntail\\'s Head B", "Horntail");
++            // Process scrolls, nexon doesn't have the % on most of the scrolls. So we need to remove it
++            // Unfortunately they do for some, so we have to handle that too.
++            boolean scroll = false;
++            int scrollType = 0;
++            
++            if(item_name.contains("100%")) {
++                scroll = true;
++                item_name = item_name.replaceAll("100%", "").trim();
++                item_name = item_name.replaceAll("\\(\\)", "").trim(); // Hidden Street has a few scroll %'s with ()s around them.. sigh
++            } else if(item_name.contains("60%")) {
++                scroll = true;
++                scrollType = 1;
++                item_name = item_name.replaceAll("60%", "").trim();
++                item_name = item_name.replaceAll("\\(\\)", "").trim();
++            } else if(item_name.contains("10%")) {
++                scroll = true;
++                scrollType = 2;
++                item_name = item_name.replaceAll("10%", "").trim();
++                item_name = item_name.replaceAll("\\(\\)", "").trim();
++                //f(item_name.contains(" ()")) item_name = item_name.substring(0, item_name.lastIndexOf(" ("));
++            } else if(item_name.contains("70%")) {
++                scroll = true;
++                scrollType = 4;
++                item_name = item_name.replaceAll("70%", "").trim();
++                item_name = item_name.replaceAll("\\(\\)", "").trim();
++            } else if(item_name.contains("30%")) {
++                scroll = true;
++                scrollType = 5;
++                item_name = item_name.replaceAll("30%", "").trim();
++                item_name = item_name.replaceAll("\\(\\)", "").trim();
++            }
++                
++            
++//            System.out.println("Item name: " + item_name);
++
++            //drop entry
++            ArrayList<Integer> monster_ids = DataTool.monsterIdsFromName(monster_name);
++            //DataTool.addMonsterIdsFromHardcodedName(monster_ids, monster_name);
++            
++            ArrayList<Integer> item_ids = DataTool.itemIdsFromName(item_name);
++            
++            if(scroll && item_ids.isEmpty()) {
++                // Try adding on the % again. Thanks nexon...
++                if(scrollType == 0) item_name += " 100%";
++                if(scrollType == 1) item_name += " 60%";
++                if(scrollType == 2) item_name += " 10%";
++                if(scrollType == 4) item_name += " 70%";
++                if(scrollType == 5) item_name += " 30%";
++                
++                item_ids = DataTool.itemIdsFromName(item_name);
++            }
++
++            if (!monster_ids.isEmpty() && !item_ids.isEmpty()) {
++                int item_id = item_ids.get(0);
++                if(scroll) {
++                    item_id += scrollType;
++                }
++                int item_id_2 = -1;
++                for (Integer mob_id : monster_ids) {
++                    System.out.println("Monster ID: " + mob_id + ", Item ID: " + item_id);
++                    drop_entries.add(new DropEntry(item_id, mob_id, VERSION));
++                    if (gender_equip && item_ids.size() > 1) {
++                        item_id_2 = item_ids.get(1);
++                        drop_entries.add(new DropEntry(item_id_2, mob_id, VERSION));
++
++                    }
++                }
++            } else {
++                System.out.println("Error parsing item " + item_name + " dropped by " + monster_name + ".");
++
++                if (!monster_ids.isEmpty()) {
++                    if (!problems.containsKey(monster_name)) {
++                        Errors e = new Errors();
++                        e.mobName = monster_name;
++
++                        problems.put(monster_name, e);
++                    }
++
++                    problems.get(monster_name).wrong.add(item_name);
++                }
++                //System.out.println("Monster ids size: " + monster_ids.size() + ", Item IDs size: " + item_ids.size());
++            }
++
++        }
++    }
++
++    /**
++     * Returns the string lying between the two specified strings.
++     *
++     * @param line The string to parse
++     * @param start The first string
++     * @param end The last string
++     * @return The string between the two specified strings
++     */
++    public static String getStringBetween(String line, String start, String end) {
++        int start_offset = line.indexOf(start) + start.length();
++        return line.substring(start_offset, line.substring(start_offset).indexOf(end) + start_offset);
++    }
++
++    public static String trimUntil(String line, String until) {
++        int until_pos = line.indexOf(until);
++        if (until_pos == -1) {
++            return null;
++        } else {
++            return line.substring(until_pos + until.length());
++        }
++    }
++
++    public static void dumpErrors() {
++        String file = "errors.txt";
++        try {
++            File f = new File(file);
++            BufferedWriter bw = new BufferedWriter(new FileWriter(f));
++            PrintWriter pw = new PrintWriter(bw);
++
++            for (Errors err : problems.values()) {
++                pw.write(err.createErrorLog());
++            }
++
++            pw.flush();
++
++            pw.close();
++            bw.close();
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    public static void dumpQuery() {
++        String filename = "drops.sql";
++        try {
++            File output = new File(filename);
++            BufferedWriter bw = new BufferedWriter(new FileWriter(output));
++            PrintWriter pw = new PrintWriter(bw);
++            StringBuilder sb = new StringBuilder();
++            pw.write("TRUNCATE TABLE `drop_data`;\r\n");
++            pw.write("INSERT INTO `drop_data` (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES ");
++            for (Iterator<DropEntry> i = drop_entries.iterator(); i.hasNext();) {
++                DropEntry de = i.next();
++                pw.write(de.getQuerySegment());
++                if (i.hasNext()) {
++                    pw.write(", \r\n");
++                }
++            }
++            pw.write(sb.toString());
++            pw.close();
++            bw.close();
++        } catch (IOException ioe) {
++            ioe.printStackTrace();
++            System.out.println("Error writing to file: " + ioe.getLocalizedMessage());
++        }
++    }
++}
+diff --git a/src/tools/locks/MonitoredLockType.java b/src/tools/locks/MonitoredLockType.java
+index 793012204..78fa59462 100644
+--- a/src/tools/locks/MonitoredLockType.java
++++ b/src/tools/locks/MonitoredLockType.java
+@@ -45,7 +45,11 @@
+     SERVER_DISEASES,
+     MERCHANT,
+     CHANNEL,
++    CHANNEL_MOBACTION,
++    CHANNEL_MOBANIMAT,
+     CHANNEL_MOBSTATUS,
++    CHANNEL_OVTSTATUS,
++    CHANNEL_OVERALL,
+     GUILD,
+     PARTY,
+     WORLD_PARTY,
+@@ -63,8 +67,9 @@
+     CASHSHOP,
+     VISITOR_PSHOP,
+     STORAGE,
+-    MOB_EXT,
+     MOB,
++    MOB_ANI,
++    MOB_EXT,
+     MOB_STATI,
+     MOBSKILL_FACTORY,
+     PORTAL,

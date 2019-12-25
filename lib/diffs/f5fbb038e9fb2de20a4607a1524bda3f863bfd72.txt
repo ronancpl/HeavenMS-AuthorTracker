@@ -1,0 +1,2028 @@
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 29d02c30e..5385b8ae2 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -175,4 +175,7 @@ Corre
+ 23 - 25 Abril 2017,
+ Introdução de métodos que auxiliam na normalização dos scripts para PQs.
+ Nova PQ: Boss Rush PQ.
+-Correção de situações nas PQs Ellin e Pirate.
+\ No newline at end of file
++Correção de situações nas PQs Ellin e Pirate.
++
++26 Abril 2017,
++Adição de Happyville, via Rooney.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index 0e6571b23..497fc6e88 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -3,25 +3,16 @@
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/event/EventManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/portal/davy_next4.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMapObjectType.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/portal/party6_out.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/event/Ellin.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/event/PiratePQ.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/command/Commands.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2002000.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/1022101.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMapItem.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/9000020.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/SavedLocationType.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/sql/db_database.sql</file>
+             <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/portal/party6_stage.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/event/EventInstanceManager.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/net/server/world/MaplePartyCharacter.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/reactor/3008000.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/client/MapleJob.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/src/scripting/AbstractPlayerInteraction.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/9000037.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2094002.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/event/BossRushPQ.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/scripts/npc/world0/2060009.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/net/server/channel/handlers/ItemPickupHandler.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/src/server/maps/MapleMap.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/src/server/MapleInventoryManipulator.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/npc/world0/1022101.js b/scripts/npc/world0/1022101.js
+index e4cbe1975..b1b46298b 100644
+--- a/scripts/npc/world0/1022101.js
++++ b/scripts/npc/world0/1022101.js
+@@ -1,214 +1,45 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/* Rooney
+-	Map Name (Map ID)
+-	Used to exchange VP for Maple Leaves, and Maple Leaves for rewards.
+- */
+-
+-var itemToUse = 4001126;
+-
+-var chairs = new Array(3010000, 3010001, 3010002, 3010003, 3010004, 3010005, 3010006, 3010007, 3010008, 3010009, 3010010, 3010011, 3010012, 3010013, 3010015, 3010016, 3010017, 3010018, 3010019, 3010022, 3010023, 3010024, 3010025, 3010026, 3010028, 3010040, 3010041, 3010043, 3010045, 3010046, 3010047,3010057,3010058,3010060,3010061,3010062,3010063, 3010064,3010065,3010066,3010067,3010069,3010071,3010072,3010073,3010080,3010081,3010082,3010083, 3010084,3010085,3010097,3010098,3010099,3010101,3010106,3010116,3011000,3012005,3012010,3012011);
+-var scrolls = new Array(2040603,2044503,2041024,2041025,2044703,2044603,2043303,2040807,2040806,2040006,2040007,2043103,2043203,2043003,2040506,2044403,2040903,2040709,2040710,2040711,2044303,2043803,2040403,2044103,2044203,2044003,2043703);
+-var weapons = new Array(1302020, 1302030, 1302033, 1302058, 1302064, 1302080, 1312032, 1322054, 1332025, 1332055, 1332056, 1372034, 1382009, 1382012, 1382039, 1402039, 1412011, 1412027, 1422014, 1422029, 1432012, 1432040, 1432046, 1442024, 1442030, 1442051, 1452016, 1452022, 1452045, 1462014, 1462019, 1462040, 1472030, 1472032, 1472055, 1482020, 1482021, 1482022, 1492020, 1492021, 1492022, 1092030, 1092045, 1092046, 1092047);
+-
+-var nxAmount = 3000;
+-var chairAmount = 2;
+-var weaponAmount = 2;
+-var buffAmount = 2;
+-var hiredMerchantLength = 7;
+-
+-var buff1ID = 2022273;
+-var buff2ID = 2022179;
+-var status;
+-var vp;
+-var choice;
+- 
+-function start() {
+-	//vp = cm.getClient().getVotePoints();
+-	//if(vp == null)
+-		vp = 0;
+-	
+-    status = -1;
+-    action(1, 0, 0);
+-}
+-
+-function action(mode, type, selection) {
+-    if (mode < 0)
+-        cm.dispose();
+-    else {
+-        if (mode == 1)
+-            status++;
+-        else
+-            status--;
+-        if (status == 0 && mode == 1) {
+-			if(cm.getPlayer().getLevel() < 20) {
+-				cm.sendOk("Hello, I am the Vote Point exchanger for #rMapleSolaxia#k!\r\n\r\nI am sorry, but I can only exchange Vote Points for players #blevel 20 or over#k.");
+-				cm.dispose();
+-				return;
+-			}
+-			var outStr = "Hello, I am the Vote Point exchanger for #rMapleSolaxia#k!\r\n";
+-			outStr += "You currently have #r#c" + itemToUse + "##k #t" + itemToUse + "# and #r" + vp + "#k Vote Points.#b\r\n\r\n";
+-			outStr += "#L0#I would like to exchange my vote points for Maple Leaves#l\r\n";
+-			outStr += "#L1#I would like to exchange 1 #t" + itemToUse + "# for "+ nxAmount + " NX Cash#l\r\n";
+-			outStr += "#L2#I would like to exchange 1 #t" + itemToUse + "# for " + chairAmount + " Random Chair" + (chairAmount > 1 ? "s" : "") + "#l\r\n";
+-			outStr += "#L3#I would like to exchange 1 #t" + itemToUse + "# for " + weaponAmount + " Maple Weapons#l\r\n";
+-			outStr += "#L4#I would like to exchange 1 #t" + itemToUse + "# for " + buffAmount + " #t" + buff1ID + "#s and " + buffAmount + " #t" + buff2ID + "#s#l\r\n";
+-			outStr += "#L5#I would like to exchange 1 #t" + itemToUse + "# for a " + hiredMerchantLength + " Day Hired Merchant#l\r\n";
+-			cm.sendSimple(outStr);
+-		} else if(status == 1) {
+-			choice = selection;
+-			
+-			if(selection > 0) {
+-				if(!cm.haveItem(itemToUse) && vp == 0) {
+-					cm.sendOk("I'm sorry, but you don't have any #t" +itemToUse + " or Vote Points.");
+-					cm.dispose();
+-					return;
+-				}
+-			}
+-			
+-			if(selection == 0) {
+-				// Exchange VP for leaves
+-				if(vp <= 0) {
+-					cm.sendOk("I'm sorry, but you don't have any Vote Points to exchange!");
+-					cm.dispose();
+-					return;
+-				}
+-				cm.sendYesNo("Would you like to exchange " + vp + " Vote Point" + (vp > 0 ? "s" : "") + " for " + vp + " #t" + itemToUse + "# " + (vp > 0 ? "s" : "") + "?");
+-			} else if(selection == 1) {
+-				// Exchange 1 Leaf for Cash
+-				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + nxAmount + " NX Cash?");
+-			} else if(selection == 2) {
+-				// Exchange 1 Leaf for Chair
+-				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + chairAmount + " Random Chair" + (chairAmount > 1 ? "s" : "") + "?");
+-			} else if(selection == 3) {
+-				// Exchange 1 Leaf for Maple Weapons
+-				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + weaponAmount + " Random Maple Weapons?");
+-			} else if(selection == 4) {
+-				// Exchange 1 Leaf for Apples/Cheese
+-				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + buffAmount + " #t" + buff1ID + "# and #t" + buff2ID + "#?");
+-			} else if(selection == 5) {
+-				// Echange 1 Leaf for Merchant
+-				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for a " + hiredMerchantLength + " Day Hired Merchant?");
+-			} else {
+-				cm.dispose();
+-			}
+-		} else if(status == 2) {
+-			var useVP = false;
+-			if(!cm.hasItem(itemToUse) && vp > 0)
+-				useVP = true;
+-				
+-			if(choice == 0) {
+-				// VP Exchange
+-				if(!cm.canHold(itemToUse)) {
+-					cm.sendOk("It looks like you don't have enough space in your #rETC#k inventory to hold the #t" + itemToUse + "#" + (vp > 0 ? "s" : "") + ".");
+-					cm.dispose();
+-					return;
+-				}
+-				
+-				cm.getClient().useVotePoints(vp);
+-				cm.gainItem(itemToUse, vp);
+-				cm.dispose();
+-			} else if(choice == 1) {
+-				// Leaf for Cash
+-				if(useVP)
+-					cm.getClient().useVotePoints(1);
+-				else
+-					cm.gainItem(itemToUse, -1);
+-					
+-				cm.getPlayer().getCashShop().gainCash(1, nxAmount);
+-				cm.getPlayer().announce(Packages.tools.MaplePacketCreator.earnTitleMessage("You have earned " + nxAmount + " NX"));
+-				cm.logLeaf(nxAmount + " NX");
+-				cm.dispose();
+-			} else if(choice == 2) {
+-				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.SETUP).isFull(chairAmount)) {
+-					
+-					var chairStr = "";
+-					for(var i = 0; i < chairAmount; i++) {
+-						var chair = chairs[Math.floor(Math.random() * chairs.length)];
+-						cm.gainItem(chair, 1, true);
+-						chairStr += chair + " ";
+-					}
+-					
+-					if(useVP)
+-						cm.getClient().useVotePoints(1);
+-					else
+-						cm.gainItem(itemToUse, -1);
+-						
+-					cm.logLeaf("Chair ID: " + chairStr);
+-					cm.dispose();
+-				} else {
+-					cm.sendOk("Please make sure you have enough space to hold the items!");
+-				}
+-			} else if(choice == 3) {
+-				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.EQUIP).isFull(weaponAmount)) {
+-					
+-					var weaponStr = "";
+-					for(var i = 0; i < weaponAmount; i++) {
+-						var weapon = weapons[Math.floor(Math.random() * weapons.length)];
+-						cm.gainItem(weapon, 1, true, true);
+-						weaponStr += weapon + " ";
+-					}
+-					
+-					if(useVP)
+-						cm.getClient().useVotePoints(1);
+-					else
+-						cm.gainItem(itemToUse, -1);
+-						
+-					cm.logLeaf("Maple Weapon IDs: " + weaponStr);
+-					cm.dispose();
+-				} else {
+-					cm.sendOk("Please make sure you have enough space to hold the items!");
+-				}
+-			} else if(choice == 4) {
+-				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.USE).isFull(2)) {
+-					cm.gainItem(buff1ID, buffAmount, true);
+-					cm.gainItem(buff2ID, buffAmount, true);
+-					cm.gainItem(itemToUse, -1);
+-					cm.logLeaf(buffAmount + " cheeses and apples");
+-					cm.dispose();
+-				} else {
+-					cm.sendOk("Please make sure you have enough space to hold the items!");
+-				}
+-			} else if(choice == 5) {
+-				if(!cm.haveItem(5030000, 1)) {
+-					if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.CASH).isFull(1)){
+-						cm.gainItem(5030000, 1, false, true, 1000 * 60 * 60 * 24 * hiredMerchantLength);
+-						
+-						if(useVP)
+-							cm.getClient().useVotePoints(1);
+-						else
+-							cm.gainItem(itemToUse, -1);
+-						
+-						cm.logLeaf(hiredMerchantLength + " day hired merchant");
+-						cm.dispose();
+-					} else {
+-						cm.sendOk("Please make sure you have enough space to hold these items!");
+-					}
+-				} else {
+-					cm.sendOk("I can't give you a merchant if you already have one!");
+-				}
+-			}
+-		} else {
+-			cm.dispose();
+-		}
+-    }
++/*  
++      
++    Copyright (C) This file is part of the OdinMS Maple Story Server  
++Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>   
++Matthias Butz <matze@odinms.de>  
++Jan Christian Meyer <vimes@odinms.de>  
++    This program is free software: you can redistribute it and/or modify  
++    it under the terms of the GNU Affero General Public License version 3  
++    as published by the Free Software Foundation. You may not use, modify  
++    or distribute this program under any other version of the  
++    GNU Affero General Public License.  
++  
++    This program is distributed in the hope that it will be useful,  
++    but WITHOUT ANY WARRANTY; without even the implied warranty of  
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the  
++    GNU Affero General Public License for more details.  
++  
++    You should have received a copy of the GNU Affero General Public License  
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.  
++*/      
++   
++/**  
++Rooney - Happyville Warp NPC
++**/   
++   
++var status = 0;   
++   
++function start() {   
++    action(1, 0, 0);   
++}   
++   
++function action(mode, type, selection) {   
++    if (status == 0) {   
++        cm.sendYesNo("Santa told me to go to here, only he didn't told me when...  I hope i'm here on the right time! Oh! By the way, I'm Rooney, I can take you to #bHappyVille#k. Are you ready to go?");
++        status++;   
++    } else {   
++        if ((status == 1 && type == 1 && selection == -1 && mode == 0) || mode == -1) {   
++            cm.dispose();   
++        } else {
++            cm.getPlayer().saveLocation("HAPPYVILLE");
++            cm.warp(209000000, 0);
++            cm.dispose();   
++        }   
++    }   
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/1022101_old.js b/scripts/npc/world0/1022101_old.js
+new file mode 100644
+index 000000000..e4cbe1975
+--- /dev/null
++++ b/scripts/npc/world0/1022101_old.js
+@@ -0,0 +1,214 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Rooney
++	Map Name (Map ID)
++	Used to exchange VP for Maple Leaves, and Maple Leaves for rewards.
++ */
++
++var itemToUse = 4001126;
++
++var chairs = new Array(3010000, 3010001, 3010002, 3010003, 3010004, 3010005, 3010006, 3010007, 3010008, 3010009, 3010010, 3010011, 3010012, 3010013, 3010015, 3010016, 3010017, 3010018, 3010019, 3010022, 3010023, 3010024, 3010025, 3010026, 3010028, 3010040, 3010041, 3010043, 3010045, 3010046, 3010047,3010057,3010058,3010060,3010061,3010062,3010063, 3010064,3010065,3010066,3010067,3010069,3010071,3010072,3010073,3010080,3010081,3010082,3010083, 3010084,3010085,3010097,3010098,3010099,3010101,3010106,3010116,3011000,3012005,3012010,3012011);
++var scrolls = new Array(2040603,2044503,2041024,2041025,2044703,2044603,2043303,2040807,2040806,2040006,2040007,2043103,2043203,2043003,2040506,2044403,2040903,2040709,2040710,2040711,2044303,2043803,2040403,2044103,2044203,2044003,2043703);
++var weapons = new Array(1302020, 1302030, 1302033, 1302058, 1302064, 1302080, 1312032, 1322054, 1332025, 1332055, 1332056, 1372034, 1382009, 1382012, 1382039, 1402039, 1412011, 1412027, 1422014, 1422029, 1432012, 1432040, 1432046, 1442024, 1442030, 1442051, 1452016, 1452022, 1452045, 1462014, 1462019, 1462040, 1472030, 1472032, 1472055, 1482020, 1482021, 1482022, 1492020, 1492021, 1492022, 1092030, 1092045, 1092046, 1092047);
++
++var nxAmount = 3000;
++var chairAmount = 2;
++var weaponAmount = 2;
++var buffAmount = 2;
++var hiredMerchantLength = 7;
++
++var buff1ID = 2022273;
++var buff2ID = 2022179;
++var status;
++var vp;
++var choice;
++ 
++function start() {
++	//vp = cm.getClient().getVotePoints();
++	//if(vp == null)
++		vp = 0;
++	
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode < 0)
++        cm.dispose();
++    else {
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        if (status == 0 && mode == 1) {
++			if(cm.getPlayer().getLevel() < 20) {
++				cm.sendOk("Hello, I am the Vote Point exchanger for #rMapleSolaxia#k!\r\n\r\nI am sorry, but I can only exchange Vote Points for players #blevel 20 or over#k.");
++				cm.dispose();
++				return;
++			}
++			var outStr = "Hello, I am the Vote Point exchanger for #rMapleSolaxia#k!\r\n";
++			outStr += "You currently have #r#c" + itemToUse + "##k #t" + itemToUse + "# and #r" + vp + "#k Vote Points.#b\r\n\r\n";
++			outStr += "#L0#I would like to exchange my vote points for Maple Leaves#l\r\n";
++			outStr += "#L1#I would like to exchange 1 #t" + itemToUse + "# for "+ nxAmount + " NX Cash#l\r\n";
++			outStr += "#L2#I would like to exchange 1 #t" + itemToUse + "# for " + chairAmount + " Random Chair" + (chairAmount > 1 ? "s" : "") + "#l\r\n";
++			outStr += "#L3#I would like to exchange 1 #t" + itemToUse + "# for " + weaponAmount + " Maple Weapons#l\r\n";
++			outStr += "#L4#I would like to exchange 1 #t" + itemToUse + "# for " + buffAmount + " #t" + buff1ID + "#s and " + buffAmount + " #t" + buff2ID + "#s#l\r\n";
++			outStr += "#L5#I would like to exchange 1 #t" + itemToUse + "# for a " + hiredMerchantLength + " Day Hired Merchant#l\r\n";
++			cm.sendSimple(outStr);
++		} else if(status == 1) {
++			choice = selection;
++			
++			if(selection > 0) {
++				if(!cm.haveItem(itemToUse) && vp == 0) {
++					cm.sendOk("I'm sorry, but you don't have any #t" +itemToUse + " or Vote Points.");
++					cm.dispose();
++					return;
++				}
++			}
++			
++			if(selection == 0) {
++				// Exchange VP for leaves
++				if(vp <= 0) {
++					cm.sendOk("I'm sorry, but you don't have any Vote Points to exchange!");
++					cm.dispose();
++					return;
++				}
++				cm.sendYesNo("Would you like to exchange " + vp + " Vote Point" + (vp > 0 ? "s" : "") + " for " + vp + " #t" + itemToUse + "# " + (vp > 0 ? "s" : "") + "?");
++			} else if(selection == 1) {
++				// Exchange 1 Leaf for Cash
++				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + nxAmount + " NX Cash?");
++			} else if(selection == 2) {
++				// Exchange 1 Leaf for Chair
++				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + chairAmount + " Random Chair" + (chairAmount > 1 ? "s" : "") + "?");
++			} else if(selection == 3) {
++				// Exchange 1 Leaf for Maple Weapons
++				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + weaponAmount + " Random Maple Weapons?");
++			} else if(selection == 4) {
++				// Exchange 1 Leaf for Apples/Cheese
++				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for " + buffAmount + " #t" + buff1ID + "# and #t" + buff2ID + "#?");
++			} else if(selection == 5) {
++				// Echange 1 Leaf for Merchant
++				cm.sendYesNo("Would you like to exchange 1 #t" + itemToUse + "# for a " + hiredMerchantLength + " Day Hired Merchant?");
++			} else {
++				cm.dispose();
++			}
++		} else if(status == 2) {
++			var useVP = false;
++			if(!cm.hasItem(itemToUse) && vp > 0)
++				useVP = true;
++				
++			if(choice == 0) {
++				// VP Exchange
++				if(!cm.canHold(itemToUse)) {
++					cm.sendOk("It looks like you don't have enough space in your #rETC#k inventory to hold the #t" + itemToUse + "#" + (vp > 0 ? "s" : "") + ".");
++					cm.dispose();
++					return;
++				}
++				
++				cm.getClient().useVotePoints(vp);
++				cm.gainItem(itemToUse, vp);
++				cm.dispose();
++			} else if(choice == 1) {
++				// Leaf for Cash
++				if(useVP)
++					cm.getClient().useVotePoints(1);
++				else
++					cm.gainItem(itemToUse, -1);
++					
++				cm.getPlayer().getCashShop().gainCash(1, nxAmount);
++				cm.getPlayer().announce(Packages.tools.MaplePacketCreator.earnTitleMessage("You have earned " + nxAmount + " NX"));
++				cm.logLeaf(nxAmount + " NX");
++				cm.dispose();
++			} else if(choice == 2) {
++				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.SETUP).isFull(chairAmount)) {
++					
++					var chairStr = "";
++					for(var i = 0; i < chairAmount; i++) {
++						var chair = chairs[Math.floor(Math.random() * chairs.length)];
++						cm.gainItem(chair, 1, true);
++						chairStr += chair + " ";
++					}
++					
++					if(useVP)
++						cm.getClient().useVotePoints(1);
++					else
++						cm.gainItem(itemToUse, -1);
++						
++					cm.logLeaf("Chair ID: " + chairStr);
++					cm.dispose();
++				} else {
++					cm.sendOk("Please make sure you have enough space to hold the items!");
++				}
++			} else if(choice == 3) {
++				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.EQUIP).isFull(weaponAmount)) {
++					
++					var weaponStr = "";
++					for(var i = 0; i < weaponAmount; i++) {
++						var weapon = weapons[Math.floor(Math.random() * weapons.length)];
++						cm.gainItem(weapon, 1, true, true);
++						weaponStr += weapon + " ";
++					}
++					
++					if(useVP)
++						cm.getClient().useVotePoints(1);
++					else
++						cm.gainItem(itemToUse, -1);
++						
++					cm.logLeaf("Maple Weapon IDs: " + weaponStr);
++					cm.dispose();
++				} else {
++					cm.sendOk("Please make sure you have enough space to hold the items!");
++				}
++			} else if(choice == 4) {
++				if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.USE).isFull(2)) {
++					cm.gainItem(buff1ID, buffAmount, true);
++					cm.gainItem(buff2ID, buffAmount, true);
++					cm.gainItem(itemToUse, -1);
++					cm.logLeaf(buffAmount + " cheeses and apples");
++					cm.dispose();
++				} else {
++					cm.sendOk("Please make sure you have enough space to hold the items!");
++				}
++			} else if(choice == 5) {
++				if(!cm.haveItem(5030000, 1)) {
++					if(!cm.getPlayer().getInventory(Packages.client.inventory.MapleInventoryType.CASH).isFull(1)){
++						cm.gainItem(5030000, 1, false, true, 1000 * 60 * 60 * 24 * hiredMerchantLength);
++						
++						if(useVP)
++							cm.getClient().useVotePoints(1);
++						else
++							cm.gainItem(itemToUse, -1);
++						
++						cm.logLeaf(hiredMerchantLength + " day hired merchant");
++						cm.dispose();
++					} else {
++						cm.sendOk("Please make sure you have enough space to hold these items!");
++					}
++				} else {
++					cm.sendOk("I can't give you a merchant if you already have one!");
++				}
++			}
++		} else {
++			cm.dispose();
++		}
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2001000.js b/scripts/npc/world0/2001000.js
+new file mode 100644
+index 000000000..0ec6035b7
+--- /dev/null
++++ b/scripts/npc/world0/2001000.js
+@@ -0,0 +1,32 @@
++/*
++ *  Cliff - Happy Ville NPC
++ */
++
++var status = -1;
++
++function start() {
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode == 1) {
++	status++;
++    } else {
++	if (status > 0) {
++	    status--;
++	} else {
++	    cm.dispose();
++	    return;
++	}
++    }
++    if (status == 0) {
++	cm.sendNext("Do you see a bunch of snowmen standing around there? Go talk to one of them, and it'll take you to the famous Christmas tree here that is just humongous. The tree can be decorated using various kinds of ornaments. What do you think? Sounds fun, right?");
++    } else if (status == 1) {
++	cm.sendNextPrev("Only 6 can be at the place where the tree is at once, and you can't #btrade or open store#k there. The ornaments that you drop can only be picked back up by yourself, so don't worry about losing your ornaments here.");
++    } else if (status == 2) {
++	cm.sendNextPrev("Of course, the items that are dropped in there will never disappear. Once you get out of there through the snowman that's inside, all the items you've dropped at that map will come back to you, so you won't have to pick all those items up before leaving the place. Isn't that sweet?");
++    } else if (status == 3) {
++	cm.sendPrev("Well then, go see #p2002001#, buy some Christmas ornaments there, and then decorate the tree with those~ Oh yeah! The biggest, the most beautiful ornament cannot be bought from him. It's probably ... taken by a monster ... huh huh ..");
++	cm.dispose();
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2001001.js b/scripts/npc/world0/2001001.js
+index f67ac38a6..a44f85652 100644
+--- a/scripts/npc/world0/2001001.js
++++ b/scripts/npc/world0/2001001.js
+@@ -19,14 +19,30 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-function start() { 
+-    cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
+-}
+ 
+-function action(made, by, osiris) {
+-    if(made == 1)
+-        cm.warp(209000001);
+-    else
+-        cm.sendOk("Come back later.");
+-    cm.dispose();
++/* 2001001 - Metal Bucket Snowman
++    @author Ronan
++ */
++
++var status = -1;
++
++function start() { 
++    action(1, 0, 0);
+ } 
++function action(mode, type, selection) { 
++    if (mode < 0)
++        cm.dispose();
++    else {
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++        } else if(status == 1) {
++            cm.warp(209000001);
++            cm.dispose();
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2001002.js b/scripts/npc/world0/2001002.js
+index fcd80c64a..64b901dc2 100644
+--- a/scripts/npc/world0/2001002.js
++++ b/scripts/npc/world0/2001002.js
+@@ -19,11 +19,30 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-//lol at old script -- Moogra
++
++/* 2001002 - Metal Bucket Snowman
++    @author Ronan
++ */
++
++var status = -1;
++
+ function start() { 
+-    cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++    action(1, 0, 0);
+ } 
+ function action(mode, type, selection) { 
+-    cm.warp(209000001);
+-    cm.dispose();
++    if (mode < 0)
++        cm.dispose();
++    else {
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++        } else if(status == 1) {
++            cm.warp(209000002);
++            cm.dispose();
++        }
++    }
+ } 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2001003.js b/scripts/npc/world0/2001003.js
+index fcd80c64a..d8d40f6cd 100644
+--- a/scripts/npc/world0/2001003.js
++++ b/scripts/npc/world0/2001003.js
+@@ -19,11 +19,30 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-//lol at old script -- Moogra
++
++/* 2001003 - Straw Hat Snowman
++    @author Ronan
++ */
++
++var status = -1;
++
+ function start() { 
+-    cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++    action(1, 0, 0);
+ } 
+ function action(mode, type, selection) { 
+-    cm.warp(209000001);
+-    cm.dispose();
++    if (mode < 0)
++        cm.dispose();
++    else {
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++        } else if(status == 1) {
++            cm.warp(209000003);
++            cm.dispose();
++        }
++    }
+ } 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2001004.js b/scripts/npc/world0/2001004.js
+index 7d38e0171..5e9cf90f7 100644
+--- a/scripts/npc/world0/2001004.js
++++ b/scripts/npc/world0/2001004.js
+@@ -19,11 +19,30 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
++
++/* 2001004 - Scarf Snowman
++    @author Ronan
++ */
++
++var status = -1;
++
+ function start() { 
+-    cm.sendYesNo("We have a beautiful christmas tree.\r\nDo you want to see/decorate it?");
++    action(1,0,0);
+ } 
+-function action(m, t, s) {
+-    if (m > 0)
+-        cm.warp(209000001);
+-    cm.dispose();
++function action(mode, type, selection) {
++    if (mode < 0)
++        cm.dispose();
++    else {
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            cm.sendYesNo("So, are you ready to head out of here?");
++        } else if(status == 1) {
++            cm.warp(209000000, 3);
++            cm.dispose();
++        }
++    }
+ } 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2002000.js b/scripts/npc/world0/2002000.js
+index 3137a2069..cd659d5f0 100644
+--- a/scripts/npc/world0/2002000.js
++++ b/scripts/npc/world0/2002000.js
+@@ -19,18 +19,25 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/* Rupi by Moogra
+-Happyville Warp NPC
+-*/
++
++/**
++Rupi- Happyville Warp NPC
++**/
+ 
+ function start() {
+-    cm.sendYesNo("Do you want to " + (cm.getPlayer().getMap().getId() == 101000000 ? "go to" : "get out of") + "Happyville?");
++    cm.sendYesNo("Do you want to get out of Happyville?");
+ }
+ 
+ function action(mode, type, selection) {
+     if (mode < 1)
+         cm.dispose();
+-    else
+-        cm.warp(cm.getPlayer().getMap().getId() == 101000000 ? 209000000 : 101000000, 0);
++    else {
++        var map = cm.getPlayer().getSavedLocation("HAPPYVILLE");
++        if (map == -1)
++                map = 101000000;
++        
++        cm.warp(map, 0);
++    }
++    
+     cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9000021.js b/scripts/npc/world0/9000021.js
+index 89c70b144..179db4d6b 100644
+--- a/scripts/npc/world0/9000021.js
++++ b/scripts/npc/world0/9000021.js
+@@ -1,70 +1,56 @@
+ /*
+- * Aran / Cygnus Job Advancer
+- * v83 MoopleDEV Rev 116
+- * Author: ShEtY
+- */
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
+ 
+-var status = -1;
+-var ask = "Oh, I see you've grown stronger! Do you wish to job advance?";
+-var job;
+-var koc = new Array();
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
+ 
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* 9000021 - Gaga
++    BossRushPQ recruiter
++    @author Ronan
++ */
++
++var status;
++ 
+ function start() {
+-   cm.sendNext("Hey #e#h ##n, I'm the Aran & Cygnus Job Advancer.");
++    status = -1;
++    action(1, 0, 0);
+ }
+ 
+-function action(m, t, s) {
+-    status++;
+-    if (m != 1) {
++function action(mode, type, selection) {
++    if (mode < 0)
+         cm.dispose();
+-        return;
+-    }
+-    if (status == 0) {
+-        if (cm.getJobId() < 1000 ||cm.getJobId() % 10 == 2) {
+-            cm.dispose();
+-        } else if (cm.getJobId() % 10 == 1 && cm.getJobId() < 2000) {
+-            cm.dispose();
+-        } else if (cm.getJobId() % 1000 == 0 && cm.getJobId() != 0 && cm.getLevel() >= 10) {
+-            if (cm.getJobId() == 1000) {
+-                for (var i = 1; i < 6; i++)
+-                koc.push(cm.getJobId() + 100 * i);
+-                var list = "What class of Cygnus Knight do you wish to advance to?";
+-                for (var k = 0; k < koc.length; k++)
+-                list += "\r\n#L" + k + "#" + cm.getJobName(koc[k]) + "#l";
+-                cm.sendSimple(list);
+-            } else if (cm.getJobId() == 2000) {
+-                job = cm.getJobId() + 100;
+-                cm.sendYesNo(ask);
+-            }
++    else {
++        if (mode == 1)
++            status++;
+         else
+-            cm.dispose();
+-        } else if (cm.getJobId() % 1000 != 0) {
+-            if (cm.getJobId() % 100 == 0 && cm.getLevel() >= 30) {
+-                job = cm.getJobId() + 10;
+-                cm.sendYesNo(ask);
+-            } else if (cm.getJobId() % 10 == 0 && cm.getLevel() >= 70) {
+-                job = cm.getJobId() + 1;
+-                cm.sendYesNo(ask);
+-            } else if (cm.getJobId() % 10 == 1 && cm.getJobId() >= 2000 && cm.getLevel() >= 120) {
+-                job = cm.getJobId() + 1;
+-                cm.sendYesNo(ask);
+-            }
+-        }
+-    } else if (status == 1) {
+-        if (cm.getJobId() != 1000) {
+-            if (cm.getJobId() == 2000) {
+-                cm.changeJobById(job);
+-                cm.maxMastery();
+-                cm.resetStats();
+-                cm.dispose();
+-            } else {
+-                cm.changeJobById(job);
+-                cm.dispose();
+-            }
+-        } else if (cm.getJobId() == 1000) {
+-            cm.changeJobById(koc[s]);
+-            cm.resetStats();
++            status--;
++        
++        if (status == 0) {
++            cm.sendNext("Hey, traveler! I am #p9000021#, and my job is to recruit travelers like you, who eagers for new challenges daily. Right now, my team is holding contests that thoroughly tests the mental and physical capabilities of adventurers like you.");
++	} else if(status == 1) {
++            cm.sendNext("These contests involve #bsequential boss fights#k, with some resting spots between some sections. These will require some strategy time and enough supplies at hand, as they are not common fights.");
++        } else if(status == 2) {
++            cm.sendAcceptDecline("If you feel you are powerful enough, you can join others like you at where we are hosting the contests of power. ... So, what is your decision? Will you come to where the contests are being held right now?");
++        } else if(status == 3) {
++            cm.sendOk("Very well. Remember, there you can assemble a team or take on the fightings on your own, it's up to you. Good luck!");
++        } else if(status == 4) {
++            cm.warp(970030000);
+             cm.dispose();
+         }
+     }
+-}  
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9000021_old.js b/scripts/npc/world0/9000021_old.js
+new file mode 100644
+index 000000000..89c70b144
+--- /dev/null
++++ b/scripts/npc/world0/9000021_old.js
+@@ -0,0 +1,70 @@
++/*
++ * Aran / Cygnus Job Advancer
++ * v83 MoopleDEV Rev 116
++ * Author: ShEtY
++ */
++
++var status = -1;
++var ask = "Oh, I see you've grown stronger! Do you wish to job advance?";
++var job;
++var koc = new Array();
++
++function start() {
++   cm.sendNext("Hey #e#h ##n, I'm the Aran & Cygnus Job Advancer.");
++}
++
++function action(m, t, s) {
++    status++;
++    if (m != 1) {
++        cm.dispose();
++        return;
++    }
++    if (status == 0) {
++        if (cm.getJobId() < 1000 ||cm.getJobId() % 10 == 2) {
++            cm.dispose();
++        } else if (cm.getJobId() % 10 == 1 && cm.getJobId() < 2000) {
++            cm.dispose();
++        } else if (cm.getJobId() % 1000 == 0 && cm.getJobId() != 0 && cm.getLevel() >= 10) {
++            if (cm.getJobId() == 1000) {
++                for (var i = 1; i < 6; i++)
++                koc.push(cm.getJobId() + 100 * i);
++                var list = "What class of Cygnus Knight do you wish to advance to?";
++                for (var k = 0; k < koc.length; k++)
++                list += "\r\n#L" + k + "#" + cm.getJobName(koc[k]) + "#l";
++                cm.sendSimple(list);
++            } else if (cm.getJobId() == 2000) {
++                job = cm.getJobId() + 100;
++                cm.sendYesNo(ask);
++            }
++        else
++            cm.dispose();
++        } else if (cm.getJobId() % 1000 != 0) {
++            if (cm.getJobId() % 100 == 0 && cm.getLevel() >= 30) {
++                job = cm.getJobId() + 10;
++                cm.sendYesNo(ask);
++            } else if (cm.getJobId() % 10 == 0 && cm.getLevel() >= 70) {
++                job = cm.getJobId() + 1;
++                cm.sendYesNo(ask);
++            } else if (cm.getJobId() % 10 == 1 && cm.getJobId() >= 2000 && cm.getLevel() >= 120) {
++                job = cm.getJobId() + 1;
++                cm.sendYesNo(ask);
++            }
++        }
++    } else if (status == 1) {
++        if (cm.getJobId() != 1000) {
++            if (cm.getJobId() == 2000) {
++                cm.changeJobById(job);
++                cm.maxMastery();
++                cm.resetStats();
++                cm.dispose();
++            } else {
++                cm.changeJobById(job);
++                cm.dispose();
++            }
++        } else if (cm.getJobId() == 1000) {
++            cm.changeJobById(koc[s]);
++            cm.resetStats();
++            cm.dispose();
++        }
++    }
++}  
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9010021.js b/scripts/npc/world0/9010021.js
+index 5d65b4e81..81942aeac 100644
+--- a/scripts/npc/world0/9010021.js
++++ b/scripts/npc/world0/9010021.js
+@@ -19,40 +19,11 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/* 9010021 - Wolf Spirit Ryko 
+-    BossRushPQ recruiter
++/* 9010021 - Wolf Spirit Ryko
+     @author Ronan
+  */
+-
+-var status;
+  
+ function start() {
+-    status = -1;
+-    action(1, 0, 0);
+-}
+-
+-function action(mode, type, selection) {
+-    if (mode < 0)
+-        cm.dispose();
+-    else {
+-        if (mode == 1)
+-            status++;
+-        else
+-            status--;
+-        
+-        if (status == 0) {
+-            cm.sendNext("Heed me, human. I hail from a distant plane and came to this world to take a glimpse on the power level of the best of the dwellers of this world.");
+-	} else if(status == 1) {
+-            cm.sendNext("Oh, don't get me wrong, our civilization are of the type that makes researches for the sake of science, we have no regards for domination or disturbances whatsoever.");
+-        } else if(status == 2) {
+-            cm.sendNext("These contests involve #bsequential boss fights#k, with some resting spots between some sections. This will require some strategy time and enough supplies at hand, as these are not common fights.");
+-        } else if(status == 3) {
+-            cm.sendAcceptDecline("If you feel you are powerful enough, you can join others like you at where we are hosting the contests of power. ... So, what is your decision? Will you come to where the contests are being held right now?");
+-        } else if(status == 4) {
+-            cm.sendOk("Very well. Remember, there you can assemble a team or take on the fightings on your own, it's up to you. Good luck!");
+-        } else if(status == 5) {
+-            cm.warp(970030000);
+-            cm.dispose();
+-        }
+-    }
++    cm.sendOk("... I came from distant planes to assist the fight against the #rBlack Magician#k. Right now I search my master, have you seen him?");
++    cm.dispose();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9201033.js b/scripts/npc/world0/9201033.js
+new file mode 100644
+index 000000000..5c7e6c776
+--- /dev/null
++++ b/scripts/npc/world0/9201033.js
+@@ -0,0 +1,8 @@
++/** 
++    Simon - Happyville
++**/ 
++
++function start() { 
++        cm.sendOk("Hi there!");
++        cm.dispose();
++} 
+diff --git a/scripts/npc/world0/9209100.js b/scripts/npc/world0/9209100.js
+new file mode 100644
+index 000000000..cbbb3bdec
+--- /dev/null
++++ b/scripts/npc/world0/9209100.js
+@@ -0,0 +1,8 @@
++function start() {
++    cm.sendOk("You didn't hear it from Rooney? It's a dress-up party, and you can't enter unless you've transformed into something else. I hear that Cliff has something that you may be looking for...");
++    action(1,0,0);
++}
++
++function action(mode, type, selection) {
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9220004.js b/scripts/npc/world0/9220004.js
+new file mode 100644
+index 000000000..95821dd00
+--- /dev/null
++++ b/scripts/npc/world0/9220004.js
+@@ -0,0 +1,42 @@
++/** 
++Happy - Happy ville 
++By Ronan
++**/ 
++var status = -1;
++function start() { 
++        if(cm.getMap().getMonsters().size() > 1) {  //reactor as a monster? wtf
++                cm.sendOk("Defeat all monsters before talking to me."); 
++                cm.dispose();
++                return;
++        }
++    
++	action(1, 0, 0); 
++} 
++function action(mode, type, selection) { 
++	if (mode == -1) { 
++		cm.dispose(); 
++	} else {
++                if (status == 0 && mode == 0) { 
++			cm.sendOk("Talk to me again when you want to."); 
++			cm.dispose(); 
++		} 
++                if (mode == 1) 
++                        status++; 
++                else 
++                        status--; 
++                 
++                if (status == 0) { 
++                        cm.sendSimple("#b<Raid Quest: Happyville>#k\r\nA raid is nothing but joining many people in an attempt to defeat extremely powerful creatures. Here is no different. Here, everyone can take part in defeating the spawned creature. At the moment the are none, what will you do?\r\n#b\r\n#L0#Spawn Kid Snowman.\r\n#L1#Spawn Lost Rudolph.\r\n#L2#Nothing, just chilling.#k");
++                } else if(status == 1) {
++                        if(selection == 0) {
++                                cm.getMap().spawnMonsterOnGroundBelow(9500317, 1700, 80);
++                        } else if(selection == 1) {
++                                cm.getMap().spawnMonsterOnGroundBelow(9500320, 1700, 80);
++                        } else {
++                                cm.sendOk("Fine then.");
++                        }
++                        
++                        cm.dispose();
++                }
++        }
++} 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9220005.js b/scripts/npc/world0/9220005.js
+index 1419b7b6e..4dcc66d67 100644
+--- a/scripts/npc/world0/9220005.js
++++ b/scripts/npc/world0/9220005.js
+@@ -1,34 +1,50 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/* Roudolph Happyville Warp NPC
+-   By Moogra
+-*/
+-
+-function start() {
+-    cm.sendYesNo("Do you want to go to the Extra Frosty Snow Zone ?#l");
+-}
+-
+-function action(mode, type, selection) {
+-    if (mode > 0)
+-        cm.warp(209080000, 0);
+-    cm.dispose();
+-}
+\ No newline at end of file
++/** 
++Roodolph - Happy ville 
++By fantier123
++**/ 
++var status;
++function start() { 
++        status = 0;
++	action(1, 0, 0); 
++} 
++function action(mode, type, selection) { 
++	if (mode == -1) { 
++		cm.dispose(); 
++	} else { 
++		if (mode == 0) { 
++			cm.sendOk("Talk to me again when you want to."); 
++			cm.dispose(); 
++		} 
++                if (mode == 1) 
++                        status++; 
++                else 
++                        status--; 
++                 
++                if (status == 1) { 
++                        if (cm.getChar().getMapId() == 209000000) { 
++                                cm.sendYesNo("Do you wish to head to where the #bSnow Sprinkler#k is?"); 
++                                status = 9; 
++                        } else if (cm.getChar().getMapId() == 209080000) { 
++                                cm.sendYesNo("Do you wish to return to Happyville?"); 
++                                status = 19; 
++                        }
++                        else {
++                                cm.sendOk("You alright?");
++                                cm.dispose();
++                        }
++                } 
++                else if (status == 10) { 
++                        cm.warp(209080000, 0); 
++                        cm.dispose(); 
++                } 
++                else if (status == 20) { 
++                        cm.warp(209000000, 0); 
++                        cm.dispose(); 
++                }
++                
++                else {
++                        cm.sendOk("You alrighty?");
++                        cm.dispose();
++                }
++        }
++} 
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9220005_old.js b/scripts/npc/world0/9220005_old.js
+new file mode 100644
+index 000000000..1419b7b6e
+--- /dev/null
++++ b/scripts/npc/world0/9220005_old.js
+@@ -0,0 +1,34 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* Roudolph Happyville Warp NPC
++   By Moogra
++*/
++
++function start() {
++    cm.sendYesNo("Do you want to go to the Extra Frosty Snow Zone ?#l");
++}
++
++function action(mode, type, selection) {
++    if (mode > 0)
++        cm.warp(209080000, 0);
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9310058.js b/scripts/npc/world0/9310058.js
+new file mode 100644
+index 000000000..5423859ef
+--- /dev/null
++++ b/scripts/npc/world0/9310058.js
+@@ -0,0 +1,8 @@
++/** 
++    Santa - Happyville
++**/ 
++
++function start() {
++        cm.sendOk("Welcome to #bHappyville#k, young traveler. Do you have any wishes?");
++        cm.dispose();
++} 
+diff --git a/scripts/portal/in_xmas_party.js b/scripts/portal/in_xmas_party.js
+new file mode 100644
+index 000000000..75e454375
+--- /dev/null
++++ b/scripts/portal/in_xmas_party.js
+@@ -0,0 +1,4 @@
++function enter(pi) {
++    pi.openNpc(9209100);
++    return false;
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2092001.js b/scripts/reactor/2092001.js
+new file mode 100644
+index 000000000..d0054bff9
+--- /dev/null
++++ b/scripts/reactor/2092001.js
+@@ -0,0 +1,3 @@
++function act() { 
++	rm.dropItems(); 
++} 
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index c17c69180..c9579cd9f 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -17226,7 +17226,8 @@ INSERT INTO `reactordrops` (`reactordropid`, `reactorid`, `itemid`, `chance`, `q
+ (837, 1002009, 4031162, 1, 1008),
+ (838, 1209001, 4032980, 1, 2565),
+ (839, 1052001, 1532022, 3, -1),
+-(840, 1052001, 1532023, 3, -1);
++(840, 1052001, 1532023, 3, -1),
++(841, 2092001, 1472063, 3, -1);
+ 
+ CREATE TABLE IF NOT EXISTS `reports` (
+   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+@@ -17258,7 +17259,7 @@ CREATE TABLE IF NOT EXISTS `rings` (
+ CREATE TABLE IF NOT EXISTS `savedlocations` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+   `characterid` int(11) NOT NULL,
+-  `locationtype` enum('FREE_MARKET','WORLDTOUR','FLORINA','INTRO','MIRROR','EVENT','BOSSPQ') NOT NULL,
++  `locationtype` enum('FREE_MARKET','WORLDTOUR','FLORINA','INTRO','MIRROR','EVENT','BOSSPQ','HAPPYVILLE') NOT NULL,
+   `map` int(11) NOT NULL,
+   `portal` int(11) NOT NULL,
+   PRIMARY KEY (`id`)
+@@ -20807,6 +20808,125 @@ INSERT INTO `shops` (`shopid`, `npcid`) VALUES
+ (9000069, 9000069),
+ (1338, 9090000);
+ 
++ -- Rudi Shop (Happyville) 
++INSERT INTO `shops` (`shopid`, `npcid`) VALUES ( 57, 2002001 );
++INSERT INTO `shopitems` ( `shopid`, `itemid`, `price`, `position`) VALUES
++( 57, 3990000, 500, 1 ), 
++( 57, 3990001, 500, 2 ), 
++( 57, 3990002, 500, 3 ), 
++( 57, 3990003, 500, 4 ), 
++( 57, 3990004, 500, 5 ), 
++( 57, 3990005, 500, 6 ), 
++( 57, 3990006, 500, 7 ), 
++( 57, 3990007, 500, 8 ), 
++( 57, 3990008, 500, 9 ), 
++( 57, 3990009, 500, 10), 
++( 57, 3990010, 500, 11), 
++( 57, 3990011, 500, 12), 
++( 57, 3990012, 500, 13), 
++( 57, 3990013, 500, 14), 
++( 57, 3990014, 500, 15), 
++( 57, 3990015, 500, 16), 
++( 57, 3990016, 500, 17), 
++( 57, 3990017, 500, 18), 
++( 57, 3990018, 500, 19), 
++( 57, 3990019, 500, 20), 
++( 57, 3990020, 500, 21), 
++( 57, 3990021, 500, 22), 
++( 57, 3990022, 500, 23), 
++( 57, 3990023, 500, 24), 
++( 57, 3991000, 500, 25), 
++( 57, 3991001, 500, 26), 
++( 57, 3991002, 500, 27), 
++( 57, 3991003, 500, 28), 
++( 57, 3991004, 500, 29), 
++( 57, 3991005, 500, 30), 
++( 57, 3991006, 500, 31), 
++( 57, 3991007, 500, 32), 
++( 57, 3991008, 500, 33), 
++( 57, 3991009, 500, 34), 
++( 57, 3991010, 500, 35), 
++( 57, 3991011, 500, 36), 
++( 57, 3991012, 500, 37), 
++( 57, 3991013, 500, 38), 
++( 57, 3991014, 500, 39), 
++( 57, 3991015, 500, 40), 
++( 57, 3991016, 500, 41), 
++( 57, 3991017, 500, 42), 
++( 57, 3991018, 500, 43), 
++( 57, 3991019, 500, 44), 
++( 57, 3991020, 500, 45), 
++( 57, 3991021, 500, 46), 
++( 57, 3991022, 500, 47), 
++( 57, 3991023, 500, 48), 
++( 57, 3991024, 500, 49), 
++( 57, 3991025, 500, 50), 
++( 57, 3991026, 500, 51), 
++( 57, 3991027, 500, 52), 
++( 57, 3991028, 500, 53), 
++( 57, 3991029, 500, 54), 
++( 57, 3991030, 500, 55), 
++( 57, 3991031, 500, 56), 
++( 57, 3991032, 500, 57), 
++( 57, 3991033, 500, 58), 
++( 57, 3991034, 500, 59), 
++( 57, 3991035, 500, 60), 
++( 57, 3991036, 500, 61), 
++( 57, 3991037, 500, 62), 
++( 57, 3991038, 500, 63), 
++( 57, 3991039, 500, 64), 
++( 57, 3991040, 500, 65), 
++( 57, 3991041, 500, 66), 
++( 57, 3991042, 500, 67), 
++( 57, 3991043, 500, 68), 
++( 57, 3991044, 500, 69), 
++( 57, 3991045, 500, 70), 
++( 57, 3991046, 500, 71), 
++( 57, 3991047, 500, 72), 
++( 57, 3991048, 500, 73), 
++( 57, 3991049, 500, 74), 
++( 57, 3991050, 500, 75), 
++( 57, 3991051, 500, 76), 
++( 57, 3992000, 500, 77), 
++( 57, 3992001, 500, 78), 
++( 57, 3992002, 500, 79), 
++( 57, 3992003, 500, 80), 
++( 57, 3992004, 500, 81), 
++( 57, 3992005, 500, 82), 
++( 57, 3992006, 500, 83), 
++( 57, 3992007, 500, 84), 
++( 57, 3992008, 500, 85), 
++( 57, 3992009, 500, 86), 
++( 57, 3992010, 500, 87), 
++( 57, 3992011, 500, 88), 
++( 57, 3992012, 500, 89), 
++( 57, 3992013, 500, 90), 
++( 57, 3992014, 500, 91), 
++( 57, 3992015, 500, 92), 
++( 57, 3992016, 500, 93), 
++( 57, 3992017, 500, 94), 
++( 57, 3992018, 500, 95), 
++( 57, 3992019, 500, 96), 
++( 57, 3992020, 500, 97), 
++( 57, 3992021, 500, 98), 
++( 57, 3992022, 500, 99), 
++( 57, 3992023, 500, 100), 
++( 57, 3992024, 500, 101), 
++( 57, 3992025, 500, 102), 
++( 57, 3992026, 500, 103), 
++( 57, 3992027, 500, 104), 
++( 57, 3992028, 500, 105), 
++( 57, 3992029, 500, 106), 
++( 57, 3992030, 500, 107), 
++( 57, 3992031, 500, 108), 
++( 57, 3992032, 500, 109), 
++( 57, 3992033, 500, 110), 
++( 57, 3992034, 500, 111), 
++( 57, 3992035, 500, 112), 
++( 57, 3992036, 500, 113), 
++( 57, 3992037, 500, 114), 
++( 57, 3992038, 500, 115);
++
+ CREATE TABLE IF NOT EXISTS `skillmacros` (
+   `id` int(11) NOT NULL AUTO_INCREMENT,
+   `characterid` int(11) NOT NULL DEFAULT '0',
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 3e68b645f..278980366 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18797,7 +18797,207 @@
+ (9300173, 4001161, 1, 1, 0, 200000),
+ (9500355, 2388015, 1, 1, 0, 24000),
+ (9500356, 2388032, 1, 1, 0, 24000),
+-(9500357, 2388016, 1, 1, 0, 24000);
++(9500357, 2388016, 1, 1, 0, 24000),
++(9500357, 4003000, 5, 20, 0, 40000),
++(9500357, 4003001, 5, 20, 0, 40000),
++(9500357, 4003002, 5, 20, 0, 40000),
++(9500357, 4003003, 5, 20, 0, 40000),
++(9500357, 4004000, 5, 20, 0, 40000),
++(9500357, 4004001, 5, 20, 0, 40000),
++(9500357, 4004002, 5, 20, 0, 40000),
++(9500357, 4004003, 5, 20, 0, 40000),
++(9500357, 4004004, 5, 20, 0, 40000),
++(9500357, 4010000, 5, 20, 0, 40000),
++(9500357, 4010001, 5, 20, 0, 40000),
++(9500357, 4010002, 5, 20, 0, 40000),
++(9500357, 4010003, 5, 20, 0, 40000),
++(9500357, 4010004, 5, 20, 0, 40000),
++(9500357, 4010005, 5, 20, 0, 40000),
++(9500357, 4010006, 5, 20, 0, 40000),
++(9500357, 4010007, 5, 20, 0, 40000),
++(9500357, 4020000, 5, 20, 0, 40000),
++(9500357, 4020001, 5, 20, 0, 40000),
++(9500357, 4020002, 5, 20, 0, 40000),
++(9500357, 4020003, 5, 20, 0, 40000),
++(9500357, 4020004, 5, 20, 0, 40000),
++(9500357, 4020005, 5, 20, 0, 40000),
++(9500357, 4020006, 5, 20, 0, 40000),
++(9500357, 4020007, 5, 20, 0, 40000),
++(9500357, 4020008, 5, 20, 0, 40000),
++(9500357, 2020001, 5, 20, 0, 40000),
++(9500357, 2020002, 5, 20, 0, 40000),
++(9500357, 2020003, 5, 20, 0, 40000),
++(9500357, 2020004, 5, 20, 0, 40000),
++(9500357, 2020005, 5, 20, 0, 40000),
++(9500357, 2020006, 5, 20, 0, 40000),
++(9500357, 2020007, 5, 20, 0, 40000),
++(9500357, 2020008, 5, 20, 0, 40000),
++(9500357, 2020009, 5, 20, 0, 40000),
++(9500357, 2020010, 5, 20, 0, 40000),
++(9500357, 2020011, 5, 20, 0, 40000),
++(9500357, 2020012, 5, 20, 0, 40000),
++(9500357, 2020013, 5, 20, 0, 40000),
++(9500357, 2020014, 5, 20, 0, 40000),
++(9500357, 2020015, 5, 20, 0, 40000),
++(9500357, 2020016, 5, 20, 0, 40000),
++(9500357, 2020017, 5, 20, 0, 40000),
++(9500357, 2020018, 5, 20, 0, 40000),
++(9500357, 2020019, 5, 20, 0, 40000),
++(9500357, 2020020, 5, 20, 0, 40000),
++(9500357, 1092022, 1, 1, 0, 4000),
++(9500357, 1092030, 1, 1, 0, 4000),
++(9500357, 1092045, 1, 1, 0, 4000),
++(9500357, 1092046, 1, 1, 0, 4000),
++(9500357, 1092047, 1, 1, 0, 4000),
++(9500357, 1112407, 1, 1, 0, 4000),
++(9500357, 1112408, 1, 1, 0, 4000),
++(9500358, 4003000, 5, 20, 0, 40000),
++(9500358, 4003001, 5, 20, 0, 40000),
++(9500358, 4003002, 5, 20, 0, 40000),
++(9500358, 4003003, 5, 20, 0, 40000),
++(9500358, 4004000, 5, 20, 0, 40000),
++(9500358, 4004001, 5, 20, 0, 40000),
++(9500358, 4004002, 5, 20, 0, 40000),
++(9500358, 4004003, 5, 20, 0, 40000),
++(9500358, 4004004, 5, 20, 0, 40000),
++(9500358, 4010000, 5, 20, 0, 40000),
++(9500358, 4010001, 5, 20, 0, 40000),
++(9500358, 4010002, 5, 20, 0, 40000),
++(9500358, 4010003, 5, 20, 0, 40000),
++(9500358, 4010004, 5, 20, 0, 40000),
++(9500358, 4010005, 5, 20, 0, 40000),
++(9500358, 4010006, 5, 20, 0, 40000),
++(9500358, 4010007, 5, 20, 0, 40000),
++(9500358, 4020000, 5, 20, 0, 40000),
++(9500358, 4020001, 5, 20, 0, 40000),
++(9500358, 4020002, 5, 20, 0, 40000),
++(9500358, 4020003, 5, 20, 0, 40000),
++(9500358, 4020004, 5, 20, 0, 40000),
++(9500358, 4020005, 5, 20, 0, 40000),
++(9500358, 4020006, 5, 20, 0, 40000),
++(9500358, 4020007, 5, 20, 0, 40000),
++(9500358, 4020008, 5, 20, 0, 40000),
++(9500358, 2020001, 5, 20, 0, 40000),
++(9500358, 2020002, 5, 20, 0, 40000),
++(9500358, 2020003, 5, 20, 0, 40000),
++(9500358, 2020004, 5, 20, 0, 40000),
++(9500358, 2020005, 5, 20, 0, 40000),
++(9500358, 2020006, 5, 20, 0, 40000),
++(9500358, 2020007, 5, 20, 0, 40000),
++(9500358, 2020008, 5, 20, 0, 40000),
++(9500358, 2020009, 5, 20, 0, 40000),
++(9500358, 2020010, 5, 20, 0, 40000),
++(9500358, 2020011, 5, 20, 0, 40000),
++(9500358, 2020012, 5, 20, 0, 40000),
++(9500358, 2020013, 5, 20, 0, 40000),
++(9500358, 2020014, 5, 20, 0, 40000),
++(9500358, 2020015, 5, 20, 0, 40000),
++(9500358, 2020016, 5, 20, 0, 40000),
++(9500358, 2020017, 5, 20, 0, 40000),
++(9500358, 2020018, 5, 20, 0, 40000),
++(9500358, 2020019, 5, 20, 0, 40000),
++(9500358, 2020020, 5, 20, 0, 40000),
++(9500358, 1052166, 1, 1, 0, 4000),
++(9500358, 2330002, 1, 1, 0, 4000),
++(9500358, 2070011, 1, 1, 0, 4000),
++(9500358, 1102021, 1, 1, 0, 4000),
++(9500358, 1102022, 1, 1, 0, 4000),
++(9500358, 1102023, 1, 1, 0, 4000),
++(9500358, 1102024, 1, 1, 0, 4000),
++(9500358, 1102078, 1, 1, 0, 4000),
++(9500358, 1122001, 1, 1, 0, 4000),
++(9500358, 1122002, 1, 1, 0, 4000),
++(9500358, 1122003, 1, 1, 0, 4000),
++(9500358, 1122004, 1, 1, 0, 4000),
++(9500358, 1122005, 1, 1, 0, 4000),
++(9500358, 1122006, 1, 1, 0, 4000),
++(9500358, 1082175, 1, 1, 0, 4000),
++(9500358, 1082176, 1, 1, 0, 4000),
++(9500358, 1082177, 1, 1, 0, 4000),
++(9500358, 1082178, 1, 1, 0, 4000),
++(9500358, 1082179, 1, 1, 0, 4000),
++(9500359, 4003000, 5, 20, 0, 40000),
++(9500359, 4003001, 5, 20, 0, 40000),
++(9500359, 4003002, 5, 20, 0, 40000),
++(9500359, 4003003, 5, 20, 0, 40000),
++(9500359, 4004000, 5, 20, 0, 40000),
++(9500359, 4004001, 5, 20, 0, 40000),
++(9500359, 4004002, 5, 20, 0, 40000),
++(9500359, 4004003, 5, 20, 0, 40000),
++(9500359, 4004004, 5, 20, 0, 40000),
++(9500359, 4010000, 5, 20, 0, 40000),
++(9500359, 4010001, 5, 20, 0, 40000),
++(9500359, 4010002, 5, 20, 0, 40000),
++(9500359, 4010003, 5, 20, 0, 40000),
++(9500359, 4010004, 5, 20, 0, 40000),
++(9500359, 4010005, 5, 20, 0, 40000),
++(9500359, 4010006, 5, 20, 0, 40000),
++(9500359, 4010007, 5, 20, 0, 40000),
++(9500359, 4020000, 5, 20, 0, 40000),
++(9500359, 4020001, 5, 20, 0, 40000),
++(9500359, 4020002, 5, 20, 0, 40000),
++(9500359, 4020003, 5, 20, 0, 40000),
++(9500359, 4020004, 5, 20, 0, 40000),
++(9500359, 4020005, 5, 20, 0, 40000),
++(9500359, 4020006, 5, 20, 0, 40000),
++(9500359, 4020007, 5, 20, 0, 40000),
++(9500359, 4020008, 5, 20, 0, 40000),
++(9500359, 2020001, 5, 20, 0, 40000),
++(9500359, 2020002, 5, 20, 0, 40000),
++(9500359, 2020003, 5, 20, 0, 40000),
++(9500359, 2020004, 5, 20, 0, 40000),
++(9500359, 2020005, 5, 20, 0, 40000),
++(9500359, 2020006, 5, 20, 0, 40000),
++(9500359, 2020007, 5, 20, 0, 40000),
++(9500359, 2020008, 5, 20, 0, 40000),
++(9500359, 2020009, 5, 20, 0, 40000),
++(9500359, 2020010, 5, 20, 0, 40000),
++(9500359, 2020011, 5, 20, 0, 40000),
++(9500359, 2020012, 5, 20, 0, 40000),
++(9500359, 2020013, 5, 20, 0, 40000),
++(9500359, 2020014, 5, 20, 0, 40000),
++(9500359, 2020015, 5, 20, 0, 40000),
++(9500359, 2020016, 5, 20, 0, 40000),
++(9500359, 2020017, 5, 20, 0, 40000),
++(9500359, 2020018, 5, 20, 0, 40000),
++(9500359, 2020019, 5, 20, 0, 40000),
++(9500359, 2020020, 5, 20, 0, 40000),
++(9500359, 1052166, 1, 1, 0, 4000),
++(9500359, 2280000, 1, 1, 0, 4000),
++(9500359, 2280001, 1, 1, 0, 4000),
++(9500359, 2280002, 1, 1, 0, 4000),
++(9500359, 2280003, 1, 1, 0, 4000),
++(9500359, 2280004, 1, 1, 0, 4000),
++(9500359, 2280005, 1, 1, 0, 4000),
++(9500359, 2280006, 1, 1, 0, 4000),
++(9500359, 2280007, 1, 1, 0, 4000),
++(9500359, 2280008, 1, 1, 0, 4000),
++(9500359, 2280009, 1, 1, 0, 4000),
++(9500359, 2280010, 1, 1, 0, 4000),
++(9500359, 2280011, 1, 1, 0, 4000),
++(9500359, 2280012, 1, 1, 0, 4000),
++(9500359, 2044712, 1, 1, 0, 4000),
++(9500359, 2044612, 1, 1, 0, 4000),
++(9500359, 2044512, 1, 1, 0, 4000),
++(9500359, 2044417, 1, 1, 0, 4000),
++(9500359, 2044317, 1, 1, 0, 4000),
++(9500359, 2044217, 1, 1, 0, 4000),
++(9500359, 2044117, 1, 1, 0, 4000),
++(9500359, 2044025, 1, 1, 0, 4000),
++(9500359, 2043812, 1, 1, 0, 4000),
++(9500359, 2043712, 1, 1, 0, 4000),
++(9500359, 2043312, 1, 1, 0, 4000),
++(9500359, 2043217, 1, 1, 0, 4000),
++(9500359, 2043117, 1, 1, 0, 4000),
++(9500359, 2043023, 1, 1, 0, 4000),
++(9500359, 1132005, 1, 1, 0, 4000),
++(9500359, 1132006, 1, 1, 0, 4000),
++(9500359, 1132007, 1, 1, 0, 4000),
++(9500359, 1132008, 1, 1, 0, 4000),
++(9500359, 1132009, 1, 1, 0, 4000),
++(9500359, 1422011, 1, 1, 0, 4000),
++(9500359, 1432046, 1, 1, 0, 4000),
++(9500359, 1332030, 1, 1, 0, 4000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+diff --git a/src/net/server/channel/handlers/ItemPickupHandler.java b/src/net/server/channel/handlers/ItemPickupHandler.java
+index 62da1d67d..e79effedc 100644
+--- a/src/net/server/channel/handlers/ItemPickupHandler.java
++++ b/src/net/server/channel/handlers/ItemPickupHandler.java
+@@ -54,29 +54,29 @@ public final void handlePacket(final SeekableLittleEndianAccessor slea, final Ma
+ 		
+         if (ob instanceof MapleMapItem) {
+             MapleMapItem mapitem = (MapleMapItem) ob;
+-			if(System.currentTimeMillis() - mapitem.getDropTime() < 900) {
+-				c.announce(MaplePacketCreator.enableActions());
++            if(System.currentTimeMillis() - mapitem.getDropTime() < 900) {
++                c.announce(MaplePacketCreator.enableActions());
+                 return;
+-			} 
++            } 
+             if (mapitem.getItemId() == 4031865 || mapitem.getItemId() == 4031866 || mapitem.getMeso() > 0 || MapleItemInformationProvider.getInstance().isConsumeOnPickup(mapitem.getItemId()) || MapleInventoryManipulator.checkSpace(c, mapitem.getItemId(), mapitem.getItem().getQuantity(), mapitem.getItem().getOwner())) {
+                 if ((chr.getMapId() > 209000000 && chr.getMapId() < 209000016) || (chr.getMapId() >= 990000500 && chr.getMapId() <= 990000502)) {//happyville trees and guild PQ
+                     if (!mapitem.isPlayerDrop() || mapitem.getDropper().getObjectId() == c.getPlayer().getObjectId()) {
+                         if(mapitem.getMeso() > 0) {
+-							chr.gainMeso(mapitem.getMeso(), true, true, false);
+-							chr.getMap().broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 2, chr.getId()), mapitem.getPosition());
++                            chr.gainMeso(mapitem.getMeso(), true, true, false);
++                            chr.getMap().broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 2, chr.getId()), mapitem.getPosition());
+                             chr.getMap().removeMapObject(ob);
+-							mapitem.setPickedUp(true);
+-						} else if (MapleInventoryManipulator.addFromDrop(c, mapitem.getItem(), false)) {
++                            mapitem.setPickedUp(true);
++                        } else if (MapleInventoryManipulator.addFromDrop(c, mapitem.getItem(), false)) {
+                             chr.getMap().broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 2, chr.getId()), mapitem.getPosition());
+                             chr.getMap().removeMapObject(ob);
+-							mapitem.setPickedUp(true);
++                            mapitem.setPickedUp(true);
+                         } else {
+                             c.announce(MaplePacketCreator.enableActions());
+                             return;
+                         }
+                     } else {
+-                        c.announce(MaplePacketCreator.getInventoryFull());
+-                        c.announce(MaplePacketCreator.getShowInventoryFull());
++                        c.announce(MaplePacketCreator.showItemUnavailable());
++                        c.announce(MaplePacketCreator.enableActions());
+                         return;
+                     }
+                     c.announce(MaplePacketCreator.enableActions());
+@@ -133,7 +133,7 @@ public final void handlePacket(final SeekableLittleEndianAccessor slea, final Ma
+                                 return;
+                             }
+                         }
+-					} else if(mapitem.getItemId() == 4031865 || mapitem.getItemId() == 4031866) {
++                    } else if(mapitem.getItemId() == 4031865 || mapitem.getItemId() == 4031866) {
+                         // Add NX to account, show effect and make item disapear
+                         chr.getCashShop().gainCash(1, mapitem.getItemId() == 4031865 ? 100 : 250);
+                     } else if (useItem(c, mapitem.getItem().getItemId())) {
+@@ -143,14 +143,14 @@ public final void handlePacket(final SeekableLittleEndianAccessor slea, final Ma
+                     } else if (MapleInventoryManipulator.addFromDrop(c, mapitem.getItem(), true)) {
+                     } else if (mapitem.getItem().getItemId() == 4031868) {
+                         chr.getMap().broadcastMessage(MaplePacketCreator.updateAriantPQRanking(chr.getName(), chr.getItemQuantity(4031868, false), false));
+-					} else {
++                    } else {
+                         c.announce(MaplePacketCreator.enableActions());
+                         return;
+                     }
+                     mapitem.setPickedUp(true);
+                     chr.getMap().broadcastMessage(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 2, chr.getId()), mapitem.getPosition());
+                     chr.getMap().removeMapObject(ob);
+-				}
++                }
+             }
+         }
+         c.announce(MaplePacketCreator.enableActions());
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 7ff020a5e..fdbb1f1b7 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -318,7 +318,7 @@ public void dispose() {
+                 wL.unlock();
+             }
+             
+-            event_schedule.cancel(true);
++            if(event_schedule != null) event_schedule.cancel(true);
+ 
+             mobs.clear();
+             killCount.clear();
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index 99ec22725..add92fce0 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -92,7 +92,7 @@ public void dropItems(int posX, int posY, boolean meso, int mesoChance, int minM
+                 int range = maxMeso - minMeso;
+                 int displayDrop = (int) (Math.random() * range) + minMeso;
+                 int mesoDrop = (displayDrop * client.getWorldServer().getMesoRate());
+-                reactor.getMap().spawnMesoDrop(mesoDrop, dropPos, reactor, client.getPlayer(), false, (byte) 2);
++                reactor.getMap().spawnMesoDrop(mesoDrop, reactor.getMap().calcDropPos(dropPos, reactor.getPosition()), reactor, client.getPlayer(), false, (byte) 2);
+             } else {
+                 Item drop;
+                 MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+@@ -101,7 +101,7 @@ public void dropItems(int posX, int posY, boolean meso, int mesoChance, int minM
+                 } else {
+                     drop = ii.randomizeStats((Equip) ii.getEquipById(d.itemId));
+                 }
+-                reactor.getMap().spawnItemDrop(reactor, getPlayer(), drop, dropPos, false, false);
++                reactor.getMap().spawnItemDrop(reactor, getPlayer(), drop, reactor.getMap().calcDropPos(dropPos, reactor.getPosition()), false, false);
+             }
+             dropPos.x += 25;
+         }
+diff --git a/src/server/MapleInventoryManipulator.java b/src/server/MapleInventoryManipulator.java
+index 6f35bd56f..0b7af7d59 100644
+--- a/src/server/MapleInventoryManipulator.java
++++ b/src/server/MapleInventoryManipulator.java
+@@ -498,7 +498,7 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+                 if (ii.isDropRestricted(target.getItemId()) || MapleItemInformationProvider.getInstance().isCash(target.getItemId())) {
+                     c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), target, dropPos);
+                 } else {
+-                    c.getPlayer().getMap().spawnItemDrop(c.getPlayer(), c.getPlayer(), target, dropPos, true, false);
++                    c.getPlayer().getMap().spawnItemDrop(c.getPlayer(), c.getPlayer(), target, dropPos, true, true);
+                 }
+             } else if (ii.isDropRestricted(target.getItemId()) || MapleItemInformationProvider.getInstance().isCash(target.getItemId())) {
+                 c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), target, dropPos);
+@@ -515,7 +515,7 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+                 if (ii.isDropRestricted(itemId) || ii.isCash(itemId)) {
+                     c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), source, dropPos);
+                 } else {
+-                    c.getPlayer().getMap().spawnItemDrop(c.getPlayer(), c.getPlayer(), source, dropPos, true, false);
++                    c.getPlayer().getMap().spawnItemDrop(c.getPlayer(), c.getPlayer(), source, dropPos, true, true);
+                 }
+             } else if (ii.isDropRestricted(itemId) || ii.isCash(itemId)) {
+                 c.getPlayer().getMap().disappearingItemDrop(c.getPlayer(), c.getPlayer(), source, dropPos);           
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 538a987a1..29af659f0 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -321,6 +321,28 @@ private MapleData getItemData(int itemId) {
+         }
+         return ret;
+     }
++    
++    public List<Integer> getItemIdsInRange(int minId, int maxId, boolean ignoreCashItem) {
++        List<Integer> list = new ArrayList<>();
++        
++        if(ignoreCashItem) {
++            for(int i = minId; i <= maxId; i++) {
++                if(getItemData(i) != null && !isCash(i)) {
++                    list.add(i);
++                }
++            }
++        }
++        else {
++            for(int i = minId; i <= maxId; i++) {
++                if(getItemData(i) != null) {
++                    list.add(i);
++                }
++            }
++        }
++        
++        
++        return list;
++    }
+ 
+     public short getSlotMax(MapleClient c, int itemId) {
+         if (slotMaxCache.containsKey(itemId)) {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 850a12a11..b8d2c95eb 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -634,7 +634,6 @@ public void run() {
+             removeMapObject(monster);
+             monster.dispatchMonsterKilled();
+             broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
+-            //System.out.println("Counter: " + spawnedMonstersOnMap.toString() + " Size: " + countAllMonsters());
+             return;
+         }
+         if (monster.getStats().getLevel() >= chr.getLevel() + 30 && !chr.isGM()) {
+@@ -702,6 +701,7 @@ public void run() {
+                 }
+             }
+         }
++        
+         MapleCharacter dropOwner = monster.killBy(chr);
+         if (withDrops && !monster.dropsDisabled()) {
+             if (dropOwner == null) {
+@@ -712,7 +712,6 @@ public void run() {
+         
+         monster.dispatchMonsterKilled();
+         broadcastMessage(MaplePacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
+-        //System.out.println("Counter: " + spawnedMonstersOnMap.toString() + " Size: " + countAllMonsters());
+     }
+ 
+     public void killFriendlies(MapleMonster mob) {
+@@ -737,6 +736,8 @@ public void monsterCloakingDevice() {
+     }
+ 
+     public void softKillAllMonsters() {
++        
++        
+         for (MapleMapObject monstermo : getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER))) {
+             MapleMonster monster = (MapleMonster) monstermo;
+             if (monster.getStats().isFriendly()) {
+@@ -1331,6 +1332,48 @@ public void sendPackets(MapleClient c) {
+             activateItemReactors(drop, owner.getClient());
+         }
+     }
++    
++    public final void spawnItemDropList(List<Integer> list, final MapleMapObject dropper, final MapleCharacter owner, Point pos) {
++        spawnItemDropList(list, 1, 1, dropper, owner, pos, true, false);
++    }
++    
++    public final void spawnItemDropList(List<Integer> list, int minCopies, int maxCopies, final MapleMapObject dropper, final MapleCharacter owner, Point pos) {
++        spawnItemDropList(list, minCopies, maxCopies, dropper, owner, pos, true, false);
++    }
++        
++    // spawns item instances of all defined item ids on a list
++    public final void spawnItemDropList(List<Integer> list, int minCopies, int maxCopies, final MapleMapObject dropper, final MapleCharacter owner, Point pos, final boolean ffaDrop, final boolean playerDrop) {
++        int copies = (maxCopies - minCopies) + 1;
++        if(copies < 1) return;
++        
++        Collections.shuffle(list);
++        
++        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++        Random rnd = new Random();
++        
++        final Point dropPos = new Point(pos);
++        dropPos.x -= (12 * list.size());
++        
++        for(int i = 0; i < list.size(); i++) {
++            if(list.get(i) == 0) {
++                spawnMesoDrop(owner != null ? 10 * owner.getMesoRate() : 10, calcDropPos(dropPos, pos), dropper, owner, playerDrop, (byte) (ffaDrop ? 2 : 0));
++            }
++            else {
++                final Item drop;
++                int randomedId = list.get(i);
++
++                if (ii.getInventoryType(randomedId) != MapleInventoryType.EQUIP) {
++                    drop = new Item(randomedId, (short) 0, (short) (rnd.nextInt(copies) + minCopies));
++                } else {
++                    drop = ii.randomizeStats((Equip) ii.getEquipById(randomedId));
++                }
++
++                spawnItemDrop(dropper, owner, drop, calcDropPos(dropPos, pos), ffaDrop, playerDrop);
++            }
++            
++            dropPos.x += 25;
++        }
++    }
+ 
+     private void activateItemReactors(final MapleMapItem drop, final MapleClient c) {
+         final Item item = drop.getItem();
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 3354b0111..5abe03992 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -194,7 +194,7 @@ public MapleMap getMap(int mapid) {
+                 }
+ 
+                 map.setClock(mapData.getChildByPath("clock") != null);
+-                map.setEverlast(mapData.getChildByPath("everlast") != null);
++                map.setEverlast(mapData.getChildByPath("info/everlast") != null);
+                 map.setTown(mapData.getChildByPath("info/town") != null);
+                 map.setHPDec(MapleDataTool.getIntConvert("info/decHP", mapData, 0));
+                 map.setHPDecProtect(MapleDataTool.getIntConvert("info/protectItem", mapData, 0));
+diff --git a/src/server/maps/MapleMapItem.java b/src/server/maps/MapleMapItem.java
+index 36f435e23..ac02b60c0 100644
+--- a/src/server/maps/MapleMapItem.java
++++ b/src/server/maps/MapleMapItem.java
+@@ -34,7 +34,7 @@
+     protected int character_ownerid, meso, questid = -1;
+     protected byte type;
+     protected boolean pickedUp = false, playerDrop;
+-	protected long dropTime;
++    protected long dropTime;
+     public ReentrantLock itemLock = new ReentrantLock();
+ 
+     public MapleMapItem(Item item, Point position, MapleMapObject dropper, MapleCharacter owner, byte type, boolean playerDrop) {
+diff --git a/src/server/maps/SavedLocationType.java b/src/server/maps/SavedLocationType.java
+index 38059c157..53dd374bd 100644
+--- a/src/server/maps/SavedLocationType.java
++++ b/src/server/maps/SavedLocationType.java
+@@ -29,7 +29,8 @@
+     INTRO, 
+     SUNDAY_MARKET, 
+     MIRROR, 
+-    DOJO;
++    DOJO,
++    HAPPYVILLE;
+ 
+     public static SavedLocationType fromString(String Str) {
+         return valueOf(Str);
+diff --git a/wz/Map.wz/Map/Map2/209000000.img.xml b/wz/Map.wz/Map/Map2/209000000.img.xml
+index e538f2c8d..87c40bd0e 100644
+--- a/wz/Map.wz/Map/Map2/209000000.img.xml
++++ b/wz/Map.wz/Map/Map2/209000000.img.xml
+@@ -349,12 +349,10 @@
+       <int name="y" value="151"/>
+       <int name="mobTime" value="0"/>
+       <int name="f" value="0"/>
+-      <int name="hide" value="0"/>
+       <int name="fh" value="31"/>
+       <int name="cy" value="154"/>
+       <int name="rx0" value="1412"/>
+       <int name="rx1" value="1512"/>
+-      <string name="limitedname" value="xmasvillage"/>
+     </imgdir>
+     <imgdir name="13">
+       <string name="type" value="n"/>
+@@ -2276,6 +2274,14 @@
+     </imgdir>
+   </imgdir>
+   <imgdir name="reactor">
++    <imgdir name="1">
++      <string name="id" value="2092001"/>
++      <int name="x" value="-375"/>
++      <int name="y" value="-150"/>
++      <int name="reactorTime" value="3600"/>
++      <int name="f" value="0"/>
++      <string name="name" value="ì¼ê°ë"/>
++    </imgdir>
+     <imgdir name="0">
+       <string name="id" value="2092002"/>
+       <int name="x" value="2262"/>
+diff --git a/wz/Npc.wz/9220005.img.xml b/wz/Npc.wz/9220005.img.xml
+index 8414a6b40..7aa263bc2 100644
+--- a/wz/Npc.wz/9220005.img.xml
++++ b/wz/Npc.wz/9220005.img.xml
+@@ -1,13 +1,10 @@
+ <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <imgdir name="9220005.img">
+   <imgdir name="info">
+-    <int name="dcLeft" value="-72"/>
+-    <int name="dcTop" value="-110"/>
+-    <int name="dcRight" value="70"/>
+-    <int name="dcBottom" value="0"/>
+-    <imgdir name="speak">
+-      <string name="0" value="n0"/>
+-      <string name="1" value="n1"/>
++    <imgdir name="script">
++      <imgdir name="0">
++        <string name="script" value="Jump_rudolph"/>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="stand">
+@@ -106,4 +103,30 @@
+       <int name="delay" value="160"/>
+     </canvas>
+   </imgdir>
++  <imgdir name="say">
++    <imgdir name="speak">
++      <string name="0" value="n0"/>
++      <string name="1" value="n1"/>
++    </imgdir>
++    <canvas name="0" width="138" height="112">
++      <vector name="origin" x="71" y="112"/>
++      <int name="z" value="0"/>
++      <int name="delay" value="400"/>
++    </canvas>
++    <canvas name="1" width="138" height="112">
++      <vector name="origin" x="71" y="112"/>
++      <int name="z" value="0"/>
++      <int name="delay" value="160"/>
++    </canvas>
++    <canvas name="2" width="138" height="112">
++      <vector name="origin" x="71" y="112"/>
++      <int name="z" value="0"/>
++      <int name="delay" value="330"/>
++    </canvas>
++    <canvas name="3" width="138" height="112">
++      <vector name="origin" x="71" y="112"/>
++      <int name="z" value="0"/>
++      <int name="delay" value="160"/>
++    </canvas>
++  </imgdir>
+ </imgdir>
+diff --git a/wz/String.wz/MonsterBook.img.xml b/wz/String.wz/MonsterBook.img.xml
+index c746c4f1f..d86ce09b4 100644
+--- a/wz/String.wz/MonsterBook.img.xml
++++ b/wz/String.wz/MonsterBook.img.xml
+@@ -14059,7 +14059,7 @@
+   </imgdir>
+   <imgdir name="9500317">
+     <imgdir name="map">
+-      <int name="0" value="999999998" />
++      <int name="0" value="209080000" />
+     </imgdir>
+     <imgdir name="reward">
+       <int name="0" value="4001141" />
+@@ -14069,7 +14069,7 @@
+   </imgdir>
+   <imgdir name="9500320">
+     <imgdir name="map">
+-      <int name="0" value="999999998" />
++      <int name="0" value="209080000" />
+     </imgdir>
+     <imgdir name="reward" />
+     <string name="episode" value=" Lv. : Unknown\nForm : Mammal\nSpecial Trait : Looks just like a reindeer.\n\nSanta Cliff's once adored and loved pet. This Rudolf that used to live with Santa Cliff in Happyville came out for a walk on its own and lost its way back home. Some has claimed that this Rudolf has been seen around Maple World which sounds quite likely considering that it travels fast and tends to be curious about everything; however, it is nowhere to be found. Cliff is still clinging onto hope that his Rudolph will one day come back to his arms, but he hasn't had any luck.\nBecause it looks a lot like the reindeers that live in Mu Lung, there have been countless false notifications, claiming that Rudolph has been found. Remember to contact Cliff in Happyville if you happen to find the lost Rudolph; it has a big, round red nose so you'll know when you see it!" />

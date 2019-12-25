@@ -1,0 +1,2731 @@
+diff --git a/.gitignore b/.gitignore
+index fc5173fbb..70e1a6afe 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -38,3 +38,7 @@
+ /tools/MobBookUpdate/build/
+ /tools/MobBookUpdate/dist/
+ /tools/MobBookUpdate/nbproject/private/
++
++/tools/MapleMapInfoRetriever/build/
++/tools/MapleMapInfoRetriever/dist/
++/tools/MapleMapInfoRetriever/nbproject/private/
+diff --git a/dist/MapleSolaxia.jar b/dist/MapleSolaxia.jar
+index 98fdf4c35..488d5d75a 100644
+Binary files a/dist/MapleSolaxia.jar and b/dist/MapleSolaxia.jar differ
+diff --git a/docs/feature_list.txt b/docs/feature_list.txt
+index 8c3dd5247..3645f6b15 100644
+--- a/docs/feature_list.txt
++++ b/docs/feature_list.txt
+@@ -49,7 +49,7 @@ Cash & Items:
+ * Owl of Minerva.
+ * Pet item ignore.
+ 
+-Monsters & Maps:
++Monsters, Maps & Reactors:
+ * Every monsterbook card is now droppable by overworld mobs.
+ * Added meso drop data for basically every missing overworld mob.
+ * Monsterbook displays drop data info conformant with the underlying DB (needs custom wz). See more on the MobBookUpdate feature.
+@@ -58,6 +58,7 @@ Monsters & Maps:
+ * If multiple bosses are on the same area, client will prioritize Boss HP bar of the target of the player.
+ * Boats, elevator and other travelling mechanics fully working.
+ * PQs, Taxis and other event-driven situations warps players at random spawnpoints, GMS-like.
++* Some reactors (PQ bonus boxes) now sprays items on the map, instead of dropping everything at once.
+ 
+ PQ potentials:
+ * Lobby system - Multiple PQ instances on same channel.
+@@ -92,6 +93,7 @@ External tools:
+ * MapleArrowFetcher - Updates min/max quantity dropped on all arrows drop data, calculations based on mob level and whether it's a boss or not.
+ * MapleCouponInstaller - Retrieves coupon info from the WZ and makes a SQL table with it. The server will use that table to gather info regarding rates and intervals.
+ * MapleIdRetriever - Two behaviors: generates a SQL table with relation (id, name) of the handbook given as input. Given a file with names, outputs a file with ids.
++* MapleMapInfoRetriever - Basic tool for detecting missing info nodes on the map field structures (maps failing to have an info node on the WZ is an critical issue).
+ * MapleMesoFetcher - Creates meso drop data for mobs with more than 4 items (thus overworld mobs), calculations based on mob level and whether it's a boss or not.
+ * MapleQuestItemFetcher - Searches the SQL tables and project files and reports in all relevant data regarding missing/erroneous quest items.
+ * MobBookIndexer - Generates a SQL table with all relations of cardid and mobid present in the mob book.
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 9faaac6c8..a16cad530 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -681,3 +681,8 @@ Rearranjado ID de jogador agora come
+ Corrigido timer de quest não saindo do cliente quando dado o termino bem-sucedido da quest.
+ Corrigido MapleArrowFetcher atribuindo valores iguais para min e max ranges. Max deve sempre ser maior que min.
+ Corrigido bug no ThreadTracker não mostrando os últimos locks capturados pelas threads corretamente.
++
++18 - 20 Novembro 2017,
++Implementado items sendo dropados de reatores intervaladamente, GMS-like.
++Adicionado informação ao jogador que tentar completar uma quest com item necessário equipado.
++Nova ferramenta: MapleMapInfoRetriever. Detecção básica de mapas com sem nó de info em sua estrutura WZ.
+\ No newline at end of file
+diff --git a/scripts/npc/1002000.js b/scripts/npc/1002000.js
+index cc57a4e69..0a50b8b57 100644
+--- a/scripts/npc/1002000.js
++++ b/scripts/npc/1002000.js
+@@ -1,7 +1,8 @@
+ var status = 0;
++var imaps = [104000000, 102000000, 100000000, 101000000, 103000000, 120000000, 105040300];
+ var maps = [102000000, 100000000, 101000000, 103000000, 120000000];
+ var cost = [1000, 1000, 800, 1000, 800];
+-var townText = [["The town you are at is Lith Harbor! Alright I'll explain to you more about #bLith Harbor#k. It's the place you landed on Victoria Island by riding The Victoria. That's Lith Harbor. A lot of beginners who just got here from Maple Island start their journey here.", "It's a quiet town with the wide body of water on the back of it, thanks to the fact that the harbot is located at the west end of the island. Most of the people here are, or used to be fisherman, so they may look intimidating, but if you strike up a conversation with them, they'll be friendly to you.", "Around town lies a beautiful prairie. Most of the monsters there are small and gentle, perfect for beginners. If you haven't chosen your job yet, this is a good place to boost up your level."],["Alright I'll explain to you more about #bPerion#k. It's a warrior-town located at the northern-most part of Victoria Island, surrounded by rocky mountains. With an unfriendly atmosphere, only the strong survives there.", "Around the highland you'll find a really skinny tree, a wild hog running around the place, and monkeys that live all over the island. There's also a deep valley, and when you go deep into it, you'll find a humongous dragon with the power to match his size. Better go in there very carefully, or don't go at all.", "If you want to be a #bWarrior#k then find #rDances with Balrog#k, the chief of Perion. If you're level 10 or higher, along with a good STR level, he may make you a warrior after all. If not, better keep training yourself until you reach that level."], ["Alright I'll explain to you more about #bEllinia#k. It's a magician-town located at the far east of Victoria Island, and covered in tall, mystic trees. You'll find some fairies there, too. They don't like humans in general so it'll be best for you to be on their good side and stay quiet.", "Near the forest you'll find green slimes, walking mushrooms, monkeys and zombie monkeys all residing there. Walk deeper into the forest and you'll find witches with the flying broomstick navigating the skies. A word of warning: Unless you are really strong, I recommend you don't go near them.", "If you want to be a #bMagician#k, search for #rGrendel the Really Old#k, the head wizard of Ellinia. He may make you a wizard if you're at or above level 8 with a decent amount of INT. If that's not the case, you may have to hunt more and train yourself to get there."], ["Alright I'll explain to you more about #bHenesys#k. It's a bowman-town located at the southernmost part of the island, made on a flatland in the midst of a deep forest and prairies. The weather's just right, and everything is plentiful around that town, perfect for living. Go check it out.", "Around the prairie you'll find weak monsters such as snails, mushrooms, and pigs. According to what I hear, though, in the deepest part of the Pig Park, which is connected to the town somewhere, you'll find a humongous, powerful mushroom called Mushmom every now and then.", "If you want to be a #bBowman#k, you need to go see #rAthena Pierce#k at Henesys. With a level at or above 10 and a decent amount of DEX, she may make you be one afterall. If not, go train yourself, make yourself stronger, then try again."], ["Alright I'll explain to you more about #bKerning City#k. It's a thief-town located at the northwest part of Victoria Island, and there are buildings up there that have just this strange feeling around them. It's mostly covered in black clouds, but if you can go up to a really high place, you'll be able to see a very beautiful sunset there.", "From Kerning City, you can go into several dungeons. You can go to a swamp where alligators and snakes are abound, or hit the subway full of ghosts and bats. At the deepest part of the underground, you'll find Lace, who is just as big and dangerous as a dragon.", "If you want to be a #bThief#k, seek #rDark Lord#k, the heart of darkness of Kerning City. He may well make you a thief if you're at or above level 10 with a good amount of DEX. If not, go hunt and train yourself to reach there."], ["Here's a little information on #b#m120000000##k. It's a submarine that's currently parked in between Ellinia and Henesys in Victoria Island. That submarine serves as home to numerous pirates. You can have just as beautiful a view of the ocean there as you do here in Lith Harbor.", "#m120000000# is parked in between Henesys and Ellinia, so if you step out just a bit, you'll be able to enjoy the view of both towns. All the pirates you'll meet in town are very gregarious and friendly as well.", "If you are serious about becoming a #bPirate#k, then you better meet the captain of #m120000000#, #r#p1090000##k. If you are over Level 10 with 20 DEX, then she may let you become one. If you aren't up to that level, then you'll need to train harder to get there!"], ["Alright I'll explain to you more about #bSleepywood#k. It's a forest town located at the southeast side of Victoria Island. It's pretty much in between Henesys and the ant-tunnel dungeon. There's a hotel there, so you can rest up after a long day at the dungeon ... it's a quiet town in general.", "In front of the hotel there's an old buddhist monk by the name of #rChrishrama#k. Nobody knows a thing about that monk. Apparently he collects materials from the travelers and create something, but I am not too sure about the details. If you have any business going around that area, please check that out for me.", "From Sleepywood, head east and you'll find the ant tunnel connected to the deepest part of the Victoria Island. Lots of nasty, powerful monsters abound so if you walk in thinking it's a walk in the park, you'll be coming out as a corpse. You need to fully prepare yourself for a rough ride before going in.", "And this is what I hear ... apparently, at Sleepywood there's a secret entrance leading you to an unknown place. Apparently, once you move in deep, you'll find a stack of black rocks that actually move around. I want to see that for myself in the near future ..."]];
++var townText = [["The town you are at is Lith Harbor! Alright I'll explain to you more about #bLith Harbor#k. It's the place you landed on Victoria Island by riding The Victoria. That's Lith Harbor. A lot of beginners who just got here from Maple Island start their journey here.", "It's a quiet town with the wide body of water on the back of it, thanks to the fact that the harbor is located at the west end of the island. Most of the people here are, or used to be fisherman, so they may look intimidating, but if you strike up a conversation with them, they'll be friendly to you.", "Around town lies a beautiful prairie. Most of the monsters there are small and gentle, perfect for beginners. If you haven't chosen your job yet, this is a good place to boost up your level."],["Alright I'll explain to you more about #bPerion#k. It's a warrior-town located at the northern-most part of Victoria Island, surrounded by rocky mountains. With an unfriendly atmosphere, only the strong survives there.", "Around the highland you'll find a really skinny tree, a wild hog running around the place, and monkeys that live all over the island. There's also a deep valley, and when you go deep into it, you'll find a humongous dragon with the power to match his size. Better go in there very carefully, or don't go at all.", "If you want to be a #bWarrior#k then find #rDances with Balrog#k, the chief of Perion. If you're level 10 or higher, along with a good STR level, he may make you a warrior after all. If not, better keep training yourself until you reach that level."], ["Alright I'll explain to you more about #bEllinia#k. It's a magician-town located at the far east of Victoria Island, and covered in tall, mystic trees. You'll find some fairies there, too. They don't like humans in general so it'll be best for you to be on their good side and stay quiet.", "Near the forest you'll find green slimes, walking mushrooms, monkeys and zombie monkeys all residing there. Walk deeper into the forest and you'll find witches with the flying broomstick navigating the skies. A word of warning: Unless you are really strong, I recommend you don't go near them.", "If you want to be a #bMagician#k, search for #rGrendel the Really Old#k, the head wizard of Ellinia. He may make you a wizard if you're at or above level 8 with a decent amount of INT. If that's not the case, you may have to hunt more and train yourself to get there."], ["Alright I'll explain to you more about #bHenesys#k. It's a bowman-town located at the southernmost part of the island, made on a flatland in the midst of a deep forest and prairies. The weather's just right, and everything is plentiful around that town, perfect for living. Go check it out.", "Around the prairie you'll find weak monsters such as snails, mushrooms, and pigs. According to what I hear, though, in the deepest part of the Pig Park, which is connected to the town somewhere, you'll find a humongous, powerful mushroom called Mushmom every now and then.", "If you want to be a #bBowman#k, you need to go see #rAthena Pierce#k at Henesys. With a level at or above 10 and a decent amount of DEX, she may make you be one afterall. If not, go train yourself, make yourself stronger, then try again."], ["Alright I'll explain to you more about #bKerning City#k. It's a thief-town located at the northwest part of Victoria Island, and there are buildings up there that have just this strange feeling around them. It's mostly covered in black clouds, but if you can go up to a really high place, you'll be able to see a very beautiful sunset there.", "From Kerning City, you can go into several dungeons. You can go to a swamp where alligators and snakes are abound, or hit the subway full of ghosts and bats. At the deepest part of the underground, you'll find Lace, who is just as big and dangerous as a dragon.", "If you want to be a #bThief#k, seek #rDark Lord#k, the heart of darkness of Kerning City. He may well make you a thief if you're at or above level 10 with a good amount of DEX. If not, go hunt and train yourself to reach there."], ["Here's a little information on #b#m120000000##k. It's a submarine that's currently parked in between Ellinia and Henesys in Victoria Island. That submarine serves as home to numerous pirates. You can have just as beautiful a view of the ocean there as you do here in Lith Harbor.", "#m120000000# is parked in between Henesys and Ellinia, so if you step out just a bit, you'll be able to enjoy the view of both towns. All the pirates you'll meet in town are very gregarious and friendly as well.", "If you are serious about becoming a #bPirate#k, then you better meet the captain of #m120000000#, #r#p1090000##k. If you are over Level 10 with 20 DEX, then she may let you become one. If you aren't up to that level, then you'll need to train harder to get there!"], ["Alright I'll explain to you more about #bSleepywood#k. It's a forest town located at the southeast side of Victoria Island. It's pretty much in between Henesys and the ant-tunnel dungeon. There's a hotel there, so you can rest up after a long day at the dungeon ... it's a quiet town in general.", "In front of the hotel there's an old buddhist monk by the name of #rChrishrama#k. Nobody knows a thing about that monk. Apparently he collects materials from the travelers and create something, but I am not too sure about the details. If you have any business going around that area, please check that out for me.", "From Sleepywood, head east and you'll find the ant tunnel connected to the deepest part of the Victoria Island. Lots of nasty, powerful monsters abound so if you walk in thinking it's a walk in the park, you'll be coming out as a corpse. You need to fully prepare yourself for a rough ride before going in.", "And this is what I hear ... apparently, at Sleepywood there's a secret entrance leading you to an unknown place. Apparently, once you move in deep, you'll find a stack of black rocks that actually move around. I want to see that for myself in the near future ..."]];
+ var selectedMap = -1;
+ var town = false;
+ 
+@@ -17,8 +18,15 @@ function action(mode, type, selection) {
+                 cm.sendNext("There's a lot to see in this town, too. Let me know if you want to go somewhere else.");
+             cm.dispose();
+             return;
+-        }else
++        }else {
+             status -= 2;
++            
++            if(status < 1) {
++                cm.dispose();
++                return;
++            }
++        }
++            
+     }
+     if (status == 1)
+         cm.sendSimple("It's understandable that you may be confused about this place if this is your first time around. If you got any questions about this place, fire away.\r\n#L0##bWhat kind of towns are here in Victoria Island?#l\r\n#L1#Please take me somewhere else.#k#l");
+@@ -26,8 +34,8 @@ function action(mode, type, selection) {
+         if (selection == 0){
+             town = true;
+             var text = "There are 7 big towns here in Victoria Island. Which of those do you want to know more of?#b";
+-            for(var i = 0; i < maps.length; i++)
+-                text += "\r\n#L" + i + "##m" + maps[i] + "##l";
++            for(var i = 0; i < imaps.length; i++)
++                text += "\r\n#L" + i + "##m" + imaps[i] + "##l";
+             cm.sendSimple(text);
+         }else if (selection == 1) {
+             var selStr = cm.getJobId() == 0 ? "There's a special 90% discount for all beginners. Alright, where would you want to go?#b" : "Oh you aren't a beginner, huh? Then I'm afraid I may have to charge you full price. Where would you like to go?#b";
+diff --git a/scripts/quest/21600.js b/scripts/quest/21600.js
+new file mode 100644
+index 000000000..7c0b559d8
+--- /dev/null
++++ b/scripts/quest/21600.js
+@@ -0,0 +1,47 @@
++/*
++	This file is part of the MapleSolaxiaV2 Maple Story Server
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    if (mode == -1) {
++        qm.dispose();
++    } else {
++        if(mode == 0 && type > 0) {
++            qm.dispose();
++            return;
++        }
++        
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        
++        if (status == 0) {
++            qm.sendNext("Hey, Aran. You seem pretty strong, since that time from when you got freed from the glacier. Suitable enough to #bride a wolf#k, if you ask me.");
++        } else if (status == 1) {
++            qm.sendAcceptDecline("Picked your interest, huh? Very well, first you must make your way to #bAqua#k, there is a person there who makes #rfood for wolf cubs#k. Bring one portion to me, and I shall deem you able to tame and take care of one. What do you say, will you try for it?");
++        } else if (status == 2) {
++            qm.sendNext("Alright. The one you must meet is #bNanuke#k, she is on top of a #rsnowy whale#k, somewhere in the ocean. Good luck!");
++            qm.forceStartQuest();
++            
++            qm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2002017.js b/scripts/reactor/2002017.js
+index d26c2eb57..860fdeb06 100644
+--- a/scripts/reactor/2002017.js
++++ b/scripts/reactor/2002017.js
+@@ -20,10 +20,10 @@
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ /*@author Ronan
+- *Reactor : OrbisPQ Bonus Reactor - 2202004.js
++ *Reactor : OrbisPQ Bonus Reactor - 2002017.js
+  * Drops all the Bonus Items
+  */
+  
+ function act() {
+-        rm.dropItems(true, 1, 100, 400, 15);
++        rm.sprayItems(true, 1, 100, 400, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2002018.js b/scripts/reactor/2002018.js
+new file mode 100644
+index 000000000..51eb167db
+--- /dev/null
++++ b/scripts/reactor/2002018.js
+@@ -0,0 +1,29 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/*@author Ronan
++ *Reactor : OrbisPQ Bonus Reactor - 2002018.js
++ * Drops all the Bonus Items
++ */
++ 
++function act() {
++        rm.sprayItems(true, 1, 100, 400, 15);
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/2202004.js b/scripts/reactor/2202004.js
+index f61f5bdf5..2f908301b 100644
+--- a/scripts/reactor/2202004.js
++++ b/scripts/reactor/2202004.js
+@@ -25,5 +25,5 @@
+  */
+  
+ function act() {
+-        rm.dropItems(true, 1, 30, 60, 15);
++        rm.sprayItems(true, 1, 30, 60, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2512001.js b/scripts/reactor/2512001.js
+index e139df068..4f7ffedbe 100644
+--- a/scripts/reactor/2512001.js
++++ b/scripts/reactor/2512001.js
+@@ -29,5 +29,5 @@ function act() {
+ 	var now = eim.getIntProperty("openedChests");
+ 	var nextNum = now + 1;
+ 	eim.setIntProperty("openedChests", nextNum);
+-	rm.dropItems(true, 1, 50, 100, 15);
++	rm.sprayItems(true, 1, 50, 100, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2612000.js b/scripts/reactor/2612000.js
+index 96993bcae..296e3fe14 100644
+--- a/scripts/reactor/2612000.js
++++ b/scripts/reactor/2612000.js
+@@ -24,5 +24,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems();
++	rm.sprayItems();
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2612001.js b/scripts/reactor/2612001.js
+index ff26a29e6..3f881507d 100644
+--- a/scripts/reactor/2612001.js
++++ b/scripts/reactor/2612001.js
+@@ -24,5 +24,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems();
++	rm.sprayItems();
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2612002.js b/scripts/reactor/2612002.js
+index fb5c18844..4d816c007 100644
+--- a/scripts/reactor/2612002.js
++++ b/scripts/reactor/2612002.js
+@@ -24,5 +24,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems();
++	rm.sprayItems();
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2612003.js b/scripts/reactor/2612003.js
+index 9b55286f5..8660dd82d 100644
+--- a/scripts/reactor/2612003.js
++++ b/scripts/reactor/2612003.js
+@@ -24,5 +24,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems();
++	rm.sprayItems();
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/2612004.js b/scripts/reactor/2612004.js
+index 3abc42141..11f4d68e7 100644
+--- a/scripts/reactor/2612004.js
++++ b/scripts/reactor/2612004.js
+@@ -24,5 +24,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems();
++	rm.sprayItems();
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6102002.js b/scripts/reactor/6102002.js
+index c9d7131fb..43e01c504 100644
+--- a/scripts/reactor/6102002.js
++++ b/scripts/reactor/6102002.js
+@@ -25,5 +25,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems(true, 1, 90, 360, 15);
++	rm.sprayItems(true, 1, 90, 360, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6102003.js b/scripts/reactor/6102003.js
+index c47e6f39a..e64a3ebec 100644
+--- a/scripts/reactor/6102003.js
++++ b/scripts/reactor/6102003.js
+@@ -25,5 +25,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems(true, 1, 90, 360, 15);
++	rm.sprayItems(true, 1, 90, 360, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6102004.js b/scripts/reactor/6102004.js
+index d65fbe829..cd7d66fe5 100644
+--- a/scripts/reactor/6102004.js
++++ b/scripts/reactor/6102004.js
+@@ -25,5 +25,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems(true, 1, 90, 360, 15);
++	rm.sprayItems(true, 1, 90, 360, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6102005.js b/scripts/reactor/6102005.js
+index 269ba15fc..ec8bd1889 100644
+--- a/scripts/reactor/6102005.js
++++ b/scripts/reactor/6102005.js
+@@ -25,5 +25,5 @@
+  */
+  
+ function act() {
+-	rm.dropItems(true, 1, 90, 360, 15);
++	rm.sprayItems(true, 1, 90, 360, 15);
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702003.js b/scripts/reactor/6702003.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702003.js
++++ b/scripts/reactor/6702003.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702004.js b/scripts/reactor/6702004.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702004.js
++++ b/scripts/reactor/6702004.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702005.js b/scripts/reactor/6702005.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702005.js
++++ b/scripts/reactor/6702005.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702006.js b/scripts/reactor/6702006.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702006.js
++++ b/scripts/reactor/6702006.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702007.js b/scripts/reactor/6702007.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702007.js
++++ b/scripts/reactor/6702007.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702008.js b/scripts/reactor/6702008.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702008.js
++++ b/scripts/reactor/6702008.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702009.js b/scripts/reactor/6702009.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702009.js
++++ b/scripts/reactor/6702009.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702010.js b/scripts/reactor/6702010.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702010.js
++++ b/scripts/reactor/6702010.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702011.js b/scripts/reactor/6702011.js
+index 19b156a46..ba3daa965 100644
+--- a/scripts/reactor/6702011.js
++++ b/scripts/reactor/6702011.js
+@@ -29,6 +29,6 @@ function act() {
+ 	if (rand < 1) rand = 1;
+ 	//We'll make it drop a lot of crap :D
+ 	for (var i = 0; i<rand; i++) {
+-		rm.dropItems(true, 1, 30, 60, 15);
++		rm.sprayItems(true, 1, 30, 60, 15);
+ 	}
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/6702012.js b/scripts/reactor/6702012.js
+new file mode 100644
+index 000000000..061f24649
+--- /dev/null
++++ b/scripts/reactor/6702012.js
+@@ -0,0 +1,34 @@
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/**
++ *AmoriaPQ Bonus Reactor
++ *6702012.js
++ */
++
++function act() {
++	rand = Math.floor(Math.random() * 4);
++	if (rand < 1) rand = 1;
++	//We'll make it drop a lot of crap :D
++	for (var i = 0; i<rand; i++) {
++		rm.sprayItems(true, 1, 30, 60, 15);
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/reactor/9202012.js b/scripts/reactor/9202012.js
+index 1690ea5b5..039d4fd67 100644
+--- a/scripts/reactor/9202012.js
++++ b/scripts/reactor/9202012.js
+@@ -26,5 +26,5 @@
+ */
+ 
+ function act() {
+-	rm.dropItems(true, 1, 30, 60, 10);
++	rm.sprayItems(true, 1, 30, 60, 10);
+ }
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 6aecc676b..2dc24b193 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -24,7 +24,7 @@
+     public static final long RESPAWN_INTERVAL = 10 * 1000;	//10 seconds, 10000.
+     public static final long PURGING_INTERVAL = 5 * 60 * 1000;
+     public static final long RANKING_INTERVAL = 60 * 60 * 1000;	//60 minutes, 3600000.
+-    public static final long COUPON_INTERVAL = 60 * 60 * 1000;	//60 minutes, 3600000.
++    public static final long  COUPON_INTERVAL = 60 * 60 * 1000;	//60 minutes, 3600000.
+     
+     public static final boolean ENABLE_PIC = false;             //Pick true/false to enable or disable Pic. Delete character needs this feature ENABLED.
+     public static final boolean ENABLE_PIN = false;             //Pick true/false to enable or disable Pin.
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 8e12bebde..f52b05852 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -133,7 +133,7 @@ public MapleStatEffect getAttackEffect(MapleCharacter chr, Skill theSkill) {
+                 return null;
+             }
+             if (display > 80) { //Hmm
+-                if (!theSkill.getAction()) {
++                if (!mySkill.getAction()) {
+                     AutobanFactory.FAST_ATTACK.autoban(chr, "WZ Edit; adding action to a skill: " + display);
+                     return null;
+                 }
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index c8ef2172b..dfe6418cd 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -21,6 +21,7 @@
+ */
+ package scripting.reactor;
+ 
++import client.MapleCharacter;
+ import client.MapleClient;
+ import client.inventory.Equip;
+ import client.inventory.Item;
+@@ -53,6 +54,7 @@
+     private MapleReactor reactor;
+     private MapleClient client;
+     private Invocable iv;
++    private ScheduledFuture<?> sprayTask = null;
+ 
+     public ReactorActionManager(MapleClient c, MapleReactor reactor, Invocable iv) {
+         super(c);
+@@ -69,6 +71,22 @@ public void destroyNpc(int npcId) {
+         reactor.getMap().destroyNPC(npcId);
+     }
+ 
++    public void sprayItems() {
++        sprayItems(false, 0, 0, 0, 0);
++    }
++
++    public void sprayItems(boolean meso, int mesoChance, int minMeso, int maxMeso) {
++        sprayItems(meso, mesoChance, minMeso, maxMeso, 0);
++    }
++    
++    public void sprayItems(boolean meso, int mesoChance, int minMeso, int maxMeso, int minItems) {
++        sprayItems((int)reactor.getPosition().getX(), (int)reactor.getPosition().getY(), meso, mesoChance, minMeso, maxMeso, minItems);
++    }
++
++    public void sprayItems(int posX, int posY, boolean meso, int mesoChance, int minMeso, int maxMeso, int minItems) {
++        dropItems(true, posX, posY, meso, mesoChance, minMeso, maxMeso, minItems);
++    }
++    
+     public void dropItems() {
+         dropItems(false, 0, 0, 0, 0);
+     }
+@@ -82,6 +100,10 @@ public void dropItems(boolean meso, int mesoChance, int minMeso, int maxMeso, in
+     }
+ 
+     public void dropItems(int posX, int posY, boolean meso, int mesoChance, int minMeso, int maxMeso, int minItems) {
++        dropItems(false, posX, posY, meso, mesoChance, minMeso, maxMeso, minItems);
++    }
++    
++    public void dropItems(boolean delayed, int posX, int posY, boolean meso, int mesoChance, final int minMeso, final int maxMeso, int minItems) {
+         List<ReactorDropEntry> chances = getDropChances();
+         List<ReactorDropEntry> items = new LinkedList<>();
+         int numItems = 0;
+@@ -105,24 +127,61 @@ public void dropItems(int posX, int posY, boolean meso, int mesoChance, int minM
+         final Point dropPos = new Point(posX, posY);
+         dropPos.x -= (12 * numItems);
+         
+-        for (ReactorDropEntry d : items) {
+-            if (d.itemId == 0) {
+-                int range = maxMeso - minMeso;
+-                int displayDrop = (int) (Math.random() * range) + minMeso;
+-                int mesoDrop = (displayDrop * client.getWorldServer().getMesoRate());
+-                reactor.getMap().spawnMesoDrop(mesoDrop, reactor.getMap().calcDropPos(dropPos, reactor.getPosition()), reactor, client.getPlayer(), false, (byte) 2);
+-            } else {
+-                Item drop;
+-                MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+-                if (ii.getInventoryType(d.itemId) != MapleInventoryType.EQUIP) {
+-                    drop = new Item(d.itemId, (short) 0, (short) 1);
++        if(!delayed) {
++            for (ReactorDropEntry d : items) {
++                if (d.itemId == 0) {
++                    int range = maxMeso - minMeso;
++                    int displayDrop = (int) (Math.random() * range) + minMeso;
++                    int mesoDrop = (displayDrop * client.getWorldServer().getMesoRate());
++                    reactor.getMap().spawnMesoDrop(mesoDrop, reactor.getMap().calcDropPos(dropPos, reactor.getPosition()), reactor, client.getPlayer(), false, (byte) 2);
+                 } else {
+-                    drop = ii.randomizeStats((Equip) ii.getEquipById(d.itemId));
++                    Item drop;
++                    MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                    if (ii.getInventoryType(d.itemId) != MapleInventoryType.EQUIP) {
++                        drop = new Item(d.itemId, (short) 0, (short) 1);
++                    } else {
++                        drop = ii.randomizeStats((Equip) ii.getEquipById(d.itemId));
++                    }
++
++                    reactor.getMap().dropFromReactor(getPlayer(), reactor, drop, dropPos, (short)d.questid);
+                 }
+-                
+-                reactor.getMap().dropFromReactor(getPlayer(), reactor, drop, dropPos, (short)d.questid);
++                dropPos.x += 25;
+             }
+-            dropPos.x += 25;
++        } else {
++            final MapleCharacter chr = client.getPlayer();
++            final MapleReactor r = reactor;
++            final List<ReactorDropEntry> dropItems = items;
++            final int worldMesoRate = client.getWorldServer().getMesoRate();
++            
++            sprayTask = TimerManager.getInstance().register(new Runnable() {
++                @Override
++                public void run() {
++                    if(dropItems.isEmpty()) {
++                        sprayTask.cancel(false);
++                        return;
++                    }
++                    
++                    ReactorDropEntry d = dropItems.remove(0);
++                    if (d.itemId == 0) {
++                        int range = maxMeso - minMeso;
++                        int displayDrop = (int) (Math.random() * range) + minMeso;
++                        int mesoDrop = (displayDrop * worldMesoRate);
++                        r.getMap().spawnMesoDrop(mesoDrop, r.getMap().calcDropPos(dropPos, r.getPosition()), r, chr, false, (byte) 2);
++                    } else {
++                        Item drop;
++                        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                        if (ii.getInventoryType(d.itemId) != MapleInventoryType.EQUIP) {
++                            drop = new Item(d.itemId, (short) 0, (short) 1);
++                        } else {
++                            drop = ii.randomizeStats((Equip) ii.getEquipById(d.itemId));
++                        }
++
++                        r.getMap().dropFromReactor(getPlayer(), r, drop, dropPos, (short)d.questid);
++                    }
++                    
++                    dropPos.x += 25;
++                }
++            }, 100);
+         }
+     }
+ 
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index dd9de7369..30211f998 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -52,7 +52,9 @@
+ import java.util.Random;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.atomic.AtomicInteger;
++import tools.locks.MonitoredReentrantLock;
+ import tools.locks.MonitoredReentrantReadWriteLock;
++import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+@@ -90,6 +92,8 @@
+ 
+ public class MapleMap {
+     private static final List<MapleMapObjectType> rangedMapobjectTypes = Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.ITEM, MapleMapObjectType.NPC, MapleMapObjectType.MONSTER, MapleMapObjectType.DOOR, MapleMapObjectType.SUMMON, MapleMapObjectType.REACTOR);
++    private static final Map<Integer, Pair<Integer, Integer>> dropBoundsCache = new HashMap<>(100);
++    
+     private Map<Integer, MapleMapObject> mapobjects = new LinkedHashMap<>();
+     private Collection<SpawnPoint> monsterSpawn = Collections.synchronizedList(new LinkedList<SpawnPoint>());
+     private Collection<SpawnPoint> allMonsterSpawn = Collections.synchronizedList(new LinkedList<SpawnPoint>());
+@@ -104,6 +108,7 @@
+     private LinkedList<WeakReference<MapleMapObject>> registeredDrops = new LinkedList<>();
+     private List<Rectangle> areas = new ArrayList<>();
+     private MapleFootholdTree footholds = null;
++    private Pair<Integer, Integer> xLimits;  // caches the min and max x's with available footholds
+     private Rectangle mapArea = new Rectangle();
+     private int mapid;
+     private AtomicInteger runningOid = new AtomicInteger(1000000001);
+@@ -148,12 +153,16 @@
+     private MapleSnowball snowball0 = null;
+     private MapleSnowball snowball1 = null;
+     private MapleCoconut coconut;
++    
+     //locks
+     private final ReadLock chrRLock;
+     private final WriteLock chrWLock;
+     private final ReadLock objectRLock;
+     private final WriteLock objectWLock;
+ 
++    // due to the nature of loadMapFromWz (synchronized), sole function that calls 'generateMapDropRangeCache', this lock remains optional.
++    private static final Lock bndLock = new MonitoredReentrantLock(MonitoredLockType.MAP_BOUNDS, true);
++    
+     public MapleMap(int mapid, int world, int channel, int returnMapId, float monsterRate) {
+         this.mapid = mapid;
+         this.channel = channel;
+@@ -437,17 +446,63 @@ private Point calcPointBelow(Point initial) {
+         return new Point(initial.x, dropY);
+     }
+ 
++    public void generateMapDropRangeCache() {
++        bndLock.lock();
++        try {
++            Integer mapId = Integer.valueOf(mapid);
++            Pair<Integer, Integer> bounds = dropBoundsCache.get(mapId);
++            
++            if(bounds != null) {
++                xLimits = bounds;
++            } else {
++                Point lp = new Point(mapArea.x, mapArea.y), rp = new Point(mapArea.x + mapArea.width, mapArea.y), fallback = new Point(mapArea.x + (mapArea.width / 2), mapArea.y);
++
++                lp = bsearchDropPos(lp, fallback);
++                rp = bsearchDropPos(rp, fallback);
++
++                xLimits = new Pair<>(lp.x, rp.x);
++                dropBoundsCache.put(mapId, xLimits);
++            }
++        } finally {
++            bndLock.unlock();
++        }
++    }
++    
++    public Point bsearchDropPos(Point initial, Point fallback) {
++        Point res, dropPos = null;
++                
++        int awayx = fallback.x;
++        int homex = initial.x;
++                
++        int y = initial.y - 85;
++        
++        do {
++            int distx = awayx - homex;
++            int dx = distx / 2;
++            
++            int searchx = homex + dx;
++            if((res = calcPointBelow(new Point(searchx, y))) != null) {
++                awayx = searchx;
++                dropPos = res;
++            } else {
++                homex = searchx;
++            }
++        } while(Math.abs(homex - awayx) > 5);
++        
++        return (dropPos != null) ? dropPos : fallback;
++    }
++    
+     public Point calcDropPos(Point initial, Point fallback) {
++        if(initial.x < xLimits.left) initial.x = xLimits.left;
++        else if(initial.x > xLimits.right) initial.x = xLimits.right;
++        
+         Point ret = calcPointBelow(new Point(initial.x, initial.y - 85));
+         if (ret == null) {
++            ret = bsearchDropPos(initial, fallback);
++        }
++        
++        if(!mapArea.contains(ret)) { // found drop pos outside the map :O
+             return fallback;
+-        } else if(!mapArea.contains(ret)) {
+-            if(initial.y > mapArea.y + mapArea.height) return fallback; // found drop pos underneath the map :O
+-            
+-            int borderX = (initial.x < mapArea.x) ? mapArea.x : mapArea.x + mapArea.width;
+-            ret = calcPointBelow(new Point(borderX, initial.y - 85));
+-            
+-            if(ret == null) return fallback;
+         }
+         
+         return ret;
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 956ade98e..747b87664 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -275,7 +275,9 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid) {
+             e.printStackTrace();
+             // swallow cause I'm cool
+         }
++        
+         map.setBackgroundTypes(backTypes);
++        map.generateMapDropRangeCache();
+ 
+         mapsWLock.lock();
+         try {
+diff --git a/src/server/quest/requirements/ItemRequirement.java b/src/server/quest/requirements/ItemRequirement.java
+index 1e9351b40..a91dd60c9 100644
+--- a/src/server/quest/requirements/ItemRequirement.java
++++ b/src/server/quest/requirements/ItemRequirement.java
+@@ -73,10 +73,19 @@ public boolean check(MapleCharacter chr, Integer npcid) {
+ 				count += item.getQuantity();
+ 			}
+ 			//Weird stuff, nexon made some quests only available when wearing gm clothes. This enables us to accept it ><
+-			if (iType.equals(MapleInventoryType.EQUIP) && chr.isGM()) {
+-				for (Item item : chr.getInventory(MapleInventoryType.EQUIPPED).listById(itemId)) {
+-					count += item.getQuantity();
+-				}
++			if (iType.equals(MapleInventoryType.EQUIP)) {
++                                if(chr.isGM()) {
++                                        for (Item item : chr.getInventory(MapleInventoryType.EQUIPPED).listById(itemId)) {
++                                                count += item.getQuantity();
++                                        }
++                                } else {
++                                        if(count < countNeeded) {
++                                                if(chr.getInventory(MapleInventoryType.EQUIPPED).countById(itemId) + count >= countNeeded) {
++                                                        chr.dropMessage(5, "Unequip the required " + ii.getName(itemId) + " before trying this quest operation.");
++                                                        return false;
++                                                }
++                                        }
++                                }
+ 			}
+ 			
+ 			if(count < countNeeded || countNeeded <= 0 && count > 0) {
+diff --git a/src/tools/locks/MonitoredLockType.java b/src/tools/locks/MonitoredLockType.java
+index 25f80c8d4..2c3fc4cd5 100644
+--- a/src/tools/locks/MonitoredLockType.java
++++ b/src/tools/locks/MonitoredLockType.java
+@@ -66,8 +66,9 @@
+     MAP_OBJS(37),
+     MAP_FACTORY(38),
+     MAP_ITEM(39),
+-    MINIDUNGEON(40),
+-    REACTOR(41);
++    MAP_BOUNDS(41),
++    MINIDUNGEON(41),
++    REACTOR(42);
+     
+     private final int i;
+     
+diff --git a/tools/MapleMapInfoRetriever/build.xml b/tools/MapleMapInfoRetriever/build.xml
+new file mode 100644
+index 000000000..cf88a68eb
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/build.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!-- You may freely edit this file. See commented blocks below for -->
++<!-- some examples of how to customize the build. -->
++<!-- (If you delete it and reopen the project it will be recreated.) -->
++<!-- By default, only the Clean and Build commands use this build script. -->
++<!-- Commands such as Run, Debug, and Test only use this build script if -->
++<!-- the Compile on Save feature is turned off for the project. -->
++<!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
++<!-- in the project's Project Properties dialog box.-->
++<project name="MapleMapInfoRetriever" default="default" basedir=".">
++    <description>Builds, tests, and runs the project MapleMapInfoRetriever.</description>
++    <import file="nbproject/build-impl.xml"/>
++    <!--
++
++    There exist several targets which are by default empty and which can be 
++    used for execution of your tasks. These targets are usually executed 
++    before and after some main targets. They are: 
++
++      -pre-init:                 called before initialization of project properties
++      -post-init:                called after initialization of project properties
++      -pre-compile:              called before javac compilation
++      -post-compile:             called after javac compilation
++      -pre-compile-single:       called before javac compilation of single file
++      -post-compile-single:      called after javac compilation of single file
++      -pre-compile-test:         called before javac compilation of JUnit tests
++      -post-compile-test:        called after javac compilation of JUnit tests
++      -pre-compile-test-single:  called before javac compilation of single JUnit test
++      -post-compile-test-single: called after javac compilation of single JUunit test
++      -pre-jar:                  called before JAR building
++      -post-jar:                 called after JAR building
++      -post-clean:               called after cleaning build products
++
++    (Targets beginning with '-' are not intended to be called on their own.)
++
++    Example of inserting an obfuscator after compilation could look like this:
++
++        <target name="-post-compile">
++            <obfuscate>
++                <fileset dir="${build.classes.dir}"/>
++            </obfuscate>
++        </target>
++
++    For list of available properties check the imported 
++    nbproject/build-impl.xml file. 
++
++
++    Another way to customize the build is by overriding existing main targets.
++    The targets of interest are: 
++
++      -init-macrodef-javac:     defines macro for javac compilation
++      -init-macrodef-junit:     defines macro for junit execution
++      -init-macrodef-debug:     defines macro for class debugging
++      -init-macrodef-java:      defines macro for class execution
++      -do-jar:                  JAR building
++      run:                      execution of project 
++      -javadoc-build:           Javadoc generation
++      test-report:              JUnit report generation
++
++    An example of overriding the target for project execution could look like this:
++
++        <target name="run" depends="MapleMapInfoRetriever-impl.jar">
++            <exec dir="bin" executable="launcher.exe">
++                <arg file="${dist.jar}"/>
++            </exec>
++        </target>
++
++    Notice that the overridden target depends on the jar target and not only on 
++    the compile target as the regular run target does. Again, for a list of available 
++    properties which you can use, check the target you are overriding in the
++    nbproject/build-impl.xml file. 
++
++    -->
++</project>
+diff --git a/tools/MapleMapInfoRetriever/lib/MapReport.txt b/tools/MapleMapInfoRetriever/lib/MapReport.txt
+new file mode 100644
+index 000000000..ab46af936
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/lib/MapReport.txt
+@@ -0,0 +1 @@
++All map files contains 'info' node.
+diff --git a/tools/MapleMapInfoRetriever/lib/commons-io-2.6.jar b/tools/MapleMapInfoRetriever/lib/commons-io-2.6.jar
+new file mode 100644
+index 000000000..00556b119
+Binary files /dev/null and b/tools/MapleMapInfoRetriever/lib/commons-io-2.6.jar differ
+diff --git a/tools/MapleMapInfoRetriever/manifest.mf b/tools/MapleMapInfoRetriever/manifest.mf
+new file mode 100644
+index 000000000..328e8e5bc
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/manifest.mf
+@@ -0,0 +1,3 @@
++Manifest-Version: 1.0
++X-COMMENT: Main-Class will be added automatically by build
++
+diff --git a/tools/MapleMapInfoRetriever/nbproject/build-impl.xml b/tools/MapleMapInfoRetriever/nbproject/build-impl.xml
+new file mode 100644
+index 000000000..468969612
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/nbproject/build-impl.xml
+@@ -0,0 +1,1448 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++*** GENERATED FROM project.xml - DO NOT EDIT  ***
++***         EDIT ../build.xml INSTEAD         ***
++
++For the purpose of easier reading the script
++is divided into following sections:
++
++  - initialization
++  - compilation
++  - jar
++  - execution
++  - debugging
++  - javadoc
++  - test compilation
++  - test execution
++  - test debugging
++  - applet
++  - cleanup
++
++        -->
++<project xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3" xmlns:jaxrpc="http://www.netbeans.org/ns/j2se-project/jax-rpc" basedir=".." default="default" name="MapleMapInfoRetriever-impl">
++    <fail message="Please build using Ant 1.8.0 or higher.">
++        <condition>
++            <not>
++                <antversion atleast="1.8.0"/>
++            </not>
++        </condition>
++    </fail>
++    <target depends="test,jar,javadoc" description="Build and test whole project." name="default"/>
++    <!-- 
++                ======================
++                INITIALIZATION SECTION 
++                ======================
++            -->
++    <target name="-pre-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="-pre-init" name="-init-private">
++        <property file="nbproject/private/config.properties"/>
++        <property file="nbproject/private/configs/${config}.properties"/>
++        <property file="nbproject/private/private.properties"/>
++    </target>
++    <target depends="-pre-init,-init-private" name="-init-user">
++        <property file="${user.properties.file}"/>
++        <!-- The two properties below are usually overridden -->
++        <!-- by the active platform. Just a fallback. -->
++        <property name="default.javac.source" value="1.4"/>
++        <property name="default.javac.target" value="1.4"/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user" name="-init-project">
++        <property file="nbproject/configs/${config}.properties"/>
++        <property file="nbproject/project.properties"/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-init-macrodef-property" name="-do-init">
++        <j2seproject1:property name="platform.home" value="platforms.${platform.active}.home"/>
++        <j2seproject1:property name="platform.bootcp" value="platforms.${platform.active}.bootclasspath"/>
++        <j2seproject1:property name="platform.compiler" value="platforms.${platform.active}.compile"/>
++        <j2seproject1:property name="platform.javac.tmp" value="platforms.${platform.active}.javac"/>
++        <condition property="platform.javac" value="${platform.home}/bin/javac">
++            <equals arg1="${platform.javac.tmp}" arg2="$${platforms.${platform.active}.javac}"/>
++        </condition>
++        <property name="platform.javac" value="${platform.javac.tmp}"/>
++        <j2seproject1:property name="platform.java.tmp" value="platforms.${platform.active}.java"/>
++        <condition property="platform.java" value="${platform.home}/bin/java">
++            <equals arg1="${platform.java.tmp}" arg2="$${platforms.${platform.active}.java}"/>
++        </condition>
++        <property name="platform.java" value="${platform.java.tmp}"/>
++        <j2seproject1:property name="platform.javadoc.tmp" value="platforms.${platform.active}.javadoc"/>
++        <condition property="platform.javadoc" value="${platform.home}/bin/javadoc">
++            <equals arg1="${platform.javadoc.tmp}" arg2="$${platforms.${platform.active}.javadoc}"/>
++        </condition>
++        <property name="platform.javadoc" value="${platform.javadoc.tmp}"/>
++        <condition property="platform.invalid" value="true">
++            <or>
++                <contains string="${platform.javac}" substring="$${platforms."/>
++                <contains string="${platform.java}" substring="$${platforms."/>
++                <contains string="${platform.javadoc}" substring="$${platforms."/>
++            </or>
++        </condition>
++        <fail unless="platform.home">Must set platform.home</fail>
++        <fail unless="platform.bootcp">Must set platform.bootcp</fail>
++        <fail unless="platform.java">Must set platform.java</fail>
++        <fail unless="platform.javac">Must set platform.javac</fail>
++        <fail if="platform.invalid">
++ The J2SE Platform is not correctly set up.
++ Your active platform is: ${platform.active}, but the corresponding property "platforms.${platform.active}.home" is not found in the project's properties files. 
++ Either open the project in the IDE and setup the Platform with the same name or add it manually.
++ For example like this:
++     ant -Duser.properties.file=&lt;path_to_property_file&gt; jar (where you put the property "platforms.${platform.active}.home" in a .properties file)
++  or ant -Dplatforms.${platform.active}.home=&lt;path_to_JDK_home&gt; jar (where no properties file is used) 
++  </fail>
++        <available file="${manifest.file}" property="manifest.available"/>
++        <condition property="splashscreen.available">
++            <and>
++                <not>
++                    <equals arg1="${application.splash}" arg2="" trim="true"/>
++                </not>
++                <available file="${application.splash}"/>
++            </and>
++        </condition>
++        <condition property="main.class.available">
++            <and>
++                <isset property="main.class"/>
++                <not>
++                    <equals arg1="${main.class}" arg2="" trim="true"/>
++                </not>
++            </and>
++        </condition>
++        <condition property="profile.available">
++            <and>
++                <isset property="javac.profile"/>
++                <length length="0" string="${javac.profile}" when="greater"/>
++                <matches pattern="1\.[89](\..*)?" string="${javac.source}"/>
++            </and>
++        </condition>
++        <condition property="do.archive">
++            <or>
++                <not>
++                    <istrue value="${jar.archive.disabled}"/>
++                </not>
++                <istrue value="${not.archive.disabled}"/>
++            </or>
++        </condition>
++        <condition property="do.mkdist">
++            <and>
++                <isset property="do.archive"/>
++                <isset property="libs.CopyLibs.classpath"/>
++                <not>
++                    <istrue value="${mkdist.disabled}"/>
++                </not>
++            </and>
++        </condition>
++        <condition property="do.archive+manifest.available">
++            <and>
++                <isset property="manifest.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+main.class.available">
++            <and>
++                <isset property="main.class.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+splashscreen.available">
++            <and>
++                <isset property="splashscreen.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="do.archive+profile.available">
++            <and>
++                <isset property="profile.available"/>
++                <istrue value="${do.archive}"/>
++            </and>
++        </condition>
++        <condition property="have.tests">
++            <or>
++                <available file="${test.src.dir}"/>
++            </or>
++        </condition>
++        <condition property="have.sources">
++            <or>
++                <available file="${src.dir}"/>
++            </or>
++        </condition>
++        <condition property="netbeans.home+have.tests">
++            <and>
++                <isset property="netbeans.home"/>
++                <isset property="have.tests"/>
++            </and>
++        </condition>
++        <condition property="no.javadoc.preview">
++            <and>
++                <isset property="javadoc.preview"/>
++                <isfalse value="${javadoc.preview}"/>
++            </and>
++        </condition>
++        <property name="run.jvmargs" value=""/>
++        <property name="run.jvmargs.ide" value=""/>
++        <property name="javac.compilerargs" value=""/>
++        <property name="work.dir" value="${basedir}"/>
++        <condition property="no.deps">
++            <and>
++                <istrue value="${no.dependencies}"/>
++            </and>
++        </condition>
++        <property name="javac.debug" value="true"/>
++        <property name="javadoc.preview" value="true"/>
++        <property name="application.args" value=""/>
++        <property name="source.encoding" value="${file.encoding}"/>
++        <property name="runtime.encoding" value="${source.encoding}"/>
++        <condition property="javadoc.encoding.used" value="${javadoc.encoding}">
++            <and>
++                <isset property="javadoc.encoding"/>
++                <not>
++                    <equals arg1="${javadoc.encoding}" arg2=""/>
++                </not>
++            </and>
++        </condition>
++        <property name="javadoc.encoding.used" value="${source.encoding}"/>
++        <property name="includes" value="**"/>
++        <property name="excludes" value=""/>
++        <property name="do.depend" value="false"/>
++        <condition property="do.depend.true">
++            <istrue value="${do.depend}"/>
++        </condition>
++        <path id="endorsed.classpath.path" path="${endorsed.classpath}"/>
++        <condition else="" property="endorsed.classpath.cmd.line.arg" value="-Xbootclasspath/p:'${toString:endorsed.classpath.path}'">
++            <and>
++                <isset property="endorsed.classpath"/>
++                <not>
++                    <equals arg1="${endorsed.classpath}" arg2="" trim="true"/>
++                </not>
++            </and>
++        </condition>
++        <condition else="" property="javac.profile.cmd.line.arg" value="-profile ${javac.profile}">
++            <isset property="profile.available"/>
++        </condition>
++        <property name="jar.index" value="false"/>
++        <property name="jar.index.metainf" value="${jar.index}"/>
++        <property name="copylibs.rebase" value="true"/>
++        <available file="${meta.inf.dir}/persistence.xml" property="has.persistence.xml"/>
++        <condition property="junit.available">
++            <or>
++                <available classname="org.junit.Test" classpath="${run.test.classpath}"/>
++                <available classname="junit.framework.Test" classpath="${run.test.classpath}"/>
++            </or>
++        </condition>
++        <condition property="testng.available">
++            <available classname="org.testng.annotations.Test" classpath="${run.test.classpath}"/>
++        </condition>
++        <condition property="junit+testng.available">
++            <and>
++                <istrue value="${junit.available}"/>
++                <istrue value="${testng.available}"/>
++            </and>
++        </condition>
++        <condition else="testng" property="testng.mode" value="mixed">
++            <istrue value="${junit+testng.available}"/>
++        </condition>
++        <condition else="" property="testng.debug.mode" value="-mixed">
++            <istrue value="${junit+testng.available}"/>
++        </condition>
++    </target>
++    <target name="-post-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init" name="-init-check">
++        <fail unless="src.dir">Must set src.dir</fail>
++        <fail unless="test.src.dir">Must set test.src.dir</fail>
++        <fail unless="build.dir">Must set build.dir</fail>
++        <fail unless="dist.dir">Must set dist.dir</fail>
++        <fail unless="build.classes.dir">Must set build.classes.dir</fail>
++        <fail unless="dist.javadoc.dir">Must set dist.javadoc.dir</fail>
++        <fail unless="build.test.classes.dir">Must set build.test.classes.dir</fail>
++        <fail unless="build.test.results.dir">Must set build.test.results.dir</fail>
++        <fail unless="build.classes.excludes">Must set build.classes.excludes</fail>
++        <fail unless="dist.jar">Must set dist.jar</fail>
++    </target>
++    <target name="-init-macrodef-property">
++        <macrodef name="property" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute name="name"/>
++            <attribute name="value"/>
++            <sequential>
++                <property name="@{name}" value="${@{value}}"/>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-macrodef-javac-with-processors">
++        <macrodef name="javac" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <attribute default="${javac.processorpath}" name="processorpath"/>
++            <attribute default="${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="${javac.debug}" name="debug"/>
++            <attribute default="${empty.dir}" name="sourcepath"/>
++            <attribute default="${empty.dir}" name="gensrcdir"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.dir}/empty" name="empty.dir"/>
++                <mkdir dir="${empty.dir}"/>
++                <mkdir dir="@{apgeneratedsrcdir}"/>
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                    <src>
++                        <dirset dir="@{gensrcdir}" erroronmissingdir="false">
++                            <include name="*"/>
++                        </dirset>
++                    </src>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <compilerarg line="${javac.profile.cmd.line.arg}"/>
++                    <compilerarg line="${javac.compilerargs}"/>
++                    <compilerarg value="-processorpath"/>
++                    <compilerarg path="@{processorpath}:${empty.dir}"/>
++                    <compilerarg line="${ap.processors.internal}"/>
++                    <compilerarg line="${annotation.processing.processor.options}"/>
++                    <compilerarg value="-s"/>
++                    <compilerarg path="@{apgeneratedsrcdir}"/>
++                    <compilerarg line="${ap.proc.none.internal}"/>
++                    <customize/>
++                </javac>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-ap-cmdline-properties" name="-init-macrodef-javac-without-processors" unless="ap.supported.internal">
++        <macrodef name="javac" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <attribute default="${javac.processorpath}" name="processorpath"/>
++            <attribute default="${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="${javac.debug}" name="debug"/>
++            <attribute default="${empty.dir}" name="sourcepath"/>
++            <attribute default="${empty.dir}" name="gensrcdir"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.dir}/empty" name="empty.dir"/>
++                <mkdir dir="${empty.dir}"/>
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                    <src>
++                        <dirset dir="@{gensrcdir}" erroronmissingdir="false">
++                            <include name="*"/>
++                        </dirset>
++                    </src>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <compilerarg line="${javac.profile.cmd.line.arg}"/>
++                    <compilerarg line="${javac.compilerargs}"/>
++                    <customize/>
++                </javac>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-javac-with-processors,-init-macrodef-javac-without-processors" name="-init-macrodef-javac">
++        <macrodef name="depend" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${src.dir}" name="srcdir"/>
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <attribute default="${javac.classpath}" name="classpath"/>
++            <sequential>
++                <depend cache="${build.dir}/depcache" destdir="@{destdir}" excludes="${excludes}" includes="${includes}" srcdir="@{srcdir}">
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                </depend>
++            </sequential>
++        </macrodef>
++        <macrodef name="force-recompile" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${build.classes.dir}" name="destdir"/>
++            <sequential>
++                <fail unless="javac.includes">Must set javac.includes</fail>
++                <pathconvert pathsep="${line.separator}" property="javac.includes.binary">
++                    <path>
++                        <filelist dir="@{destdir}" files="${javac.includes}"/>
++                    </path>
++                    <globmapper from="*.java" to="*.class"/>
++                </pathconvert>
++                <tempfile deleteonexit="true" property="javac.includesfile.binary"/>
++                <echo file="${javac.includesfile.binary}" message="${javac.includes.binary}"/>
++                <delete>
++                    <files includesfile="${javac.includesfile.binary}"/>
++                </delete>
++                <delete>
++                    <fileset file="${javac.includesfile.binary}"/>
++                </delete>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${junit.available}" name="-init-macrodef-junit-init">
++        <condition else="false" property="nb.junit.batch" value="true">
++            <and>
++                <istrue value="${junit.available}"/>
++                <not>
++                    <isset property="test.method"/>
++                </not>
++            </and>
++        </condition>
++        <condition else="false" property="nb.junit.single" value="true">
++            <and>
++                <istrue value="${junit.available}"/>
++                <isset property="test.method"/>
++            </and>
++        </condition>
++    </target>
++    <target name="-init-test-properties">
++        <property name="test.binaryincludes" value="&lt;nothing&gt;"/>
++        <property name="test.binarytestincludes" value=""/>
++        <property name="test.binaryexcludes" value=""/>
++    </target>
++    <target if="${nb.junit.single}" name="-init-macrodef-junit-single" unless="${nb.junit.batch}">
++        <macrodef name="junit" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-test-properties" if="${nb.junit.batch}" name="-init-macrodef-junit-batch" unless="${nb.junit.single}">
++        <macrodef name="junit" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <batchtest todir="${build.test.results.dir}">
++                        <fileset dir="${test.src.dir}" excludes="@{excludes},${excludes}" includes="@{includes}">
++                            <filename name="@{testincludes}"/>
++                        </fileset>
++                        <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
++                            <filename name="${test.binarytestincludes}"/>
++                        </fileset>
++                    </batchtest>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-init,-init-macrodef-junit-single, -init-macrodef-junit-batch" if="${junit.available}" name="-init-macrodef-junit"/>
++    <target if="${testng.available}" name="-init-macrodef-testng">
++        <macrodef name="testng" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <condition else="" property="testng.methods.arg" value="@{testincludes}.@{testmethods}">
++                    <isset property="test.method"/>
++                </condition>
++                <union id="test.set">
++                    <fileset dir="${test.src.dir}" excludes="@{excludes},**/*.xml,${excludes}" includes="@{includes}">
++                        <filename name="@{testincludes}"/>
++                    </fileset>
++                </union>
++                <taskdef classname="org.testng.TestNGAntTask" classpath="${run.test.classpath}" name="testng"/>
++                <testng classfilesetref="test.set" failureProperty="tests.failed" jvm="${platform.java}" listeners="org.testng.reporters.VerboseReporter" methods="${testng.methods.arg}" mode="${testng.mode}" outputdir="${build.test.results.dir}" suitename="MapleMapInfoRetriever" testname="TestNG tests" workingDir="${work.dir}">
++                    <xmlfileset dir="${build.test.classes.dir}" includes="@{testincludes}"/>
++                    <propertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </propertyset>
++                    <customize/>
++                </testng>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-test-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <echo>No tests executed.</echo>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit" if="${junit.available}" name="-init-macrodef-junit-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:junit excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng" if="${testng.available}" name="-init-macrodef-testng-impl">
++        <macrodef name="test-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:testng excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:testng>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-test-impl,-init-macrodef-junit-impl,-init-macrodef-testng-impl" name="-init-macrodef-test">
++        <macrodef name="test" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <sequential>
++                <j2seproject3:test-impl excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize>
++                        <classpath>
++                            <path path="${run.test.classpath}"/>
++                        </classpath>
++                        <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                        <jvmarg line="${run.jvmargs}"/>
++                        <jvmarg line="${run.jvmargs.ide}"/>
++                    </customize>
++                </j2seproject3:test-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${junit.available}" name="-init-macrodef-junit-debug" unless="${nb.junit.batch}">
++        <macrodef name="junit-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-test-properties" if="${nb.junit.batch}" name="-init-macrodef-junit-debug-batch">
++        <macrodef name="junit-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property name="junit.forkmode" value="perTest"/>
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                    <batchtest todir="${build.test.results.dir}">
++                        <fileset dir="${test.src.dir}" excludes="@{excludes},${excludes}" includes="@{includes}">
++                            <filename name="@{testincludes}"/>
++                        </fileset>
++                        <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
++                            <filename name="${test.binarytestincludes}"/>
++                        </fileset>
++                    </batchtest>
++                    <syspropertyset>
++                        <propertyref prefix="test-sys-prop."/>
++                        <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <formatter type="brief" usefile="false"/>
++                    <formatter type="xml"/>
++                    <jvmarg value="-ea"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <customize/>
++                </junit>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-debug,-init-macrodef-junit-debug-batch" if="${junit.available}" name="-init-macrodef-junit-debug-impl">
++        <macrodef name="test-debug-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <element implicit="true" name="customize" optional="true"/>
++            <sequential>
++                <j2seproject3:junit-debug excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize/>
++                </j2seproject3:junit-debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target if="${testng.available}" name="-init-macrodef-testng-debug">
++        <macrodef name="testng-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <element name="customize2" optional="true"/>
++            <sequential>
++                <condition else="-testclass @{testClass}" property="test.class.or.method" value="-methods @{testClass}.@{testMethod}">
++                    <isset property="test.method"/>
++                </condition>
++                <condition else="-suitename MapleMapInfoRetriever -testname @{testClass} ${test.class.or.method}" property="testng.cmd.args" value="@{testClass}">
++                    <matches pattern=".*\.xml" string="@{testClass}"/>
++                </condition>
++                <delete dir="${build.test.results.dir}" quiet="true"/>
++                <mkdir dir="${build.test.results.dir}"/>
++                <j2seproject3:debug classname="org.testng.TestNG" classpath="${debug.test.classpath}">
++                    <customize>
++                        <customize2/>
++                        <jvmarg value="-ea"/>
++                        <arg line="${testng.debug.mode}"/>
++                        <arg line="-d ${build.test.results.dir}"/>
++                        <arg line="-listener org.testng.reporters.VerboseReporter"/>
++                        <arg line="${testng.cmd.args}"/>
++                    </customize>
++                </j2seproject3:debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng-debug" if="${testng.available}" name="-init-macrodef-testng-debug-impl">
++        <macrodef name="testng-debug-impl" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <element implicit="true" name="customize2" optional="true"/>
++            <sequential>
++                <j2seproject3:testng-debug testClass="@{testClass}" testMethod="@{testMethod}">
++                    <customize2/>
++                </j2seproject3:testng-debug>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-junit-debug-impl" if="${junit.available}" name="-init-macrodef-test-debug-junit">
++        <macrodef name="test-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <sequential>
++                <j2seproject3:test-debug-impl excludes="@{excludes}" includes="@{includes}" testincludes="@{testincludes}" testmethods="@{testmethods}">
++                    <customize>
++                        <classpath>
++                            <path path="${run.test.classpath}"/>
++                        </classpath>
++                        <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                        <jvmarg line="${run.jvmargs}"/>
++                        <jvmarg line="${run.jvmargs.ide}"/>
++                    </customize>
++                </j2seproject3:test-debug-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-testng-debug-impl" if="${testng.available}" name="-init-macrodef-test-debug-testng">
++        <macrodef name="test-debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${includes}" name="includes"/>
++            <attribute default="${excludes}" name="excludes"/>
++            <attribute default="**" name="testincludes"/>
++            <attribute default="" name="testmethods"/>
++            <attribute default="${main.class}" name="testClass"/>
++            <attribute default="" name="testMethod"/>
++            <sequential>
++                <j2seproject3:testng-debug-impl testClass="@{testClass}" testMethod="@{testMethod}">
++                    <customize2>
++                        <syspropertyset>
++                            <propertyref prefix="test-sys-prop."/>
++                            <mapper from="test-sys-prop.*" to="*" type="glob"/>
++                        </syspropertyset>
++                    </customize2>
++                </j2seproject3:testng-debug-impl>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-init-macrodef-test-debug-junit,-init-macrodef-test-debug-testng" name="-init-macrodef-test-debug"/>
++    <!--
++                pre NB7.2 profiling section; consider it deprecated
++            -->
++    <target depends="-profile-pre-init, init, -profile-post-init, -profile-init-macrodef-profile, -profile-init-check" if="profiler.info.jvmargs.agent" name="profile-init"/>
++    <target if="profiler.info.jvmargs.agent" name="-profile-pre-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="profiler.info.jvmargs.agent" name="-profile-post-init">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="profiler.info.jvmargs.agent" name="-profile-init-macrodef-profile">
++        <macrodef name="resolve">
++            <attribute name="name"/>
++            <attribute name="value"/>
++            <sequential>
++                <property name="@{name}" value="${env.@{value}}"/>
++            </sequential>
++        </macrodef>
++        <macrodef name="profile">
++            <attribute default="${main.class}" name="classname"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property environment="env"/>
++                <resolve name="profiler.current.path" value="${profiler.info.pathvar}"/>
++                <java classname="@{classname}" dir="${profiler.info.dir}" fork="true" jvm="${profiler.info.jvm}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg value="${profiler.info.jvmargs.agent}"/>
++                    <jvmarg line="${profiler.info.jvmargs}"/>
++                    <env key="${profiler.info.pathvar}" path="${profiler.info.agentpath}:${profiler.current.path}"/>
++                    <arg line="${application.args}"/>
++                    <classpath>
++                        <path path="${run.classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target depends="-profile-pre-init, init, -profile-post-init, -profile-init-macrodef-profile" if="profiler.info.jvmargs.agent" name="-profile-init-check">
++        <fail unless="profiler.info.jvm">Must set JVM to use for profiling in profiler.info.jvm</fail>
++        <fail unless="profiler.info.jvmargs.agent">Must set profiler agent JVM arguments in profiler.info.jvmargs.agent</fail>
++    </target>
++    <!--
++                end of pre NB7.2 profiling section
++            -->
++    <target depends="-init-debug-args" name="-init-macrodef-nbjpda">
++        <macrodef name="nbjpdastart" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${main.class}" name="name"/>
++            <attribute default="${debug.classpath}" name="classpath"/>
++            <attribute default="" name="stopclassname"/>
++            <sequential>
++                <nbjpdastart addressproperty="jpda.address" name="@{name}" stopclassname="@{stopclassname}" transport="${debug-transport}">
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <bootclasspath>
++                        <path path="${platform.bootcp}"/>
++                    </bootclasspath>
++                </nbjpdastart>
++            </sequential>
++        </macrodef>
++        <macrodef name="nbjpdareload" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${build.classes.dir}" name="dir"/>
++            <sequential>
++                <nbjpdareload>
++                    <fileset dir="@{dir}" includes="${fix.classes}">
++                        <include name="${fix.includes}*.class"/>
++                    </fileset>
++                </nbjpdareload>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-debug-args">
++        <exec executable="${platform.java}" outputproperty="version-output">
++            <arg value="-version"/>
++        </exec>
++        <condition property="have-jdk-older-than-1.4">
++            <or>
++                <contains string="${version-output}" substring="java version &quot;1.0"/>
++                <contains string="${version-output}" substring="java version &quot;1.1"/>
++                <contains string="${version-output}" substring="java version &quot;1.2"/>
++                <contains string="${version-output}" substring="java version &quot;1.3"/>
++            </or>
++        </condition>
++        <condition else="-Xdebug" property="debug-args-line" value="-Xdebug -Xnoagent -Djava.compiler=none">
++            <istrue value="${have-jdk-older-than-1.4}"/>
++        </condition>
++        <condition else="dt_socket" property="debug-transport-by-os" value="dt_shmem">
++            <os family="windows"/>
++        </condition>
++        <condition else="${debug-transport-by-os}" property="debug-transport" value="${debug.transport}">
++            <isset property="debug.transport"/>
++        </condition>
++    </target>
++    <target depends="-init-debug-args" name="-init-macrodef-debug">
++        <macrodef name="debug" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${main.class}" name="classname"/>
++            <attribute default="${debug.classpath}" name="classpath"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg line="${debug-args-line}"/>
++                    <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
++                    <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
++                    <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
++                    <jvmarg line="${run.jvmargs}"/>
++                    <jvmarg line="${run.jvmargs.ide}"/>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-java">
++        <macrodef name="java" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <attribute default="${main.class}" name="classname"/>
++            <attribute default="${run.classpath}" name="classpath"/>
++            <attribute default="jvm" name="jvm"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                    <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
++                    <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
++                    <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
++                    <jvmarg line="${run.jvmargs}"/>
++                    <jvmarg line="${run.jvmargs.ide}"/>
++                    <classpath>
++                        <path path="@{classpath}"/>
++                    </classpath>
++                    <syspropertyset>
++                        <propertyref prefix="run-sys-prop."/>
++                        <mapper from="run-sys-prop.*" to="*" type="glob"/>
++                    </syspropertyset>
++                    <customize/>
++                </java>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-macrodef-copylibs">
++        <macrodef name="copylibs" uri="http://www.netbeans.org/ns/j2se-project/3">
++            <attribute default="${manifest.file}" name="manifest"/>
++            <element name="customize" optional="true"/>
++            <sequential>
++                <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
++                <pathconvert property="run.classpath.without.build.classes.dir">
++                    <path path="${run.classpath}"/>
++                    <map from="${build.classes.dir.resolved}" to=""/>
++                </pathconvert>
++                <pathconvert pathsep=" " property="jar.classpath">
++                    <path path="${run.classpath.without.build.classes.dir}"/>
++                    <chainedmapper>
++                        <flattenmapper/>
++                        <filtermapper>
++                            <replacestring from=" " to="%20"/>
++                        </filtermapper>
++                        <globmapper from="*" to="lib/*"/>
++                    </chainedmapper>
++                </pathconvert>
++                <taskdef classname="org.netbeans.modules.java.j2seproject.copylibstask.CopyLibs" classpath="${libs.CopyLibs.classpath}" name="copylibs"/>
++                <copylibs compress="${jar.compress}" excludeFromCopy="${copylibs.excludes}" index="${jar.index}" indexMetaInf="${jar.index.metainf}" jarfile="${dist.jar}" manifest="@{manifest}" rebase="${copylibs.rebase}" runtimeclasspath="${run.classpath.without.build.classes.dir}">
++                    <fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
++                    <manifest>
++                        <attribute name="Class-Path" value="${jar.classpath}"/>
++                        <customize/>
++                    </manifest>
++                </copylibs>
++            </sequential>
++        </macrodef>
++    </target>
++    <target name="-init-presetdef-jar">
++        <presetdef name="jar" uri="http://www.netbeans.org/ns/j2se-project/1">
++            <jar compress="${jar.compress}" index="${jar.index}" jarfile="${dist.jar}">
++                <j2seproject1:fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
++            </jar>
++        </presetdef>
++    </target>
++    <target name="-init-ap-cmdline-properties">
++        <property name="annotation.processing.enabled" value="true"/>
++        <property name="annotation.processing.processors.list" value=""/>
++        <property name="annotation.processing.processor.options" value=""/>
++        <property name="annotation.processing.run.all.processors" value="true"/>
++        <property name="javac.processorpath" value="${javac.classpath}"/>
++        <property name="javac.test.processorpath" value="${javac.test.classpath}"/>
++        <condition property="ap.supported.internal" value="true">
++            <not>
++                <matches pattern="1\.[0-5](\..*)?" string="${javac.source}"/>
++            </not>
++        </condition>
++    </target>
++    <target depends="-init-ap-cmdline-properties" if="ap.supported.internal" name="-init-ap-cmdline-supported">
++        <condition else="" property="ap.processors.internal" value="-processor ${annotation.processing.processors.list}">
++            <isfalse value="${annotation.processing.run.all.processors}"/>
++        </condition>
++        <condition else="" property="ap.proc.none.internal" value="-proc:none">
++            <isfalse value="${annotation.processing.enabled}"/>
++        </condition>
++    </target>
++    <target depends="-init-ap-cmdline-properties,-init-ap-cmdline-supported" name="-init-ap-cmdline">
++        <property name="ap.cmd.line.internal" value=""/>
++    </target>
++    <target depends="-pre-init,-init-private,-init-user,-init-project,-do-init,-post-init,-init-check,-init-macrodef-property,-init-macrodef-javac,-init-macrodef-test,-init-macrodef-test-debug,-init-macrodef-nbjpda,-init-macrodef-debug,-init-macrodef-java,-init-presetdef-jar,-init-ap-cmdline" name="init"/>
++    <!--
++                ===================
++                COMPILATION SECTION
++                ===================
++            -->
++    <target name="-deps-jar-init" unless="built-jar.properties">
++        <property location="${build.dir}/built-jar.properties" name="built-jar.properties"/>
++        <delete file="${built-jar.properties}" quiet="true"/>
++    </target>
++    <target if="already.built.jar.${basedir}" name="-warn-already-built-jar">
++        <echo level="warn" message="Cycle detected: MapleMapInfoRetriever was already built"/>
++    </target>
++    <target depends="init,-deps-jar-init" name="deps-jar" unless="no.deps">
++        <mkdir dir="${build.dir}"/>
++        <touch file="${built-jar.properties}" verbose="false"/>
++        <property file="${built-jar.properties}" prefix="already.built.jar."/>
++        <antcall target="-warn-already-built-jar"/>
++        <propertyfile file="${built-jar.properties}">
++            <entry key="${basedir}" value=""/>
++        </propertyfile>
++    </target>
++    <target depends="init,-check-automatic-build,-clean-after-automatic-build" name="-verify-automatic-build"/>
++    <target depends="init" name="-check-automatic-build">
++        <available file="${build.classes.dir}/.netbeans_automatic_build" property="netbeans.automatic.build"/>
++    </target>
++    <target depends="init" if="netbeans.automatic.build" name="-clean-after-automatic-build">
++        <antcall target="clean"/>
++    </target>
++    <target depends="init,deps-jar" name="-pre-pre-compile">
++        <mkdir dir="${build.classes.dir}"/>
++    </target>
++    <target name="-pre-compile">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="do.depend.true" name="-compile-depend">
++        <pathconvert property="build.generated.subdirs">
++            <dirset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="*"/>
++            </dirset>
++        </pathconvert>
++        <j2seproject3:depend srcdir="${src.dir}:${build.generated.subdirs}"/>
++    </target>
++    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile, -copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile">
++        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
++        <copy todir="${build.classes.dir}">
++            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target if="has.persistence.xml" name="-copy-persistence-xml">
++        <mkdir dir="${build.classes.dir}/META-INF"/>
++        <copy todir="${build.classes.dir}/META-INF">
++            <fileset dir="${meta.inf.dir}" includes="persistence.xml orm.xml"/>
++        </copy>
++    </target>
++    <target name="-post-compile">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-pre-compile,-do-compile,-post-compile" description="Compile project." name="compile"/>
++    <target name="-pre-compile-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
++        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
++        <j2seproject3:force-recompile/>
++        <j2seproject3:javac excludes="" gensrcdir="${build.generated.sources.dir}" includes="${javac.includes}" sourcepath="${src.dir}"/>
++    </target>
++    <target name="-post-compile-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-pre-compile-single,-do-compile-single,-post-compile-single" name="compile-single"/>
++    <!--
++                ====================
++                JAR BUILDING SECTION
++                ====================
++            -->
++    <target depends="init" name="-pre-pre-jar">
++        <dirname file="${dist.jar}" property="dist.jar.dir"/>
++        <mkdir dir="${dist.jar.dir}"/>
++    </target>
++    <target name="-pre-jar">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init" if="do.archive" name="-do-jar-create-manifest" unless="manifest.available">
++        <tempfile deleteonexit="true" destdir="${build.dir}" property="tmp.manifest.file"/>
++        <touch file="${tmp.manifest.file}" verbose="false"/>
++    </target>
++    <target depends="init" if="do.archive+manifest.available" name="-do-jar-copy-manifest">
++        <tempfile deleteonexit="true" destdir="${build.dir}" property="tmp.manifest.file"/>
++        <copy file="${manifest.file}" tofile="${tmp.manifest.file}"/>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+main.class.available" name="-do-jar-set-mainclass">
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="Main-Class" value="${main.class}"/>
++        </manifest>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+profile.available" name="-do-jar-set-profile">
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="Profile" value="${javac.profile}"/>
++        </manifest>
++    </target>
++    <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+splashscreen.available" name="-do-jar-set-splashscreen">
++        <basename file="${application.splash}" property="splashscreen.basename"/>
++        <mkdir dir="${build.classes.dir}/META-INF"/>
++        <copy failonerror="false" file="${application.splash}" todir="${build.classes.dir}/META-INF"/>
++        <manifest file="${tmp.manifest.file}" mode="update">
++            <attribute name="SplashScreen-Image" value="META-INF/${splashscreen.basename}"/>
++        </manifest>
++    </target>
++    <target depends="init,-init-macrodef-copylibs,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen" if="do.mkdist" name="-do-jar-copylibs">
++        <j2seproject3:copylibs manifest="${tmp.manifest.file}"/>
++        <echo level="info">To run this application from the command line without Ant, try:</echo>
++        <property location="${dist.jar}" name="dist.jar.resolved"/>
++        <echo level="info">${platform.java} -jar "${dist.jar.resolved}"</echo>
++    </target>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen" if="do.archive" name="-do-jar-jar" unless="do.mkdist">
++        <j2seproject1:jar manifest="${tmp.manifest.file}"/>
++        <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
++        <property location="${dist.jar}" name="dist.jar.resolved"/>
++        <pathconvert property="run.classpath.with.dist.jar">
++            <path path="${run.classpath}"/>
++            <map from="${build.classes.dir.resolved}" to="${dist.jar.resolved}"/>
++        </pathconvert>
++        <condition else="" property="jar.usage.message" value="To run this application from the command line without Ant, try:${line.separator}${platform.java} -cp ${run.classpath.with.dist.jar} ${main.class}">
++            <isset property="main.class.available"/>
++        </condition>
++        <condition else="debug" property="jar.usage.level" value="info">
++            <isset property="main.class.available"/>
++        </condition>
++        <echo level="${jar.usage.level}" message="${jar.usage.message}"/>
++    </target>
++    <target depends="-do-jar-copylibs" if="do.archive" name="-do-jar-delete-manifest">
++        <delete>
++            <fileset file="${tmp.manifest.file}"/>
++        </delete>
++    </target>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen,-do-jar-jar,-do-jar-delete-manifest" name="-do-jar-without-libraries"/>
++    <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen,-do-jar-copylibs,-do-jar-delete-manifest" name="-do-jar-with-libraries"/>
++    <target name="-post-jar">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-jar,-do-jar-without-libraries,-do-jar-with-libraries,-post-jar" name="-do-jar"/>
++    <target depends="init,compile,-pre-jar,-do-jar,-post-jar" description="Build JAR." name="jar"/>
++    <!--
++                =================
++                EXECUTION SECTION
++                =================
++            -->
++    <target depends="init,compile" description="Run a main class." name="run">
++        <j2seproject1:java>
++            <customize>
++                <arg line="${application.args}"/>
++            </customize>
++        </j2seproject1:java>
++    </target>
++    <target name="-do-not-recompile">
++        <property name="javac.includes.binary" value=""/>
++    </target>
++    <target depends="init,compile-single" name="run-single">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <j2seproject1:java classname="${run.class}"/>
++    </target>
++    <target depends="init,compile-test-single" name="run-test-with-main">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <j2seproject1:java classname="${run.class}" classpath="${run.test.classpath}"/>
++    </target>
++    <!--
++                =================
++                DEBUGGING SECTION
++                =================
++            -->
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger">
++        <j2seproject1:nbjpdastart name="${debug.class}"/>
++    </target>
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger-main-test">
++        <j2seproject1:nbjpdastart classpath="${debug.test.classpath}" name="${debug.class}"/>
++    </target>
++    <target depends="init,compile" name="-debug-start-debuggee">
++        <j2seproject3:debug>
++            <customize>
++                <arg line="${application.args}"/>
++            </customize>
++        </j2seproject3:debug>
++    </target>
++    <target depends="init,compile,-debug-start-debugger,-debug-start-debuggee" description="Debug project in IDE." if="netbeans.home" name="debug"/>
++    <target depends="init" if="netbeans.home" name="-debug-start-debugger-stepinto">
++        <j2seproject1:nbjpdastart stopclassname="${main.class}"/>
++    </target>
++    <target depends="init,compile,-debug-start-debugger-stepinto,-debug-start-debuggee" if="netbeans.home" name="debug-stepinto"/>
++    <target depends="init,compile-single" if="netbeans.home" name="-debug-start-debuggee-single">
++        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
++        <j2seproject3:debug classname="${debug.class}"/>
++    </target>
++    <target depends="init,compile-single,-debug-start-debugger,-debug-start-debuggee-single" if="netbeans.home" name="debug-single"/>
++    <target depends="init,compile-test-single" if="netbeans.home" name="-debug-start-debuggee-main-test">
++        <fail unless="debug.class">Must select one file in the IDE or set debug.class</fail>
++        <j2seproject3:debug classname="${debug.class}" classpath="${debug.test.classpath}"/>
++    </target>
++    <target depends="init,compile-test-single,-debug-start-debugger-main-test,-debug-start-debuggee-main-test" if="netbeans.home" name="debug-test-with-main"/>
++    <target depends="init" name="-pre-debug-fix">
++        <fail unless="fix.includes">Must set fix.includes</fail>
++        <property name="javac.includes" value="${fix.includes}.java"/>
++    </target>
++    <target depends="init,-pre-debug-fix,compile-single" if="netbeans.home" name="-do-debug-fix">
++        <j2seproject1:nbjpdareload/>
++    </target>
++    <target depends="init,-pre-debug-fix,-do-debug-fix" if="netbeans.home" name="debug-fix"/>
++    <!--
++                =================
++                PROFILING SECTION
++                =================
++            -->
++    <!--
++                pre NB7.2 profiler integration
++            -->
++    <target depends="profile-init,compile" description="Profile a project in the IDE." if="profiler.info.jvmargs.agent" name="-profile-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile/>
++    </target>
++    <target depends="profile-init,compile-single" description="Profile a selected class in the IDE." if="profiler.info.jvmargs.agent" name="-profile-single-pre72">
++        <fail unless="profile.class">Must select one file in the IDE or set profile.class</fail>
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile classname="${profile.class}"/>
++    </target>
++    <target depends="profile-init,compile-single" if="profiler.info.jvmargs.agent" name="-profile-applet-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <profile classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </profile>
++    </target>
++    <target depends="profile-init,compile-test-single" if="profiler.info.jvmargs.agent" name="-profile-test-single-pre72">
++        <fail unless="netbeans.home">This target only works when run from inside the NetBeans IDE.</fail>
++        <nbprofiledirect>
++            <classpath>
++                <path path="${run.test.classpath}"/>
++            </classpath>
++        </nbprofiledirect>
++        <junit dir="${profiler.info.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" jvm="${profiler.info.jvm}" showoutput="true">
++            <env key="${profiler.info.pathvar}" path="${profiler.info.agentpath}:${profiler.current.path}"/>
++            <jvmarg value="${profiler.info.jvmargs.agent}"/>
++            <jvmarg line="${profiler.info.jvmargs}"/>
++            <test name="${profile.class}"/>
++            <classpath>
++                <path path="${run.test.classpath}"/>
++            </classpath>
++            <syspropertyset>
++                <propertyref prefix="test-sys-prop."/>
++                <mapper from="test-sys-prop.*" to="*" type="glob"/>
++            </syspropertyset>
++            <formatter type="brief" usefile="false"/>
++            <formatter type="xml"/>
++        </junit>
++    </target>
++    <!--
++                end of pre NB72 profiling section
++            -->
++    <target if="netbeans.home" name="-profile-check">
++        <condition property="profiler.configured">
++            <or>
++                <contains casesensitive="true" string="${run.jvmargs.ide}" substring="-agentpath:"/>
++                <contains casesensitive="true" string="${run.jvmargs.ide}" substring="-javaagent:"/>
++            </or>
++        </condition>
++    </target>
++    <target depends="-profile-check,-profile-pre72" description="Profile a project in the IDE." if="profiler.configured" name="profile" unless="profiler.info.jvmargs.agent">
++        <startprofiler/>
++        <antcall target="run"/>
++    </target>
++    <target depends="-profile-check,-profile-single-pre72" description="Profile a selected class in the IDE." if="profiler.configured" name="profile-single" unless="profiler.info.jvmargs.agent">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <startprofiler/>
++        <antcall target="run-single"/>
++    </target>
++    <target depends="-profile-test-single-pre72" description="Profile a selected test in the IDE." name="profile-test-single"/>
++    <target depends="-profile-check" description="Profile a selected test in the IDE." if="profiler.configured" name="profile-test" unless="profiler.info.jvmargs">
++        <fail unless="test.includes">Must select some files in the IDE or set test.includes</fail>
++        <startprofiler/>
++        <antcall target="test-single"/>
++    </target>
++    <target depends="-profile-check" description="Profile a selected class in the IDE." if="profiler.configured" name="profile-test-with-main">
++        <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
++        <startprofiler/>
++        <antcal target="run-test-with-main"/>
++    </target>
++    <target depends="-profile-check,-profile-applet-pre72" if="profiler.configured" name="profile-applet" unless="profiler.info.jvmargs.agent">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <startprofiler/>
++        <antcall target="run-applet"/>
++    </target>
++    <!--
++                ===============
++                JAVADOC SECTION
++                ===============
++            -->
++    <target depends="init" if="have.sources" name="-javadoc-build">
++        <mkdir dir="${dist.javadoc.dir}"/>
++        <condition else="" property="javadoc.endorsed.classpath.cmd.line.arg" value="-J${endorsed.classpath.cmd.line.arg}">
++            <and>
++                <isset property="endorsed.classpath.cmd.line.arg"/>
++                <not>
++                    <equals arg1="${endorsed.classpath.cmd.line.arg}" arg2=""/>
++                </not>
++            </and>
++        </condition>
++        <exec executable="${platform.java}" failonerror="false" outputproperty="platform.version.output">
++            <arg value="-version"/>
++        </exec>
++        <condition else="" property="bug5101868workaround" value="*.java">
++            <matches multiline="true" pattern="1\.[56](\..*)?" string="${platform.version.output}"/>
++        </condition>
++        <javadoc additionalparam="-J-Dfile.encoding=${file.encoding} ${javadoc.additionalparam}" author="${javadoc.author}" charset="UTF-8" destdir="${dist.javadoc.dir}" docencoding="UTF-8" encoding="${javadoc.encoding.used}" executable="${platform.javadoc}" failonerror="true" noindex="${javadoc.noindex}" nonavbar="${javadoc.nonavbar}" notree="${javadoc.notree}" private="${javadoc.private}" source="${javac.source}" splitindex="${javadoc.splitindex}" use="${javadoc.use}" useexternalfile="true" version="${javadoc.version}" windowtitle="${javadoc.windowtitle}">
++            <classpath>
++                <path path="${javac.classpath}"/>
++            </classpath>
++            <fileset dir="${src.dir}" excludes="${bug5101868workaround},${excludes}" includes="${includes}">
++                <filename name="**/*.java"/>
++            </fileset>
++            <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="**/*.java"/>
++                <exclude name="*.java"/>
++            </fileset>
++            <arg line="${javadoc.endorsed.classpath.cmd.line.arg}"/>
++        </javadoc>
++        <copy todir="${dist.javadoc.dir}">
++            <fileset dir="${src.dir}" excludes="${excludes}" includes="${includes}">
++                <filename name="**/doc-files/**"/>
++            </fileset>
++            <fileset dir="${build.generated.sources.dir}" erroronmissingdir="false">
++                <include name="**/doc-files/**"/>
++            </fileset>
++        </copy>
++    </target>
++    <target depends="init,-javadoc-build" if="netbeans.home" name="-javadoc-browse" unless="no.javadoc.preview">
++        <nbbrowse file="${dist.javadoc.dir}/index.html"/>
++    </target>
++    <target depends="init,-javadoc-build,-javadoc-browse" description="Build Javadoc." name="javadoc"/>
++    <!--
++                =========================
++                TEST COMPILATION SECTION
++                =========================
++            -->
++    <target depends="init,compile" if="have.tests" name="-pre-pre-compile-test">
++        <mkdir dir="${build.test.classes.dir}"/>
++    </target>
++    <target name="-pre-compile-test">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target if="do.depend.true" name="-compile-test-depend">
++        <j2seproject3:depend classpath="${javac.test.classpath}" destdir="${build.test.classes.dir}" srcdir="${test.src.dir}"/>
++    </target>
++    <target depends="init,deps-jar,compile,-pre-pre-compile-test,-pre-compile-test,-compile-test-depend" if="have.tests" name="-do-compile-test">
++        <j2seproject3:javac apgeneratedsrcdir="${build.test.classes.dir}" classpath="${javac.test.classpath}" debug="true" destdir="${build.test.classes.dir}" processorpath="${javac.test.processorpath}" srcdir="${test.src.dir}"/>
++        <copy todir="${build.test.classes.dir}">
++            <fileset dir="${test.src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target name="-post-compile-test">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test,-do-compile-test,-post-compile-test" name="compile-test"/>
++    <target name="-pre-compile-test-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-jar,compile,-pre-pre-compile-test,-pre-compile-test-single" if="have.tests" name="-do-compile-test-single">
++        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
++        <j2seproject3:force-recompile destdir="${build.test.classes.dir}"/>
++        <j2seproject3:javac apgeneratedsrcdir="${build.test.classes.dir}" classpath="${javac.test.classpath}" debug="true" destdir="${build.test.classes.dir}" excludes="" includes="${javac.includes}" processorpath="${javac.test.processorpath}" sourcepath="${test.src.dir}" srcdir="${test.src.dir}"/>
++        <copy todir="${build.test.classes.dir}">
++            <fileset dir="${test.src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
++        </copy>
++    </target>
++    <target name="-post-compile-test-single">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,compile,-pre-pre-compile-test,-pre-compile-test-single,-do-compile-test-single,-post-compile-test-single" name="compile-test-single"/>
++    <!--
++                =======================
++                TEST EXECUTION SECTION
++                =======================
++            -->
++    <target depends="init" if="have.tests" name="-pre-test-run">
++        <mkdir dir="${build.test.results.dir}"/>
++    </target>
++    <target depends="init,compile-test,-pre-test-run" if="have.tests" name="-do-test-run">
++        <j2seproject3:test includes="${includes}" testincludes="**/*Test.java"/>
++    </target>
++    <target depends="init,compile-test,-pre-test-run,-do-test-run" if="have.tests" name="-post-test-run">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init" if="have.tests" name="test-report"/>
++    <target depends="init" if="netbeans.home+have.tests" name="-test-browse"/>
++    <target depends="init,compile-test,-pre-test-run,-do-test-run,test-report,-post-test-run,-test-browse" description="Run unit tests." name="test"/>
++    <target depends="init" if="have.tests" name="-pre-test-run-single">
++        <mkdir dir="${build.test.results.dir}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-do-test-run-single">
++        <fail unless="test.includes">Must select some files in the IDE or set test.includes</fail>
++        <j2seproject3:test excludes="" includes="${test.includes}" testincludes="${test.includes}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single" if="have.tests" name="-post-test-run-single">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single,-post-test-run-single" description="Run single unit test." name="test-single"/>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-do-test-run-single-method">
++        <fail unless="test.class">Must select some files in the IDE or set test.class</fail>
++        <fail unless="test.method">Must select some method in the IDE or set test.method</fail>
++        <j2seproject3:test excludes="" includes="${javac.includes}" testincludes="${test.class}" testmethods="${test.method}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single-method" if="have.tests" name="-post-test-run-single-method">
++        <fail if="tests.failed" unless="ignore.failing.tests">Some tests failed; see details above.</fail>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single,-do-test-run-single-method,-post-test-run-single-method" description="Run single unit test." name="test-single-method"/>
++    <!--
++                =======================
++                TEST DEBUGGING SECTION
++                =======================
++            -->
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-debug-start-debuggee-test">
++        <fail unless="test.class">Must select one file in the IDE or set test.class</fail>
++        <j2seproject3:test-debug excludes="" includes="${javac.includes}" testClass="${test.class}" testincludes="${javac.includes}"/>
++    </target>
++    <target depends="init,compile-test-single,-pre-test-run-single" if="have.tests" name="-debug-start-debuggee-test-method">
++        <fail unless="test.class">Must select one file in the IDE or set test.class</fail>
++        <fail unless="test.method">Must select some method in the IDE or set test.method</fail>
++        <j2seproject3:test-debug excludes="" includes="${javac.includes}" testClass="${test.class}" testMethod="${test.method}" testincludes="${test.class}" testmethods="${test.method}"/>
++    </target>
++    <target depends="init,compile-test" if="netbeans.home+have.tests" name="-debug-start-debugger-test">
++        <j2seproject1:nbjpdastart classpath="${debug.test.classpath}" name="${test.class}"/>
++    </target>
++    <target depends="init,compile-test-single,-debug-start-debugger-test,-debug-start-debuggee-test" name="debug-test"/>
++    <target depends="init,compile-test-single,-debug-start-debugger-test,-debug-start-debuggee-test-method" name="debug-test-method"/>
++    <target depends="init,-pre-debug-fix,compile-test-single" if="netbeans.home" name="-do-debug-fix-test">
++        <j2seproject1:nbjpdareload dir="${build.test.classes.dir}"/>
++    </target>
++    <target depends="init,-pre-debug-fix,-do-debug-fix-test" if="netbeans.home" name="debug-fix-test"/>
++    <!--
++                =========================
++                APPLET EXECUTION SECTION
++                =========================
++            -->
++    <target depends="init,compile-single" name="run-applet">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <j2seproject1:java classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </j2seproject1:java>
++    </target>
++    <!--
++                =========================
++                APPLET DEBUGGING  SECTION
++                =========================
++            -->
++    <target depends="init,compile-single" if="netbeans.home" name="-debug-start-debuggee-applet">
++        <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
++        <j2seproject3:debug classname="sun.applet.AppletViewer">
++            <customize>
++                <arg value="${applet.url}"/>
++            </customize>
++        </j2seproject3:debug>
++    </target>
++    <target depends="init,compile-single,-debug-start-debugger,-debug-start-debuggee-applet" if="netbeans.home" name="debug-applet"/>
++    <!--
++                ===============
++                CLEANUP SECTION
++                ===============
++            -->
++    <target name="-deps-clean-init" unless="built-clean.properties">
++        <property location="${build.dir}/built-clean.properties" name="built-clean.properties"/>
++        <delete file="${built-clean.properties}" quiet="true"/>
++    </target>
++    <target if="already.built.clean.${basedir}" name="-warn-already-built-clean">
++        <echo level="warn" message="Cycle detected: MapleMapInfoRetriever was already built"/>
++    </target>
++    <target depends="init,-deps-clean-init" name="deps-clean" unless="no.deps">
++        <mkdir dir="${build.dir}"/>
++        <touch file="${built-clean.properties}" verbose="false"/>
++        <property file="${built-clean.properties}" prefix="already.built.clean."/>
++        <antcall target="-warn-already-built-clean"/>
++        <propertyfile file="${built-clean.properties}">
++            <entry key="${basedir}" value=""/>
++        </propertyfile>
++    </target>
++    <target depends="init" name="-do-clean">
++        <delete dir="${build.dir}"/>
++        <delete dir="${dist.dir}" followsymlinks="false" includeemptydirs="true"/>
++    </target>
++    <target name="-post-clean">
++        <!-- Empty placeholder for easier customization. -->
++        <!-- You can override this target in the ../build.xml file. -->
++    </target>
++    <target depends="init,deps-clean,-do-clean,-post-clean" description="Clean build products." name="clean"/>
++    <target name="-check-call-dep">
++        <property file="${call.built.properties}" prefix="already.built."/>
++        <condition property="should.call.dep">
++            <and>
++                <not>
++                    <isset property="already.built.${call.subproject}"/>
++                </not>
++                <available file="${call.script}"/>
++            </and>
++        </condition>
++    </target>
++    <target depends="-check-call-dep" if="should.call.dep" name="-maybe-call-dep">
++        <ant antfile="${call.script}" inheritall="false" target="${call.target}">
++            <propertyset>
++                <propertyref prefix="transfer."/>
++                <mapper from="transfer.*" to="*" type="glob"/>
++            </propertyset>
++        </ant>
++    </target>
++</project>
+diff --git a/tools/MapleMapInfoRetriever/nbproject/genfiles.properties b/tools/MapleMapInfoRetriever/nbproject/genfiles.properties
+new file mode 100644
+index 000000000..d33257510
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/nbproject/genfiles.properties
+@@ -0,0 +1,8 @@
++build.xml.data.CRC32=8863f245
++build.xml.script.CRC32=86cbb34a
++build.xml.stylesheet.CRC32=8064a381@1.75.2.48
++# This file is used by a NetBeans-based IDE to track changes in generated files such as build-impl.xml.
++# Do not edit this file. You may delete it but then the IDE will never regenerate such files for you.
++nbproject/build-impl.xml.data.CRC32=8863f245
++nbproject/build-impl.xml.script.CRC32=187fba9b
++nbproject/build-impl.xml.stylesheet.CRC32=876e7a8f@1.75.2.48
+diff --git a/tools/MapleMapInfoRetriever/nbproject/project.properties b/tools/MapleMapInfoRetriever/nbproject/project.properties
+new file mode 100644
+index 000000000..787026132
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/nbproject/project.properties
+@@ -0,0 +1,77 @@
++annotation.processing.enabled=true
++annotation.processing.enabled.in.editor=false
++annotation.processing.processors.list=
++annotation.processing.run.all.processors=true
++annotation.processing.source.output=${build.generated.sources.dir}/ap-source-output
++application.title=MapleMapInfoRetriever
++application.vendor=RonanLana
++build.classes.dir=${build.dir}/classes
++build.classes.excludes=**/*.java,**/*.form
++# This directory is removed when the project is cleaned:
++build.dir=build
++build.generated.dir=${build.dir}/generated
++build.generated.sources.dir=${build.dir}/generated-sources
++# Only compile against the classpath explicitly listed here:
++build.sysclasspath=ignore
++build.test.classes.dir=${build.dir}/test/classes
++build.test.results.dir=${build.dir}/test/results
++# Uncomment to specify the preferred debugger connection transport:
++#debug.transport=dt_socket
++debug.classpath=\
++    ${run.classpath}
++debug.test.classpath=\
++    ${run.test.classpath}
++# Os arquivos em build.classes.dir que devem ser exclu\u00eddos do jar de distribui\u00e7\u00e3o
++dist.archive.excludes=
++# This directory is removed when the project is cleaned:
++dist.dir=dist
++dist.jar=${dist.dir}/MapleMapInfoRetriever.jar
++dist.javadoc.dir=${dist.dir}/javadoc
++endorsed.classpath=
++excludes=
++file.reference.commons-io-2.6.jar=lib/commons-io-2.6.jar
++includes=**
++jar.compress=false
++javac.classpath=\
++    ${file.reference.commons-io-2.6.jar}
++# Space-separated list of extra javac options
++javac.compilerargs=
++javac.deprecation=false
++javac.processorpath=\
++    ${javac.classpath}
++javac.source=1.7
++javac.target=1.7
++javac.test.classpath=\
++    ${javac.classpath}:\
++    ${build.classes.dir}
++javac.test.processorpath=\
++    ${javac.test.classpath}
++javadoc.additionalparam=
++javadoc.author=false
++javadoc.encoding=${source.encoding}
++javadoc.noindex=false
++javadoc.nonavbar=false
++javadoc.notree=false
++javadoc.private=false
++javadoc.splitindex=true
++javadoc.use=true
++javadoc.version=false
++javadoc.windowtitle=
++main.class=maplemapinforetriever.MapleMapInfoRetriever
++manifest.file=manifest.mf
++meta.inf.dir=${src.dir}/META-INF
++mkdist.disabled=false
++platform.active=JDK_1.7
++run.classpath=\
++    ${javac.classpath}:\
++    ${build.classes.dir}
++# Space-separated list of JVM arguments used when running the project.
++# You may also define separate properties like run-sys-prop.name=value instead of -Dname=value.
++# To set system properties for unit tests define test-sys-prop.name=value:
++run.jvmargs=
++run.test.classpath=\
++    ${javac.test.classpath}:\
++    ${build.test.classes.dir}
++source.encoding=UTF-8
++src.dir=src
++test.src.dir=test
+diff --git a/tools/MapleMapInfoRetriever/nbproject/project.xml b/tools/MapleMapInfoRetriever/nbproject/project.xml
+new file mode 100644
+index 000000000..b7399e9dc
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/nbproject/project.xml
+@@ -0,0 +1,16 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project xmlns="http://www.netbeans.org/ns/project/1">
++    <type>org.netbeans.modules.java.j2seproject</type>
++    <configuration>
++        <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
++            <name>MapleMapInfoRetriever</name>
++            <explicit-platform explicit-source-supported="true"/>
++            <source-roots>
++                <root id="src.dir"/>
++            </source-roots>
++            <test-roots>
++                <root id="test.src.dir"/>
++            </test-roots>
++        </data>
++    </configuration>
++</project>
+diff --git a/tools/MapleMapInfoRetriever/src/maplemapinforetriever/MapleMapInfoRetriever.java b/tools/MapleMapInfoRetriever/src/maplemapinforetriever/MapleMapInfoRetriever.java
+new file mode 100644
+index 000000000..9612ffba9
+--- /dev/null
++++ b/tools/MapleMapInfoRetriever/src/maplemapinforetriever/MapleMapInfoRetriever.java
+@@ -0,0 +1,182 @@
++/*
++	This file is part of the MapleSolaxiaV2 Maple Story Server
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package maplemapinforetriever;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.io.PrintWriter;
++import java.util.ArrayList;
++import java.util.Iterator;
++import java.util.List;
++import org.apache.commons.io.FileUtils;
++
++/**
++ *
++ * @author RonanLana
++ * 
++ * The main objective of this tool is to locate all mapids that doesn't have
++ * the "info" node in their WZ node tree.
++ */
++public class MapleMapInfoRetriever {
++    static String mapWzPath = "../../wz/Map.wz/Map";
++    static String newFile = "lib/MapReport.txt";
++    
++    static List<Integer> missingInfo = new ArrayList<>();
++
++    static PrintWriter printWriter = null;
++    static InputStreamReader fileReader = null;
++    static BufferedReader bufferedReader = null;
++    static byte status = 0;
++    static boolean hasInfo;
++
++    private static String getName(String token) {
++        int i, j;
++        char[] dest;
++        String d;
++
++        i = token.lastIndexOf("name");
++        i = token.indexOf("\"", i) + 1; //lower bound of the string
++        j = token.indexOf("\"", i);     //upper bound
++
++        dest = new char[50];
++        token.getChars(i, j, dest, 0);
++
++        d = new String(dest);
++        return(d.trim());
++    }
++
++    private static void forwardCursor(int st) {
++        String line = null;
++
++        try {
++            while(status >= st && (line = bufferedReader.readLine()) != null) {
++                simpleToken(line);
++            }
++        }
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    private static void simpleToken(String token) {
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            status += 1;
++        }
++    }
++
++    private static boolean translateToken(String token) {
++        String d;
++        int temp;
++
++        if(token.contains("/imgdir")) {
++            status -= 1;
++        }
++        else if(token.contains("imgdir")) {
++            if(status == 1) {
++                d = getName(token);
++                if(d.contains("info")) {
++                    hasInfo = true;
++                    return true;
++                }
++                
++                temp = status;
++                forwardCursor(temp);
++            }
++
++            status += 1;
++        }
++        
++        return false;
++    }
++
++    private static void searchMapDirectory(int mapArea) {
++        try {
++            Iterator iter = FileUtils.iterateFiles(new File(mapWzPath + "/Map" + mapArea), new String[]{"xml"}, true);
++            System.out.println("Parsing map area " + mapArea);
++            
++            while(iter.hasNext()) {
++                File file = (File) iter.next();
++                searchMapFile(file);
++            }
++        } catch(IllegalArgumentException e) {}
++    }
++        
++    private static void searchMapFile(File file) {
++        // This will reference one line at a time
++        String line = null;
++
++        try {
++            fileReader = new InputStreamReader(new FileInputStream(file), "UTF-8");
++            bufferedReader = new BufferedReader(fileReader);
++
++            hasInfo = false;
++            status = 0;
++            
++            while((line = bufferedReader.readLine()) != null) {
++                if(translateToken(line)) {
++                    break;
++                }
++            }
++            
++            if(!hasInfo) missingInfo.add(Integer.valueOf(file.getName().split(".img.xml")[0]));
++
++            bufferedReader.close();
++            fileReader.close();
++        }
++
++        catch(IOException ex) {
++            System.out.println("Error reading file '" + file.getName() + "'");
++        }
++        catch(Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    private static void writeReport() {
++        try {
++            printWriter = new PrintWriter(newFile, "UTF-8");
++
++            if(!missingInfo.isEmpty()) {
++                for(Integer i : missingInfo) {
++                    printWriter.println(i);
++                }
++            } else {
++                printWriter.println("All map files contains 'info' node.");
++            }
++
++            printWriter.close();
++        } catch(IOException e) {
++            e.printStackTrace();
++        }
++    }
++    
++    public static void main(String[] args) {
++        for(int i = 0; i < 10; i++) {
++            searchMapDirectory(i);
++        }
++        writeReport();
++    }
++
++}
+diff --git a/tools/MapleQuestItemFetcher/nbproject/private/private.xml b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+index 35ad24d01..6807a2ba1 100644
+--- a/tools/MapleQuestItemFetcher/nbproject/private/private.xml
++++ b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+@@ -2,8 +2,6 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>
+diff --git a/tools/MobBookUpdate/nbproject/private/private.xml b/tools/MobBookUpdate/nbproject/private/private.xml
+index 6be0bf553..6807a2ba1 100644
+--- a/tools/MobBookUpdate/nbproject/private/private.xml
++++ b/tools/MobBookUpdate/nbproject/private/private.xml
+@@ -2,8 +2,6 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/tools/MobBookUpdate/src/mobbookupdate/MobBookUpdate.java</file>
+-        </group>
++        <group/>
+     </open-files>
+ </project-private>

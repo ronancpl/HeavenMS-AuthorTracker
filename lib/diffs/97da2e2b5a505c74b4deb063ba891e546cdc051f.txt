@@ -1,0 +1,810 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 2a056ae0c..b899b3e4e 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -829,4 +829,9 @@ Aprimorado comando de item/drop agora permitindo gerar pets.
+ 
+ 14 Março 2018,
+ Modificado spawn do Horntail, utilizando efeitos de mob ao invés de schedules. Cortesia de Arnah e Zenns.
+-Modificado "hint" banners para usar menor espaço visual.
+\ No newline at end of file
++Modificado "hint" banners para usar menor espaço visual.
++
++16 - 17 Março 2018,
++Resolvido problema com HP threshold em MoveLifeHandler.
++Aprimorado quests e eventos de bosses da região de Mushroom Castle, agora sendo repetíveis.
++Corrigido tempo de duração do Body Pressure sendo resetado sempre que acerta um mob.
+\ No newline at end of file
+diff --git a/scripts/event/MK_PrimeMinister.js b/scripts/event/MK_PrimeMinister.js
+index f987227b1..33d44734a 100644
+--- a/scripts/event/MK_PrimeMinister.js
++++ b/scripts/event/MK_PrimeMinister.js
+@@ -2,6 +2,9 @@ var minPlayers = 1;
+ var entryMap = 106021402;
+ var exitMap = 106021600;
+ 
++var minMapId = 106021601;
++var maxMapId = 106021601;
++
+ function init(){}
+ 
+ function setup(difficulty, lobbyId){
+@@ -84,11 +87,8 @@ function playerExit(eim, player){
+ 	player.changeMap(entryMap, 2);
+ }
+ 
+-function moveMap(eim, player){
+-	if(player.getMap().getId() == exitMap || player.getMap().getId() == entryMap){
+-		removePlayer(eim, player);
+-		eim.dispose();
+-	}
++function changedMap(eim, chr, mapid) {
++        if(mapid < minMapId || mapid > maxMapId) playerExit(eim, chr);
+ }
+ 
+ function removePlayer(eim, player){
+diff --git a/scripts/event/MK_PrimeMinister2.js b/scripts/event/MK_PrimeMinister2.js
+new file mode 100644
+index 000000000..746ee1f39
+--- /dev/null
++++ b/scripts/event/MK_PrimeMinister2.js
+@@ -0,0 +1,119 @@
++importPackage(Packages.tools);
++importPackage(Packages.server.life);
++
++var minPlayers = 1;
++var eventTime = 10;
++var entryMap = 106021402;
++var exitMap = 106021600;
++
++var minMapId = 106021601;
++var maxMapId = 106021601;
++
++function init(){}
++
++function setup(difficulty, lobbyId){
++	var eim = em.newInstance("MK_PrimeMinister2_" +lobbyId);
++	eim.getInstanceMap(106021601).resetFully();
++	eim.getInstanceMap(106021601).allowSummonState(false);
++	respawn(eim);
++        
++	return eim;
++}
++
++function afterSetup(eim){}
++
++function respawn(eim){
++	var map = eim.getMapInstance(entryMap);
++	map.allowSummonState(true);
++	map.instanceMapRespawn();
++	eim.schedule("respawn", 10000);
++}
++
++function playerEntry(eim, player){
++	var weddinghall = eim.getMapInstance(106021601);
++	player.changeMap(weddinghall, weddinghall.getPortal(1));
++        
++        var pm = MapleLifeFactory.getMonster(3300008);
++        weddinghall.spawnMonsterOnGroundBelow(pm, new Packages.java.awt.Point(472, 27));
++        
++        player.getClient().getSession().write(MaplePacketCreator.getClock(eventTime * 60));
++        eim.startEventTimer(eventTime * 60000);
++}
++
++function scheduledTimeout(eim){
++	var party = eim.getPlayers();
++
++	for(var i = 0; i < party.size(); i++)
++		playerExit(eim, party.get(i));
++
++	eim.dispose();
++}
++
++function playerRevive(eim, player){
++	player.setHp(50);
++	player.setStance(0);
++	eim.unregisterPlayer(player);
++	player.changeMap(entryMap);
++	return false;
++}
++
++function playerDead(eim, player){}
++
++function playerDisconnected(eim, player){
++	var party = eim.getPlayers();
++
++	for(var i = 0; i < party.size(); i++){
++		if(party.get(i).equals(player))
++			removePlayer(eim, player);
++		else
++			playerExit(eim, party.get(i));
++	}
++	eim.dispose();
++}
++
++function monsterValue(eim, mobId){
++	return -1;
++}
++
++function leftParty(eim, player){
++	var party = eim.getPlayers();
++
++	if(party.size() < minPlayers){
++		for(var i = 0; i < party.size(); i++){
++			playerExit(eim, party.get(i));
++		}
++		eim.dispose();
++	}
++	else{
++		playerExit(eim, player);
++	}
++}
++
++function disbandParty(eim){}
++
++function playerUnregistered(eim, player){}
++
++function playerExit(eim, player){
++	eim.unregisterPlayer(player);
++	player.changeMap(entryMap, 2);
++}
++
++function changedMap(eim, chr, mapid) {
++        if(mapid < minMapId || mapid > maxMapId) playerExit(eim, chr);
++}
++
++function removePlayer(eim, player){
++	eim.unregisterPlayer(player);
++	player.getMap().removePlayer(player);
++	player.setMap(entryMap);
++}
++
++function cancelSchedule(){}
++
++function dispose(){}
++
++function clearPQ(eim){}
++
++function monsterKilled(mob, eim){}
++
++function allMonstersDead(eim){}
+\ No newline at end of file
+diff --git a/scripts/npc/1300001.js b/scripts/npc/1300001.js
+new file mode 100644
+index 000000000..c85bed6f6
+--- /dev/null
++++ b/scripts/npc/1300001.js
+@@ -0,0 +1,50 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* NPC Base
++	Map Name (Map ID)
++	Extra NPC info.
++ */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("Let the ceremony begins, we cannot let the masses waiting! Hem~hem~heeh~~");
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/1300006.js b/scripts/npc/1300006.js
+new file mode 100644
+index 000000000..07faf284d
+--- /dev/null
++++ b/scripts/npc/1300006.js
+@@ -0,0 +1,50 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* NPC Base
++	Map Name (Map ID)
++	Extra NPC info.
++ */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("Hey guys, what's going on? I'm already getting married at this age? But I'm only a child!!! How comes?");
++                        cm.dispose();
++                }
++        }
++}
+diff --git a/scripts/npc/1300012.js b/scripts/npc/1300012.js
+new file mode 100644
+index 000000000..bca7fc824
+--- /dev/null
++++ b/scripts/npc/1300012.js
+@@ -0,0 +1,49 @@
++/*
++    This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
++    Copyleft (L) 2017 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++/* NPC Base
++	Map Name (Map ID)
++	Extra NPC info.
++ */
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/1300013.js b/scripts/npc/1300013.js
+index 22913c996..33309b308 100644
+--- a/scripts/npc/1300013.js
++++ b/scripts/npc/1300013.js
+@@ -2,6 +2,7 @@
+ 	NPC: Blocked Entrance (portal?)
+ 	MAP: Mushroom Castle - East Castle Tower (106021400)
+ */
++importPackage(Packages.tools);
+ 
+ var status;
+ 
+@@ -25,16 +26,40 @@ function action(mode, type, selection){
+ 		status++;
+ 
+ 
+-	if(status == 0){
+-		cm.sendSimple("#L1#Enter to fight #bKing Pepe#k and #bYeti Brothers#k.#l");
+-	}
+-	else if(status == 1){
+-		if(selection == 1){
+-			var pepe = cm.getEventManager("KingPepeAndYetis");
+-			pepe.setProperty("player", cm.getPlayer().getName());
+-			pepe.startInstance(cm.getPlayer());
+-			cm.dispose();
+-			return;
+-		}
+-	}
++        if(cm.getMapId() == 106021402) {
++                if(status == 0){
++                        cm.sendSimple("#L0#Enter to fight #bKing Pepe#k and #bYeti Brothers#k.#l\r\n#L1#Enter to fight #bPrime Minister#k.#l");
++                }
++                else if(status == 1){
++                        if(selection == 0){
++                                var pepe = cm.getEventManager("KingPepeAndYetis");
++                                pepe.setProperty("player", cm.getPlayer().getName());
++                                pepe.startInstance(cm.getPlayer());
++                                cm.dispose();
++                                return;
++                        }
++                    
++                        else if(selection == 1){
++                                var pm = cm.getEventManager("MK_PrimeMinister2");
++                                pm.setProperty("player", cm.getPlayer().getName());
++                                pm.startInstance(cm.getPlayer());
++                                
++                                cm.dispose();
++                                return;
++                        }
++                }
++        } else {
++                if(status == 0){
++                        cm.sendSimple("#L1#Enter to fight #bKing Pepe#k and #bYeti Brothers#k.#l");
++                }
++                else if(status == 1){
++                        if(selection == 1){
++                                var pepe = cm.getEventManager("KingPepeAndYetis");
++                                pepe.setProperty("player", cm.getPlayer().getName());
++                                pepe.startInstance(cm.getPlayer());
++                                cm.dispose();
++                                return;
++                        }
++                }
++        }
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/1300014.js b/scripts/npc/1300014.js
+new file mode 100644
+index 000000000..17bdafe7f
+--- /dev/null
++++ b/scripts/npc/1300014.js
+@@ -0,0 +1,3 @@
++function start() {
++    cm.dispose();
++}
+\ No newline at end of file
+diff --git a/scripts/portal/TD_MC_enterboss2.js b/scripts/portal/TD_MC_enterboss2.js
+index a9f98df2f..0e8147e6a 100644
+--- a/scripts/portal/TD_MC_enterboss2.js
++++ b/scripts/portal/TD_MC_enterboss2.js
+@@ -1,4 +1,9 @@
+ function enter(pi) {
++    if(pi.isQuestCompleted(2331)) {
++        pi.openNpc(1300013);
++        return false;
++    }
++    
+     if(pi.isQuestCompleted(2333) && pi.isQuestStarted(2331) && !pi.hasItem(4001318)){
+         pi.getPlayer().message("Lost the Royal Seal, eh? Worry not! Kevin's code here to save your hide.");
+         if(pi.canHold(4001318)){
+@@ -32,7 +37,7 @@ function enter(pi) {
+         }
+     }
+     else if(pi.isQuestStarted(2333) || (pi.isQuestCompleted(2332) && !pi.isQuestStarted(2333))){
+-        if(pi.getPlayer.getParty() != null){
++        if(pi.getPlayer().getParty() != null){
+             pi.getPlayer().showHint("The next part of the quest is solo only! Must leave party.");
+             return false;
+         }
+diff --git a/scripts/portal/gotocastle.js b/scripts/portal/gotocastle.js
+index 78f8b2406..c705ef85a 100644
+--- a/scripts/portal/gotocastle.js
++++ b/scripts/portal/gotocastle.js
+@@ -5,7 +5,7 @@ function enter(pi) {
+             
+ 	    pi.forceCompleteQuest(2324);
+ 	    pi.removeAll(2430015);
+-	    pi.playerMessage(5, "Quest complete.");
++	    pi.playerMessage(5, "You have used the Thorn Remover to clear the path.");
+ 	}
+ 	pi.playPortalSound(); pi.warp(106020501,0);
+ 	return true;
+diff --git a/scripts/quest/2300.js b/scripts/quest/2300.js
+new file mode 100644
+index 000000000..d89202d78
+--- /dev/null
++++ b/scripts/quest/2300.js
+@@ -0,0 +1,64 @@
++/* ===========================================================
++			Resonance
++	NPC Name: 		Maple Administrator
++	Description: 	Quest -  Kingdom of Mushroom in Danger
++=============================================================
++Version 1.0 - Script Done.(17/7/2010)
++=============================================================
++*/
++
++var status = -1;
++
++function start(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++	    if(type == 1 && mode == 0)
++		    status -= 2;
++		else{
++			if(status == 0){
++				qm.sendOk("Really? It's an urgent matter, so if you have some time, please see me.");
++				qm.dispose();
++				return;
++			} else if(status == 3){
++				qm.sendNext("Okay. In that case, I'll just give you the routes to the Kingdom of Mushroom. #bNear the west entrance of Henesys,#k you'll find an #bempty house#k. Enter the house, and turn left to enter#b<Themed Dungeon : Mushroom Castle>#k. That's the entrance to the Kingdom of Mushroom. There's not much time!");
++				qm.forceStartQuest();
++				return;
++			}
++		}
++	}
++	if(status == 0) 
++		qm.sendAcceptDecline("Now that you have made the job advancement, you look like you're ready for this. I have something I'd like to ask you for help. Are you willing to listen?");
++	if(status == 1)
++		qm.sendNext("What happened is that the #bKingdom of Mushroom#k is currently in disarray. Kingdom of Mushroom is located near Henesys, featuring the peace-loving, intelligent King Mush. Recently, he began to feel ill, so he decided to appoint his only daughter #bPrincess Violetta#k. Something must have happened since then for the kingdom to be in its current state.");
++	if(status == 2)
++		qm.sendNext("I am not aware of the exact details, but it's obvious something terrible had taken place, so I think it'll be better if you go there and assess the damage yourself. An explorer like you seem more than capable of saving Kingdom of Mushroom. I have just written you a #brecommendation letter#k, so I suggest you head over to Kingdom of Mushroom immediately and look for the #bHead Patrol Officer#k.\r\n\r\n#fUI/UIWindow.img/QuestIcon/4/0#\r\n#v4032375# #t4032375#");
++	if(status == 3)
++		qm.sendYesNo("By the way, do you know where Kingdom of Mushroom is located? It'll be okay if you can find your way there, but if you don't mind, I can take you straight to the entrance.");
++	if(status == 4){
++		qm.gainItem(4032375, 1);
++		qm.forceStartQuest();
++		qm.dispose();
++	}
++}
++
++function end(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++	    if(type == 1 && mode == 0)
++		    status -= 2;
++		else{
++		    qm.dispose();
++			return;
++		}
++	}
++	if(status == 0)
++		qm.sendNext("Hmmm? Is that a #brecommendation letter from the job instructor#k??! What is this, are you the one that came to save us, the Kingdom of Mushroom?");
++	if(status == 1)
++		qm.sendNextPrev("Hmmm... okay. Since the letter is from the job instructor, I suppose you are really the one. I apologize for not introducing myself to you earlier. I'm the #bHead Security Officer#k in charge of protecting King Mush. As you can see, this temporary hideout is protected by the team of security and soldiers. Our situation may be dire, but nevertheless, welcome to Kingdom of Mushroom.");
++	if(status == 2){
++		qm.gainItem(4032375, -1);
++		qm.forceCompleteQuest();
++		qm.forceStartQuest(2312);
++		qm.dispose();
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/quest/2312.js b/scripts/quest/2312.js
+new file mode 100644
+index 000000000..2d6f7edc4
+--- /dev/null
++++ b/scripts/quest/2312.js
+@@ -0,0 +1,55 @@
++/* ===========================================================
++			Resonance
++	NPC Name: 		Head Patrol Officer
++	Map(s): 		Mushroom Castle: Corner of Mushroom Forest(106020000)
++	Description: 	Quest -  The Test
++=============================================================
++Version 1.0 - Script Done.(18/7/2010)
++=============================================================
++*/
++
++importPackage(Packages.client);
++
++var status = -1;
++
++function start(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++	    if(type == 1 && mode == 0)
++		    status -= 2;
++		else{
++			qm.sendOk("Hmmm... you must be unsure of your combat skills. We'll be here waiting for you, so come see us when you're ready.");
++		    qm.dispose();
++			return;
++		}
++	}
++	if (status == 0)
++		qm.sendAcceptDecline("We need your help, noble explorer. Our kingdom is currently facing a big threat, and we are in desperate need of a courageous explorer willing to fight for us, and that's how you ended up here. Please understand, though, that since we need place our faith in you, we'll have to test your skills first before we can stand firmly behind you. Will it be okay for you to do this for us?");
++	if (status == 1){
++		qm.forceStartQuest();
++		qm.sendOk("Keep moving forward, and you'll see #bRenegade Spores#k, the Spores that turned their backs on the Kingdom of Mushroom. We'd appreciate it if you can teach them a lesson or two, and bring back #b50 Mutated Spores#k in return.");
++		qm.dispose();
++	}
++}
++
++function end(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++	    if(type == 1 && mode == 0)
++		    status -= 2;
++		else{
++			qm.dispose();
++			return;
++		}
++	}
++	if (status == 0)
++		qm.sendOk("Did you teach those Renegade Spores a lesson?");
++	if (status == 1){
++		qm.forceCompleteQuest();
++		qm.gainExp(11500 * qm.getPlayer().getExpRate());
++		qm.gainItem(4000499, -50);
++		qm.sendOk("That was amazing. I apologize for doubting your abilities. Please save our Kingdom of Mushroom from this crisis!");
++		qm.dispose();
++	}
++}
++	
+\ No newline at end of file
+diff --git a/scripts/quest/2313.js b/scripts/quest/2313.js
+new file mode 100644
+index 000000000..6f8fb102a
+--- /dev/null
++++ b/scripts/quest/2313.js
+@@ -0,0 +1,50 @@
++/* ===========================================================
++			Resonance
++	NPC Name: 		Head Patrol Officer
++	Map(s): 		Mushroom Castle: Corner of Mushroom Forest(106020000)
++	Description: 	Quest -  The Story Behind the Case
++=============================================================
++Version 1.0 - Script Done.(18/7/2010)
++=============================================================
++*/
++
++importPackage(Packages.client);
++
++var status = -1;
++
++function start(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++	    if(type == 1 && mode == 0)
++		    status -= 2;
++		else{
++			qm.sendOk("There's not much time. Please hurry.");
++			qm.dispose();
++			return;
++		}
++	}
++	if (status == 0)
++		qm.sendAcceptDecline("I have told our #bMinister of Home Affairs#k of your abilities. Please go pay a visit to him immediately.");
++	if (status == 1){
++		qm.forceStartQuest();
++		qm.sendOk("Save our kingdom! We believe in you!");
++		qm.dispose();
++	}
++}
++
++function end(mode, type, selection) {
++    status++;
++	if (mode != 1) {
++		if(type == 1 && mode == 0)
++			status -= 2;
++		else {
++			qm.dispose();
++			return;
++		}
++	}
++	if (status == 0) {
++		qm.forceCompleteQuest(); 
++		qm.gainExp(4000 * qm.getPlayer().getExpRate());
++		qm.dispose();
++	}
++}
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index e31f48752..8464a822e 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -1881,13 +1881,15 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 			MapleMap map = player.getMap();
+                         List<MapleMapObject> monsters = map.getMapObjectsInRange(player.getPosition(), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER));
+                         
++                        int count = 0;
+ 			for (MapleMapObject monstermo : monsters) {
+ 				monster = (MapleMonster) monstermo;
+-				if (!monster.getStats().isFriendly()) {
++				if (!monster.getStats().isFriendly() && !(monster.getId() >= 8810010 && monster.getId() <= 8810018)) {
+                                         map.damageMonster(player, monster, Integer.MAX_VALUE);
++                                        count++;
+                                 }
+ 			}
+-			player.dropMessage(5, "Killed " + monsters.size() + " monsters.");
++			player.dropMessage(5, "Killed " + count + " monsters.");
+                     break;
+            
+ 		case "notice":
+diff --git a/src/net/mina/MapleCodecFactory.java b/src/net/mina/MapleCodecFactory.java
+index 83caca7a0..9ca3b76bd 100644
+--- a/src/net/mina/MapleCodecFactory.java
++++ b/src/net/mina/MapleCodecFactory.java
+@@ -35,14 +35,6 @@ public MapleCodecFactory() {
+         decoder = new MaplePacketDecoder();
+     }
+ 
+-    public ProtocolEncoder getEncoder() throws Exception {
+-        return encoder;
+-    }
+-
+-    public ProtocolDecoder getDecoder() throws Exception {
+-        return decoder;
+-    }
+-
+     @Override
+     public ProtocolEncoder getEncoder(IoSession session) throws Exception {
+         return encoder;
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index c0d549603..ac8f2f8d4 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -162,7 +162,7 @@ protected synchronized void applyAttack(AttackInfo attack, final MapleCharacter
+                     if (player.isAlive()) {
+                         if(attack.skill == NightWalker.POISON_BOMB) // Poison Bomb
+                             attackEffect.applyTo(player, new Point(attack.position.x, attack.position.y));
+-                        else
++                        else if(attack.skill != Aran.BODY_PRESSURE) // prevent BP refreshing
+                             attackEffect.applyTo(player);
+                     } else {
+                         player.getClient().announce(MaplePacketCreator.enableActions());
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 6e6b474f3..c9b70d859 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -78,8 +78,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		
+ 		MobSkill toUse = null;
+ 		
+-		int percHpLeft = (int) ((monster.getHp() / monster.getMaxHp()) * 100);
+-
++		int percHpLeft = (int) (((float) monster.getHp() / monster.getMaxHp()) * 100);
++                
+ 		if (nextMovementCouldBeSkill && monster.getNoSkills() > 0) {
+ 			int Random = Randomizer.nextInt(monster.getNoSkills());
+ 			Pair<Integer, Integer> skillToUse = monster.getSkills().get(Random);
+diff --git a/src/net/server/handlers/login/LoginPasswordHandler.java b/src/net/server/handlers/login/LoginPasswordHandler.java
+index 5e083a1d2..9447960ad 100644
+--- a/src/net/server/handlers/login/LoginPasswordHandler.java
++++ b/src/net/server/handlers/login/LoginPasswordHandler.java
+@@ -48,7 +48,6 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 
+         String login = slea.readMapleAsciiString();
+         String pwd = slea.readMapleAsciiString();
+-        String bcryptedpass = BCrypt.hashpw(pwd, BCrypt.gensalt(12));
+         c.setAccountName(login);
+ 
+         int loginok = c.login(login, pwd);
+diff --git a/src/scripting/portal/PortalPlayerInteraction.java b/src/scripting/portal/PortalPlayerInteraction.java
+index c21f0fe03..8ed88997a 100644
+--- a/src/scripting/portal/PortalPlayerInteraction.java
++++ b/src/scripting/portal/PortalPlayerInteraction.java
+@@ -28,6 +28,7 @@
+ import java.sql.SQLException;
+ import scripting.AbstractPlayerInteraction;
+ import server.MaplePortal;
++import server.quest.MapleQuest;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ 
+@@ -80,7 +81,23 @@ public boolean hasLevel30Character() {
+         
+         return getPlayer().getLevel() >= 30;
+     }
++    
++    public boolean forceStartQuest(int id) {
++            return forceStartQuest(id, 9010000);
++    }
+ 
++    public boolean forceStartQuest(int id, int npc) {
++            return MapleQuest.getInstance(id).forceStart(getPlayer(), npc);
++    }
++    
++    public boolean forceCompleteQuest(int id) {
++            return forceCompleteQuest(id, 9010000);
++    }
++
++    public boolean forceCompleteQuest(int id, int npc) {
++            return MapleQuest.getInstance(id).forceComplete(getPlayer(), npc);
++    }
++    
+     public void blockPortal() {
+         c.getPlayer().blockPortal(getPortal().getScriptName());
+     }
+diff --git a/src/scripting/quest/QuestScriptManager.java b/src/scripting/quest/QuestScriptManager.java
+index 4745dbb3e..22782c71d 100644
+--- a/src/scripting/quest/QuestScriptManager.java
++++ b/src/scripting/quest/QuestScriptManager.java
+@@ -162,4 +162,9 @@ public void dispose(MapleClient c) {
+ 	public QuestActionManager getQM(MapleClient c) {
+ 		return qms.get(c);
+ 	}
++        
++        public void reloadQuestScripts() {
++                scripts.clear();
++                qms.clear();
++        }
+ }
+diff --git a/src/server/MapleShopFactory.java b/src/server/MapleShopFactory.java
+index af7583950..005cf44ac 100644
+--- a/src/server/MapleShopFactory.java
++++ b/src/server/MapleShopFactory.java
+@@ -37,10 +37,6 @@ public static MapleShopFactory getInstance() {
+         return instance;
+     }
+ 
+-    public void reloadShops() {
+-        shops.clear();
+-    }
+-    
+     private MapleShop loadShop(int id, boolean isShopId) {
+         MapleShop ret = MapleShop.createFromDB(id, isShopId);
+         if (ret != null) {
+@@ -67,4 +63,9 @@ public MapleShop getShopForNPC(int npcId) {
+         }
+         return loadShop(npcId, false);
+     }
++    
++    public void reloadShops() {
++        shops.clear();
++        npcShops.clear();
++    }
+ }
+diff --git a/src/server/life/MobSkill.java b/src/server/life/MobSkill.java
+index 619c32b6b..9ea11cd78 100644
+--- a/src/server/life/MobSkill.java
++++ b/src/server/life/MobSkill.java
+@@ -221,7 +221,7 @@ public void applyEffect(MapleCharacter player, MapleMonster monster, boolean ski
+             case 155: // avoid up
+             case 156: // speed up
+                 break;
+-            case 200:
++            case 200: // summon
+                 if (monster.getMap().getSpawnedMonstersOnMap() < 80) {
+                     for (Integer mobId : getSummons()) {
+                         MapleMonster toSpawn = MapleLifeFactory.getMonster(mobId);

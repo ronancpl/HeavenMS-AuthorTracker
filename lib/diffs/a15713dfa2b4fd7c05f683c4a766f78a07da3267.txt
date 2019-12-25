@@ -1,0 +1,1537 @@
+diff --git a/docs/issues.txt b/docs/issues.txt
+index 2cc23a47a..e356c6a7d 100644
+--- a/docs/issues.txt
++++ b/docs/issues.txt
+@@ -5,8 +5,6 @@ Vcoc - Freelance Developer
+ 
+ ---------------------------
+ Known issues:
+-- Everytime two people click on an npc at the same time, one of them dcs and the other needs to @dispose to talk to the npc.
+-- If multiple people hit boxes/reactors at the same time, they both dc with invalid pointer error.
+ - Some criticals (e.g. from Aran skills) will not show up as crit for other players.
+ - Deadlocks may start appearing if the server stays online long enough with many players logged in.
+ - If there are multiple bosses that shows HPBar on the map, if a player hits more than one the HPBar may start flickering on the screen.
+@@ -57,6 +55,7 @@ Missing features list:
+ ---------------------------
+ ** Skills **
+ - Check autoban system
++- Attack speed reference for autoban, brought here thanks to GitGud: https://ayumilovemaple.wordpress.com/2009/09/06/maplestory-attack-speed-reference/
+ ---------------------------
+ 
+ 
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 5e062c1ec..76bf3fa70 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1014,7 +1014,7 @@ Modificado sistema de EXP de mounts de forma a favorecer usar Revitalizer quando
+ Retirado aspecto aleatório de ganho de closeness em pets ao usar o Pet Food, adicionado proteção a acesso concorrente.
+ Corrigido script da Arwen não retirando itens ao gerar certos itens.
+ Corrigido script de viagem para Florina levando jogadores a Lith Harbor mesmo quando entrando por outras regiões.
+-Corrigido Stance, Berserk, Ninja Storm, Concentrate, Mage skills and other 4th job skills questlines.
++Corrigido Stance, Berserk, Ninja Storm, Concentrate, Mage skills e outras questlines de skills de 4th job.
+ Novo release: Light.
+ 
+ 05 - 06 Junho 2018,
+@@ -1769,6 +1769,24 @@ Corrigido bug na CPQ em tempo estendido não mostrando devidamente o efeito visu
+ 
+ 27 Março 2019,
+ Corrigido possibilidade de bloqueio de volta do jogador ao jogo, ao utilizar o sistema de MTS/Cash Shop. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
++Corrigido instância de eventos finalizada ainda utilizando os scripts, levando a possíveis inconsistências em jogo. Premissa é: não deveriam existir mais ações de script após se finalizar uma instância.
++Ajustado Dimensional Door, agora permitindo jogadores a entrar no saguão de espera das MCPQs.
++Corrigido combo resetando orbs ao reusar a skill ainda ativa.
++Adicionado ganho de skill book Maple Warrior ao iniciar 4th job.
+ 
+ 28 Março 2019,
+-Corrigido possibilidade de congelamento de tela ao tentar trocar de canais. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
+\ No newline at end of file
++Corrigido problema com jogador não conseguindo coletar próprio drop se o mesmo estiver em party e for enviado para outro mapa e o mesmo retornar em tempo de exclusividade de coleta.
++Corrigido problema com jogador não conseguindo coletar drops de party após o mesmo voltar do MTS/Cash Shop ainda em tempo de exclusividade de coleta.
++Corrigido problema com jogador não conseguindo coletar drops com tempo de exclusividade de coleta já expirado.
++Revisado visão de ganho de EXP. Jogadores que participaram mais no dano de mob percebem o ganho de EXP em branco, caso contrário em amarelo.
++Corrigido possibilidade de congelamento de tela ao tentar trocar de canais. Problema ocorria devido a mudanças concorrentes de login states ao fazer a transição de volta ao jogo.
++
++01 Abril 2019,
++Adicionado mensagens ao spawnar mobs em boxes da LMPQ.
++Revisado conteúdo de ganho de EXP, onde mensagens de ganho simples (sem "party bonus") aparecem em amarelo caso o jogador ganhou experiência sem qualquer contribuição de dano no mob.
++Corrigido cliente não desconectando apropriadamente após fechar o jogo dentro do MTS/Cash Shop, levando a não-update de login state na DB.
++Corrigido inserção de PIC errado no sistema anti-multicliente impossibilitando contas de logarem usando um mesmo IP.
++
++04 Abril 2019,
++Corrigido comandos sem parâmetros contabilizando feed de "um parâmetro vazio".
++Ajustado moderadamente drop rate de vários equipamentos na DB.
+\ No newline at end of file
+diff --git a/scripts/event/GuardianNex.js b/scripts/event/GuardianNex.js
+index b2a9be576..982ee33b5 100644
+--- a/scripts/event/GuardianNex.js
++++ b/scripts/event/GuardianNex.js
+@@ -3,6 +3,7 @@ var timeLimit = 15; //15 minutes
+ var eventTimer = 1000 * 60 * timeLimit;
+ var exitMap = 240070000;
+ var eventMap = 240070010;
++var eventBossIds = [7120100, 7120101, 7120102, 8120100, 8120101, 8140510];
+ 
+ function init(){}
+ 
+@@ -42,22 +43,27 @@ function playerRevive(eim, player){
+ 
+ function playerDead(eim, player){}
+ 
+-function playerDisconnected(eim, player){
+-	var party = eim.getPlayers();
+-
+-	for(var i = 0; i < party.size(); i++){
+-		if(party.get(i).equals(player))
+-			removePlayer(eim, player);
+-		else
+-			playerExit(eim, party.get(i));
+-	}
+-	eim.dispose();
++function playerDisconnected(eim, player) {
++        if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                eim.unregisterPlayer(player);
++                end(eim);
++        }
++        else
++                eim.unregisterPlayer(player);
+ }
+ 
+ function monsterValue(eim, mobId){
+ 	return -1;
+ }
+ 
++function end(eim) {
++        var party = eim.getPlayers();
++        for (var i = 0; i < party.size(); i++) {
++                playerExit(eim, party.get(i));
++        }
++        eim.dispose();
++}
++
+ function leftParty(eim, player){}
+ 
+ function disbandParty(eim){}
+@@ -69,28 +75,32 @@ function playerExit(eim, player){
+ 	player.changeMap(exitMap);
+ }
+ 
+-function changedMap(eim, player, mapId){
+-	if(mapId != (eventMap + 10 * eim.getIntProperty("nex"))){
+-		removePlayer(eim, player);
+-		eim.stopEventTimer();
+-		eim.setEventCleared();
+-		eim.dispose();
+-	}
+-}
+-
+-function removePlayer(eim, player){
+-	eim.unregisterPlayer(player);
+-	player.getMap().removePlayer(player);
+-	player.setMap(exitMap);
++function changedMap(eim, player, mapid){
++	if (mapid != (eventMap + 10 * eim.getIntProperty("nex"))) {
++                if (eim.isEventTeamLackingNow(true, minPlayers, player)) {
++                        eim.unregisterPlayer(player);
++                        end(eim);
++                }
++                else
++                        eim.unregisterPlayer(player);
++        }
+ }
+ 
+ function cancelSchedule(){}
+ 
+ function dispose(){}
+ 
+-function clearPQ(eim){}
++function clearPQ(eim){
++        eim.stopEventTimer();
++        eim.setEventCleared();
++}
+ 
+-function monsterKilled(mob, eim){}
++function monsterKilled(mob, eim){
++        if (mob.getId() == eventBossIds[eim.getIntProperty("nex")]) {
++                eim.showClearEffect();
++                eim.clearPQ();
++        }
++}
+ 
+ function allMonstersDead(eim){}
+ 
+diff --git a/scripts/npc/2042005.js b/scripts/npc/2042005.js
+index 04bb08c1f..5008b8ef8 100644
+--- a/scripts/npc/2042005.js
++++ b/scripts/npc/2042005.js
+@@ -6,7 +6,7 @@
+ **/
+ 
+ var cpqMinLvl = 51;
+-var cpqMaxLvl = 69;
++var cpqMaxLvl = 70;
+ var cpqMinAmt = 2;
+ var cpqMaxAmt = 6;
+ 
+diff --git a/scripts/npc/2081100.js b/scripts/npc/2081100.js
+index c5b72ccb4..eccfb48ef 100644
+--- a/scripts/npc/2081100.js
++++ b/scripts/npc/2081100.js
+@@ -59,19 +59,24 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1) {
+                         if (mode >= 1 && cm.getJobId() % 100 % 10 != 2) {
+-                                cm.changeJobById(cm.getJobId() + 1);
+-                                if(cm.getJobId() == 112) {
+-                                        cm.teachSkill(1121001, 0, 10, -1);
+-                                        cm.teachSkill(1120004, 0, 10, -1);
+-                                        cm.teachSkill(1121008, 0, 10, -1);
+-                                } else if(cm.getJobId() == 122) {
+-                                        cm.teachSkill(1221001, 0, 10, -1);
+-                                        cm.teachSkill(1220005, 0, 10, -1);
+-                                        cm.teachSkill(1221009, 0, 10, -1);
+-                                } else if(cm.getJobId() == 132) {
+-                                        cm.teachSkill(1321001, 0, 10, -1);
+-                                        cm.teachSkill(1320005, 0, 10, -1);
+-                                        cm.teachSkill(1321007, 0, 10, -1);
++                                if (cm.canHold(2280003, 1)) {
++                                        cm.changeJobById(cm.getJobId() + 1);
++                                        if(cm.getJobId() == 112) {
++                                                cm.teachSkill(1121001, 0, 10, -1);
++                                                cm.teachSkill(1120004, 0, 10, -1);
++                                                cm.teachSkill(1121008, 0, 10, -1);
++                                        } else if(cm.getJobId() == 122) {
++                                                cm.teachSkill(1221001, 0, 10, -1);
++                                                cm.teachSkill(1220005, 0, 10, -1);
++                                                cm.teachSkill(1221009, 0, 10, -1);
++                                        } else if(cm.getJobId() == 132) {
++                                                cm.teachSkill(1321001, 0, 10, -1);
++                                                cm.teachSkill(1320005, 0, 10, -1);
++                                                cm.teachSkill(1321007, 0, 10, -1);
++                                        }
++                                        cm.gainItem(2280003, 1);
++                                } else {
++                                        cm.sendOk("Please have one slot available on #bUSE#k inventory to receive a skill book.");
+                                 }
+                         } else if(mode >= 0 && cm.getJobId() % 100 % 10 == 2) {
+                                 // TEMP until I can get the quest fixed...
+diff --git a/scripts/npc/2081200.js b/scripts/npc/2081200.js
+index b8a451a52..ecb0b3882 100644
+--- a/scripts/npc/2081200.js
++++ b/scripts/npc/2081200.js
+@@ -60,19 +60,24 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1) {
+                         if (mode >= 1 && cm.getJobId() % 100 % 10 != 2) {
+-                                cm.changeJobById(cm.getJobId() + 1);
+-                                if(cm.getJobId() == 212) {
+-                                        cm.teachSkill(2121001, 0, 10, -1);
+-                                        cm.teachSkill(2121002, 0, 10, -1);
+-                                        cm.teachSkill(2121006, 0, 10, -1);
+-                                } else if(cm.getJobId() == 222) {
+-                                        cm.teachSkill(2221001, 0, 10, -1);
+-                                        cm.teachSkill(2221002, 0, 10, -1);
+-                                        cm.teachSkill(2221006, 0, 10, -1);
+-                                } else if(cm.getJobId() == 232) {
+-                                        cm.teachSkill(2321001, 0, 10, -1);
+-                                        cm.teachSkill(2321002, 0, 10, -1);
+-                                        cm.teachSkill(2321005, 0, 10, -1);
++                                if (cm.canHold(2280003, 1)) {
++                                        cm.changeJobById(cm.getJobId() + 1);
++                                        if(cm.getJobId() == 212) {
++                                                cm.teachSkill(2121001, 0, 10, -1);
++                                                cm.teachSkill(2121002, 0, 10, -1);
++                                                cm.teachSkill(2121006, 0, 10, -1);
++                                        } else if(cm.getJobId() == 222) {
++                                                cm.teachSkill(2221001, 0, 10, -1);
++                                                cm.teachSkill(2221002, 0, 10, -1);
++                                                cm.teachSkill(2221006, 0, 10, -1);
++                                        } else if(cm.getJobId() == 232) {
++                                                cm.teachSkill(2321001, 0, 10, -1);
++                                                cm.teachSkill(2321002, 0, 10, -1);
++                                                cm.teachSkill(2321005, 0, 10, -1);
++                                        }
++                                        cm.gainItem(2280003, 1);
++                                } else {
++                                        cm.sendOk("Please have one slot available on #bUSE#k inventory to receive a skill book.");
+                                 }
+                         } else if( mode >= 1 && cm.getJobId() % 100 % 10 == 2) {
+                                 if(cm.getJobId() == 212) {
+diff --git a/scripts/npc/2081300.js b/scripts/npc/2081300.js
+index 1cfa61a43..5d8ef07f4 100644
+--- a/scripts/npc/2081300.js
++++ b/scripts/npc/2081300.js
+@@ -60,15 +60,20 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1) {
+                         if (mode >= 1 && cm.getJobId() % 100 % 10 != 2) {
+-                                cm.changeJobById(cm.getJobId() + 1);
+-                                if(cm.getJobId() == 312) {
+-                                        cm.teachSkill(3121002, 0, 10, -1);
+-                                        cm.teachSkill(3120005, 0, 10, -1);
+-                                        cm.teachSkill(3121007, 0, 10, -1);
+-                                } else if(cm.getJobId() == 322) {
+-                                        cm.teachSkill(3221002, 0, 10, -1);
+-                                        cm.teachSkill(3220004, 0, 10, -1);
+-                                        cm.teachSkill(3221006, 0, 10, -1);
++                                if (cm.canHold(2280003, 1)) {
++                                        cm.changeJobById(cm.getJobId() + 1);
++                                        if(cm.getJobId() == 312) {
++                                                cm.teachSkill(3121002, 0, 10, -1);
++                                                cm.teachSkill(3120005, 0, 10, -1);
++                                                cm.teachSkill(3121007, 0, 10, -1);
++                                        } else if(cm.getJobId() == 322) {
++                                                cm.teachSkill(3221002, 0, 10, -1);
++                                                cm.teachSkill(3220004, 0, 10, -1);
++                                                cm.teachSkill(3221006, 0, 10, -1);
++                                        }
++                                        cm.gainItem(2280003, 1);
++                                } else {
++                                        cm.sendOk("Please have one slot available on #bUSE#k inventory to receive a skill book.");
+                                 }
+                         } else if(mode >= 0 && cm.getJobId() % 100 % 10 == 2) {
+                                 if(cm.getJobId() == 312) {
+diff --git a/scripts/npc/2081400.js b/scripts/npc/2081400.js
+index 21590f4a4..c1fd82010 100644
+--- a/scripts/npc/2081400.js
++++ b/scripts/npc/2081400.js
+@@ -60,15 +60,20 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1) {
+                         if (mode >= 1 && cm.getJobId() % 100 % 10 != 2) {
+-                                cm.changeJobById(cm.getJobId() + 1);
+-                                if(cm.getJobId() == 412) {
+-                                        cm.teachSkill(4120002, 0, 10, -1);
+-                                        cm.teachSkill(4120005, 0, 10, -1);
+-                                        cm.teachSkill(4121006, 0, 10, -1);
+-                                } else if(cm.getJobId() == 422) {
+-                                        cm.teachSkill(4220002, 0, 10, -1);
+-                                        cm.teachSkill(4220005, 0, 10, -1);
+-                                        cm.teachSkill(4221007, 0, 10, -1);
++                                if (cm.canHold(2280003, 1)) {
++                                        cm.changeJobById(cm.getJobId() + 1);
++                                        if(cm.getJobId() == 412) {
++                                                cm.teachSkill(4120002, 0, 10, -1);
++                                                cm.teachSkill(4120005, 0, 10, -1);
++                                                cm.teachSkill(4121006, 0, 10, -1);
++                                        } else if(cm.getJobId() == 422) {
++                                                cm.teachSkill(4220002, 0, 10, -1);
++                                                cm.teachSkill(4220005, 0, 10, -1);
++                                                cm.teachSkill(4221007, 0, 10, -1);
++                                        }
++                                        cm.gainItem(2280003, 1);
++                                } else {
++                                        cm.sendOk("Please have one slot available on #bUSE#k inventory to receive a skill book.");
+                                 }
+                         } else if(mode >= 1 && cm.getJobId() % 100 % 10 == 2) {
+                                 if(cm.getJobId() == 412) {
+diff --git a/scripts/npc/2081500.js b/scripts/npc/2081500.js
+index 65283e112..aa2c83ec9 100644
+--- a/scripts/npc/2081500.js
++++ b/scripts/npc/2081500.js
+@@ -60,17 +60,22 @@ function action(mode, type, selection) {
+                         }
+                 } else if(status == 1) {
+                         if (mode >= 1 && cm.getJobId() % 100 % 10 != 2) {
+-                                cm.changeJobById(cm.getJobId() + 1);
+-                                if(cm.getJobId() == 512) {
+-                                        cm.teachSkill(5121001, 0, 10, -1);
+-                                        cm.teachSkill(5121002, 0, 10, -1);
+-                                        cm.teachSkill(5121007, 0, 10, -1);
+-                                        cm.teachSkill(5121009, 0, 10, -1);
+-                                } else if(cm.getJobId() == 522) {
+-                                        cm.teachSkill(5220001, 0, 10, -1);
+-                                        cm.teachSkill(5220002, 0, 10, -1);
+-                                        cm.teachSkill(5221004, 0, 10, -1);
+-                                        cm.teachSkill(5220011, 0, 10, -1);
++                                if (cm.canHold(2280003, 1)) {
++                                        cm.changeJobById(cm.getJobId() + 1);
++                                        if(cm.getJobId() == 512) {
++                                                cm.teachSkill(5121001, 0, 10, -1);
++                                                cm.teachSkill(5121002, 0, 10, -1);
++                                                cm.teachSkill(5121007, 0, 10, -1);
++                                                cm.teachSkill(5121009, 0, 10, -1);
++                                        } else if(cm.getJobId() == 522) {
++                                                cm.teachSkill(5220001, 0, 10, -1);
++                                                cm.teachSkill(5220002, 0, 10, -1);
++                                                cm.teachSkill(5221004, 0, 10, -1);
++                                                cm.teachSkill(5220011, 0, 10, -1);
++                                        }
++                                        cm.gainItem(2280003, 1);
++                                } else {
++                                        cm.sendOk("Please have one slot available on #bUSE#k inventory to receive a skill book.");
+                                 }
+                         } else if(mode >= 1 && cm.getJobId() % 100 % 10 == 2) {
+                                 if(cm.getJobId() == 512) {
+diff --git a/scripts/npc/2100.js b/scripts/npc/2100.js
+index 5b4c43d6d..1ec7ae27a 100644
+--- a/scripts/npc/2100.js
++++ b/scripts/npc/2100.js
+@@ -56,10 +56,10 @@ function action(mode, type, selection) {
+             cm.sendNext("It seems like you want to start your journey without taking the training program. Then, I will let you move on to the training ground. Be careful~");
+         }else if(status == 1){
+             cm.warp(1, 0);
+-            dispose();
++            cm.dispose();
+         }else{
+             cm.warp(40000, 0);
+-            dispose();
++            cm.dispose();
+         }
+     }else
+     if(status == 0)
+diff --git a/scripts/npc/9010022.js b/scripts/npc/9010022.js
+index e98268eac..495425e7f 100644
+--- a/scripts/npc/9010022.js
++++ b/scripts/npc/9010022.js
+@@ -33,14 +33,15 @@ function action(mode, type, selection) {
+                     selStr += "#1# Mu Lung Dojo"; 
+                 } 
+ 
+-                /*if (cm.getLevel() >= 30 && cm.getLevel() <= 50) { NOT IMPLEMENTED
++                if (cm.getLevel() >= 30 && cm.getLevel() <= 50) {   // MC 1 & 2 recalled thanks to ---
+                     selStr += "#2# Monster Carnival 1"; 
+                 } 
+ 
+-                if (cm.getLevel() >= 51 && cm.getLevel() <= 70) { NOT IMPLEMENTED
++                if (cm.getLevel() >= 51 && cm.getLevel() <= 70) {
+                     selStr += "#3# Monster Carnival 2"; 
+                 } 
+ 
++                /*
+                 if (cm.getLevel() >= 40) { NOT IMPLEMENTED
+                     selStr += "#5# Nett's Pyramid"; 
+                 } 
+@@ -62,9 +63,11 @@ function action(mode, type, selection) {
+                     cm.warp(925020000, 0); 
+                     break; 
+                 case 2: 
++                    cm.getPlayer().saveLocation("MONSTER_CARNIVAL"); 
+                     cm.warp(980000000, 3); 
+                     break; 
+                 case 3: 
++                    cm.getPlayer().saveLocation("MONSTER_CARNIVAL"); 
+                     cm.warp(980030000, 3); 
+                     break; 
+                 case 5: 
+diff --git a/scripts/quest/21401.js b/scripts/quest/21401.js
+index 0e5270825..dea993fd1 100644
+--- a/scripts/quest/21401.js
++++ b/scripts/quest/21401.js
+@@ -55,8 +55,14 @@ function end(mode, type, selection) {
+ 				qm.dispose();
+ 				return;
+ 			}
++                        if (!qm.canHold(2280003, 1)) {
++                                qm.sendOk("Hey, your #buse#k inventory is full. I need you to make at least 1 empty slot to complete this quest.");
++				qm.dispose();
++				return;
++                        }
+ 			
+ 			qm.gainItem(1142132, true);
++                        qm.gainItem(2280003, 1);
+ 			qm.changeJobById(2112);
+ 			
+ 			qm.completeQuest();
+diff --git a/scripts/reactor/8091000.js b/scripts/reactor/8091000.js
+index aac306067..6705ea90c 100644
+--- a/scripts/reactor/8091000.js
++++ b/scripts/reactor/8091000.js
+@@ -28,4 +28,5 @@
+ function act(){
+     rm.spawnMonster(9400210, 2);
+     rm.spawnMonster(9400209, 2);
++    rm.mapMessage(5, "Some monsters are summoned.");
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/8091001.js b/scripts/reactor/8091001.js
+index 3a4e17224..b3d8dff1f 100644
+--- a/scripts/reactor/8091001.js
++++ b/scripts/reactor/8091001.js
+@@ -28,4 +28,5 @@
+ function act(){
+     rm.spawnMonster(9400211, 2);
+     rm.spawnMonster(9400212, 2);
++    rm.mapMessage(5, "Some monsters are summoned.");
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/8091002.js b/scripts/reactor/8091002.js
+index ad6c65e70..83fe1c191 100644
+--- a/scripts/reactor/8091002.js
++++ b/scripts/reactor/8091002.js
+@@ -28,4 +28,5 @@
+ function act(){
+     rm.spawnMonster(9400213, 2);
+     rm.spawnMonster(9400214, 2);
++    rm.mapMessage(5, "Some monsters are summoned.");
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/8091003.js b/scripts/reactor/8091003.js
+index 2f74a0506..69b5724a8 100644
+--- a/scripts/reactor/8091003.js
++++ b/scripts/reactor/8091003.js
+@@ -28,4 +28,5 @@
+ function act(){
+     rm.spawnMonster(9400215, 2);
+     rm.spawnMonster(9400216, 2);
++    rm.mapMessage(5, "Some monsters are summoned.");
+ }
+\ No newline at end of file
+diff --git a/scripts/reactor/8091004.js b/scripts/reactor/8091004.js
+index 58b8ddab4..3ab923251 100644
+--- a/scripts/reactor/8091004.js
++++ b/scripts/reactor/8091004.js
+@@ -28,4 +28,5 @@
+ function act(){
+     rm.spawnMonster(9400217, 2);
+     rm.spawnMonster(9400218, 2);
++    rm.mapMessage(5, "Some monsters are summoned.");
+ }
+\ No newline at end of file
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 478a60e8b..687eb7f70 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -23914,3 +23914,5 @@ SET minimum_quantity = CASE
+                        WHEN dropperid = 9500369 AND itemid = 2060000 THEN 24
+   ELSE maximum_quantity END
+ ;
++
++  UPDATE drop_data SET `chance`=1287 WHERE `chance`=1500;
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 5982fee93..f3119ff66 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -2992,8 +2992,7 @@ public void gainExp(int gain, int party, boolean show, boolean inChat, boolean w
+         
+         int equip = (int) Math.min((long)(gain / 10) * pendantExp, Integer.MAX_VALUE);
+         
+-        long total = (long) gain + equip + party;
+-        gainExpInternal(total, equip, party, show, inChat, white);
++        gainExpInternal((long) gain, equip, party, show, inChat, white);
+     }
+     
+     public void loseExp(int loss, boolean show, boolean inChat) {
+@@ -3004,8 +3003,23 @@ public void loseExp(int loss, boolean show, boolean inChat, boolean white) {
+         gainExpInternal(-loss, 0, 0, show, inChat, white);
+     }
+     
++    private void announceExpGain(long gain, int equip, int party, boolean inChat, boolean white) {
++        gain = Math.min(gain, Integer.MAX_VALUE);
++        if (gain == 0) {
++            if (party == 0) {
++                return;
++            }
++            
++            gain = party;
++            party = 0;
++            white = false;
++        }
++        
++        client.announce(MaplePacketCreator.getShowExpGain((int) gain, equip, party, inChat, white));
++    }
++    
+     private synchronized void gainExpInternal(long gain, int equip, int party, boolean show, boolean inChat, boolean white) {   // need of method synchonization here detected thanks to MedicOP
+-        long total = Math.max(gain, -exp.get());
++        long total = Math.max(gain + equip + party, -exp.get());
+         
+         if (level < getMaxLevel() && (allowExpGain || this.getEventInstance() != null)) {
+             long leftover = 0;
+@@ -3016,8 +3030,8 @@ private synchronized void gainExpInternal(long gain, int equip, int party, boole
+                 leftover = nextExp - Integer.MAX_VALUE;
+             }
+             updateSingleStat(MapleStat.EXP, exp.addAndGet((int) total));
+-            if (show && gain != 0) {
+-                client.announce(MaplePacketCreator.getShowExpGain((int)Math.min(gain, Integer.MAX_VALUE), equip, party, inChat, white));
++            if (show) {
++                announceExpGain(gain, equip, party, inChat, white);
+             }
+             while (exp.get() >= ExpTable.getExpNeededForLevel(level)) {
+                 levelUp(true);
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index c76de7b74..224f8db0c 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1474,7 +1474,6 @@ public void changeChannel(int channel) {
+                 player.unregisterChairBuff();
+ 		server.getPlayerBuffStorage().addBuffsToStorage(player.getId(), player.getAllBuffs());
+                 server.getPlayerBuffStorage().addDiseasesToStorage(player.getId(), player.getAllDiseases());
+-                player.setSessionTransitionState();
+                 player.setDisconnectedFromChannelWorld();
+                 player.notifyMapTransferToPartner(-1);
+                 player.removeIncomingInvites();
+@@ -1491,8 +1490,10 @@ public void changeChannel(int channel) {
+ 		player.getMap().removePlayer(player);
+                 player.clearBanishPlayerData();
+ 		player.getClient().getChannelServer().removePlayer(player);
+-		player.getClient().updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
+-		try {
++		
++                player.getClient().updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++		player.setSessionTransitionState();
++                try {
+ 			announce(MaplePacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
+ 		} catch (IOException e) {
+                     e.printStackTrace();
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index a1d9c3e9e..daf53a4f4 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -81,7 +81,7 @@ private CommandsExecutor(){
+     }
+     
+     public void handle(MapleClient client, String message){
+-            if (client.tryacquireClient()) {
++        if (client.tryacquireClient()) {
+             try {
+                 handleInternal(client, message);
+             } finally {
+@@ -113,8 +113,8 @@ private void handleInternal(MapleClient client, String message){
+             return;
+         }
+         String[] params;
+-        if (lowercaseParams.length > 0) {
+-             params = Arrays.copyOfRange(lowercaseParams, 0, lowercaseParams.length);
++        if (lowercaseParams.length > 0 && !lowercaseParams[0].isEmpty()) {
++            params = Arrays.copyOfRange(lowercaseParams, 0, lowercaseParams.length);
+         } else {
+             params = new String[]{};
+         }
+diff --git a/src/client/command/commands/gm6/WarpWorldCommand.java b/src/client/command/commands/gm6/WarpWorldCommand.java
+index 30cd7e25a..00496f32e 100644
+--- a/src/client/command/commands/gm6/WarpWorldCommand.java
++++ b/src/client/command/commands/gm6/WarpWorldCommand.java
+@@ -53,6 +53,7 @@ public void execute(MapleClient c, String[] params) {
+                 c.getWorldServer().removePlayer(player);
+                 player.getMap().removePlayer(player);//LOL FORGOT THIS ><
+                 c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++                player.setSessionTransitionState();
+                 player.setWorld(worldb);
+                 player.saveCharToDB();//To set the new world :O (true because else 2 player instances are created, one in both worlds)
+                 c.announce(MaplePacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index e506de0c2..49ec85be3 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -150,8 +150,6 @@
+     public static final float PARTY_BONUS_EXP_RATE = 1.0f;          //Rate for the party exp bonus reward.
+     public static final double PQ_BONUS_EXP_RATE = 0.5;             //Rate for the PQ exp reward.
+     
+-    public static final int PARTY_EXPERIENCE_MOD = 1;               //Change for event stuff.
+-    
+     //Miscellaneous Configuration
+     public static String TIMEZONE = "GMT-3";
+     public static boolean USE_DISPLAY_NUMBERS_WITH_COMMA = true;        //Enforce comma on displayed strings (use this when USE_UNITPRICE_WITH_COMMA is active and you still want to display comma-separated values).
+diff --git a/src/net/opcodes/SendOpcode.java b/src/net/opcodes/SendOpcode.java
+index 7a48ee7c4..2e374bffe 100644
+--- a/src/net/opcodes/SendOpcode.java
++++ b/src/net/opcodes/SendOpcode.java
+@@ -329,6 +329,7 @@
+     CHARGE_PARAM_RESULT(0x143),
+     QUERY_CASH_RESULT(0x144),
+     CASHSHOP_OPERATION(0x145),
++    CASHSHOP_PURCHASE_EXP_CHANGED(0x146),   // found thanks to Arnah (Vertisy)
+     CASHSHOP_GIFT_INFO_RESULT(0x147),
+     CASHSHOP_CHECK_NAME_CHANGE(0x148),
+     CASHSHOP_CHECK_NAME_CHANGE_POSSIBLE_RESULT(0x149),
+diff --git a/src/net/server/channel/handlers/CashShopSurpriseHandler.java b/src/net/server/channel/handlers/CashShopSurpriseHandler.java
+index 6de6c73ef..7a12f9acc 100644
+--- a/src/net/server/channel/handlers/CashShopSurpriseHandler.java
++++ b/src/net/server/channel/handlers/CashShopSurpriseHandler.java
+@@ -25,6 +25,7 @@
+ import server.CashShop;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ import tools.MaplePacketCreator;
++import tools.Pair;
+ 
+ /**
+  *
+@@ -36,11 +37,14 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         CashShop cs = c.getPlayer().getCashShop();
+         
+         if(cs.isOpened()) {
+-            Item cssItem = cs.openCashShopSurprise();
++            Pair<Item, Item> cssResult = cs.openCashShopSurprise();
+             
+-            if(cssItem != null) {
++            if(cssResult != null) {
++                //Item cssItem = cssResult.getLeft(), cssBox = cssResult.getRight();
++                //c.announce(MaplePacketCreator.onCashGachaponOpenSuccess(c.getAccID(), cssBox.getSN(), cssBox.getQuantity(), cssItem, cssItem.getItemId(), cssItem.getQuantity(), true));
+                 c.announce(MaplePacketCreator.showCashShopMessage((byte) 0xA4));
+             } else {
++                //c.announce(MaplePacketCreator.onCashItemGachaponOpenFailed());
+                 c.announce(MaplePacketCreator.showCashShopMessage((byte) 0x00));
+             }
+         }
+diff --git a/src/net/server/channel/handlers/ChangeMapHandler.java b/src/net/server/channel/handlers/ChangeMapHandler.java
+index 424ad492b..f12e865ac 100644
+--- a/src/net/server/channel/handlers/ChangeMapHandler.java
++++ b/src/net/server/channel/handlers/ChangeMapHandler.java
+@@ -61,11 +61,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 			}
+ 			String[] socket = c.getChannelServer().getIP().split(":");
+ 			chr.getCashShop().open(false);
+-			c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++			
++                        c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
++                        chr.setSessionTransitionState();
+ 			try {
+ 				c.announce(MaplePacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
+ 			} catch (UnknownHostException ex) {
+-                            ex.printStackTrace();
++                                ex.printStackTrace();
+ 			}
+ 		} else {
+ 			if(chr.getCashShop().isOpened()) {
+diff --git a/src/net/server/channel/handlers/EnterCashShopHandler.java b/src/net/server/channel/handlers/EnterCashShopHandler.java
+index 69c8fe3a3..7d86d574b 100644
+--- a/src/net/server/channel/handlers/EnterCashShopHandler.java
++++ b/src/net/server/channel/handlers/EnterCashShopHandler.java
+@@ -65,7 +65,6 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+             mc.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(mc.getId(), mc.getAllBuffs());
+             Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(mc.getId(), mc.getAllDiseases());
+-            mc.setSessionTransitionState();
+             mc.setAwayFromChannelWorld();
+             mc.notifyMapTransferToPartner(-1);
+             mc.removeIncomingInvites();
+diff --git a/src/net/server/channel/handlers/EnterMTSHandler.java b/src/net/server/channel/handlers/EnterMTSHandler.java
+index e658dc34b..4bab7b410 100644
+--- a/src/net/server/channel/handlers/EnterMTSHandler.java
++++ b/src/net/server/channel/handlers/EnterMTSHandler.java
+@@ -91,7 +91,6 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             chr.unregisterChairBuff();
+             Server.getInstance().getPlayerBuffStorage().addBuffsToStorage(chr.getId(), chr.getAllBuffs());
+             Server.getInstance().getPlayerBuffStorage().addDiseasesToStorage(chr.getId(), chr.getAllDiseases());
+-            chr.setSessionTransitionState();
+             chr.setAwayFromChannelWorld();
+             chr.notifyMapTransferToPartner(-1);
+             chr.removeIncomingInvites();
+diff --git a/src/net/server/coordinator/MapleSessionCoordinator.java b/src/net/server/coordinator/MapleSessionCoordinator.java
+index 048a3f77f..f3d351d3f 100644
+--- a/src/net/server/coordinator/MapleSessionCoordinator.java
++++ b/src/net/server/coordinator/MapleSessionCoordinator.java
+@@ -439,7 +439,7 @@ public AntiMulticlientResult attemptGameSession(IoSession session, int accountId
+         }
+         
+         try {
+-            String nibbleHwid = (String) session.removeAttribute(MapleClient.CLIENT_NIBBLEHWID);
++            String nibbleHwid = (String) session.getAttribute(MapleClient.CLIENT_NIBBLEHWID);   // thanks Paxum for noticing account stuck after PIC failure
+             if (nibbleHwid != null) {
+                 onlineRemoteHwids.remove(nibbleHwid);
+                 
+diff --git a/src/net/server/handlers/login/CharSelectedWithPicHandler.java b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+index 0a505747f..31ac500d9 100644
+--- a/src/net/server/handlers/login/CharSelectedWithPicHandler.java
++++ b/src/net/server/handlers/login/CharSelectedWithPicHandler.java
+@@ -51,11 +51,6 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         c.updateHWID(hwid);
+         
+         IoSession session = c.getSession();
+-        AntiMulticlientResult res = MapleSessionCoordinator.getInstance().attemptGameSession(session, c.getAccID(), hwid);
+-        if (res != AntiMulticlientResult.SUCCESS) {
+-            c.announce(MaplePacketCreator.getAfterLoginError(parseAntiMulticlientError(res)));
+-            return;
+-        }
+         
+         if (c.hasBannedMac() || c.hasBannedHWID()) {
+             MapleSessionCoordinator.getInstance().closeSession(c.getSession(), true);
+@@ -82,6 +77,12 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+                 return;
+             }
+             
++            AntiMulticlientResult res = MapleSessionCoordinator.getInstance().attemptGameSession(session, c.getAccID(), hwid);
++            if (res != AntiMulticlientResult.SUCCESS) {
++                c.announce(MaplePacketCreator.getAfterLoginError(parseAntiMulticlientError(res)));
++                return;
++            }
++            
+             server.unregisterLoginState(c);
+             c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
+             server.setCharacteridInTransition(session, charId);
+diff --git a/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java b/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
+index ace134cb3..21cb54477 100644
+--- a/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
++++ b/src/net/server/handlers/login/ViewAllCharSelectedWithPicHandler.java
+@@ -59,11 +59,6 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         }
+         
+         IoSession session = c.getSession();
+-        AntiMulticlientResult res = MapleSessionCoordinator.getInstance().attemptGameSession(session, c.getAccID(), hwid);
+-        if (res != AntiMulticlientResult.SUCCESS) {
+-            c.announce(MaplePacketCreator.getAfterLoginError(parseAntiMulticlientError(res)));
+-            return;
+-        }
+         
+         Server server = Server.getInstance();
+         if(!server.haveCharacterEntry(c.getAccID(), charId)) {
+@@ -88,6 +83,12 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+                 return;
+             }
+             
++            AntiMulticlientResult res = MapleSessionCoordinator.getInstance().attemptGameSession(session, c.getAccID(), hwid);
++            if (res != AntiMulticlientResult.SUCCESS) {
++                c.announce(MaplePacketCreator.getAfterLoginError(parseAntiMulticlientError(res)));
++                return;
++            }
++            
+             server.unregisterLoginState(c);
+             c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION);
+             server.setCharacteridInTransition(session, charId);
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 859c8c82a..74b1c5ab7 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -22,8 +22,6 @@
+ package scripting.event;
+ 
+ import java.io.File;
+-import java.sql.PreparedStatement;
+-import java.sql.SQLException;
+ import tools.Pair;
+ import java.util.ArrayList;
+ import java.util.LinkedList;
+@@ -51,20 +49,12 @@
+ import server.maps.MapleMap;
+ import server.maps.MapleMapFactory;
+ import server.maps.MapleReactor;
+-import tools.DatabaseConnection;
+ import client.MapleCharacter;
+ import client.SkillFactory;
+ import client.Skill;
+-import client.inventory.Item;
+-import client.inventory.ItemFactory;
+-import client.inventory.MapleInventory;
+-import client.inventory.MapleInventoryType;
+-import client.inventory.manipulator.MapleInventoryManipulator;
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ import java.awt.Point;
+-import java.sql.Connection;
+-import java.util.Arrays;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+@@ -79,7 +69,6 @@
+ import server.life.MapleLifeFactory;
+ import server.life.MapleNPC;
+ import tools.MaplePacketCreator;
+-import tools.Randomizer;
+ 
+ /**
+  *
+@@ -236,6 +225,14 @@ public void giveEventPlayersMeso(int gain, int mapId) {
+                 }
+                 
+ 	}
++        
++        public Object invokeScriptFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
++                if (!disposed) {
++                        return em.getIv().invokeFunction(name, args);
++                } else {
++                        return null;
++                }
++        }
+ 
+         public synchronized void registerPlayer(final MapleCharacter chr) {
+                 registerPlayer(chr, true);
+@@ -260,7 +257,7 @@ public synchronized void registerPlayer(final MapleCharacter chr, boolean runEnt
+                 
+                 if (runEntryScript) {
+                         try {
+-                                em.getIv().invokeFunction("playerEntry", EventInstanceManager.this, chr);
++                                invokeScriptFunction("playerEntry", EventInstanceManager.this, chr);
+                         } catch (ScriptException | NoSuchMethodException ex) {
+                                 ex.printStackTrace();
+                         }
+@@ -275,7 +272,7 @@ public void exitPlayer(final MapleCharacter chr) {
+                 unregisterPlayer(chr);
+                 
+                 try {
+-                        em.getIv().invokeFunction("playerExit", EventInstanceManager.this, chr);
++                        invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -306,7 +303,7 @@ public void run() {
+                                 dismissEventTimer();
+                                 
+                                 try {
+-                                        em.getIv().invokeFunction("scheduledTimeout", EventInstanceManager.this);
++                                        invokeScriptFunction("scheduledTimeout", EventInstanceManager.this);
+                                 } catch (ScriptException | NoSuchMethodException ex) {
+                                         Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, "Event '" + em.getName() + "' does not implement scheduledTimeout function.", ex);
+                                 }
+@@ -326,7 +323,7 @@ public void run() {
+                                                 dismissEventTimer();
+ 
+                                                 try {
+-                                                        em.getIv().invokeFunction("scheduledTimeout", EventInstanceManager.this);
++                                                        invokeScriptFunction("scheduledTimeout", EventInstanceManager.this);
+                                                 } catch (ScriptException | NoSuchMethodException ex) {
+                                                         Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, "Event '" + em.getName() + "' does not implement scheduledTimeout function.", ex);
+                                                 }
+@@ -395,7 +392,7 @@ private void registerExpeditionTeam(MapleExpedition exped, int recruitMap) {
+ 
+ 	public void unregisterPlayer(final MapleCharacter chr) {
+                 try {
+-                        em.getIv().invokeFunction("playerUnregistered", EventInstanceManager.this, chr);
++                        invokeScriptFunction("playerUnregistered", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         Logger.getLogger(EventManager.class.getName()).log(Level.SEVERE, "Event '" + em.getName() + "' does not implement playerUnregistered function.", ex);
+                 }
+@@ -456,7 +453,7 @@ public void registerMonster(MapleMonster mob) {
+ 
+ 	public void movePlayer(final MapleCharacter chr) {
+                 try {
+-                        em.getIv().invokeFunction("moveMap", EventInstanceManager.this, chr);
++                        invokeScriptFunction("moveMap", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -464,19 +461,19 @@ public void movePlayer(final MapleCharacter chr) {
+         
+         public void changedMap(final MapleCharacter chr, final int mapId) {
+                 try {
+-                        em.getIv().invokeFunction("changedMap", EventInstanceManager.this, chr, mapId);
++                        invokeScriptFunction("changedMap", EventInstanceManager.this, chr, mapId);
+                 } catch (ScriptException | NoSuchMethodException ex) {} // optional
+ 	}
+         
+         public void afterChangedMap(final MapleCharacter chr, final int mapId) {
+                 try {
+-                        em.getIv().invokeFunction("afterChangedMap", EventInstanceManager.this, chr, mapId);
++                        invokeScriptFunction("afterChangedMap", EventInstanceManager.this, chr, mapId);
+                 } catch (ScriptException | NoSuchMethodException ex) {} // optional
+ 	}
+         
+         public synchronized void changedLeader(final MapleCharacter ldr) {
+                 try {
+-                        em.getIv().invokeFunction("changedLeader", EventInstanceManager.this, ldr);
++                        invokeScriptFunction("changedLeader", EventInstanceManager.this, ldr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -504,14 +501,14 @@ public void monsterKilled(final MapleMonster mob, final boolean hasKiller) {
+                 
+                 if (scriptResult > 0) {
+                         try {
+-                                em.getIv().invokeFunction("monsterKilled", mob, EventInstanceManager.this, hasKiller);
++                                invokeScriptFunction("monsterKilled", mob, EventInstanceManager.this, hasKiller);
+                         } catch (ScriptException | NoSuchMethodException ex) {
+                                 ex.printStackTrace();
+                         }
+                         
+                         if (scriptResult > 1) {
+                                 try {
+-                                        em.getIv().invokeFunction("allMonstersDead", EventInstanceManager.this, hasKiller);
++                                        invokeScriptFunction("allMonstersDead", EventInstanceManager.this, hasKiller);
+                                 } catch (ScriptException | NoSuchMethodException ex) {
+                                         ex.printStackTrace();
+                                 }
+@@ -521,7 +518,7 @@ public void monsterKilled(final MapleMonster mob, final boolean hasKiller) {
+         
+         public void friendlyKilled(final MapleMonster mob, final boolean hasKiller) {
+                 try {
+-                        em.getIv().invokeFunction("friendlyKilled", mob, EventInstanceManager.this, hasKiller);
++                        invokeScriptFunction("friendlyKilled", mob, EventInstanceManager.this, hasKiller);
+                 } catch (ScriptException | NoSuchMethodException ex) {} //optional
+ 	}
+ 
+@@ -530,7 +527,7 @@ public void playerKilled(final MapleCharacter chr) {
+                         @Override
+                         public void run() {
+                                 try {
+-                                        em.getIv().invokeFunction("playerDead", EventInstanceManager.this, chr);
++                                        invokeScriptFunction("playerDead", EventInstanceManager.this, chr);
+                                 } catch (ScriptException | NoSuchMethodException ex) {} // optional
+                         }
+                 });
+@@ -538,13 +535,13 @@ public void run() {
+ 
+         public void reviveMonster(final MapleMonster mob) {
+                 try {
+-                        em.getIv().invokeFunction("monsterRevive", EventInstanceManager.this, mob);
++                        invokeScriptFunction("monsterRevive", EventInstanceManager.this, mob);
+                 } catch (ScriptException | NoSuchMethodException ex) {} // optional
+ 	}
+         
+ 	public boolean revivePlayer(final MapleCharacter chr) {
+                 try {
+-                        Object b = em.getIv().invokeFunction("playerRevive", EventInstanceManager.this, chr);
++                        Object b = invokeScriptFunction("playerRevive", EventInstanceManager.this, chr);
+                         if (b instanceof Boolean) {
+                                 return (Boolean) b;
+                         }
+@@ -555,7 +552,7 @@ public boolean revivePlayer(final MapleCharacter chr) {
+         
+ 	public void playerDisconnected(final MapleCharacter chr) {
+                 try {
+-                        em.getIv().invokeFunction("playerDisconnected", EventInstanceManager.this, chr);
++                        invokeScriptFunction("playerDisconnected", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -568,9 +565,9 @@ public void monsterKilled(MapleCharacter chr, final MapleMonster mob) {
+                         int inc;
+                         
+                         if (ServerConstants.JAVA_8) {
+-                                inc = (int)em.getIv().invokeFunction("monsterValue", EventInstanceManager.this, mob.getId());
++                                inc = (int)invokeScriptFunction("monsterValue", EventInstanceManager.this, mob.getId());
+                         } else {
+-                                inc = ((Double) em.getIv().invokeFunction("monsterValue", EventInstanceManager.this, mob.getId())).intValue();
++                                inc = ((Double) invokeScriptFunction("monsterValue", EventInstanceManager.this, mob.getId())).intValue();
+                         }
+                         
+                         if (inc != 0) {
+@@ -609,12 +606,12 @@ public void dispose() {
+         public synchronized void dispose(boolean shutdown) {    // should not trigger any event script method after disposed
+                 if(disposed) return;
+                 
+-                disposed = true;
+                 try {
+-                        em.getIv().invokeFunction("dispose", EventInstanceManager.this);
++                        invokeScriptFunction("dispose", EventInstanceManager.this);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
++                disposed = true;
+                 
+                 ess.dispose();
+                 
+@@ -690,7 +687,7 @@ public void schedule(final String methodName, long delay) {
+                                         @Override
+                                         public void run() {
+                                                 try {
+-                                                        em.getIv().invokeFunction(methodName, EventInstanceManager.this);
++                                                        invokeScriptFunction(methodName, EventInstanceManager.this);
+                                                 } catch (ScriptException | NoSuchMethodException ex) {
+                                                         ex.printStackTrace();
+                                                 }
+@@ -789,7 +786,7 @@ public Object getObjectProperty(String key) {
+ 	
+ 	public void leftParty(final MapleCharacter chr) {
+                 try {
+-                        em.getIv().invokeFunction("leftParty", EventInstanceManager.this, chr);
++                        invokeScriptFunction("leftParty", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -797,7 +794,7 @@ public void leftParty(final MapleCharacter chr) {
+ 
+ 	public void disbandParty() {
+ 		try {
+-                        em.getIv().invokeFunction("disbandParty", EventInstanceManager.this);
++                        invokeScriptFunction("disbandParty", EventInstanceManager.this);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -805,7 +802,7 @@ public void disbandParty() {
+ 
+ 	public void clearPQ() {
+                 try {
+-                        em.getIv().invokeFunction("clearPQ", EventInstanceManager.this);
++                        invokeScriptFunction("clearPQ", EventInstanceManager.this);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -813,7 +810,7 @@ public void clearPQ() {
+ 
+ 	public void removePlayer(final MapleCharacter chr) {
+                 try {
+-                        em.getIv().invokeFunction("playerExit", EventInstanceManager.this, chr);
++                        invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+@@ -1081,7 +1078,7 @@ public final synchronized void startEvent() {
+                 eventStarted = true;
+                 
+                 try {
+-                        em.getIv().invokeFunction("afterSetup", EventInstanceManager.this);
++                        invokeScriptFunction("afterSetup", EventInstanceManager.this);
+                 } catch (ScriptException | NoSuchMethodException ex) {
+                         ex.printStackTrace();
+                 }
+diff --git a/src/server/CashShop.java b/src/server/CashShop.java
+index 6ebb3bd3d..ae07b4890 100644
+--- a/src/server/CashShop.java
++++ b/src/server/CashShop.java
+@@ -557,7 +557,7 @@ private Item getCashShopItemByItemid(int itemid) {
+         return null;
+     }
+     
+-    public synchronized Item openCashShopSurprise() {
++    public synchronized Pair<Item, Item> openCashShopSurprise() {
+         Item css = getCashShopItemByItemid(5222000);
+         
+         if(css != null) {
+@@ -577,7 +577,7 @@ public synchronized Item openCashShopSurprise() {
+                 Item item = cItem.toItem();
+                 addToInventory(item);
+ 
+-                return item;
++                return new Pair<>(item, css);
+             } else {
+                 return null;
+             }
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 8b5591062..10b003ece 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1107,7 +1107,7 @@ public void updateBuffEffect(MapleCharacter target, List<Pair<MapleBuffStat, Int
+     }
+ 
+     private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, boolean primary) {
+-        if (!isMonsterRiding() && !isCouponBuff() && !isMysticDoor() && !isHyperBody()) {     // last mystic door already dispelled if it has been used before.
++        if (!isMonsterRiding() && !isCouponBuff() && !isMysticDoor() && !isHyperBody() && !isCombo()) {     // last mystic door already dispelled if it has been used before.
+             applyto.cancelEffect(this, true, -1);
+         }
+ 
+@@ -1190,7 +1190,12 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+                 List<Pair<MapleBuffStat, Integer>> dsstat = Collections.singletonList(new Pair<>(MapleBuffStat.WIND_WALK, 0));
+                 mbuff = MaplePacketCreator.giveForeignBuff(applyto.getId(), dsstat);
+             } else if (isCombo()) {
+-                mbuff = MaplePacketCreator.giveForeignBuff(applyto.getId(), statups);
++                Integer comboCount = applyto.getBuffedValue(MapleBuffStat.COMBO);
++                if (comboCount == null) comboCount = 0;
++                
++                List<Pair<MapleBuffStat, Integer>> cbstat = Collections.singletonList(new Pair<>(MapleBuffStat.COMBO, comboCount));
++                buff = MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), localDuration, cbstat);
++                mbuff = MaplePacketCreator.giveForeignBuff(applyto.getId(), cbstat);
+             } else if (isMonsterRiding()) {
+                 if (sourceid == Corsair.BATTLE_SHIP) {//hp
+                     if (applyto.getBattleshipHp() <= 0) {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 7aa48eb76..8a7e1bcd0 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -535,15 +535,34 @@ private int calcThresholdLevel(boolean isPqMob) {
+         }
+     }
+     
+-    private void propagateExperienceGains(Map<MapleCharacter, Float> personalExpReward, Map<MapleCharacter, Float> partyExpReward) {
++    private static double calcExperienceStandDevThreshold(Map<MapleCharacter, Float> personalExpReward, float exp2) {
++        float avgExpReward = 0.0f;
++        for (Float exp : personalExpReward.values()) {
++            avgExpReward += exp;
++        }
++        
++        avgExpReward -= exp2;   // clear out the 20% raw exp from last hitting
++        avgExpReward /= personalExpReward.size();
++        
++        float varExpReward = 0.0f;
++        for (Float exp : personalExpReward.values()) {
++            varExpReward += Math.pow(exp - avgExpReward, 2);
++        }
++        varExpReward /= personalExpReward.size();
++        
++        return avgExpReward + Math.sqrt(varExpReward);
++    }
++    
++    private void propagateExperienceGains(Map<MapleCharacter, Float> personalExpReward, Map<MapleCharacter, Float> partyExpReward, float exp2) {
+         Set<MapleCharacter> expRewardPlayers = new HashSet<>(personalExpReward.keySet());
+         expRewardPlayers.addAll(partyExpReward.keySet());
+         
++        double sdevExp = calcExperienceStandDevThreshold(personalExpReward, exp2);
+         for (MapleCharacter chr : expRewardPlayers) {
+             Float personalExp = personalExpReward.get(chr);
+             Float partyExp = partyExpReward.get(chr);
+             
+-            this.giveExpToCharacter(chr, personalExp, partyExp);
++            this.giveExpToCharacter(chr, personalExp, partyExp, personalExp != null && personalExp >= sdevExp);
+         }
+     }
+     
+@@ -628,7 +647,7 @@ private void distributeExperience(int killerId) {
+             mc.showUnderleveledInfo(this);
+         }
+         
+-        propagateExperienceGains(personalExpReward, partyExpReward);
++        propagateExperienceGains(personalExpReward, partyExpReward, killerLevel != Integer.MAX_VALUE ? exp2 : 0.0f);
+     }
+     
+     private float getStatusExpMultiplier(MapleCharacter attacker) {
+@@ -663,7 +682,7 @@ private static int expValueToInteger(double exp) {
+         return (int) exp;
+     }
+     
+-    private void giveExpToCharacter(MapleCharacter attacker, Float personalExp, Float partyExp) {
++    private void giveExpToCharacter(MapleCharacter attacker, Float personalExp, Float partyExp, boolean white) {
+         if (attacker.isAlive()) {
+             if (personalExp != null) {
+                 personalExp *= getStatusExpMultiplier(attacker);
+@@ -689,7 +708,7 @@ private void giveExpToCharacter(MapleCharacter attacker, Float personalExp, Floa
+             
+             int _partyExp = expValueToInteger(partyExp);
+             
+-            attacker.gainExp(_personalExp, _partyExp, true, false, false);
++            attacker.gainExp(_personalExp, _partyExp, true, false, white);
+             attacker.increaseEquipExp(_personalExp);
+             attacker.updateQuestMobCount(getId());
+         }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 5bac4baeb..6e5ded039 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -1069,7 +1069,7 @@ public void sendPackets(MapleClient c) {
+                 if (chr.needQuestItem(questid, idrop.getItemId())) {
+                     mdrop.lockItem();
+                     try {
+-                        c.announce(MaplePacketCreator.dropItemFromMapObject(chr.getParty() != null, mdrop, dropper.getPosition(), dropPos, (byte) 1));
++                        c.announce(MaplePacketCreator.dropItemFromMapObject(chr, mdrop, dropper.getPosition(), dropPos, (byte) 1));
+                     } finally {
+                         mdrop.unlockItem();
+                     }
+@@ -1091,7 +1091,7 @@ public final void spawnMesoDrop(final int meso, final Point position, final Mapl
+             public void sendPackets(MapleClient c) {
+                 mdrop.lockItem();
+                 try {
+-                    c.announce(MaplePacketCreator.dropItemFromMapObject(c.getPlayer().getParty() != null, mdrop, dropper.getPosition(), droppos, (byte) 1));
++                    c.announce(MaplePacketCreator.dropItemFromMapObject(c.getPlayer(), mdrop, dropper.getPosition(), droppos, (byte) 1));
+                 } finally {
+                     mdrop.unlockItem();
+                 }
+@@ -2179,7 +2179,7 @@ public final void spawnItemDrop(final MapleMapObject dropper, final MapleCharact
+             public void sendPackets(MapleClient c) {
+                 mdrop.lockItem();
+                 try {
+-                    c.announce(MaplePacketCreator.dropItemFromMapObject(c.getPlayer().getParty() != null, mdrop, dropper.getPosition(), droppos, (byte) 1));
++                    c.announce(MaplePacketCreator.dropItemFromMapObject(c.getPlayer(), mdrop, dropper.getPosition(), droppos, (byte) 1));
+                 } finally {
+                     mdrop.unlockItem();
+                 }
+@@ -2877,7 +2877,7 @@ private void broadcastItemDropMessage(MapleMapItem mdrop, Point dropperPos, Poin
+         chrRLock.lock();
+         try {
+             for (MapleCharacter chr : characters) {
+-                final byte[] packet = MaplePacketCreator.dropItemFromMapObject(chr.getParty() != null, mdrop, dropperPos, dropPos, mod);
++                final byte[] packet = MaplePacketCreator.dropItemFromMapObject(chr, mdrop, dropperPos, dropPos, mod);
+                 
+                 if (rangeSq < Double.POSITIVE_INFINITY) {
+                     if (rangedFrom.distanceSq(chr.getPosition()) <= rangeSq) {
+diff --git a/src/server/maps/MapleMapItem.java b/src/server/maps/MapleMapItem.java
+index 9d0bd4e8a..163845b01 100644
+--- a/src/server/maps/MapleMapItem.java
++++ b/src/server/maps/MapleMapItem.java
+@@ -23,6 +23,7 @@
+ import client.MapleCharacter;
+ import client.MapleClient;
+ import client.inventory.Item;
++import constants.ServerConstants;
+ import java.awt.Point;
+ import java.util.concurrent.locks.Lock;
+ import tools.MaplePacketCreator;
+@@ -35,7 +36,7 @@
+     protected MapleMapObject dropper;
+     protected int character_ownerid, party_ownerid, meso, questid = -1;
+     protected byte type;
+-    protected boolean pickedUp = false, playerDrop;
++    protected boolean pickedUp = false, playerDrop, partyDrop;
+     protected long dropTime;
+     private Lock itemLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.MAP_ITEM);
+ 
+@@ -45,6 +46,7 @@ public MapleMapItem(Item item, Point position, MapleMapObject dropper, MapleChar
+ 	this.dropper = dropper;
+         this.character_ownerid = owner.getId();
+         this.party_ownerid = owner.getPartyId();
++        this.partyDrop = this.party_ownerid != -1;
+         this.ownerClient = owner.getClient();
+ 	this.meso = 0;
+ 	this.type = type;
+@@ -57,6 +59,7 @@ public MapleMapItem(Item item, Point position, MapleMapObject dropper, MapleChar
+ 	this.dropper = dropper;
+         this.character_ownerid = owner.getId();
+         this.party_ownerid = owner.getPartyId();
++        this.partyDrop = this.party_ownerid != -1;
+ 	this.ownerClient = owner.getClient();
+         this.meso = 0;
+ 	this.type = type;
+@@ -70,6 +73,7 @@ public MapleMapItem(int meso, Point position, MapleMapObject dropper, MapleChara
+ 	this.dropper = dropper;
+ 	this.character_ownerid = owner.getId();
+         this.party_ownerid = owner.getPartyId();
++        this.partyDrop = this.party_ownerid != -1;
+         this.ownerClient = owner.getClient();
+         this.meso = meso;
+ 	this.type = type;
+@@ -105,6 +109,20 @@ public final void setPartyOwnerId(int partyid) {
+         party_ownerid = partyid;
+     }
+     
++    public final int getClientsideOwnerId(MapleCharacter player) {
++        if (this.party_ownerid == -1) {
++            return this.character_ownerid;
++        } else {
++            if (!partyDrop && player.getId() == this.character_ownerid) {
++                return player.getId();
++            } else if (player.getPartyId() == this.party_ownerid) {
++                return player.getId();
++            } else {
++                return this.party_ownerid;
++            }
++        }
++    }
++    
+     public final boolean isFFADrop() {
+         return type == 2 || type == 3 || hasExpiredOwnershipTime();
+     }
+@@ -187,7 +205,7 @@ public void sendSpawnData(final MapleClient client) {
+ 	if (chr.needQuestItem(questid, getItemId())) {
+ 	    this.lockItem();
+             try {
+-                client.announce(MaplePacketCreator.dropItemFromMapObject(chr.getParty() != null, this, null, getPosition(), (byte) 2));
++                client.announce(MaplePacketCreator.dropItemFromMapObject(chr, this, null, getPosition(), (byte) 2));
+             } finally {
+                 this.unlockItem();
+             }
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 2ffeaf616..e231aafdd 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -1668,7 +1668,7 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+                 mplew.writeBool(white);
+                 mplew.writeInt(gain);
+                 mplew.writeBool(inChat);
+-                mplew.writeInt(0); // monster book bonus (Bonus Event Exp)
++                mplew.writeInt(0); // bonus event exp
+                 mplew.write(0); // third monster kill event
+                 mplew.write(0); // RIP byte, this is always a 0
+                 mplew.writeInt(0); //wedding bonus
+@@ -1676,9 +1676,7 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+                         mplew.write(0);
+                 }
+ 
+-                int mod = ServerConstants.PARTY_EXPERIENCE_MOD != 1 ? ServerConstants.PARTY_EXPERIENCE_MOD * 100 : 0;
+-
+-                mplew.write(mod); //0 = party bonus, 100 = 1x Bonus EXP, 200 = 2x Bonus EXP
++                mplew.write(0); //0 = party bonus, 100 = 1x Bonus EXP, 200 = 2x Bonus EXP
+                 mplew.writeInt(party); // party bonus 
+                 mplew.writeInt(equip); //equip bonus
+                 mplew.writeInt(0); //Internet Cafe Bonus
+@@ -1808,15 +1806,15 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] dropItemFromMapObject(boolean recvrInParty, MapleMapItem drop, Point dropfrom, Point dropto, byte mod) {
++        public static byte[] dropItemFromMapObject(MapleCharacter player, MapleMapItem drop, Point dropfrom, Point dropto, byte mod) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.DROP_ITEM_FROM_MAPOBJECT.getValue());
+                 mplew.write(mod);
+                 mplew.writeInt(drop.getObjectId());
+                 mplew.writeBool(drop.getMeso() > 0); // 1 mesos, 0 item, 2 and above all item meso bag,
+                 mplew.writeInt(drop.getItemId()); // drop object ID
+-                mplew.writeInt(!drop.isFFADrop() ? (recvrInParty ? drop.getPartyOwnerId() : drop.getOwnerId()) : 0); // owner charid/partyid :)
+-                mplew.write(drop.getDropType()); // 0 = timeout for non-owner, 1 = timeout for non-owner's party, 2 = FFA, 3 = explosive/FFA
++                mplew.writeInt(drop.getClientsideOwnerId(player)); // owner charid/partyid :)
++                mplew.write(!drop.hasExpiredOwnershipTime() ? drop.getDropType() : 2); // 0 = timeout for non-owner, 1 = timeout for non-owner's party, 2 = FFA, 3 = explosive/FFA
+                 mplew.writePos(dropto);
+                 mplew.writeInt(drop.getDropper().getObjectId()); // dropper oid, found thanks to Li Jixue
+ 
+@@ -6759,7 +6757,28 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+ 
+                 return mplew.getPacket();
+         }
++        
++        // Cash Shop Surprise packets found thanks to Arnah (Vertisy)
++        public static byte[] onCashItemGachaponOpenFailed(){
++		MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++		mplew.writeShort(SendOpcode.CASHSHOP_CASH_ITEM_GACHAPON_RESULT.getValue());
++		mplew.write(189);
++		return mplew.getPacket();
++	}
+ 
++	public static byte[] onCashGachaponOpenSuccess(int accountid, long sn, int remainingBoxes, Item item, int itemid, int nSelectedItemCount, boolean bJackpot){
++		MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++		mplew.writeShort(SendOpcode.CASHSHOP_CASH_ITEM_GACHAPON_RESULT.getValue());
++		mplew.write(190);
++		mplew.writeLong(sn);// sn of the box used
++		mplew.writeInt(remainingBoxes);
++		addCashItemInformation(mplew, item, accountid);
++		mplew.writeInt(itemid);// the itemid of the liSN?
++		mplew.write(nSelectedItemCount);// the total count now? o.O
++		mplew.writeBool(bJackpot);// "CashGachaponJackpot"
++		return mplew.getPacket();
++	}
++        
+         private static void getGuildInfo(final MaplePacketLittleEndianWriter mplew, MapleGuild guild) {
+                 mplew.writeInt(guild.getId());
+                 mplew.writeMapleAsciiString(guild.getName());
+@@ -7495,7 +7514,7 @@ public static void addCashItemInformation(final MaplePacketLittleEndianWriter mp
+ 
+                 return mplew.getPacket();
+         }
+-
++        
+         /*
+          * 00 = Due to an unknown error, failed
+          * A4 = Due to an unknown error, failed + warpout
+diff --git a/wz/Map.wz/Map/Map0/001010400.img.xml b/wz/Map.wz/Map/Map0/001010400.img.xml
+index dbe653609..1ad0c2a97 100644
+--- a/wz/Map.wz/Map/Map0/001010400.img.xml
++++ b/wz/Map.wz/Map/Map0/001010400.img.xml
+@@ -103,7 +103,7 @@
+   <imgdir name="life">
+     <imgdir name="0">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-374"/>
+       <int name="y" value="-760"/>
+       <int name="mobTime" value="0"/>
+@@ -116,7 +116,7 @@
+     </imgdir>
+     <imgdir name="1">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-172"/>
+       <int name="y" value="-764"/>
+       <int name="mobTime" value="0"/>
+@@ -129,7 +129,7 @@
+     </imgdir>
+     <imgdir name="2">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="25"/>
+       <int name="y" value="-759"/>
+       <int name="mobTime" value="0"/>
+@@ -142,7 +142,7 @@
+     </imgdir>
+     <imgdir name="3">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="211"/>
+       <int name="y" value="-768"/>
+       <int name="mobTime" value="0"/>
+@@ -155,7 +155,7 @@
+     </imgdir>
+     <imgdir name="4">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="377"/>
+       <int name="y" value="-756"/>
+       <int name="mobTime" value="0"/>
+@@ -168,7 +168,7 @@
+     </imgdir>
+     <imgdir name="5">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="322"/>
+       <int name="y" value="-1111"/>
+       <int name="mobTime" value="0"/>
+@@ -181,7 +181,7 @@
+     </imgdir>
+     <imgdir name="6">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="458"/>
+       <int name="y" value="-1119"/>
+       <int name="mobTime" value="0"/>
+@@ -194,7 +194,7 @@
+     </imgdir>
+     <imgdir name="7">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="98"/>
+       <int name="y" value="-1064"/>
+       <int name="mobTime" value="0"/>
+@@ -207,7 +207,7 @@
+     </imgdir>
+     <imgdir name="8">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-41"/>
+       <int name="y" value="-1062"/>
+       <int name="mobTime" value="0"/>
+@@ -220,7 +220,7 @@
+     </imgdir>
+     <imgdir name="9">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-132"/>
+       <int name="y" value="-1241"/>
+       <int name="mobTime" value="0"/>
+@@ -233,7 +233,7 @@
+     </imgdir>
+     <imgdir name="10">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-280"/>
+       <int name="y" value="-1242"/>
+       <int name="mobTime" value="0"/>
+@@ -246,7 +246,7 @@
+     </imgdir>
+     <imgdir name="11">
+       <string name="type" value="m"/>
+-      <string name="id" value="9300274"/>
++      <string name="id" value="9500102"/>
+       <int name="x" value="-332"/>
+       <int name="y" value="-995"/>
+       <int name="mobTime" value="0"/>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 30c363625..c654dabc5 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -8339,7 +8339,7 @@
+       <int name="npc" value="12100"/>
+       <imgdir name="mob">
+         <imgdir name="0">
+-          <int name="id" value="9300274"/>
++          <int name="id" value="9500102"/>
+           <int name="count" value="2"/>
+         </imgdir>
+       </imgdir>
+diff --git a/wz/Quest.wz/QuestInfo.img.xml b/wz/Quest.wz/QuestInfo.img.xml
+index 18f7d8137..4bf2cd870 100644
+--- a/wz/Quest.wz/QuestInfo.img.xml
++++ b/wz/Quest.wz/QuestInfo.img.xml
+@@ -2541,8 +2541,8 @@
+     <string name="name" value="Mai&apos;s Last Training"/>
+     <string name="parent" value="Mai&apos;s Training!"/>
+     <int name="order" value="4"/>
+-    <string name="1" value="I defeated the Slimes and brought back the Squishy Liquid to Mai. She seemed to be impressed, and instructed me this time to hunt a really powerful monster. She then told me to hunt #r2 Cynical Orange Mushrooms#k.\n\nCynical Orange Mushroom #r#a10441##k"/>
+-    <string name="2" value="I was able to defeat 2 Cynical Orange Mushrooms and reported the result to Mai."/>
++    <string name="1" value="I defeated the Slimes and brought back the Squishy Liquid to Mai. She seemed to be impressed, and instructed me this time to hunt a really powerful monster. She then told me to hunt #r2 Orange Mushrooms#k.\n\nOrange Mushroom #r#a10441##k"/>
++    <string name="2" value="I was able to defeat 2 Orange Mushrooms and reported the result to Mai."/>
+     <int name="area" value="20"/>
+   </imgdir>
+   <imgdir name="10440">
+diff --git a/wz/Quest.wz/Say.img.xml b/wz/Quest.wz/Say.img.xml
+index 63c54d3fb..93d550fc3 100644
+--- a/wz/Quest.wz/Say.img.xml
++++ b/wz/Quest.wz/Say.img.xml
+@@ -4503,22 +4503,21 @@
+     <imgdir name="0">
+       <string name="0" value="Oh wow! You really brought me Squishy Liquid from the Slime. You&apos;re doing much better than I expected. I think... you&apos;re now ready to take on a really challenging monster."/>
+       <imgdir name="yes">
+-        <string name="0" value="Alright, this time, you&apos;ll need to take on #r2 Cynical Orange Mushrooms#k. They are pretty tough and powerful, but thankfully they aren&apos;t the Blue Mushrooms you&apos;ll find at Victoria Island. They are basically regular Orange Mushrooms, so if you focus on the combat, you should be able to handle those two."/>
++        <string name="0" value="So, reports of late shows up a growth on masses of Orange Mushrooms around. Your job, as an aspiring Explorer, is to help us cutting out #r2 Orange Mushrooms#k. They are pretty tough and powerful, but don&apos;t take so much fear from this fact! If you trust in your abilities and focus on the combat, you should be able to handle those two handily."/>
+       </imgdir>
+       <imgdir name="no">
+         <string name="0" value="Hmmm... did I really scare you? Don&apos;t worry. If you are persistent, you&apos;ll be able to handle those two. I won&apos;t make you hunt monsters that you can&apos;t handle, you know."/>
+       </imgdir>
+-      <string name="1" value="So, reports of late shows up a growth on masses of distempered Orange Mushrooms around. Some explorers seems to not get their job done after they started engaging combat. That has been making some Orange Mushrooms rather... uhh, cynical... towards us humans... "/>
+     </imgdir>
+     <imgdir name="1">
+-      <string name="0" value="So you did defeat 2 Cynical Orange Mushrooms. That&apos;s incredible! Seriously, you&apos;re doing much better than I ever thought possible! You may be just a beginner, but I have a feeling that you&apos;ll one day become a legendary hero in Maple World."/>
++      <string name="0" value="So you did defeat 2 Orange Mushrooms. That&apos;s incredible! Seriously, you&apos;re doing much better than I ever thought possible! You may be just a beginner, but I have a feeling that you&apos;ll one day become a legendary hero in Maple World."/>
+       <imgdir name="yes">
+         <string name="0" value="The training is now complete. You may still have some weaknesses here and there, but you&apos;ll be able to overcome that in no time. Keep training!"/>
+         <string name="1" value="Oh, and I have one last #btest#k for you. Think of it as a final exam. If you aren&apos;t satisfied with your current skill level and want to push further, then meet #bBari#k, who will have a test in store for you."/>
+       </imgdir>
+       <imgdir name="stop">
+         <imgdir name="mob">
+-          <string name="0" value="I don&apos;t think you&apos;ve slayed #r2 Cynical Orange Mushrooms#k yet. Please take care of both, then let me know of the results."/>
++          <string name="0" value="I don&apos;t think you&apos;ve slayed #r2 Orange Mushrooms#k yet. Please take care of both, then let me know of the results."/>
+         </imgdir>
+       </imgdir>
+     </imgdir>

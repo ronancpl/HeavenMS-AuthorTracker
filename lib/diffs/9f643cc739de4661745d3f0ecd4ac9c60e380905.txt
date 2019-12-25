@@ -1,0 +1,119 @@
+diff --git a/scripts/npc/1300001.js b/scripts/npc/1300001.js
+index c85bed6f6..d343c5b7f 100644
+--- a/scripts/npc/1300001.js
++++ b/scripts/npc/1300001.js
+@@ -17,10 +17,6 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/* NPC Base
+-	Map Name (Map ID)
+-	Extra NPC info.
+- */
+ 
+ var status;
+  
+diff --git a/scripts/npc/1300006.js b/scripts/npc/1300006.js
+index 07faf284d..27353fb69 100644
+--- a/scripts/npc/1300006.js
++++ b/scripts/npc/1300006.js
+@@ -17,10 +17,6 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/* NPC Base
+-	Map Name (Map ID)
+-	Extra NPC info.
+- */
+ 
+ var status;
+  
+diff --git a/scripts/npc/1300012.js b/scripts/npc/1300012.js
+index bca7fc824..953252d06 100644
+--- a/scripts/npc/1300012.js
++++ b/scripts/npc/1300012.js
+@@ -17,10 +17,6 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-/* NPC Base
+-	Map Name (Map ID)
+-	Extra NPC info.
+- */
+ 
+ var status;
+  
+diff --git a/scripts/npc/1300013.js b/scripts/npc/1300013.js
+index 33309b308..561fb5f6e 100644
+--- a/scripts/npc/1300013.js
++++ b/scripts/npc/1300013.js
+@@ -2,7 +2,6 @@
+ 	NPC: Blocked Entrance (portal?)
+ 	MAP: Mushroom Castle - East Castle Tower (106021400)
+ */
+-importPackage(Packages.tools);
+ 
+ var status;
+ 
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 112fbb257..cb8586ee9 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -965,8 +965,37 @@ public Channel getChannelServer(byte channel) {
+ 		return Server.getInstance().getChannel(world, channel);
+ 	}
+ 
++        private boolean hasCharacter(int cid) throws SQLException {
++                Connection con = null;
++                PreparedStatement ps = null;
++                ResultSet rs = null;
++                
++                try {
++                        con = DatabaseConnection.getConnection();
++                        ps = con.prepareStatement("SELECT id FROM characters WHERE accountid = ?");
++                        ps.setInt(1, getAccID());
++                        
++                        rs = ps.executeQuery();
++                        while (rs.next()) {
++                                if (rs.getInt("id") == cid) {
++                                        return true;
++                                }
++                        }
++                } finally {
++                        if(rs != null && !rs.isClosed()) rs.close();
++                        if(ps != null && !ps.isClosed()) ps.close();
++                        if(con != null && !con.isClosed()) con.close();
++                }
++                
++                return false;
++        }
++        
+ 	public boolean deleteCharacter(int cid) {
+                 try {
++                        if(!hasCharacter(cid)) {
++                                return false;
++                        }
++                    
+                         return MapleCharacter.deleteCharFromDB(MapleCharacter.loadCharFromDB(cid, this, false));
+                 } catch(SQLException ex) {
+                         ex.printStackTrace();
+diff --git a/src/net/server/handlers/login/DeleteCharHandler.java b/src/net/server/handlers/login/DeleteCharHandler.java
+index b6b678aa8..f31101c37 100644
+--- a/src/net/server/handlers/login/DeleteCharHandler.java
++++ b/src/net/server/handlers/login/DeleteCharHandler.java
+@@ -34,9 +34,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         String pic = slea.readMapleAsciiString();
+         int cid = slea.readInt();
+         if (c.checkPic(pic)) {
+-            FilePrinter.printError(FilePrinter.DELETED_CHARACTERS + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid + "\r\n");			
+-            c.announce(MaplePacketCreator.deleteCharResponse(cid, 0));
+-            c.deleteCharacter(cid);
++            if(c.deleteCharacter(cid)) {
++                FilePrinter.printError(FilePrinter.DELETED_CHARACTERS + c.getAccountName() + ".txt", c.getAccountName() + " deleted CID: " + cid + "\r\n");			
++                c.announce(MaplePacketCreator.deleteCharResponse(cid, 0));
++            } else {
++                c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x14));
++            }
+         } else {
+             c.announce(MaplePacketCreator.deleteCharResponse(cid, 0x14));
+         }

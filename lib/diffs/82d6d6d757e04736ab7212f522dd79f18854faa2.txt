@@ -1,0 +1,305 @@
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 363fac19f..415a87b72 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -61,7 +61,6 @@
+ 
+ import org.apache.mina.core.session.IoSession;
+ 
+-import net.server.world.announcer.MapleAnnouncerCoordinator;
+ import client.inventory.MapleInventoryType;
+ import constants.GameConstants;
+ import constants.ServerConstants;
+@@ -95,7 +94,6 @@
+ 	private MapleAESOFB receive;
+ 	private final IoSession session;
+         private MapleCharacter player;
+-        private MapleAnnouncerCoordinator announcer = MapleAnnouncerCoordinator.getInstance();
+ 	private int channel = 1;
+ 	private int accId = -4;
+ 	private boolean loggedIn = false;
+@@ -120,6 +118,7 @@
+         private final Semaphore actionsSemaphore = new Semaphore(7);
+ 	private final Lock lock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT, true);
+         private final Lock encoderLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_ENCODER, true);
++        private final Lock announcerLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.CLIENT_ANNOUNCER, true);
+         private static final Lock loginLocks[] = new Lock[200];  // thanks Masterrulax & try2hack for pointing out a bottleneck issue here
+         private Calendar tempBanCalendar;
+ 	private int votePoints;
+@@ -1143,13 +1142,6 @@ public int getWorld() {
+ 
+ 	public void setWorld(int world) {
+ 		this.world = world;
+-                
+-                World wserv = Server.getInstance().getWorld(world);
+-                if (wserv != null) {
+-                        this.announcer = wserv.getAnnouncerCoordinator();
+-                } else {
+-                        this.announcer = MapleAnnouncerCoordinator.getInstance();
+-                }
+ 	}
+ 
+ 	public void pongReceived() {
+@@ -1475,7 +1467,12 @@ public synchronized void announceBossHpBar(MapleMonster mm, final int mobHash, f
+ 	}
+         
+         public void announce(final byte[] packet) {     // thanks GitGud for noticing an opportunity for improvement by overcoming "synchronized announce"
+-                announcer.append(session, packet);
++                announcerLock.lock();
++                try {
++                        session.write(packet);
++                } finally {
++                        announcerLock.unlock();
++                }
+ 	}
+ 
+         public void announceHint(String msg, int length) {
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 5093c4544..723e52b1c 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -71,7 +71,6 @@
+ import net.server.worker.ReleaseLockWorker;
+ import net.server.worker.RespawnWorker;
+ import net.server.world.World;
+-import net.server.world.announcer.MapleAnnouncerCoordinator;
+ 
+ import org.apache.mina.core.buffer.IoBuffer;
+ import org.apache.mina.core.buffer.SimpleBufferAllocator;
+@@ -950,7 +949,6 @@ public void init() {
+             System.exit(0);
+         }
+         
+-        MapleAnnouncerCoordinator.getInstance().init();
+         System.out.println();
+         
+         if(ServerConstants.USE_FAMILY_SYSTEM) {
+diff --git a/src/net/server/audit/locks/MonitoredLockType.java b/src/net/server/audit/locks/MonitoredLockType.java
+index b1662d04c..64eed9e9f 100644
+--- a/src/net/server/audit/locks/MonitoredLockType.java
++++ b/src/net/server/audit/locks/MonitoredLockType.java
+@@ -35,6 +35,7 @@
+     CHARACTER_EVT,
+     CHARACTER_STA,
+     CLIENT,
++    CLIENT_ANNOUNCER,
+     CLIENT_ENCODER,
+     CLIENT_SESSION,
+     CLIENT_LOGIN,
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index e1179c403..ddf1e8f7f 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -98,7 +98,6 @@
+ import net.server.worker.TimedMapObjectWorker;
+ import net.server.worker.TimeoutWorker;
+ import net.server.worker.WeddingReservationWorker;
+-import net.server.world.announcer.MapleAnnouncerCoordinator;
+ import tools.DatabaseConnection;
+ import tools.MaplePacketCreator;
+ import tools.Pair;
+@@ -125,7 +124,6 @@
+     private PlayerStorage players = new PlayerStorage();
+     private MapleMatchCheckerCoordinator matchChecker = new MapleMatchCheckerCoordinator();
+     private MaplePartySearchCoordinator partySearch = new MaplePartySearchCoordinator();
+-    private MapleAnnouncerCoordinator announcer = new MapleAnnouncerCoordinator();
+     
+     private final ReentrantReadWriteLock chnLock = new MonitoredReentrantReadWriteLock(MonitoredLockType.WORLD_CHANNELS, true);
+     private ReadLock chnRLock = chnLock.readLock();
+@@ -224,8 +222,6 @@ public World(int world, int flag, String eventmsg, int exprate, int droprate, in
+             FamilyDailyResetWorker.resetEntitlementUsage(this);
+             tman.register(new FamilyDailyResetWorker(this), 24 * 60 * 60 * 1000, timeLeft);
+         }
+-        
+-        announcer.init();
+     }
+ 
+     public int getChannelsSize() {
+@@ -557,10 +553,6 @@ public MaplePartySearchCoordinator getPartySearchCoordinator() {
+         return partySearch;
+     }
+     
+-    public MapleAnnouncerCoordinator getAnnouncerCoordinator() {
+-        return announcer;
+-    }
+-
+     public void addPlayer(MapleCharacter chr) {
+         players.addPlayer(chr);
+     }
+@@ -2170,7 +2162,6 @@ public final void shutdown() {
+         players.disconnectAll();
+         players = null;
+         
+-        announcer.shutdown();
+         clearWorldData();
+         System.out.println("Finished shutting down world " + id + "\r\n");
+     }
+diff --git a/src/net/server/world/announcer/MapleAnnouncerCoordinator.java b/src/net/server/world/announcer/MapleAnnouncerCoordinator.java
+deleted file mode 100644
+index 92cb1d0d0..000000000
+--- a/src/net/server/world/announcer/MapleAnnouncerCoordinator.java
++++ /dev/null
+@@ -1,83 +0,0 @@
+-/*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2019 RonanLana
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package net.server.world.announcer;
+-
+-import java.util.concurrent.ConcurrentLinkedQueue;
+-import org.apache.mina.core.session.IoSession;
+-import net.server.world.announcer.MapleAnnouncerEntryPool.SessionPacket;
+-
+-/**
+- *
+- * @author Ronan
+- */
+-public class MapleAnnouncerCoordinator {
+-    
+-    private static final MapleAnnouncerCoordinator instance = new MapleAnnouncerCoordinator();
+-    
+-    public static MapleAnnouncerCoordinator getInstance() {   // world-agnostic Announcer coordinator
+-        return instance;
+-    }
+-    
+-    private MapleAnnouncerEntryPool pool = new MapleAnnouncerEntryPool();
+-    private ConcurrentLinkedQueue<SessionPacket> queue = new ConcurrentLinkedQueue<>();
+-    private Thread t;
+-    
+-    public void append(IoSession io, byte[] packet) {
+-        queue.offer(pool.getSessionPacket(io, packet));
+-    }
+-    
+-    public void init() {
+-        final Runnable r = new Runnable() {
+-            @Override
+-            public void run() {
+-                while (!Thread.interrupted()) {
+-                    try {
+-                        SessionPacket p = queue.poll();
+-                        if (p != null) {
+-                            IoSession session = p.getSession();
+-                            byte[] packet = p.getPacket();
+-
+-                            session.write(packet);
+-                            pool.returnSessionPacket(p);
+-                        }
+-                    } catch (Exception e) {
+-                        e.printStackTrace();
+-                    }
+-                }
+-            }
+-        };
+-        
+-        t = new Thread(r);
+-        t.start();
+-    }
+-    
+-    public void shutdown() {
+-        t.interrupt();
+-        try {
+-            t.join();
+-        } catch (InterruptedException ie) {
+-            ie.printStackTrace();
+-        }
+-        
+-        queue.clear();
+-        pool.shutdown();
+-    }
+-    
+-}
+diff --git a/src/net/server/world/announcer/MapleAnnouncerEntryPool.java b/src/net/server/world/announcer/MapleAnnouncerEntryPool.java
+deleted file mode 100644
+index 819337322..000000000
+--- a/src/net/server/world/announcer/MapleAnnouncerEntryPool.java
++++ /dev/null
+@@ -1,74 +0,0 @@
+-/*
+-    This file is part of the HeavenMS MapleStory Server
+-    Copyleft (L) 2016 - 2019 RonanLana
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-package net.server.world.announcer;
+-
+-import java.util.concurrent.ConcurrentLinkedQueue;
+-import org.apache.mina.core.session.IoSession;
+-
+-/**
+- *
+- * @author Ronan
+- */
+-public class MapleAnnouncerEntryPool {
+-    
+-    private ConcurrentLinkedQueue<SessionPacket> instancedPairs = new ConcurrentLinkedQueue<>();
+-    private final static int initialCount = 20000;     // initial length of the instanced pool
+-    
+-    public MapleAnnouncerEntryPool() {
+-        for (int i = 0; i < initialCount; i++) {
+-            instancedPairs.offer(new SessionPacket());
+-        }
+-    }
+-    
+-    public class SessionPacket {
+-        
+-        private IoSession session;
+-        private byte[] packet;
+-        
+-        public IoSession getSession() {
+-            return session;
+-        }
+-        
+-        public byte[] getPacket() {
+-            return packet;
+-        }
+-        
+-    }
+-    
+-    public SessionPacket getSessionPacket(IoSession session, byte[] packet) {
+-        SessionPacket sp = instancedPairs.poll();
+-        if (sp == null) {
+-            sp = new SessionPacket();
+-        }
+-        
+-        sp.session = session;
+-        sp.packet = packet;
+-        return sp;
+-    }
+-    
+-    public void returnSessionPacket(SessionPacket sp) {
+-        instancedPairs.offer(sp);
+-    }
+-    
+-    public void shutdown() {
+-        instancedPairs.clear();
+-    }
+-    
+-}

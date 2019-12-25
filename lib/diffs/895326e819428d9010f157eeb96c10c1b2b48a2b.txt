@@ -1,0 +1,47 @@
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index 966809824..edd7fcd06 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -280,6 +280,7 @@ private void registerLv3Commands() {
+         addCommand("givenx", 3, GiveNxCommand.class);
+         addCommand("givevp", 3, GiveVpCommand.class);
+         addCommand("givems", 3, GiveMesosCommand.class);
++        addCommand("giverp", 3, GiveRpCommand.class);
+         addCommand("id", 3, IdCommand.class);
+         addCommand("expeds", 3, ExpedsCommand.class);
+         addCommand("kill", 3, KillCommand.class);
+diff --git a/src/client/command/commands/gm3/GiveRpCommand.java b/src/client/command/commands/gm3/GiveRpCommand.java
+new file mode 100644
+index 000000000..a4c860b27
+--- /dev/null
++++ b/src/client/command/commands/gm3/GiveRpCommand.java
+@@ -0,0 +1,29 @@
++package client.command.commands.gm3;
++
++import client.MapleCharacter;
++import client.MapleClient;
++import client.command.Command;
++
++public class GiveRpCommand extends Command {
++    {
++        setDescription("");
++    }
++
++    @Override
++    public void execute(MapleClient client, String[] params) {
++        MapleCharacter player = client.getPlayer();
++        if (params.length < 2) {
++            player.yellowMessage("Syntax: !giverp <playername> <gainrewardpoint>");
++            return;
++        }
++
++        MapleCharacter victim = client.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
++        if (victim != null) {
++            victim.setRewardPoints(victim.getRewardPoints() + Integer.parseInt(params[1]));
++            player.message("RP given. Player " + params[0] + " now has " + victim.getRewardPoints()
++                    + " reward points." );
++        } else {
++            player.message("Player '" + params[0] + "' could not be found.");
++        }
++    }
++}

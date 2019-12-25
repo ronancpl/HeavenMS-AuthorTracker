@@ -1,0 +1,1210 @@
+diff --git a/README.txt b/README.txt
+index ca81abf2c..11fc7ec9c 100644
+--- a/README.txt
++++ b/README.txt
+@@ -2,7 +2,7 @@ MapleSolaxiaV2
+ 
+ Freelance developer: Ronan C. P. Lana
+ 
+-Credits are to be given too to Nexon(Duh!), the original MapleSolaxia staff, and other colaborators, as just some changes/patches on the game were applied by myself, in which some of them diverged from the original v83 patch contents.
++Credits are to be given too to Nexon(Duh!), the original MapleSolaxia staff and other colaborators, as just some changes/patches on the game were applied by myself, in which some of them diverged from the original v83 patch contents.
+ 
+ Regarding distributability and usage of the code presented here: like it was before, this MapleStory server is open-source. By that, it is meant that anyone is free to install, use, modify and redistribute the contents, as long as there is no kind of commercial trading involved and the credits to the original creators are maintained within the codes.
+ 
+diff --git a/mychanges_ptbr.txt b/mychanges_ptbr.txt
+index 9fc8206cd..1af2afc65 100644
+--- a/mychanges_ptbr.txt
++++ b/mychanges_ptbr.txt
+@@ -181,4 +181,8 @@ Corre
+ Adição de Happyville, via Rooney.
+ Correção: mapas com "everlast" fazendo os itens dropados sumirem.
+ Correção: itens dropados na área dos NPCs Snowman não podem ser pegos por outros jogadores.
+-Correção: bug no par de comandos unban/ban não permitindo IP de cliente voltar a reconectar ao jogo.
+\ No newline at end of file
++Correção: bug no par de comandos unban/ban não permitindo IP de cliente voltar a reconectar ao jogo.
++
++29 Abril 2017,
++Novos métodos para uso especializado em eventos caracteristicos de PQ.
++Aprimoração da Boss Rush PQ: novo sistema de recompensas.
+\ No newline at end of file
+diff --git a/nbproject/private/private.xml b/nbproject/private/private.xml
+index d67be8ac0..80f9ea6b6 100644
+--- a/nbproject/private/private.xml
++++ b/nbproject/private/private.xml
+@@ -4,17 +4,19 @@
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+         <group>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/command/Commands.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/expeditions/MapleExpedition.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MonsterBook.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/portal/raid_stage.js</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/AbstractPlayerInteraction.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/constants/ServerConstants.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/PartyOperationHandler.java</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/world/MapleParty.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/1022101.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/1012103.js</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/tools/MaplePacketCreator.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/9000038.js</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/portal/raid_rest.js</file>
+-            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/world/MaplePartyCharacter.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleDisease.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/event/EventInstanceManager.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/BossRushPQ.js</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/net/server/channel/handlers/QuestActionHandler.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/npc/NPCConversationManager.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleCharacter.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/npc/world0/9000037.js</file>
+@@ -23,6 +25,8 @@
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/scripts/event/PiratePQ.js</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/client/MapleClient.java</file>
+             <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/scripting/event/EventManager.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/quest/MapleQuest.java</file>
++            <file>file:/C:/Nexon/MapleSolaxia/MapleSolaxiaV2/src/server/quest/requirements/MonsterBookCountRequirement.java</file>
+         </group>
+     </open-files>
+ </project-private>
+diff --git a/scripts/event/BossRushPQ.js b/scripts/event/BossRushPQ.js
+index bcbfa6dc9..87ff3c9d5 100644
+--- a/scripts/event/BossRushPQ.js
++++ b/scripts/event/BossRushPQ.js
+@@ -16,7 +16,7 @@ function setEventRewards(eim) {
+ 
+         evLevel = 6;    //Rewards at event completion
+         itemSet = [1122018, 1122005, 1022088, 1402013, 1032048, 1032070, 1102046, 2330004, 2041013, 2041016, 2041019, 2041022, 2049100, 2049003, 2020012, 2020013, 2020014, 2020015, 2022029, 2022045, 2022068, 2022069, 2022179, 2022180, 4004000, 4004001, 4004002, 4004003, 4004004, 4003000];
+-        itemQty = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 25, 4, 12, 12, 12, 12, 12, 25];
++        itemQty = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 4, 4, 12, 12, 12, 12, 12, 25];
+         eim.setEventRewards(evLevel, itemSet, itemQty);
+ 
+         evLevel = 5;    //Rewards at Rest Spot V
+@@ -40,7 +40,7 @@ function setEventRewards(eim) {
+         eim.setEventRewards(evLevel, itemSet, itemQty);
+         
+         evLevel = 1;    //Rewards at Rest Spot I
+-        itemSet = [1122004, 1012078, 1432008, 1432009, 1032040, 1032009, 1102166, 2070001, 2040002, 2040310, 2040400, 2040600, 2040825, 2040902, 2010000, 2010001, 2010002, 2010003, 2010004, 2020001, 2020002, 2020003, 2022020, 2022022, 4003000];
++        itemSet = [1122004, 1012078, 1432008, 1432009, 1032040, 1032009, 1102166, 2070001, 2040002, 2040310, 2040400, 2040600, 2040825, 2040902, 2010000, 2010001, 2010002, 2010003, 2010004, 2020001, 2020002, 2020003, 2022020, 2022022, 4010000, 4010001, 4010002, 4010003, 4010004, 4010005, 4010006, 4010007, 4003000];
+         itemQty = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 2, 2, 2, 2, 2, 2, 2, 2, 2];
+         eim.setEventRewards(evLevel, itemSet, itemQty);
+ }
+@@ -62,10 +62,6 @@ function getEligibleParty(party) {      //selects, from the given party, the tea
+             }
+         }
+         
+-        if(!hasLeader) print("no leader");
+-        else if(eligible.length < minPlayers) print("no min");
+-        else if(eligible.length < minPlayers) print("no max");
+-        
+         if(!(hasLeader && eligible.length >= minPlayers && eligible.length <= maxPlayers)) eligible = [];
+         return eligible;
+ }
+diff --git a/scripts/npc/world0/2040047.js b/scripts/npc/world0/2040047.js
+index 4964970b3..2c23190e8 100644
+--- a/scripts/npc/world0/2040047.js
++++ b/scripts/npc/world0/2040047.js
+@@ -1,60 +1,91 @@
+-/**
+- * @author: Eric
+- * @npc: Sgt. Anderson
+- * @maps: Ludibrium PQ Maps
+- * @func: Ludi PQ (Warps you out)
++/*
++	This file is part of the OdinMS Maple Story Server
++    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
++		       Matthias Butz <matze@odinms.de>
++		       Jan Christian Meyer <vimes@odinms.de>
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
++/*
++@	Author : Raz
++@
++@	NPC = Sgt.Anderson
++@	Map =  Abandoned Tower <Stage 1>
++@	NPC MapId = 922010100
++@	NPC Exit-MapId = 221024500
++@
++ */
++//4001022 - PASS OF DIMENSION
+ 
+-var status = -1;
++var status = 0;
+ 
+ function start() {
+-    if (cm.getMapId() != 922010000 && cm.getMapId() != 922010800) {
+-		cm.sendYesNo("You'll have to start over from scratch if you want to take a crack at this quest after leaving this stage. Are you sure you want to leave this map?");
+-    } else if (cm.getMapId() == 922010800) {
+-		cm.sendSimple("Do you need some help?#b\r\n#L0#I need Platform Puppet.#l\r\n#L1#I want to get out of here.#l#k");
+-	} else {
+-		cm.removeAll(4001022); // pass of dimension
+-	    cm.removeAll(4001023);
+-		cm.removeAll(4001454); // platform puppet
+-		cm.warp(221024500, 0);
+-		cm.dispose();
+-    }
++    cm.sendYesNo("Are you sure you want to leave?");
+ }
+ 
+ function action(mode, type, selection) {
+-	if (mode == 1)
+-		status++;
+-	else if (mode == 0 && (status == 0 || status == -1)) {
+-		cm.sendNext("I see. Gather up the strength of your party members and try harder!");
+-		cm.dispose();
+-		return;
+-	} else
+-		status--;
+-	if (status == 0) {
+-		if (cm.getMapId() == 922010800) {
+-			if (selection == 0) {
+-				cm.sendNext("You have received a Platform Puppet. If you place it on the platform, it will have the same effect as someone standing there.\r\nRemember, though, this is an item that can only be used in here.");
+-				cm.gainItem(4001454, 1);
+-				cm.dispose();
+-			} else {
+-				cm.sendYesNo("You'll have to start over from scratch if you want to take a crack at this quest after leaving this stage. Are you sure you want to leave this map?");
+-			}
+-		} else {
+-			var eim = cm.getPlayer().getEventInstance();
+-			if(eim != null) {
+-				eim.removePlayer(cm.getPlayer());
+-			} else {
+-				cm.warp(922010000, 0);
+-			}
+-			cm.dispose();
+-		}
+-	} else if (status == 1) {
+-		var eim = cm.getPlayer().getEventInstance();
+-		if(eim != null) {
+-			eim.removePlayer(cm.getPlayer());
+-		} else {
+-			cm.warp(922010000, 0);
+-		}
+-		cm.dispose();
+-	}
++    if (mode == -1) //ExitChat
++        cm.dispose();
++    else if (mode == 0) {//No
++        cm.sendOk("OK, Talk to me again if you want to leave here.");
++        cm.dispose();
++    } else {		    //Regular Talk
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        if (cm.getPlayer().getMap().getId() == 109050001) {
++            if(status == 0)
++                cm.sendNext("See ya.");
++            else if (status == 1){
++                cm.warp(109060001);
++                cm.dispose();
++            }
++        } else {
++            if (status == 1)
++                cm.sendNext("Ok, Bye!");
++            else if (status == 2) {
++                var eim = cm.getPlayer().getEventInstance();
++                if (eim == null)
++                    cm.sendOk("Wait, Hey! how'd you get here?\r\nOh well you can leave anyways");
++                else {
++                    if(isLeader()){
++                        eim.disbandParty();
++                        cm.removeFromParty(4001008, eim.getPlayers());
++                    } else {
++                        eim.leftParty(cm.getPlayer());
++                        cm.removeAll(4001008);
++                        cm.removeAll(4031059);
++                        cm.removeAll(4001102);
++                        cm.removeAll(4001108);
++                    }
++                    cm.dispose();
++                }
++            } else if (status == 3) {
++                cm.warp(109050001);
++                cm.removeAll(4001008);
++                cm.removeAll(4031059);
++                cm.removeAll(4001102);
++                cm.removeAll(4001108);
++                cm.dispose();
++            }
++        }
++    }
++}
++
++function isLeader(){
++    return cm.getParty() == null ? false : cm.isLeader();
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/world0/2040047_old.js b/scripts/npc/world0/2040047_old.js
+new file mode 100644
+index 000000000..4964970b3
+--- /dev/null
++++ b/scripts/npc/world0/2040047_old.js
+@@ -0,0 +1,60 @@
++/**
++ * @author: Eric
++ * @npc: Sgt. Anderson
++ * @maps: Ludibrium PQ Maps
++ * @func: Ludi PQ (Warps you out)
++*/
++
++var status = -1;
++
++function start() {
++    if (cm.getMapId() != 922010000 && cm.getMapId() != 922010800) {
++		cm.sendYesNo("You'll have to start over from scratch if you want to take a crack at this quest after leaving this stage. Are you sure you want to leave this map?");
++    } else if (cm.getMapId() == 922010800) {
++		cm.sendSimple("Do you need some help?#b\r\n#L0#I need Platform Puppet.#l\r\n#L1#I want to get out of here.#l#k");
++	} else {
++		cm.removeAll(4001022); // pass of dimension
++	    cm.removeAll(4001023);
++		cm.removeAll(4001454); // platform puppet
++		cm.warp(221024500, 0);
++		cm.dispose();
++    }
++}
++
++function action(mode, type, selection) {
++	if (mode == 1)
++		status++;
++	else if (mode == 0 && (status == 0 || status == -1)) {
++		cm.sendNext("I see. Gather up the strength of your party members and try harder!");
++		cm.dispose();
++		return;
++	} else
++		status--;
++	if (status == 0) {
++		if (cm.getMapId() == 922010800) {
++			if (selection == 0) {
++				cm.sendNext("You have received a Platform Puppet. If you place it on the platform, it will have the same effect as someone standing there.\r\nRemember, though, this is an item that can only be used in here.");
++				cm.gainItem(4001454, 1);
++				cm.dispose();
++			} else {
++				cm.sendYesNo("You'll have to start over from scratch if you want to take a crack at this quest after leaving this stage. Are you sure you want to leave this map?");
++			}
++		} else {
++			var eim = cm.getPlayer().getEventInstance();
++			if(eim != null) {
++				eim.removePlayer(cm.getPlayer());
++			} else {
++				cm.warp(922010000, 0);
++			}
++			cm.dispose();
++		}
++	} else if (status == 1) {
++		var eim = cm.getPlayer().getEventInstance();
++		if(eim != null) {
++			eim.removePlayer(cm.getPlayer());
++		} else {
++			cm.warp(922010000, 0);
++		}
++		cm.dispose();
++	}
++}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9000037.js b/scripts/npc/world0/9000037.js
+index 5f38731de..846f51740 100644
+--- a/scripts/npc/world0/9000037.js
++++ b/scripts/npc/world0/9000037.js
+@@ -41,22 +41,18 @@ function action(mode, type, selection) {
+ 
+                 if (status == 0) {
+                         if(state == 3) {
+-                                if(cm.getPlayer().getEventInstance() != null) {
+-                                        if(!cm.isLeader()) {
+-                                                cm.sendOk("Your party leader has not spoken to me yet, please wait him/her talk to me.");
++                                if(cm.isLeader()) {
++                                        if(cm.getPlayer().getEventInstance().getPlayerCount() > 1) {
++                                                cm.sendOk("Now, tell your party I will be warping everyone out and rewarding them as they talk to me. The leader goes last.");
+                                                 cm.dispose();
+                                                 return;
+                                         }
+                                         else {
+-                                                cm.getPlayer().getEventInstance().finishPQ();
++                                                cm.sendOk("Your party completed such an astounding feat coming this far, #byou have defeated all the bosses#k, congratulations! Now I will be handing your reward as you are being transported out...");
+                                         }
+-                                }
+-                            
+-                                if(cm.isLeader()) {
+-                                        cm.sendOk("Your party completed such an astounding feat coming this far, #byou have defeated all the bosses#k, congratulations! Now, tell your party I will be warping everyone out and rewarding them as they talk to me.");
+-                                }
++                                }                                
+                                 else {
+-                                        cm.sendOk("For completing all stages in this event, congratulations! Now you will receive a prize that matches your performance here as I warp you out.");
++                                        cm.sendOk("For #bdefeating all bosses#k in this event, congratulations! Now you will receive a prize that matches your performance here as I warp you out.");
+                                 }
+                         }
+                         else if(state == 2) {
+@@ -71,7 +67,7 @@ function action(mode, type, selection) {
+                                         }
+                                 }
+                                 else {
+-                                        cm.sendOk("Wait for your party leader to give me the signal to proceed. If you're not feeling too well and want to quit, walk through the portal and you will be transported out, you will receive a prize for coming this far.");
++                                        cm.sendOk("Wait for your party leader to give me the signal to proceed. If you're not feeling too well and want to quit, walk through the portal and you will be transported out, and you will receive a prize for coming this far.");
+                                         cm.dispose();
+                                         return;
+                                 }
+diff --git a/scripts/npc/world0/9000038.js b/scripts/npc/world0/9000038.js
+new file mode 100644
+index 000000000..4647d0014
+--- /dev/null
++++ b/scripts/npc/world0/9000038.js
+@@ -0,0 +1,88 @@
++/**
++ * @author: Ronan
++ * @npc: Agent Kitty
++ * @map: 970030000 - Hidden Street - Exclusive Training Center
++ * @func: Boss Rush PQ Reward Announcer
++*/
++
++var status;
++
++var itemSet_lv6 = [1122018, 1122005, 1022088, 1402013, 1032048, 1032070, 1102046, 2330004, 2041013, 2041016, 2041019, 2041022, 2049100, 2049003, 2020012, 2020013, 2020014, 2020015, 2022029, 2022045, 2022068, 2022069, 2022179, 2022180, 4004000, 4004001, 4004002, 4004003, 4004004, 4003000];
++var itemQty_lv6 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 4, 4, 12, 12, 12, 12, 12, 25];
++
++var itemSet_lv5 = [1122018, 1122005, 1022088, 1402013, 1032048, 1032070, 1102046, 2330004, 2041013, 2041016, 2041019, 2041022, 2049100, 2049003, 2020012, 2020013, 2020014, 2020015, 2022029, 2022045, 2022068, 2022069, 2022179, 2022180, 4004000, 4004001, 4004002, 4004003, 4004004, 4003000];
++var itemQty_lv5 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 15, 15, 15, 15, 15, 15, 15, 15, 15, 2, 8, 8, 8, 8, 8, 12];
++
++var itemSet_lv4 = [1122001, 1122006, 1022103, 1442065, 1032042, 1032021, 1102168, 2070005, 2040025, 2040029, 2040301, 2040413, 2040701, 2040817, 2002028, 2020009, 2020010, 2020011, 2022004, 2022005, 2022025, 2022027, 2022048, 2022049, 4020000, 4020001, 4020002, 4020003, 4020004, 4020005, 4020006, 4020007, 4020008, 4003000];
++var itemQty_lv4 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8];
++
++var itemSet_lv3 = [1122002, 1022088, 1012076, 1402029, 1032041, 1032044, 1102167, 2070011, 2040026, 2040030, 2040302, 2040412, 2040702, 2040818, 2002028, 2020009, 2020010, 2020011, 2022004, 2022005, 2022025, 2022027, 2022048, 2022049, 4010000, 4010001, 4010002, 4010003, 4010004, 4010005, 4010006, 4010007, 4003000];
++var itemQty_lv3 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5];
++
++var itemSet_lv2 = [1122003, 1012077, 1012079, 1432014, 1032059, 1032002, 1102191, 2330002, 2040001, 2040311, 2040401, 2040601, 2040824, 2040901, 2010000, 2010001, 2010002, 2010003, 2010004, 2020001, 2020002, 2020003, 2022020, 2022022, 4020000, 4020001, 4020002, 4020003, 4020004, 4020005, 4020006, 4020007, 4020008, 4003000];
++var itemQty_lv2 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
++
++var itemSet_lv1 = [1122004, 1012078, 1432008, 1432009, 1032040, 1032009, 1102166, 2070001, 2040002, 2040310, 2040400, 2040600, 2040825, 2040902, 2010000, 2010001, 2010002, 2010003, 2010004, 2020001, 2020002, 2020003, 2022020, 2022022, 4010000, 4010001, 4010002, 4010003, 4010004, 4010005, 4010006, 4010007, 4003000];
++var itemQty_lv1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 2, 2, 2, 2, 2, 2, 2, 2, 2];
++
++var levels = ["#m970030001#", "#m970030002#", "#m970030003#", "#m970030004#", "#m970030005#", "Final stage"];
++
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && status == 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++
++                if (status == 0) {
++                        var sendStr = "The #bBoss Rush Party Quest#k rewards players accordingly to how far the team went on the boss huntings. Take note that each player #bcan only claim a reward if they leave through a portal inside a Resting Spot#k. Challenging stronger bosses will require the team to commit to more fightings until the next Resting Spot is reached, or until the final boss is defeated.\r\n\r\nThe possible rewards for those leaving in the selected Resting Point are depicted here:\r\n\r\n#b";
++                        for(var i = 0; i < 6; i++) {
++                            sendStr += "#L" + i + "#" + levels[i] + "#l\r\n";
++                        }
++                        
++                        cm.sendSimple(sendStr);
++                } else if(status == 1) {
++                        var lvTarget, lvQty;
++                        
++                        if(selection == 0) {
++                                lvTarget = itemSet_lv1;
++                                lvQty = itemQty_lv1;
++                        } else if(selection == 1) {
++                                lvTarget = itemSet_lv2;
++                                lvQty = itemQty_lv2;
++                        } else if(selection == 2) {
++                                lvTarget = itemSet_lv3;
++                                lvQty = itemQty_lv3;
++                        } else if(selection == 3) {
++                                lvTarget = itemSet_lv4;
++                                lvQty = itemQty_lv4;
++                        } else if(selection == 4) {
++                                lvTarget = itemSet_lv5;
++                                lvQty = itemQty_lv5;
++                        } else {
++                                lvTarget = itemSet_lv6;
++                                lvQty = itemQty_lv6;
++                        }
++                        
++                        var sendStr = "The following items are being awarded at #b" + levels[selection] + "#k:\r\n\r\n";
++                        for(var i = 0; i < lvTarget.length; i++) {
++                            sendStr += "  #L" + i + "# #i" + lvTarget[i] + "#  #t" + lvTarget[i] + "#";
++                            if(lvQty[i] > 1) sendStr += " (" + lvQty[i] + ")";
++                            sendStr += "#l\r\n";
++                        }
++                        
++                        cm.sendPrev(sendStr);
++                }
++        }
++}
+diff --git a/scripts/npc/world0/9201043.js b/scripts/npc/world0/9201043.js
+index 1e219a98a..72318d49f 100644
+--- a/scripts/npc/world0/9201043.js
++++ b/scripts/npc/world0/9201043.js
+@@ -36,7 +36,7 @@ function action(mode, type, selection) {
+         cm.dispose();
+     else {
+         if (status >= 0 && mode == 0) {
+-            cm.sendOk("Ok come back when your'e ready.");
++            cm.sendOk("Ok come back when you're ready.");
+             cm.dispose();
+             return;
+         }
+diff --git a/scripts/npc/world0/9201051.js b/scripts/npc/world0/9201051.js
+new file mode 100644
+index 000000000..ed6139272
+--- /dev/null
++++ b/scripts/npc/world0/9201051.js
+@@ -0,0 +1,9 @@
++/**
++ *9201051 - John Barricade
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201052.js b/scripts/npc/world0/9201052.js
+new file mode 100644
+index 000000000..eab40d0b3
+--- /dev/null
++++ b/scripts/npc/world0/9201052.js
+@@ -0,0 +1,9 @@
++/**
++ *9201052 - Professor Foxwit
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201054.js b/scripts/npc/world0/9201054.js
+new file mode 100644
+index 000000000..af431473f
+--- /dev/null
++++ b/scripts/npc/world0/9201054.js
+@@ -0,0 +1,9 @@
++/**
++ *9201054 - Lita Lawless
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201071.js b/scripts/npc/world0/9201071.js
+new file mode 100644
+index 000000000..6fe990590
+--- /dev/null
++++ b/scripts/npc/world0/9201071.js
+@@ -0,0 +1,9 @@
++/**
++ *9201071 - Sunstone Grave
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("(This tombstone keeps emmiting ever oddier light waves the more I stare to it...)");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201072.js b/scripts/npc/world0/9201072.js
+new file mode 100644
+index 000000000..79f7b6e74
+--- /dev/null
++++ b/scripts/npc/world0/9201072.js
+@@ -0,0 +1,9 @@
++/**
++ *9201072 - Moonstone Grave
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("(This tombstone keeps emmiting ever oddier light waves the more I stare to it...)");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201073.js b/scripts/npc/world0/9201073.js
+index 2c23190e8..1808f66c9 100644
+--- a/scripts/npc/world0/9201073.js
++++ b/scripts/npc/world0/9201073.js
+@@ -1,91 +1,9 @@
+-/*
+-	This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-		       Matthias Butz <matze@odinms.de>
+-		       Jan Christian Meyer <vimes@odinms.de>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-/*
+-@	Author : Raz
+-@
+-@	NPC = Sgt.Anderson
+-@	Map =  Abandoned Tower <Stage 1>
+-@	NPC MapId = 922010100
+-@	NPC Exit-MapId = 221024500
+-@
++/**
++ *9201073 - Tombstone
++ *@author Ronan
+  */
+-//4001022 - PASS OF DIMENSION
+-
+-var status = 0;
+-
++ 
+ function start() {
+-    cm.sendYesNo("Are you sure you want to leave?");
++    cm.sendOk("(This enigmatic tombstone keeps emmiting strange forces... Better look another way.)");
++    cm.dispose();
+ }
+-
+-function action(mode, type, selection) {
+-    if (mode == -1) //ExitChat
+-        cm.dispose();
+-    else if (mode == 0) {//No
+-        cm.sendOk("OK, Talk to me again if you want to leave here.");
+-        cm.dispose();
+-    } else {		    //Regular Talk
+-        if (mode == 1)
+-            status++;
+-        else
+-            status--;
+-        if (cm.getPlayer().getMap().getId() == 109050001) {
+-            if(status == 0)
+-                cm.sendNext("See ya.");
+-            else if (status == 1){
+-                cm.warp(109060001);
+-                cm.dispose();
+-            }
+-        } else {
+-            if (status == 1)
+-                cm.sendNext("Ok, Bye!");
+-            else if (status == 2) {
+-                var eim = cm.getPlayer().getEventInstance();
+-                if (eim == null)
+-                    cm.sendOk("Wait, Hey! how'd you get here?\r\nOh well you can leave anyways");
+-                else {
+-                    if(isLeader()){
+-                        eim.disbandParty();
+-                        cm.removeFromParty(4001008, eim.getPlayers());
+-                    } else {
+-                        eim.leftParty(cm.getPlayer());
+-                        cm.removeAll(4001008);
+-                        cm.removeAll(4031059);
+-                        cm.removeAll(4001102);
+-                        cm.removeAll(4001108);
+-                    }
+-                    cm.dispose();
+-                }
+-            } else if (status == 3) {
+-                cm.warp(109050001);
+-                cm.removeAll(4001008);
+-                cm.removeAll(4031059);
+-                cm.removeAll(4001102);
+-                cm.removeAll(4001108);
+-                cm.dispose();
+-            }
+-        }
+-    }
+-}
+-
+-function isLeader(){
+-    return cm.getParty() == null ? false : cm.isLeader();
+-}
+\ No newline at end of file
+diff --git a/scripts/npc/world0/9201083.js b/scripts/npc/world0/9201083.js
+new file mode 100644
+index 000000000..37137e463
+--- /dev/null
++++ b/scripts/npc/world0/9201083.js
+@@ -0,0 +1,9 @@
++/**
++ *9201083 - The Glimmer Man
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201093.js b/scripts/npc/world0/9201093.js
+new file mode 100644
+index 000000000..a62d2c258
+--- /dev/null
++++ b/scripts/npc/world0/9201093.js
+@@ -0,0 +1,9 @@
++/**
++ *9201093 - Little Suzy
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("Have you heard the fantasic Jack Masque appeared around the city these days? That is sooooo nice!");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201094.js b/scripts/npc/world0/9201094.js
+new file mode 100644
+index 000000000..10c00bb9b
+--- /dev/null
++++ b/scripts/npc/world0/9201094.js
+@@ -0,0 +1,9 @@
++/**
++ *9201094 - Corine
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/npc/world0/9201102.js b/scripts/npc/world0/9201102.js
+new file mode 100644
+index 000000000..f4386edd1
+--- /dev/null
++++ b/scripts/npc/world0/9201102.js
+@@ -0,0 +1,9 @@
++/**
++ *9201102 - Stirgeman
++ *@author Ronan
++ */
++ 
++function start() {
++    cm.sendOk("The patrol in New Leaf City is always ready. No creatures are able to break through to the city.");
++    cm.dispose();
++}
+diff --git a/scripts/portal/raid_rest.js b/scripts/portal/raid_rest.js
+index 66c44846f..7f9266c17 100644
+--- a/scripts/portal/raid_rest.js
++++ b/scripts/portal/raid_rest.js
+@@ -27,6 +27,11 @@ BossRushPQ - Rest Spot portal
+ function enter(pi) {
+         var evLevel = ((pi.getMapId() - 1) % 5) + 1;
+         
++        if(pi.getPlayer().getEventInstance().isLeader(pi.getPlayer()) && pi.getPlayer().getEventInstance().getPlayerCount() > 1) {
++                pi.message("Being the party leader, you cannot leave before your teammates leave first.");
++                return false;
++        }
++        
+         if(pi.getPlayer().getEventInstance().giveEventReward(pi.getPlayer(), evLevel)) {
+                 pi.warp(970030000);
+                 return true;
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 640594508..7878a833a 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -18997,7 +18997,12 @@
+ (9500319, 1132009, 1, 1, 0, 4000),
+ (9500319, 1422011, 1, 1, 0, 4000),
+ (9500319, 1432046, 1, 1, 0, 4000),
+-(9500319, 1332030, 1, 1, 0, 4000);
++(9500319, 1332030, 1, 1, 0, 4000),
++(9300188, 2388052, 1, 1, 0, 24000),
++(9300196, 2388008, 1, 1, 0, 24000),
++(9300204, 2388015, 1, 1, 0, 24000),
++(9300207, 2388052, 1, 1, 0, 24000),
++(9300209, 2388052, 1, 1, 0, 24000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 9588f4975..cda4becb9 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -1673,7 +1673,11 @@ public void gainExp(int gain) {
+     }
+ 
+     public void gainExp(int gain, boolean show, boolean inChat) {
+-        gainExp(gain, 0, show, inChat, true);
++        gainExp(gain, show, inChat, true);
++    }
++    
++    public void gainExp(int gain, boolean show, boolean inChat, boolean white) {
++        gainExp(gain, 0, show, inChat, white);
+     }
+ 
+     public void gainExp(int gain, int party, boolean show, boolean inChat, boolean white) {
+@@ -5003,10 +5007,10 @@ public void run() {
+                     pet.saveToDb();
+                     Item petz = getInventory(MapleInventoryType.CASH).getItem(pet.getPosition());
+                     if (petz != null) {
+-						forceUpdateItem(petz);
++                        forceUpdateItem(petz);
++                    }
+                 }
+             }
+-            }
+         }, 180000, 18000);
+         fullnessSchedule[petSlot] = schedule;
+ 
+diff --git a/src/client/inventory/MaplePet.java b/src/client/inventory/MaplePet.java
+index 25e9b011b..faee2f930 100644
+--- a/src/client/inventory/MaplePet.java
++++ b/src/client/inventory/MaplePet.java
+@@ -22,6 +22,7 @@
+ package client.inventory;
+ 
+ import com.mysql.jdbc.Statement;
++import constants.ExpTable;
+ import java.awt.Point;
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+@@ -32,6 +33,8 @@
+ import server.movement.AbsoluteLifeMovement;
+ import server.movement.LifeMovement;
+ import server.movement.LifeMovementFragment;
++import client.MapleCharacter;
++import tools.MaplePacketCreator;
+ 
+ /**
+  *
+@@ -155,13 +158,54 @@ public void setCloseness(int closeness) {
+         this.closeness = closeness;
+     }
+ 
+-    public void gainCloseness(int x) {
+-        this.closeness += x;
+-    }
+-
+     public byte getLevel() {
+         return level;
+     }
++    
++    public void gainClosenessFullness(MapleCharacter owner, int incCloseness, int incFullness, int type) {
++        byte slot = owner.getPetIndex(this);
++        boolean enjoyed;
++        
++        //will NOT increase pet's closeness if tried to feed pet with 100% fullness
++        if (fullness < 100 || incFullness == 0) {   //incFullness == 0: command given
++            int newFullness = fullness + incFullness;
++            if (newFullness > 100) newFullness = 100;
++            fullness = newFullness;
++            
++            if (incCloseness > 0 && closeness < 30000) {
++                int newCloseness = closeness + incCloseness;
++                if (newCloseness > 30000) newCloseness = 30000;
++                
++                closeness = newCloseness;
++                while(newCloseness >= ExpTable.getClosenessNeededForLevel(level)) {
++                    level += 1;
++                    owner.getClient().announce(MaplePacketCreator.showOwnPetLevelUp(slot));
++                    owner.getMap().broadcastMessage(MaplePacketCreator.showPetLevelUp(owner, slot));
++                }
++            }
++            
++            enjoyed = true;
++        } else {
++            if (incCloseness > 0) {
++                int newCloseness = closeness - 1;
++                if (newCloseness < 0) newCloseness = 0;
++                
++                closeness = newCloseness;
++                if (level > 1 && newCloseness < ExpTable.getClosenessNeededForLevel(level)) {
++                    level -= 1;
++                }
++            }
++            
++            enjoyed = false;
++        }
++        
++        owner.getMap().broadcastMessage(MaplePacketCreator.commandResponse(owner.getId(), slot, type, enjoyed));
++        saveToDb();
++        
++        Item petz = owner.getInventory(MapleInventoryType.CASH).getItem(getPosition());
++        if (petz == null) return;
++        owner.forceUpdateItem(petz);
++    }
+ 
+     public void setLevel(byte level) {
+         this.level = level;
+diff --git a/src/net/server/channel/handlers/PetCommandHandler.java b/src/net/server/channel/handlers/PetCommandHandler.java
+index ee7424fab..cafe8f8c5 100644
+--- a/src/net/server/channel/handlers/PetCommandHandler.java
++++ b/src/net/server/channel/handlers/PetCommandHandler.java
+@@ -54,25 +54,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (petCommand == null) {
+             return;
+         }
+-        boolean success = false;
++        
+         if (Randomizer.nextInt(101) <= petCommand.getProbability()) {
+-            success = true;
+-            if (pet.getCloseness() < 30000) {
+-                int newCloseness = pet.getCloseness() + petCommand.getIncrease();
+-                if (newCloseness > 30000) {
+-                    newCloseness = 30000;
+-                }
+-                pet.setCloseness(newCloseness);
+-                if (newCloseness >= ExpTable.getClosenessNeededForLevel(pet.getLevel())) {
+-                    pet.setLevel((byte) (pet.getLevel() + 1));
+-                    c.announce(MaplePacketCreator.showOwnPetLevelUp(chr.getPetIndex(pet)));
+-                    chr.getMap().broadcastMessage(MaplePacketCreator.showPetLevelUp(c.getPlayer(), chr.getPetIndex(pet)));
+-                }
+-                pet.saveToDb();
+-                Item petz = chr.getInventory(MapleInventoryType.CASH).getItem(pet.getPosition());
+-                chr.forceUpdateItem(petz);
+-            }
++            pet.gainClosenessFullness(chr, petCommand.getIncrease(), 0, command);
++        }
++        else {
++            chr.getMap().broadcastMessage(MaplePacketCreator.commandResponse(chr.getId(), petIndex, command, false));
+         }
+-        chr.getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.commandResponse(chr.getId(), petIndex, command, success), true);
+     }
+ }
+diff --git a/src/net/server/channel/handlers/PetFoodHandler.java b/src/net/server/channel/handlers/PetFoodHandler.java
+index dba359963..3174385a2 100644
+--- a/src/net/server/channel/handlers/PetFoodHandler.java
++++ b/src/net/server/channel/handlers/PetFoodHandler.java
+@@ -68,51 +68,9 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         if (use == null || (itemId / 10000) != 212 || use.getItemId() != itemId) {
+             return;
+         }
+-        boolean gainCloseness = false;
+-        if (Randomizer.nextInt(101) > 50) {
+-            gainCloseness = true;
+-        }
+-        if (pet.getFullness() < 100) {
+-            int newFullness = pet.getFullness() + 30;
+-            if (newFullness > 100) {
+-                newFullness = 100;
+-            }
+-            pet.setFullness(newFullness);
+-            if (gainCloseness && pet.getCloseness() < 30000) {
+-                int newCloseness = pet.getCloseness() + 1;
+-                if (newCloseness > 30000) {
+-                    newCloseness = 30000;
+-                }
+-                pet.setCloseness(newCloseness);
+-                if (newCloseness >= ExpTable.getClosenessNeededForLevel(pet.getLevel())) {
+-                    pet.setLevel((byte) (pet.getLevel() + 1));
+-                    c.announce(MaplePacketCreator.showOwnPetLevelUp(chr.getPetIndex(pet)));
+-                    chr.getMap().broadcastMessage(MaplePacketCreator.showPetLevelUp(c.getPlayer(), chr.getPetIndex(pet)));
+-                }
+-            }
+-            chr.getMap().broadcastMessage(MaplePacketCreator.commandResponse(chr.getId(), slot, 0, true));
+-        } else {
+-            if (gainCloseness) {
+-                int newCloseness = pet.getCloseness() - 1;
+-                if (newCloseness < 0) {
+-                    newCloseness = 0;
+-                }
+-                pet.setCloseness(newCloseness);
+-                if (pet.getLevel() > 1 && newCloseness < ExpTable.getClosenessNeededForLevel(pet.getLevel())) {
+-                    pet.setLevel((byte) (pet.getLevel() - 1));
+-                }
+-            }
+-            chr.getMap().broadcastMessage(MaplePacketCreator.commandResponse(chr.getId(), slot, 0, false));
+-        }
+-        MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, pos, (short) 1, false);
+-        
+-        pet.saveToDb();
+         
+-        Item petz = chr.getInventory(MapleInventoryType.CASH).getItem(pet.getPosition());
+-        if (petz == null){ //Not a real fix but fuck it you know?
+-        	return;
+-        }
+-        
+-        chr.forceUpdateItem(petz);
++        // 50% chance to get +1 closeness
++        pet.gainClosenessFullness(chr, (Randomizer.nextInt(101) <= 50) ? 1 : 0, 30, 1);
++        MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, pos, (short) 1, false);
+     }
+ }
+diff --git a/src/net/server/channel/handlers/QuestActionHandler.java b/src/net/server/channel/handlers/QuestActionHandler.java
+index 150addaee..4a2d65b2b 100644
+--- a/src/net/server/channel/handlers/QuestActionHandler.java
++++ b/src/net/server/channel/handlers/QuestActionHandler.java
+@@ -66,11 +66,12 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             //System.out.println(slea.toString());
+             int npc = slea.readInt();
+             slea.readInt();
+-			if(quest.canComplete(player, npc)) {
+-				QuestScriptManager.getInstance().end(c, questid, npc);
+-                                player.getClient().getSession().write(MaplePacketCreator.showSpecialEffect(9)); //show effect when completion 
+-                                player.getMap().broadcastMessage(player, MaplePacketCreator.showForeignEffect(player.getId(), 9));//show effect around players I guess
+-			}
++            
++            if(quest.canComplete(player, npc)) {
++                    QuestScriptManager.getInstance().end(c, questid, npc);
++                    player.getClient().getSession().write(MaplePacketCreator.showSpecialEffect(9)); //show effect when completion 
++                    player.getMap().broadcastMessage(player, MaplePacketCreator.showForeignEffect(player.getId(), 9));//show effect around players I guess
++            }
+         }
+     }
+ }
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 4b6c728ff..df285512b 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -31,7 +31,6 @@
+ import client.inventory.Item;
+ import client.inventory.MapleInventoryType;
+ import client.inventory.MaplePet;
+-import constants.ExpTable;
+ import constants.ItemConstants;
+ 
+ import java.sql.SQLException;
+@@ -435,22 +434,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 MaplePet pet = player.getPet(i);
+                 if (pet != null) {
+                     if (pet.canConsume(itemId)) {
+-                        pet.setFullness(100);
+-                        if (pet.getCloseness() + 100 > 30000) {
+-                            pet.setCloseness(30000);
+-                        } else {
+-                            pet.gainCloseness(100);
+-                        }
+-
+-                        while (pet.getCloseness() >= ExpTable.getClosenessNeededForLevel(pet.getLevel())) {
+-                            pet.setLevel((byte) (pet.getLevel() + 1));
+-                            byte index = player.getPetIndex(pet);
+-                            c.announce(MaplePacketCreator.showOwnPetLevelUp(index));
+-                            player.getMap().broadcastMessage(MaplePacketCreator.showPetLevelUp(c.getPlayer(), index));
+-                        }
+-                        Item item = player.getInventory(MapleInventoryType.CASH).getItem(pet.getPosition());
+-                        player.forceUpdateItem(item);
+-                        player.getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.commandResponse(player.getId(), i, 1, true), true);
++                        pet.gainClosenessFullness(player, 100, 100, 1);
+                         remove(c, itemId);
+                         break;
+                     }
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index b7c9d0d61..4fc491123 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -21,11 +21,6 @@
+  */
+ package scripting;
+ 
+-import java.sql.Connection;
+-import java.sql.SQLException;
+-import java.sql.PreparedStatement;
+-import tools.DatabaseConnection;
+-
+ import java.awt.Point;
+ import java.util.Arrays;
+ import java.util.Collections;
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 4ada709f2..5067918ec 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -519,6 +519,10 @@ public final boolean disposeIfPlayerBelow(final byte size, final int towarp) {
+             return intList;
+         }
+         
++        public final void setEventRewards(List<Double> rwds, List<Double> qtys, int expGiven) {
++            setEventRewards(1, rwds, qtys, expGiven);
++        }
++        
+         public final void setEventRewards(List<Double> rwds, List<Double> qtys) {
+             setEventRewards(1, rwds, qtys);
+         }
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index 168ee0945..7cd14e1e5 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -280,19 +280,7 @@ public void resetMap(int mapid) {
+ 
+ 	public void gainCloseness(int closeness) {
+ 		for (MaplePet pet : getPlayer().getPets()) {
+-			if (pet.getCloseness() > 30000) {
+-				pet.setCloseness(30000);
+-				return;
+-			}
+-			pet.gainCloseness(closeness);
+-			while (pet.getCloseness() > ExpTable.getClosenessNeededForLevel(pet.getLevel())) {
+-				pet.setLevel((byte) (pet.getLevel() + 1));
+-				byte index = getPlayer().getPetIndex(pet);
+-				getClient().announce(MaplePacketCreator.showOwnPetLevelUp(index));
+-				getPlayer().getMap().broadcastMessage(getPlayer(), MaplePacketCreator.showPetLevelUp(getPlayer(), index));
+-			}
+-			Item petz = getPlayer().getInventory(MapleInventoryType.CASH).getItem(pet.getPosition());
+-			getPlayer().forceUpdateItem(petz);
++                        pet.gainClosenessFullness(getPlayer(), closeness, 0, 0);
+ 		}
+ 	}
+ 
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index b8d2c95eb..17df6fe03 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -1171,6 +1171,8 @@ public void spawnMonsterWithEffect(final MapleMonster monster, final int effect,
+         monster.setMap(this);
+         Point spos = new Point(pos.x, pos.y - 1);
+         spos = calcPointBelow(spos);
++        if(spos == null) return;
++        
+         spos.y--;
+         monster.setPosition(spos);
+         if (mapid < 925020000 || mapid > 925030000) {
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 01f57d3cc..f369f7867 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -223,7 +223,7 @@ public void complete(MapleCharacter c, int npc, Integer selection) {
+ 		        a.run(c, selection);
+ 		    }
+                     
+-                    c.getClient().getSession().write(MaplePacketCreator.showForeignEffect(9)); // Quest completion
++                    c.getClient().getSession().write(MaplePacketCreator.showSpecialEffect(9)); // Quest completion
+                     c.getMap().broadcastMessage(c, MaplePacketCreator.showForeignEffect(c.getId(), 9), false); //use 9 instead of 12 for both
+ 		}
+     }
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 5d8e53019..9e9bfbb41 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -39706,6 +39706,7 @@
+           <int name="count" value="4"/>
+         </imgdir>
+       </imgdir>
++      <int name="nextQuest" value="8249"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="8249">
+@@ -39784,6 +39785,32 @@
+         <imgdir name="8">
+           <int name="id" value="1102041"/>
+           <int name="count" value="1"/>
++          <int name="job" value="1180673"/>
++        </imgdir>
++        <imgdir name="9">
++          <int name="id" value="1102041"/>
++          <int name="count" value="1"/>
++          <int name="job" value="2099202"/>
++        </imgdir>
++        <imgdir name="10">
++          <int name="id" value="1102042"/>
++          <int name="count" value="1"/>
++          <int name="job" value="4198404"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="id" value="1102041"/>
++          <int name="count" value="1"/>
++          <int name="job" value="8200"/>
++        </imgdir>
++        <imgdir name="12">
++          <int name="id" value="1102041"/>
++          <int name="count" value="1"/>
++          <int name="job" value="16400"/>
++        </imgdir>
++        <imgdir name="13">
++          <int name="id" value="1102041"/>
++          <int name="count" value="1"/>
++          <int name="job" value="32800"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 62c50beea..459c88e7e 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -63665,6 +63665,12 @@
+     </imgdir>
+     <imgdir name="0">
+       <int name="npc" value="9209001"/>
++      <imgdir name="quest">
++        <imgdir name="0">
++          <int name="id" value="8248"/>
++          <int name="state" value="2"/>
++        </imgdir>
++      </imgdir>
+     </imgdir>
+   </imgdir>
+   <imgdir name="8251">
+diff --git a/wz/Quest.wz/QuestInfo.img.xml b/wz/Quest.wz/QuestInfo.img.xml
+index 1ae33e1cc..aea8cac0b 100644
+--- a/wz/Quest.wz/QuestInfo.img.xml
++++ b/wz/Quest.wz/QuestInfo.img.xml
+@@ -19523,7 +19523,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+   <imgdir name="8206">
+     <string name="name" value="Ace of Heart&apos;s Secret Ability"/>
+     <string name="0" value="#b#p2041017##k and his partner seems pretty busy recently. Should I check with them on what kind of business they are on now?"/>
+-    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4000257# #t4000257# #c4000257# / #r50#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000150# #t4000150# #c4000150# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
++    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4032474# #t4032474# #c4032474# / #r5#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000150# #t4000150# #c4000150# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
+     <string name="2" value="Ace of Hearts helped me make these scrolls... Geez, that was hard. It is repeatable within 3 days, huh?"/>
+     <int name="area" value="50"/>
+   </imgdir>
+@@ -19739,7 +19739,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+     <string name="parent" value="Maple 7th Day Market"/>
+     <int name="order" value="1"/>
+     <string name="0" value="The Maple 7th Day Market will open soon. Better check with #b#p9209001##k what&apos;s up."/>
+-    <string name="1" value="She needs some help collecting omok pieces for the entertainment of the folks, better gather them soon."/>
++    <string name="1" value="She needs some help collecting omok pieces for the entertainment of the folks, better gather them soon.\n\n#i4030000# #t4030000# #c4030000# / #r15#k\n#i4030001# #t4030001# #c4030001# / #r15#k\n#i4030010# #t4030010# #c4030010# / #r15#k\n#i4030011# #t4030011# #c4030011# / #r15#k\n#i4030013# #t4030013# #c4030013# / #r15#k\n#i4030014# #t4030014# #c4030014# / #r15#k\n#i4030015# #t4030015# #c4030015# / #r15#k\n#i4030016# #t4030016# #c4030016# / #r15#k\n#i4030009# #t4030009# #c4030009# / #r2#k\n#i3010001# #t3010001# #c3010001# / #r4#k\n"/>
+     <string name="2" value="I completed #b#p9209001##k&apos;s first task. Turned out that the main event became even more attractive."/>
+     <int name="area" value="50"/>
+   </imgdir>
+@@ -19748,23 +19748,21 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+     <string name="parent" value="Maple 7th Day Market"/>
+     <int name="order" value="2"/>
+     <string name="0" value="The time for the Maple 7th Day Market has come. #b#p9209001##k is preparing another event now."/>
+-    <string name="1" value="Now it is a Card-Game Convention she plans to host. As before, there is some great reward for the completion of this task."/>
++    <string name="1" value="Now it is a Card-Game Convention she plans to host. As before, there is some great reward for the completion of this task.\n\n#i4000035# #t4000035# #c4000035# / #r10#k\n#i4000114# #t4000114# #c4000114# / #r10#k\n#i4030009# #t4030009# #c4030009# / #r10#k\n#i3010001# #t3010001# #c3010001# / #r20#k\n#i4030012# #t4030012# #c4030012# / #r200#k\n"/>
+     <string name="2" value="I completed #b#p9209001##k&apos;s final task. The public seems to have enjoyed a lot the events of the Maple 7th Day Market."/>
+     <int name="area" value="50"/>
+-    <int name="autoStart" value="1"/>
+-    <int name="autoPreComplete" value="1"/>
+   </imgdir>
+   <imgdir name="8251">
+     <string name="name" value="Assembling the toy-armada!"/>
+     <string name="0" value="It seems the aliens started to plunder cows from the farms around #bHenesys#k. I will check with #bLazy Daisy#k what is going on."/>
+-    <string name="1" value="#bLazy Daisy#k figured out that assembling an armada to fight back the aliens would stop them from their current plundering actions. Let&apos;s help her!"/>
++    <string name="1" value="#bLazy Daisy#k figured out that assembling an armada to fight back the aliens would stop them from their current plundering actions. Let&apos;s help her!\n\n#i4000099# #t4000099# #c4000099# / #r100#k\n#i4000104# #t4000104# #c4000104# / #r100#k\n#i4000105# #t4000105# #c4000105# / #r100#k\n#i4000118# #t4000118# #c4000118# / #r100#k\n#i4000122# #t4000122# #c4000122# / #r100#k\n#i4000124# #t4000124# #c4000124# / #r10#k\n#i4000125# #t4000125# #c4000125# / #r10#k\n#i4000126# #t4000126# #c4000126# / #r10#k\n"/>
+     <string name="2" value="That teached these aliens a lesson or two. Now #bHenesys&apos;#k farms are well-suited against any other attacks from UFOs. Mission complete."/>
+     <int name="area" value="50"/>
+   </imgdir>
+   <imgdir name="8254">
+-    <string name="name" value="GM&apos;s help"/>
+-    <string name="0" value="Now that I got my PAC, while I am thinking on how to upgrade it&apos;s stats to better suit me, better check on what the Maple Administrator has to say."/>
+-    <string name="1" value="Now I&apos;m on a quest to test my fetching skills. She said the reward would be the powerful Chaos Scrolls. Not only one, but a bunch! "/>
++    <string name="name" value="GM&apos;s hand"/>
++    <string name="0" value="Now that I got my PAC, while I am thinking on how I should upgrade it&apos;s stats to better suit me, better check on what the Maple Administrator has to say about this matter..."/>
++    <string name="1" value="Now I&apos;m on a quest to test my fetching skills. She said the reward would be the powerful Chaos Scrolls. Not only one, but a bunch!\n\n#i4031017# #t4031017# #c4031017# / #r1#k\n#i4011007# #t4011007# #c4011007# / #r5#k\n#i4021009# #t4021009# #c4021009# / #r5#k\n#i4003002# #t4003002# #c4003002# / #r5#k\n#i4003001# #t4003001# #c4003001# / #r5#k\n#i4003000# #t4003000# #c4003000# / #r30#k\n"/>
+     <string name="2" value="The administrator told me more about the Chaos Scrolls capabilities: enhancing or downgrading an equipment&apos;s stats."/>
+     <int name="area" value="50"/>
+     <int name="autoStart" value="1"/>
+diff --git a/wz/Quest.wz/Say.img.xml b/wz/Quest.wz/Say.img.xml
+index 9ae3d8374..fb0fb43ed 100644
+--- a/wz/Quest.wz/Say.img.xml
++++ b/wz/Quest.wz/Say.img.xml
+@@ -43694,9 +43694,9 @@
+       </imgdir>
+     </imgdir>
+     <imgdir name="0">
+-      <string name="0" value="Hello, I see you just helped Lazy Daisy in confronting those aliens, and the reward was anything but a nuisance."/>
+-      <string name="1" value="See, the #bPink Adventurer Cape#k you just got is the #bonly cape providing an w. attack bonus#k, besides of being quite rare to find. You are thinking right now: &apos;neat, now I have this nice rare piece of fabric that grants me a bonus on attack&apos;... Well, how do you expect to improve it?"/>
+-      <string name="2" value="Yes, at first this question is quite simple: just using scrolls for cape. Well, this is right. However, suppose you want to #bempower#k it with more attack bonus. Nope, there is no scrolls for cape for W. Attack..."/>
++      <string name="0" value="Hello, I see you just helped Lazy Daisy in confronting those aliens, and the reward was anything but a nuisance, I must say."/>
++      <string name="1" value="See, the #bP. Adventurer Cape#k you just got is the #bonly cape providing an attack bonus#k, besides of being quite rare to find. You must be thinking right now: &apos;neat, now I have this nice rare piece of fabric that grants me a bonus on attack... I must give a shot on improving it right now!&apos; ... Well, how do you expect to improve it?"/>
++      <string name="2" value="Yes, at first the answer to this question is quite simple: just use scrolls for cape! Well, indeed this is right. However, suppose you want to #bempower#k it with even more attack bonus. Nope, there is no scrolls for cape for W. Attack..."/>
+       <string name="3" value="However, there are #bspecial#k scrolls that are capable of #bimprove attributes#k of a given item: Chaos Scroll, for instance. With it, one can #btry the luck#k changing the attributes of their equipments, for better or for worse."/>
+       <string name="4" value="Said this, I have quite the quest for you, to test your fetching capabilities. Pass this quest, and you receive not a single scroll, but a #bbooster#k of these. Are you up to the challenge?"/>
+       <imgdir name="yes">

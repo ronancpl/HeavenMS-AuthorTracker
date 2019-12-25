@@ -1,0 +1,78 @@
+diff --git a/src/client/command/commands/gm2/WarpAreaCommand.java b/src/client/command/commands/gm2/WarpAreaCommand.java
+index d9d97e9f4..b531215e2 100644
+--- a/src/client/command/commands/gm2/WarpAreaCommand.java
++++ b/src/client/command/commands/gm2/WarpAreaCommand.java
+@@ -29,6 +29,8 @@
+ import server.maps.MapleMap;
+ 
+ import java.awt.*;
++import java.util.ArrayList;
++import java.util.Collection;
+ 
+ public class WarpAreaCommand extends Command {
+     {
+@@ -52,7 +54,9 @@ public void execute(MapleClient c, String[] params) {
+ 
+             Point pos = player.getPosition();
+ 
+-            for (MapleCharacter victim : player.getMap().getCharacters()) {
++            Collection<MapleCharacter> characters = new ArrayList<>(player.getMap().getCharacters());
++            
++            for (MapleCharacter victim : characters) {
+                 if (victim.getPosition().distanceSq(pos) <= 50000) {
+                     victim.saveLocationOnWarp();
+                     victim.changeMap(target, target.getRandomPlayerSpawnpoint());
+diff --git a/src/client/command/commands/gm2/WarpMapCommand.java b/src/client/command/commands/gm2/WarpMapCommand.java
+index be8e60c29..238890d76 100644
+--- a/src/client/command/commands/gm2/WarpMapCommand.java
++++ b/src/client/command/commands/gm2/WarpMapCommand.java
+@@ -28,6 +28,9 @@
+ import client.command.Command;
+ import server.maps.MapleMap;
+ 
++import java.util.ArrayList;
++import java.util.Collection;
++
+ public class WarpMapCommand extends Command {
+     {
+         setDescription("");
+@@ -48,7 +51,9 @@ public void execute(MapleClient c, String[] params) {
+                 return;
+             }
+ 
+-            for (MapleCharacter victim : player.getMap().getCharacters()) {
++            Collection<MapleCharacter> characters = new ArrayList<>(player.getMap().getCharacters());
++            
++            for (MapleCharacter victim : characters) {
+                 victim.saveLocationOnWarp();
+                 victim.changeMap(target, target.getRandomPlayerSpawnpoint());
+             }
+diff --git a/src/client/command/commands/gm3/ReloadMapCommand.java b/src/client/command/commands/gm3/ReloadMapCommand.java
+index 61a47117c..12a0c31c5 100644
+--- a/src/client/command/commands/gm3/ReloadMapCommand.java
++++ b/src/client/command/commands/gm3/ReloadMapCommand.java
+@@ -28,6 +28,9 @@
+ import client.MapleCharacter;
+ import server.maps.MapleMap;
+ 
++import java.util.ArrayList;
++import java.util.Collection;
++
+ public class ReloadMapCommand extends Command {
+     {
+         setDescription("");
+@@ -36,11 +39,12 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+-        MapleMap oldMap = c.getPlayer().getMap();
+         MapleMap newMap = c.getChannelServer().getMapFactory().resetMap(player.getMapId());
+         int callerid = c.getPlayer().getId();
+ 
+-        for (MapleCharacter chr : oldMap.getCharacters()) {
++        Collection<MapleCharacter> characters = new ArrayList<>(player.getMap().getCharacters());
++        
++        for (MapleCharacter chr : characters) {
+             chr.saveLocationOnWarp();
+             chr.changeMap(newMap);
+             if (chr.getId() != callerid)

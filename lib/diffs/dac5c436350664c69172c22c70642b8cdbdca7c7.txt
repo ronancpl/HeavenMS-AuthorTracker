@@ -1,0 +1,3397 @@
+diff --git a/.gitignore b/.gitignore
+index ea3a637b1..ca7e2ab39 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -76,3 +76,4 @@
+ /tools/MapleSkillMakerReagentIndexer/nbproject/
+ 
+ /out
++*.onetoc2
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index e8afa71c5..02f36dc2e 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1062,4 +1062,25 @@ Dragon Roar agora aplica stun em mobs (efeito de stun aparentemente não está s
+ 
+ 22 Junho 2018,
+ Refatorado método de empty em MapleCharacter, agora verificando e liberando mais recursos.
+-Corrigido exploit onde pacotes referentes à chairs poderiam ser processados e reenviados aos outros em casos onde o personagem está fora do world server.
+\ No newline at end of file
++Corrigido exploit onde pacotes referentes à chairs poderiam ser processados e reenviados aos outros em casos onde o personagem está fora do world server.
++
++23 - 24 Junho 2018,
++Corrigido problema de concorrência com adição de itens no inventário do jogador, onde raramente itens poderiam não ser registrados dentro ao serem obtidos.
++Ajustado sistema de buyback, agora utilizando valor de taxa escalado por nível (entre 30 e 120).
++Ajustado MaxHP do boss Shade, agora conformante com seu nível.
++Corrigido Rest Spots na BRPQ podendo usar return scrolls.
++Ajustado valores de EXP e MaxHP de bosses com evasão 999 que utilizavam valores incoerentes para o nível esperado deles.
++Corrigido exceção de nulo ocorrendo após tentar recuperar script engine de jogador que já havia desconectado.
++Ajustado Hak e Orbis Magic Spot NPCs para sempre spawnar jogadores próximos ao dual.
++Removido Snowball (flecha) do drop data.
++Adicionado drops característicos dos mobs "Extras/Leaders" de Zipangu, que estavam faltando.
++Adicionado ganho de pet tameness em quests.
++Protegido contra acesso em rajada o handler de spawn de pets.
++Ajustado drop rates de omok e cards, agora mais próximo do GMS-like.
++
++26 Junho 2018,
++Adicionado efeito de dispel de weapondef e magicdef up em mobs ao atacar com Shadow Meso.
++Corrigido Shadow Meso consumindo projetil (deveria usar meso somente).
++Adicionado recompensa de buff ao completar o HolidayPQ.
++Adicionado drops de itens que dão buffs característicos nos reatores da Zakum Prequest.
++Scroll shop custom mudou para a NPC Asia em Neo City (anteriormente estava no Spindle).
+\ No newline at end of file
+diff --git a/scripts/event/HolidayPQ_1.js b/scripts/event/HolidayPQ_1.js
+index 62641dcb8..74c0f183f 100644
+--- a/scripts/event/HolidayPQ_1.js
++++ b/scripts/event/HolidayPQ_1.js
+@@ -245,6 +245,8 @@ function giveRandomEventReward(eim, player) {
+ function clearPQ(eim) {
+         eim.stopEventTimer();
+         eim.setEventCleared();
++        
++        eim.applyEventPlayersItemBuff(2022436);
+ }
+ 
+ function isScrooge(mob) {
+diff --git a/scripts/event/HolidayPQ_2.js b/scripts/event/HolidayPQ_2.js
+index 24ba28a19..dd03f3699 100644
+--- a/scripts/event/HolidayPQ_2.js
++++ b/scripts/event/HolidayPQ_2.js
+@@ -245,6 +245,8 @@ function giveRandomEventReward(eim, player) {
+ function clearPQ(eim) {
+         eim.stopEventTimer();
+         eim.setEventCleared();
++        
++        eim.applyEventPlayersItemBuff(2022437);
+ }
+ 
+ function isScrooge(mob) {
+diff --git a/scripts/event/HolidayPQ_3.js b/scripts/event/HolidayPQ_3.js
+index 5dbcfe448..b217933f0 100644
+--- a/scripts/event/HolidayPQ_3.js
++++ b/scripts/event/HolidayPQ_3.js
+@@ -245,6 +245,8 @@ function giveRandomEventReward(eim, player) {
+ function clearPQ(eim) {
+         eim.stopEventTimer();
+         eim.setEventCleared();
++        
++        eim.applyEventPlayersItemBuff(2022438);
+ }
+ 
+ function isScrooge(mob) {
+diff --git a/scripts/npc/1022004.js b/scripts/npc/1022004.js
+index 49ce5fe81..04f0f6e46 100644
+--- a/scripts/npc/1022004.js
++++ b/scripts/npc/1022004.js
+@@ -98,7 +98,7 @@ function action(mode, type, selection) {
+             var itemSet = new Array (4003001,4003001,4003000);
+             var matSet = new Array(4000003,4000018,new Array (4011000,4011001));
+             var matQtySet = new Array (10,5,new Array (1,1));
+-            var costSet = new Array (0,0,0)
++            var costSet = new Array (0,0,0);
+             item = itemSet[selectedItem];
+             mats = matSet[selectedItem];
+             matQty = matQtySet[selectedItem];
+diff --git a/scripts/npc/2012014.js b/scripts/npc/2012014.js
+index c498b5380..c509764cb 100644
+--- a/scripts/npc/2012014.js
++++ b/scripts/npc/2012014.js
+@@ -33,7 +33,7 @@
+ 
+ function start() {
+     if (cm.haveItem(4001019))
+-        cm.sendYesNo("You can use #b#t4001019#k to activate #b#p2012014##k. Will you teleport to where #b#p2012015##k is?");
++        cm.sendYesNo("You can use #b#t4001019##k to activate #b#p2012014##k. Will you teleport to where #b#p2012015##k is?");
+     else {
+         cm.sendOk("There's a #b#p2012014##k that'll enable you to teleport to where #b#p2012015##k is, but you can't activate it without the scroll.");
+         cm.dispose();
+@@ -43,7 +43,7 @@ function start() {
+ function action(mode, type, selection) {
+     if (mode > 0) {
+         cm.gainItem(4001019, -1);
+-        cm.warp(200082100);
++        cm.warp(200082100, 0);
+     }
+     cm.dispose();
+ }
+diff --git a/scripts/npc/2012015.js b/scripts/npc/2012015.js
+index ef0d25717..aed5a87ee 100644
+--- a/scripts/npc/2012015.js
++++ b/scripts/npc/2012015.js
+@@ -33,7 +33,7 @@
+ 
+ function start() {
+     if (cm.haveItem(4001019))
+-        cm.sendYesNo("You can use #b#t4001019#k to activate #b#p2012014##k. Will you teleport to where #b#p2012015##k is?");
++        cm.sendYesNo("You can use #b#t4001019##k to activate #b#p2012014##k. Will you teleport to where #b#p2012015##k is?");
+     else {
+         cm.sendOk("There's a #b#p2012015##k that'll enable you to teleport to where #b#p2012014##k is, but you can't activate it without the scroll.");
+         cm.dispose();
+@@ -43,7 +43,7 @@ function start() {
+ function action(mode, type, selection) {
+     if (mode > 0) {
+         cm.gainItem(4001019, -1);
+-        cm.warp(200080200);
++        cm.warp(200080200, 0);
+     }
+     cm.dispose();
+ }
+diff --git a/scripts/npc/2023000.js b/scripts/npc/2023000.js
+index 2d516f6ab..d0107542b 100644
+--- a/scripts/npc/2023000.js
++++ b/scripts/npc/2023000.js
+@@ -59,7 +59,7 @@ function action(mode, type, selection) {
+             if (cm.getMeso() < cost[location]) {
+                 cm.sendNext("You don't seem to have enough mesos. I am terribly sorry, but I cannot help you unless you pay up. Bring in the mesos by hunting more and come back when you have enough.");
+             } else {
+-                cm.warp(toMap[location]);
++                cm.warp(toMap[location], location != 1 ? 0 : 1);
+                 cm.gainMeso(-cost[location]);
+             }
+             cm.dispose();
+diff --git a/scripts/npc/2082014_script.js b/scripts/npc/2082014_script.js
+new file mode 100644
+index 000000000..9f5c0c926
+--- /dev/null
++++ b/scripts/npc/2082014_script.js
+@@ -0,0 +1,46 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("We've already located the enemy's ultimate weapon! Follow along the ship's bow area ahead and you will find my sister #b#p2082013##k. Report to her for futher instructions on the mission.");
++                        cm.dispose();
++                }
++        }
++}
+diff --git a/scripts/npc/2090005.js b/scripts/npc/2090005.js
+index 252e48355..1c698f0f7 100644
+--- a/scripts/npc/2090005.js
++++ b/scripts/npc/2090005.js
+@@ -70,7 +70,7 @@ function action(mode, type, selection) {
+                     cm.dispose();
+                 } else {
+                     cm.gainMeso(-cost[2]);
+-                    cm.warp(251000000);
++                    cm.warp(251000000, 0);
+                     cm.dispose();
+                 }
+             }
+@@ -82,7 +82,7 @@ function action(mode, type, selection) {
+                 } else {
+                         if(cm.getPlayer().getMapId() == 251000000) {
+                             cm.gainMeso(-cost[2]);
+-                            cm.warp(250000100);
++                            cm.warp(250000100, 0);
+                             cm.dispose();
+                         } else {
+                             cm.gainMeso(-cost[slct]);
+diff --git a/scripts/npc/9000036.js b/scripts/npc/9000036.js
+index 6968b7693..4905fbcc0 100644
+--- a/scripts/npc/9000036.js
++++ b/scripts/npc/9000036.js
+@@ -41,7 +41,7 @@ var maxEqp = 0;
+ function start() {
+     cm.getPlayer().setCS(true);
+     var selStr = "Hello, I am the #bAccessory NPC Crafter#k! My works are widely recognized to be too fine, up to the point at which all my items mimic not only the appearance but too the attributes of them! Everything I charge is some 'ingredients' to make them and, of course, a fee for my services. On what kind of equipment are you interessed?#b";
+-    var options = ["Pendants","Face accessories","Eye accessories","Belts & medals","Rings","#t4032496#"];
++    var options = ["Pendants","Face accessories","Eye accessories","Belts & medals","Rings"/*,"#t4032496#"*/];
+     for (var i = 0; i < options.length; i++)
+         selStr += "\r\n#L" + i + "# " + options[i] + "#l";
+     cm.sendSimple(selStr);
+@@ -91,19 +91,19 @@ function action(mode, type, selection) {
+             for (var i = 0; i < items.length; i++)
+                 selStr += "\r\n#L" + i + "##t" + items[i] + "##b";
+             
+-        }else if (selection == 5) { //make necklace
++        }/*else if (selection == 5) { //make necklace
+             var selStr = "Need to make #t4032496#?#b";
+             items = [4032496];
+             for (var i = 0; i < items.length; i++)
+                 selStr += "\r\n#L" + i + "##t" + items[i] + "##l";
+-        }
++        }*/
+         selectedType = selection;
+         cm.sendSimple(selStr);
+     }else if (status == 1) {
+         if (selectedType != 3) selectedItem = selection;
+         
+         if (selectedType == 0) { //pendant refine
+-            var matSet = [[4003004, 4030012, 4001356, 4000026], [4000026, 4001356, 4000073, 4001006], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [1122007, 4003002, 4032496]];
++            var matSet = [[4003004, 4030012, 4001356, 4000026], [4000026, 4001356, 4000073, 4001006], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [4001344, 4003001, 4003004, 4003005], [1122007, 4003002, 4000413]];
+             var matQtySet = [[20, 20, 5, 1], [5, 5, 10, 1], [10, 4, 20, 4], [20, 8, 20, 8], [10, 4, 20, 4], [15, 6, 30, 6], [20, 8, 40, 8], [15, 6, 30, 6], [1, 1, 1]];
+             var costSet = [150000, 500000, 200000, 400000, 200000, 300000, 400000, 300000, 2500000];
+         }else if (selectedType == 1) { //face accessory refine
+@@ -122,11 +122,11 @@ function action(mode, type, selection) {
+             var matSet = [[4003001, 4001344, 4006000], [4003001, 4001344, 4006000], [4021004, 4011008], [4011008, 4001006], [1112413, 2022039], [1112414, 4000176], [4011007, 4021009]];
+             var matQtySet = [[2, 2, 2], [2, 2, 2], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1]];
+             var costSet = [10000, 10000, 10000, 20000, 15000, 15000, 10000];
+-        }else if (selectedType == 5) { //necklace refine
++        }/*else if (selectedType == 5) { //necklace refine
+             var matSet = [[4011007, 4011008, 4021009]];
+             var matQtySet = [[1, 1, 1]];
+             var costSet = [10000];
+-        }
++        }*/
+         
+         if (selectedType == 3) {
+             selectedItem = Math.floor(Math.random() * maxEqp);
+@@ -161,34 +161,36 @@ function action(mode, type, selection) {
+             prompt += "\r\n#i4031138# " + (cost * qty) + " meso";
+         cm.sendYesNo(prompt);
+     }else if (status == 2) {
+-        var complete = true;
+-        if (cm.getMeso() < (cost * qty))
++        if (cm.getMeso() < (cost * qty)) {
+             cm.sendOk("This is the fee I charge to make my items! No credit.");
+-        else{
++        } else {
++            var complete = true;
+             if (mats instanceof Array) {
+                 for(var i = 0; complete && i < mats.length; i++)
+                     if (!cm.haveItem(mats[i], matQty[i] * qty))
+                         complete = false;
+-            }else if (!cm.haveItem(mats, matQty * qty))
++            } else if (!cm.haveItem(mats, matQty * qty))
+                 complete = false;
+-        }	
+-        if (!complete)
+-            cm.sendOk("Are you sure you got all the items required? Double check it!");
+-        else {
+-            if (cm.canHold(item, qty)) {
+-                if (mats instanceof Array) {
+-                    for (var i = 0; i < mats.length; i++)
+-                        cm.gainItem(mats[i], -(matQty[i] * qty));
+-                } else
+-                    cm.gainItem(mats, -(matQty * qty));
+-                cm.gainMeso(-(cost * qty));
+-                
+-                cm.gainItem(item, qty);
+-                cm.sendOk("The item is done! Take and try this piece of art yourself.");
+-            }else {
+-                cm.sendOk("You got no free slot on your inventory.");
++            
++            if (!complete)
++                cm.sendOk("Are you sure you got all the items required? Double check it!");
++            else {
++                if (cm.canHold(item, qty)) {
++                    if (mats instanceof Array) {
++                        for (var i = 0; i < mats.length; i++)
++                            cm.gainItem(mats[i], -(matQty[i] * qty));
++                    } else
++                        cm.gainItem(mats, -(matQty * qty));
++                    cm.gainMeso(-(cost * qty));
++
++                    cm.gainItem(item, qty);
++                    cm.sendOk("The item is done! Take and try this piece of art yourself.");
++                } else {
++                    cm.sendOk("You got no free slot on your inventory.");
++                }
+             }
+-        }
++        }	
++        
+         cm.dispose();
+     }
+ }
+\ No newline at end of file
+diff --git a/scripts/npc/9201082.js b/scripts/npc/9201082.js
+new file mode 100644
+index 000000000..93be490cd
+--- /dev/null
++++ b/scripts/npc/9201082.js
+@@ -0,0 +1,26 @@
++var status;
++ 
++function start() {
++        status = -1;
++        action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++        if (mode == -1) {
++                cm.dispose();
++        } else {
++                if (mode == 0 && type > 0) {
++                        cm.dispose();
++                        return;
++                }
++                if (mode == 1)
++                        status++;
++                else
++                        status--;
++    
++                if(status == 0) {
++                        cm.sendOk("Have you ever come to know about the card game based on MapleStory, the MapleStory iTCG?");
++                        cm.dispose();
++                }
++        }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/9220004.js b/scripts/npc/9220004.js
+index f53a81360..0cd1a06e8 100644
+--- a/scripts/npc/9220004.js
++++ b/scripts/npc/9220004.js
+@@ -20,7 +20,7 @@ function action(mode, type, selection) {
+                         status--; 
+                  
+                 if (status == 0) { 
+-                        cm.sendSimple("#b<Raid Quest: Happyville>#k\r\nA raid is nothing but many people joining up in an attempt to defeat extremely powerful creatures. Here is no different. Here, everyone can take part in defeating the spawned creature. What will you do?\r\n#b\r\n#L0#Spawn Kid Snowman.\r\n#L1#Spawn Lost Rudolph.\r\n#L2#Nothing, just chilling.#k");
++                        cm.sendSimple("#b<Raid Quest: Happyville>#k\r\nA raid is nothing but many people joining up in an attempt to defeat extremely powerful creatures. Here is no different. Everyone can take part in defeating the spawned creature. What will you do?\r\n#b\r\n#L0#Spawn Kid Snowman.\r\n#L1#Spawn Lost Rudolph.\r\n#L2#Nothing, just chilling.#k");
+                 } else if(status == 1) {
+                         if(selection == 0) {
+                                 if(cm.getMap().getMonsters().size() > 1) {  //reactor as a monster? wtf
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index 998f662cb..d0f427fbd 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -84,6 +84,7 @@ function writeFeatureTab_CashItems() {
+         addFeature("EXP/DROP/Cosmetic Coupons.");
+         addFeature("EXP/DROP Coupon as buff effect during active time.");
+         addFeature("Great deal of cash items functional.");
++        addFeature("GMS-esque omok/match card drop chances.");
+         addFeature("New town scroll: antibanish. Counters boss banishes.");
+         addFeature("Inventory system checks for free slot & stack space.");
+         addFeature("Storage with 'Arrange Items' feature functional.");
+diff --git a/scripts/quest/2216.js b/scripts/quest/2216.js
+index 18b854e06..3723fa736 100644
+--- a/scripts/quest/2216.js
++++ b/scripts/quest/2216.js
+@@ -39,7 +39,21 @@ function start(mode, type, selection) {
+             qm.gainExp(7000 * qm.getPlayer().getExpRate());
+             qm.forceCompleteQuest();
+             
++            if(isAllSubquestsDone() && qm.haveItem(4031894)) {
++                qm.gainItem(4031894, -1);
++            }
++            
+             qm.dispose();
+         }
+     }
++}
++
++function isAllSubquestsDone() {
++    for(var i = 2216; i <= 2219; i++) {
++        if(!qm.isQuestCompleted(i)) {
++            return false;
++        }
++    }
++    
++    return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2217.js b/scripts/quest/2217.js
+index ccd59d8d9..1b6f5946c 100644
+--- a/scripts/quest/2217.js
++++ b/scripts/quest/2217.js
+@@ -39,7 +39,21 @@ function start(mode, type, selection) {
+             qm.gainExp(7000 * qm.getPlayer().getExpRate());
+             qm.forceCompleteQuest();
+             
++            if(isAllSubquestsDone() && qm.haveItem(4031894)) {
++                qm.gainItem(4031894, -1);
++            }
++            
+             qm.dispose();
+         }
+     }
++}
++
++function isAllSubquestsDone() {
++    for(var i = 2216; i <= 2219; i++) {
++        if(!qm.isQuestCompleted(i)) {
++            return false;
++        }
++    }
++    
++    return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2218.js b/scripts/quest/2218.js
+index 7dcee42f4..d7a71f618 100644
+--- a/scripts/quest/2218.js
++++ b/scripts/quest/2218.js
+@@ -39,7 +39,21 @@ function start(mode, type, selection) {
+             qm.gainExp(7000 * qm.getPlayer().getExpRate());
+             qm.forceCompleteQuest();
+             
++            if(isAllSubquestsDone() && qm.haveItem(4031894)) {
++                qm.gainItem(4031894, -1);
++            }
++            
+             qm.dispose();
+         }
+     }
++}
++
++function isAllSubquestsDone() {
++    for(var i = 2216; i <= 2219; i++) {
++        if(!qm.isQuestCompleted(i)) {
++            return false;
++        }
++    }
++    
++    return true;
+ }
+\ No newline at end of file
+diff --git a/scripts/quest/2219.js b/scripts/quest/2219.js
+index d6ed9ec84..05195ba79 100644
+--- a/scripts/quest/2219.js
++++ b/scripts/quest/2219.js
+@@ -39,7 +39,21 @@ function start(mode, type, selection) {
+             qm.gainExp(7000 * qm.getPlayer().getExpRate());
+             qm.forceCompleteQuest();
+             
++            if(isAllSubquestsDone() && qm.haveItem(4031894)) {
++                qm.gainItem(4031894, -1);
++            }
++            
+             qm.dispose();
+         }
+     }
++}
++
++function isAllSubquestsDone() {
++    for(var i = 2216; i <= 2219; i++) {
++        if(!qm.isQuestCompleted(i)) {
++            return false;
++        }
++    }
++    
++    return true;
+ }
+\ No newline at end of file
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index b2205f75a..06f3974ba 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -5838,7 +5838,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (5617, 6400000, 2000004, 1, 1, 0, 20000),
+ (5618, 6400000, 4020003, 1, 1, 0, 9000),
+ (5619, 6400000, 4010006, 1, 1, 0, 9000),
+-(5620, 6400000, 4003002, 1, 1, 0, 20000),
++(5620, 6400000, 4003002, 1, 1, 0, 7000),
+ (5621, 6400000, 4004001, 1, 1, 0, 10000),
+ (5622, 6400000, 1082084, 1, 1, 0, 1000),
+ (5623, 6400000, 1072142, 1, 1, 0, 800),
+@@ -9140,7 +9140,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (8918, 9300274, 1082012, 1, 1, 0, 1000),
+ (8919, 9300274, 1072015, 1, 1, 0, 800),
+ (8920, 9300274, 1072031, 1, 1, 0, 800),
+-(8921, 9300274, 4030001, 1, 1, 0, 300),
++(8921, 9300274, 4030001, 1, 1, 0, 10000),
+ (8922, 9300274, 1052095, 1, 1, 0, 700),
+ (8923, 9300274, 2330000, 1, 1, 0, 500),
+ (8924, 9500317, 4001141, 1, 1, 0, 600000),
+@@ -11801,7 +11801,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11824, 9420500, 1002142, 1, 1, 0, 2000),
+ (11825, 9420500, 2061000, 1, 1, 0, 10000),
+ (11826, 9420500, 1422008, 1, 1, 0, 1800),
+-(11827, 9420500, 4030012, 1, 1, 0, 300),
++(11827, 9420500, 4030012, 1, 1, 0, 125000),
+ (11828, 9420500, 1052095, 1, 1, 0, 1800),
+ (11829, 9420500, 2330001, 1, 1, 0, 500),
+ (11830, 9420501, 4000372, 1, 1, 0, 300000),
+@@ -11824,7 +11824,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11847, 9420501, 1050058, 1, 1, 0, 1800),
+ (11848, 9420501, 1332020, 1, 1, 0, 1500),
+ (11849, 9420501, 4006001, 1, 1, 0, 5000),
+-(11850, 9420501, 4030012, 1, 1, 0, 300),
++(11850, 9420501, 4030012, 1, 1, 0, 125000),
+ (11851, 9420501, 1072297, 1, 1, 0, 2000),
+ (11852, 9420501, 1482001, 1, 1, 0, 2000),
+ (11853, 9420501, 1482005, 1, 1, 0, 2000),
+@@ -11896,7 +11896,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11919, 9420504, 1061091, 1, 1, 0, 2000),
+ (11920, 9420504, 1102003, 1, 1, 0, 2000),
+ (11921, 9420504, 4006001, 1, 1, 0, 5000),
+-(11922, 9420504, 4030012, 1, 1, 0, 300),
++(11922, 9420504, 4030012, 1, 1, 0, 125000),
+ (11923, 9420504, 1072291, 1, 1, 0, 2000),
+ (11924, 9420504, 1082186, 1, 1, 0, 2000),
+ (11925, 9420504, 1482003, 1, 1, 0, 1800),
+@@ -11918,7 +11918,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (11941, 9420505, 1061060, 1, 1, 0, 2000),
+ (11942, 9420505, 1051038, 1, 1, 0, 1800),
+ (11943, 9420505, 1051039, 1, 1, 0, 1800),
+-(11944, 9420505, 4030012, 1, 1, 0, 300),
++(11944, 9420505, 4030012, 1, 1, 0, 125000),
+ (11945, 9420505, 1002616, 1, 1, 0, 2000),
+ (11946, 9420505, 1052101, 1, 1, 0, 1800),
+ (11947, 9420505, 1082183, 1, 1, 0, 2000),
+@@ -12045,7 +12045,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (12068, 9420510, 1002210, 1, 1, 0, 2000),
+ (12069, 9420510, 1051046, 1, 1, 0, 1800),
+ (12070, 9420510, 1051047, 1, 1, 0, 1800),
+-(12071, 9420510, 4030012, 1, 1, 0, 300),
++(12071, 9420510, 4030012, 1, 1, 0, 125000),
+ (12072, 9420510, 1492001, 1, 1, 0, 3000),
+ (12073, 9420511, 4000382, 1, 1, 0, 300000),
+ (12074, 9420511, 400006, 1, 1, 0, 333333),
+@@ -12342,7 +12342,7 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (12365, 9420529, 2040005, 1, 1, 0, 1000),
+ (12366, 9420529, 2043801, 1, 1, 0, 1000),
+ (12367, 9420529, 4004000, 1, 1, 0, 5000),
+-(12368, 9420529, 4003002, 1, 1, 0, 20000),
++(12368, 9420529, 4003002, 1, 1, 0, 7000),
+ (12369, 9420529, 1402010, 1, 1, 0, 1800),
+ (12370, 9420529, 1412003, 1, 1, 0, 1800),
+ (12371, 9420529, 1452008, 1, 1, 0, 1500),
+@@ -12444,11 +12444,11 @@ INSERT IGNORE INTO `temp_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`,
+ (12467, 9420533, 1002254, 1, 1, 0, 2000),
+ (12468, 9420533, 1082180, 1, 1, 0, 2000),
+ (12469, 9420535, 4000473, 1, 1, 0, 300000),
+-(12470, 9420535, 4030009, 1, 1, 0, 300),
++(12470, 9420535, 4030009, 1, 1, 0, 28000),
+ (12471, 9420535, 400002, 1, 1, 0, 10000),
+ (12472, 9420535, 400004, 1, 1, 0, 333333),
+ (12473, 9420535, 2020028, 1, 1, 0, 20000),
+-(12474, 9420535, 4030012, 1, 1, 0, 300),
++(12474, 9420535, 4030012, 1, 1, 0, 125000),
+ (12475, 9420535, 2022003, 1, 1, 0, 333333),
+ (12476, 9420535, 2044402, 1, 1, 0, 1000),
+ (12477, 9420535, 2043701, 1, 1, 0, 1000),
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index b8f54aa31..3e39c0a3f 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -38,8 +38,8 @@ USE `heavenms`;
+ (100130, 1060007, 1, 1, 0, 700), 
+ (100101, 4000000, 1, 1, 0, 200000), 
+ (9300217, 4000000, 1, 1, 0, 200000), 
+-(100101, 4030012, 1, 1, 0, 10000), 
+-(9300217, 4030012, 1, 1, 0, 10000), 
++(100101, 4030012, 1, 1, 0, 125000), 
++(9300217, 4030012, 1, 1, 0, 125000), 
+ (100101, 2000000, 1, 1, 0, 40000), 
+ (9300217, 2000000, 1, 1, 0, 40000), 
+ (100101, 2041006, 1, 1, 0, 750), 
+@@ -94,8 +94,8 @@ USE `heavenms`;
+ (100131, 1002002, 1, 1, 0, 700), 
+ (130100, 4000003, 1, 1, 0, 200000), 
+ (9300219, 4000003, 1, 1, 0, 200000), 
+-(130100, 4030009, 1, 1, 0, 10000), 
+-(9300219, 4030009, 1, 1, 0, 10000), 
++(130100, 4030009, 1, 1, 0, 28000), 
++(9300219, 4030009, 1, 1, 0, 28000), 
+ (130100, 4001358, 1, 1, 0, 20000),
+ (9300219, 4001358, 1, 1, 0, 20000), 
+ (130100, 2000000, 1, 1, 0, 40000), 
+@@ -305,16 +305,16 @@ USE `heavenms`;
+ (9300155, 2041021, 1, 1, 0, 750), 
+ (9400241, 2041021, 1, 1, 0, 750), 
+ (9500101, 2041021, 1, 1, 0, 750), 
+-(1210100, 4030011, 1, 1, 0, 10000), 
+-(9300058, 4030011, 1, 1, 0, 10000), 
+-(9300155, 4030011, 1, 1, 0, 10000), 
+-(9400241, 4030011, 1, 1, 0, 10000), 
+-(9500101, 4030011, 1, 1, 0, 10000), 
+-(1210100, 4030012, 1, 1, 0, 10000), 
+-(9300058, 4030012, 1, 1, 0, 10000), 
+-(9300155, 4030012, 1, 1, 0, 10000), 
+-(9400241, 4030012, 1, 1, 0, 10000), 
+-(9500101, 4030012, 1, 1, 0, 10000), 
++(1210100, 4030011, 1, 1, 0, 77000), 
++(9300058, 4030011, 1, 1, 0, 77000), 
++(9300155, 4030011, 1, 1, 0, 77000), 
++(9400241, 4030011, 1, 1, 0, 77000), 
++(9500101, 4030011, 1, 1, 0, 77000), 
++(1210100, 4030012, 1, 1, 0, 125000), 
++(9300058, 4030012, 1, 1, 0, 125000), 
++(9300155, 4030012, 1, 1, 0, 125000), 
++(9400241, 4030012, 1, 1, 0, 125000), 
++(9500101, 4030012, 1, 1, 0, 125000), 
+ (1210100, 2380006, 1, 1, 0, 0), 
+ (9300058, 2380006, 1, 1, 0, 0),
+ (9300155, 2380006, 1, 1, 0, 0), 
+@@ -511,9 +511,9 @@ USE `heavenms`;
+ (1210101, 4003004, 1, 1, 0, 7000), 
+ (9300059, 4003004, 1, 1, 0, 7000), 
+ (9400242, 4003004, 1, 1, 0, 7000), 
+-(1210101, 4030012, 1, 1, 0, 10000), 
+-(9300059, 4030012, 1, 1, 0, 10000), 
+-(9400242, 4030012, 1, 1, 0, 10000), 
++(1210101, 4030012, 1, 1, 0, 125000), 
++(9300059, 4030012, 1, 1, 0, 125000), 
++(9400242, 4030012, 1, 1, 0, 125000), 
+ (1210101, 4001343, 1, 1, 0, 7000), 
+ (9300059, 4001343, 1, 1, 0, 7000), 
+ (9400242, 4001343, 1, 1, 0, 7000), 
+@@ -565,7 +565,7 @@ USE `heavenms`;
+ (1210101, 1072285, 1, 1, 0, 700), 
+ (9300059, 1072285, 1, 1, 0, 700), 
+ (9400242, 1072285, 1, 1, 0, 700), 
+-(1110101, 4030009, 1, 1, 0, 10000), 
++(1110101, 4030009, 1, 1, 0, 28000), 
+ (1110101, 4001344, 1, 1, 0, 7000), 
+ (1110101, 4001356, 1, 1, 0, 7000), 
+ (1110101, 4001360, 1, 1, 0, 12000), 
+@@ -588,10 +588,10 @@ USE `heavenms`;
+ (1110101, 1002613, 1, 1, 0, 700), 
+ (1120100, 4000006, 1, 1, 0, 200000), 
+ (9500104, 4000006, 1, 1, 0, 200000), 
+-(1120100, 4030010, 1, 1, 0, 10000), 
+-(9500104, 4030010, 1, 1, 0, 10000), 
+-(1120100, 4030012, 1, 1, 0, 10000),
+-(9500104, 4030012, 1, 1, 0, 10000), 
++(1120100, 4030010, 1, 1, 0, 77000), 
++(9500104, 4030010, 1, 1, 0, 77000), 
++(1120100, 4030012, 1, 1, 0, 125000),
++(9500104, 4030012, 1, 1, 0, 125000), 
+ (1120100, 2000000, 1, 1, 0, 40000), 
+ (9500104, 2000000, 1, 1, 0, 40000), 
+ (1120100, 2000003, 1, 1, 0, 40000), 
+@@ -869,8 +869,8 @@ USE `heavenms`;
+ (9420502, 1002177, 1, 1, 0, 700), 
+ (1140100, 4000195, 1, 1, 0, 200000), 
+ (9101002, 4000195, 1, 1, 0, 200000), 
+-(1140100, 4030012, 1, 1, 0, 10000), 
+-(9101002, 4030012, 1, 1, 0, 10000), 
++(1140100, 4030012, 1, 1, 0, 125000), 
++(9101002, 4030012, 1, 1, 0, 125000), 
+ (1140100, 2000000, 1, 1, 0, 40000), 
+ (9101002, 2000000, 1, 1, 0, 40000), 
+ (1140100, 2000003, 1, 1, 0, 40000), 
+@@ -947,7 +947,7 @@ USE `heavenms`;
+ (1140130, 1072066, 1, 1, 0, 700), 
+ (1140130, 1002107, 1, 1, 0, 700), 
+ (1140130, 1082180, 1, 1, 0, 700), 
+-(9400538, 4030012, 1, 1, 0, 10000), 
++(9400538, 4030012, 1, 1, 0, 125000), 
+ (9400538, 4131010, 1, 1, 0, 3000), 
+ (9400538, 2000000, 1, 1, 0, 40000), 
+ (9400538, 2000003, 1, 1, 0, 40000),
+@@ -965,8 +965,8 @@ USE `heavenms`;
+ (9400538, 1050035, 1, 1, 0, 700), 
+ (2220100, 4000009, 1, 1, 0, 200000), 
+ (9300259, 4000009, 1, 1, 0, 200000), 
+-(2220100, 4030012, 1, 1, 0, 10000), 
+-(9300259, 4030012, 1, 1, 0, 10000), 
++(2220100, 4030012, 1, 1, 0, 125000), 
++(9300259, 4030012, 1, 1, 0, 125000), 
+ (2220100, 2022016, 1, 1, 0, 3000), 
+ (9300259, 2022016, 1, 1, 0, 3000), 
+ (2220100, 2000001, 1, 1, 0, 40000), 
+@@ -1255,7 +1255,7 @@ USE `heavenms`;
+ (2130103, 1072069, 1, 1, 0, 700), 
+ (2130103, 1332008, 1, 1, 0, 700), 
+ (2130103, 1482002, 1, 1, 0, 700), 
+-(9400539, 4030012, 1, 1, 0, 10000), 
++(9400539, 4030012, 1, 1, 0, 125000), 
+ (9400539, 2000001, 1, 1, 0, 40000), 
+ (9400539, 2010004, 1, 1, 0, 3000), 
+ (9400539, 2002002, 1, 1, 0, 10000), 
+@@ -1327,9 +1327,9 @@ USE `heavenms`;
+ (2110200, 4000015, 1, 1, 0, 200000), 
+ (9400246, 4000015, 1, 1, 0, 200000), 
+ (9500106, 4000015, 1, 1, 0, 200000),
+-(2110200, 4030012, 1, 1, 0, 10000), 
+-(9400246, 4030012, 1, 1, 0, 10000), 
+-(9500106, 4030012, 1, 1, 0, 10000), 
++(2110200, 4030012, 1, 1, 0, 125000), 
++(9400246, 4030012, 1, 1, 0, 125000), 
++(9500106, 4030012, 1, 1, 0, 125000), 
+ (2110200, 2000003, 1, 1, 0, 40000), 
+ (9400246, 2000003, 1, 1, 0, 40000), 
+ (9500106, 2000003, 1, 1, 0, 40000), 
+@@ -1510,7 +1510,7 @@ USE `heavenms`;
+ (5200000, 1061044, 1, 1, 0, 700), 
+ (5200000, 1482002, 1, 1, 0, 700), 
+ (2230110, 4000196, 1, 1, 0, 200000), 
+-(2230110, 4030012, 1, 1, 0, 10000), 
++(2230110, 4030012, 1, 1, 0, 125000), 
+ (2230110, 2000001, 1, 1, 0, 40000), 
+ (2230110, 2000003, 1, 1, 0, 40000), 
+ (2230110, 2002003, 1, 1, 0, 10000),
+@@ -1563,8 +1563,8 @@ USE `heavenms`;
+ (9420506, 2000001, 1, 1, 0, 40000), 
+ (9420506, 2000003, 1, 1, 0, 40000), 
+ (2230103, 4000097, 1, 1, 0, 200000), 
+-(2230103, 4030016, 1, 1, 0, 10000), 
+-(2230103, 4030012, 1, 1, 0, 10000), 
++(2230103, 4030016, 1, 1, 0, 77000), 
++(2230103, 4030012, 1, 1, 0, 125000), 
+ (2230103, 4031072, 1, 1, 9004, 7000), 
+ (2230103, 4131000, 1, 1, 0, 3000), 
+ (2230103, 2000000, 1, 1, 0, 40000), 
+@@ -1589,7 +1589,7 @@ USE `heavenms`;
+ (2230103, 1072288, 1, 1, 0, 700), 
+ (2230103, 1072291, 1, 1, 0, 700), 
+ (2230105, 4000161, 1, 1, 0, 200000), 
+-(2230105, 4030012, 1, 1, 0, 10000), 
++(2230105, 4030012, 1, 1, 0, 125000), 
+ (2230105, 4131000, 1, 1, 0, 3000),
+ (2230105, 2000001, 1, 1, 0, 40000), 
+ (2230105, 2381013, 1, 1, 0, 20000), 
+@@ -2019,8 +2019,8 @@ USE `heavenms`;
+ (9400541, 1060050, 1, 1, 0, 700), 
+ (2100103, 4000330, 1, 1, 0, 200000), 
+ (9300221, 4000330, 1, 1, 0, 200000), 
+-(2100103, 4030012, 1, 1, 0, 10000), 
+-(9300221, 4030012, 1, 1, 0, 10000), 
++(2100103, 4030012, 1, 1, 0, 125000), 
++(9300221, 4030012, 1, 1, 0, 125000), 
+ (2100103, 2000001, 1, 1, 0, 40000), 
+ (9300221, 2000001, 1, 1, 0, 40000), 
+ (2100103, 2000003, 1, 1, 0, 40000), 
+@@ -2098,7 +2098,7 @@ USE `heavenms`;
+ (2230112, 1060050, 1, 1, 0, 700), 
+ (2230112, 1082186, 1, 1, 0, 700), 
+ (2230100, 4000007, 1, 1, 0, 200000), 
+-(2230100, 4030012, 1, 1, 0, 10000), 
++(2230100, 4030012, 1, 1, 0, 125000), 
+ (2230100, 4001373, 1, 1, 0, 7000), 
+ (2230100, 2000001, 1, 1, 0, 40000),
+ (2230100, 2000003, 1, 1, 0, 40000),
+@@ -2141,8 +2141,8 @@ USE `heavenms`;
+ (2100107, 1492003, 1, 1, 0, 700), 
+ (9400547, 4000391, 1, 1, 0, 200000), 
+ (9400550, 4000391, 1, 1, 0, 200000), 
+-(9400547, 4030012, 1, 1, 0, 10000), 
+-(9400550, 4030012, 1, 1, 0, 10000), 
++(9400547, 4030012, 1, 1, 0, 125000), 
++(9400550, 4030012, 1, 1, 0, 125000), 
+ (9400547, 4131010, 1, 1, 0, 3000), 
+ (9400550, 4131010, 1, 1, 0, 3000),
+ (9400547, 2000002, 1, 1, 0, 40000), 
+@@ -2470,11 +2470,11 @@ USE `heavenms`;
+ (9400238, 4000127, 1, 1, 0, 200000), 
+ (9400247, 4000127, 1, 1, 0, 200000), 
+ (9500107, 4000127, 1, 1, 0, 200000), 
+-(3230400, 4030009, 1, 1, 0, 10000), 
+-(9200016, 4030009, 1, 1, 0, 10000), 
+-(9400238, 4030009, 1, 1, 0, 10000), 
+-(9400247, 4030009, 1, 1, 0, 10000), 
+-(9500107, 4030009, 1, 1, 0, 10000), 
++(3230400, 4030009, 1, 1, 0, 28000), 
++(9200016, 4030009, 1, 1, 0, 28000), 
++(9400238, 4030009, 1, 1, 0, 28000), 
++(9400247, 4030009, 1, 1, 0, 28000), 
++(9500107, 4030009, 1, 1, 0, 28000), 
+ (3230400, 4130012, 1, 1, 0, 3000), 
+ (9200016, 4130012, 1, 1, 0, 3000), 
+ (9400238, 4130012, 1, 1, 0, 3000), 
+@@ -2935,7 +2935,6 @@ USE `heavenms`;
+ (3210100, 2000002, 1, 1, 0, 40000), 
+ (3210100, 2000003, 1, 1, 0, 40000), 
+ (3210100, 2070001, 1, 1, 0, 400), 
+-(3210100, 2060005, 10, 50, 0, 10000), 
+ (3210100, 2070003, 1, 1, 0, 400),
+ (3210100, 4006001, 1, 1, 0, 7000), 
+ (3210100, 4010001, 1, 1, 0, 7000), 
+@@ -2958,7 +2957,7 @@ USE `heavenms`;
+ (3210100, 1052107, 1, 1, 0, 700), 
+ (3230104, 4000167, 1, 1, 0, 200000),
+ (3230104, 4031209, 1, 1, 3072, 7000), 
+-(3230104, 4030012, 1, 1, 0, 10000), 
++(3230104, 4030012, 1, 1, 0, 125000), 
+ (3230104, 2000002, 1, 1, 0, 40000), 
+ (3230104, 2022040, 1, 1, 0, 3000), 
+ (3230104, 2070002, 1, 1, 0, 400), 
+@@ -2986,7 +2985,7 @@ USE `heavenms`;
+ (3230104, 1002184, 1, 1, 0, 700), 
+ (3230104, 1482004, 1, 1, 0, 700), 
+ (5300000, 4000086, 1, 1, 0, 200000), 
+-(5300000, 4030012, 1, 1, 0, 10000), 
++(5300000, 4030012, 1, 1, 0, 125000), 
+ (5300000, 2000002, 1, 1, 0, 40000), 
+ (5300000, 2000003, 1, 1, 0, 40000), 
+ (5300000, 4006001, 1, 1, 0, 7000), 
+@@ -3141,7 +3140,7 @@ USE `heavenms`;
+ (3110102, 1072294, 1, 1, 0, 700), 
+ (9300129, 1072294, 1, 1, 0, 700), 
+ (9500109, 1072294, 1, 1, 0, 700), 
+-(3110101, 4030014, 1, 1, 0, 10000), 
++(3110101, 4030014, 1, 1, 0, 77000), 
+ (3110101, 4131001, 1, 1, 0, 3000), 
+ (3110101, 2000002, 1, 1, 0, 40000), 
+ (3110101, 2000003, 1, 1, 0, 40000), 
+@@ -3189,7 +3188,7 @@ USE `heavenms`;
+ (3210201, 4000021, 1, 1, 0, 200000), 
+ (3210201, 4003004, 1, 1, 0, 7000), 
+ (3210201, 2050099, 1, 1, 0, 3000), 
+-(3210201, 4030012, 1, 1, 0, 10000), 
++(3210201, 4030012, 1, 1, 0, 125000), 
+ (3210201, 2000002, 1, 1, 0, 40000), 
+ (3210201, 2000003, 1, 1, 0, 40000), 
+ (3210201, 2070003, 1, 1, 0, 400), 
+@@ -3215,7 +3214,7 @@ USE `heavenms`;
+ (3210202, 4000073, 1, 1, 0, 200000), 
+ (3210202, 4003004, 1, 1, 0, 7000), 
+ (3210202, 4000021, 1, 1, 0, 200000), 
+-(3210202, 4030012, 1, 1, 0, 10000), 
++(3210202, 4030012, 1, 1, 0, 125000), 
+ (3210202, 2000002, 1, 1, 0, 40000), 
+ (3210202, 2000003, 1, 1, 0, 40000), 
+ (3210202, 4006000, 1, 1, 0, 7000), 
+@@ -3245,7 +3244,7 @@ USE `heavenms`;
+ (9400509, 4000070, 1, 1, 0, 200000), 
+ (9400509, 4003005, 1, 1, 0, 7000), 
+ (9400509, 4031523, 1, 1, 0, 7000),
+-(9400509, 4030009, 1, 1, 0, 10000), 
++(9400509, 4030009, 1, 1, 0, 28000), 
+ (9400509, 2000002, 1, 1, 0, 40000), 
+ (9400509, 2000003, 1, 1, 0, 40000), 
+ (9400509, 2000004, 1, 1, 0, 40000), 
+@@ -3316,7 +3315,7 @@ USE `heavenms`;
+ (3210200, 4003004, 1, 1, 0, 7000), 
+ (3210200, 4000021, 1, 1, 0, 200000), 
+ (3210200, 2050099, 1, 1, 0, 3000), 
+-(3210200, 4030012, 1, 1, 0, 10000),
++(3210200, 4030012, 1, 1, 0, 125000),
+ (3210200, 4130021, 1, 1, 0, 3000), 
+ (3210200, 2000002, 1, 1, 0, 40000), 
+ (3210200, 2000003, 1, 1, 0, 40000), 
+@@ -3403,8 +3402,6 @@ USE `heavenms`;
+ (9300232, 2000002, 1, 1, 0, 40000), 
+ (3210207, 2000003, 1, 1, 0, 40000), 
+ (9300232, 2000003, 1, 1, 0, 40000), 
+-(3210207, 2060005, 10, 50, 0, 10000), 
+-(9300232, 2060005, 10, 50, 0, 10000), 
+ (3210207, 2041018, 1, 1, 0, 750), 
+ (9300232, 2041018, 1, 1, 0, 750),
+ (3210207, 2382017, 1, 1, 0, 20000), 
+@@ -3446,7 +3443,7 @@ USE `heavenms`;
+ (3210207, 1072297, 1, 1, 0, 700), 
+ (9300232, 1072297, 1, 1, 0, 700), 
+ (3230100, 4000013, 1, 1, 0, 200000), 
+-(3230100, 4030012, 1, 1, 0, 10000), 
++(3230100, 4030012, 1, 1, 0, 125000), 
+ (3230100, 2000002, 1, 1, 0, 40000), 
+ (3230100, 2000003, 1, 1, 0, 40000), 
+ (3230100, 2002005, 1, 1, 0, 10000), 
+@@ -3582,8 +3579,8 @@ USE `heavenms`;
+ (9500157, 1492005, 1, 1, 0, 700), 
+ (3230200, 4003004, 1, 1, 0, 7000), 
+ (9500110, 4003004, 1, 1, 0, 7000), 
+-(3230200, 4030012, 1, 1, 0, 10000), 
+-(9500110, 4030012, 1, 1, 0, 10000), 
++(3230200, 4030012, 1, 1, 0, 125000), 
++(9500110, 4030012, 1, 1, 0, 125000), 
+ (3230200, 2000002, 1, 1, 0, 40000), 
+ (9500110, 2000002, 1, 1, 0, 40000), 
+ (3230200, 2000003, 1, 1, 0, 40000),
+@@ -4042,7 +4039,7 @@ USE `heavenms`;
+ (9410011, 1002628, 1, 1, 0, 700), 
+ (3230302, 4000099, 1, 1, 0, 200000), 
+ (3230302, 4001125, 1, 1, 0, 7000), 
+-(3230302, 4030013, 1, 1, 0, 10000),
++(3230302, 4030013, 1, 1, 0, 77000),
+ (3230302, 4131008, 1, 1, 0, 3000), 
+ (3230302, 2000002, 1, 1, 0, 40000), 
+ (3230302, 2000003, 1, 1, 0, 40000), 
+@@ -4066,8 +4063,8 @@ USE `heavenms`;
+ (3230302, 1052110, 1, 1, 0, 700), 
+ (3210203, 4000108, 1, 1, 0, 200000), 
+ (9500113, 4000108, 1, 1, 0, 200000), 
+-(3210203, 4030015, 1, 1, 0, 10000), 
+-(9500113, 4030015, 1, 1, 0, 10000), 
++(3210203, 4030015, 1, 1, 0, 77000), 
++(9500113, 4030015, 1, 1, 0, 77000), 
+ (3210203, 4130003, 1, 1, 0, 3000), 
+ (9500113, 4130003, 1, 1, 0, 3000), 
+ (3210203, 4131009, 1, 1, 0, 3000), 
+@@ -4186,7 +4183,7 @@ USE `heavenms`;
+ (3210206, 1492005, 1, 1, 0, 700), 
+ (9500117, 1492005, 1, 1, 0, 700), 
+ (3210208, 4000168, 1, 1, 0, 200000), 
+-(3210208, 4030012, 1, 1, 0, 10000), 
++(3210208, 4030012, 1, 1, 0, 125000), 
+ (3210208, 4130003, 1, 1, 0, 3000), 
+ (3210208, 4131009, 1, 1, 0, 3000), 
+ (3210208, 2000002, 1, 1, 0, 40000), 
+@@ -4233,9 +4230,9 @@ USE `heavenms`;
+ (3210450, 1332014, 1, 1, 0, 700), 
+ (3210450, 1041050, 1, 1, 0, 700), 
+ (3210450, 1002625, 1, 1, 0, 700), 
+-(3230102, 4030012, 1, 1, 0, 10000), 
+-(9300227, 4030012, 1, 1, 0, 10000), 
+-(9500115, 4030012, 1, 1, 0, 10000), 
++(3230102, 4030012, 1, 1, 0, 125000), 
++(9300227, 4030012, 1, 1, 0, 125000), 
++(9500115, 4030012, 1, 1, 0, 125000), 
+ (3230102, 2000002, 1, 1, 0, 40000), 
+ (9300227, 2000002, 1, 1, 0, 40000), 
+ (9500115, 2000002, 1, 1, 0, 40000), 
+@@ -4399,16 +4396,14 @@ USE `heavenms`;
+ (9300225, 4000021, 1, 1, 0, 200000), 
+ (3210800, 4003004, 1, 1, 0, 7000), 
+ (9300225, 4003004, 1, 1, 0, 7000), 
+-(3210800, 4030012, 1, 1, 0, 10000), 
+-(9300225, 4030012, 1, 1, 0, 10000), 
++(3210800, 4030012, 1, 1, 0, 125000), 
++(9300225, 4030012, 1, 1, 0, 125000), 
+ (3210800, 4130001, 1, 1, 0, 3000), 
+ (9300225, 4130001, 1, 1, 0, 3000), 
+ (3210800, 2000003, 1, 1, 0, 40000), 
+ (9300225, 2000003, 1, 1, 0, 40000), 
+ (3210800, 2070003, 1, 1, 0, 400), 
+ (9300225, 2070003, 1, 1, 0, 400), 
+-(3210800, 2060005, 10, 50, 0, 10000), 
+-(9300225, 2060005, 10, 50, 0, 10000), 
+ (3210800, 2041010, 1, 1, 0, 750), 
+ (9300225, 2041010, 1, 1, 0, 750), 
+ (3210800, 2382029, 1, 1, 0, 20000), 
+@@ -4773,10 +4768,10 @@ USE `heavenms`;
+ (9300011, 4000003, 1, 1, 0, 200000), 
+ (9300131, 4000003, 1, 1, 0, 200000), 
+ (9500119, 4000003, 1, 1, 0, 200000), 
+-(3230305, 4030009, 1, 1, 0, 10000), 
+-(9300011, 4030009, 1, 1, 0, 10000), 
+-(9300131, 4030009, 1, 1, 0, 10000), 
+-(9500119, 4030009, 1, 1, 0, 10000), 
++(3230305, 4030009, 1, 1, 0, 28000), 
++(9300011, 4030009, 1, 1, 0, 28000), 
++(9300131, 4030009, 1, 1, 0, 28000), 
++(9500119, 4030009, 1, 1, 0, 28000), 
+ (3230305, 4130008, 1, 1, 0, 3000), 
+ (9300011, 4130008, 1, 1, 0, 3000),
+ (9300131, 4130008, 1, 1, 0, 3000), 
+@@ -4916,7 +4911,7 @@ USE `heavenms`;
+ (3230308, 1482005, 1, 1, 0, 700), 
+ (9500118, 1482005, 1, 1, 0, 700), 
+ (4230100, 4000023, 1, 1, 0, 200000), 
+-(4230100, 4030012, 1, 1, 0, 10000), 
++(4230100, 4030012, 1, 1, 0, 125000), 
+ (4230100, 2000002, 1, 1, 0, 40000), 
+ (4230100, 2000003, 1, 1, 0, 40000), 
+ (4230100, 2070002, 1, 1, 0, 400), 
+@@ -5283,10 +5278,10 @@ USE `heavenms`;
+ (9300103, 4000117, 1, 1, 0, 200000), 
+ (9300332, 4000117, 1, 1, 0, 200000), 
+ (9500366, 4000117, 1, 1, 0, 200000), 
+-(4230116, 4030012, 1, 1, 0, 10000), 
+-(9300103, 4030012, 1, 1, 0, 10000), 
+-(9300332, 4030012, 1, 1, 0, 10000), 
+-(9500366, 4030012, 1, 1, 0, 10000), 
++(4230116, 4030012, 1, 1, 0, 125000), 
++(9300103, 4030012, 1, 1, 0, 125000), 
++(9300332, 4030012, 1, 1, 0, 125000), 
++(9500366, 4030012, 1, 1, 0, 125000), 
+ (4230116, 4131013, 1, 1, 0, 3000), 
+ (9300103, 4131013, 1, 1, 0, 3000), 
+ (9300332, 4131013, 1, 1, 0, 3000), 
+@@ -5382,9 +5377,9 @@ USE `heavenms`;
+ (4230107, 4003004, 1, 1, 0, 7000), 
+ (9300062, 4003004, 1, 1, 0, 7000),
+ (9300081, 4003004, 1, 1, 0, 7000), 
+-(4230107, 4030012, 1, 1, 0, 10000), 
+-(9300062, 4030012, 1, 1, 0, 10000), 
+-(9300081, 4030012, 1, 1, 0, 10000), 
++(4230107, 4030012, 1, 1, 0, 125000), 
++(9300062, 4030012, 1, 1, 0, 125000), 
++(9300081, 4030012, 1, 1, 0, 125000), 
+ (4230107, 2000003, 1, 1, 0, 40000), 
+ (9300062, 2000003, 1, 1, 0, 40000), 
+ (9300081, 2000003, 1, 1, 0, 40000), 
+@@ -5658,8 +5653,8 @@ USE `heavenms`;
+ (4230501, 1072300, 1, 1, 0, 700), 
+ (4230111, 4000111, 1, 1, 0, 200000), 
+ (9300133, 4000111, 1, 1, 0, 200000), 
+-(4230111, 4030012, 1, 1, 0, 10000),
+-(9300133, 4030012, 1, 1, 0, 10000), 
++(4230111, 4030012, 1, 1, 0, 125000),
++(9300133, 4030012, 1, 1, 0, 125000), 
+ (4230111, 4130011, 1, 1, 0, 3000), 
+ (9300133, 4130011, 1, 1, 0, 3000), 
+ (4230111, 2000002, 1, 1, 0, 40000), 
+@@ -5817,9 +5812,9 @@ USE `heavenms`;
+ (4230124, 4031209, 1, 1, 3072, 7000), 
+ (9300090, 4031209, 1, 1, 3072, 7000), 
+ (9420501, 4031209, 1, 1, 3072, 7000), 
+-(4230124, 4030012, 1, 1, 0, 10000), 
+-(9300090, 4030012, 1, 1, 0, 10000), 
+-(9420501, 4030012, 1, 1, 0, 10000), 
++(4230124, 4030012, 1, 1, 0, 125000), 
++(9300090, 4030012, 1, 1, 0, 125000), 
++(9420501, 4030012, 1, 1, 0, 125000), 
+ (4230124, 2000002, 1, 1, 0, 40000), 
+ (9300090, 2000002, 1, 4, 0, 40000), 
+ (9420501, 2000002, 1, 1, 0, 40000), 
+@@ -5900,7 +5895,7 @@ USE `heavenms`;
+ (4250000, 1072109, 1, 1, 0, 700), 
+ (4250000, 1492006, 1, 1, 0, 700), 
+ (4110300, 4000357, 1, 1, 0, 200000), 
+-(4110300, 4030012, 1, 1, 0, 10000), 
++(4110300, 4030012, 1, 1, 0, 125000), 
+ (4110300, 4130012, 1, 1, 0, 3000), 
+ (4110300, 4130022, 1, 1, 0, 3000), 
+ (4110300, 2000002, 1, 1, 0, 40000), 
+@@ -5998,7 +5993,7 @@ USE `heavenms`;
+ (4230109, 2040901, 1, 1, 0, 750), 
+ (4230109, 2060000, 10, 50, 0, 10000), 
+ (4230109, 2061000, 10, 50, 0, 10000), 
+-(4230109, 4030012, 1, 1, 0, 10000), 
++(4230109, 4030012, 1, 1, 0, 125000), 
+ (4230109, 4010001, 1, 1, 0, 7000), 
+ (4230109, 4004002, 1, 1, 0, 3000), 
+ (4230109, 1032018, 1, 1, 0, 700), 
+@@ -6047,7 +6042,7 @@ USE `heavenms`;
+ (4230123, 4000156, 1, 1, 0, 200000), 
+ (4230123, 4000157, 1, 1, 0, 200000), 
+ (4230123, 4031209, 1, 1, 3072, 7000), 
+-(4230123, 4030012, 1, 1, 0, 10000), 
++(4230123, 4030012, 1, 1, 0, 125000), 
+ (4230123, 4003004, 1, 1, 0, 7000), 
+ (4230123, 4130015, 1, 1, 0, 3000), 
+ (4230123, 4130008, 1, 1, 0, 3000), 
+@@ -6126,7 +6121,7 @@ USE `heavenms`;
+ (4300006, 1492006, 1, 1, 0, 700), 
+ (4230112, 4000112, 1, 1, 0, 200000), 
+ (4230112, 4031115, 1, 1, 0, 7000), 
+-(4230112, 4030012, 1, 1, 0, 10000), 
++(4230112, 4030012, 1, 1, 0, 125000), 
+ (4230112, 2000002, 1, 1, 0, 40000), 
+ (4230112, 2000004, 1, 1, 0, 40000), 
+ (4230112, 2060000, 10, 50, 0, 10000), 
+@@ -6222,8 +6217,8 @@ USE `heavenms`;
+ (4300007, 1472017, 1, 1, 0, 700), 
+ (4300007, 1482006, 1, 1, 0, 700), 
+ (4300007, 1492006, 1, 1, 0, 700), 
+-(4230120, 4030012, 1, 1, 0, 10000), 
+-(9500372, 4030012, 1, 1, 0, 10000), 
++(4230120, 4030012, 1, 1, 0, 125000), 
++(9500372, 4030012, 1, 1, 0, 125000), 
+ (4230120, 4131004, 1, 1, 0, 3000), 
+ (9500372, 4131004, 1, 1, 0, 3000), 
+ (4230120, 2000002, 1, 1, 0, 40000), 
+@@ -6273,7 +6268,7 @@ USE `heavenms`;
+ (4230120, 1482007, 1, 1, 0, 700), 
+ (9500372, 1482007, 1, 1, 0, 700), 
+ (4230106, 4003004, 1, 1, 0, 7000), 
+-(4230106, 4030012, 1, 1, 0, 10000), 
++(4230106, 4030012, 1, 1, 0, 125000), 
+ (4230106, 2000002, 1, 1, 0, 40000),
+ (4230106, 2000003, 1, 1, 0, 40000), 
+ (4230106, 2070002, 1, 1, 0, 400), 
+@@ -6329,8 +6324,8 @@ USE `heavenms`;
+ (4130100, 1052113, 1, 1, 0, 700), 
+ (4230110, 4000102, 1, 1, 0, 200000), 
+ (9500120, 4000102, 1, 1, 0, 200000), 
+-(4230110, 4030012, 1, 1, 0, 10000),
+-(9500120, 4030012, 1, 1, 0, 10000), 
++(4230110, 4030012, 1, 1, 0, 125000),
++(9500120, 4030012, 1, 1, 0, 125000), 
+ (4230110, 2000002, 1, 1, 0, 40000), 
+ (9500120, 2000002, 1, 1, 0, 40000), 
+ (4230110, 2000004, 1, 1, 0, 40000), 
+@@ -6850,7 +6845,7 @@ USE `heavenms`;
+ (4230503, 1492006, 1, 1, 0, 700), 
+ (9300160, 1492006, 1, 1, 0, 40000), 
+ (4130101, 4000045, 1, 1, 0, 200000), 
+-(4130101, 4030012, 1, 1, 0, 10000), 
++(4130101, 4030012, 1, 1, 0, 125000), 
+ (4130101, 2000002, 1, 1, 0, 40000), 
+ (4130101, 2000003, 1, 1, 0, 40000), 
+ (4130101, 2000004, 1, 1, 0, 40000), 
+@@ -6881,8 +6876,8 @@ USE `heavenms`;
+ (9300231, 4000115, 1, 1, 0, 200000), 
+ (4230115, 4031992, 1, 1, 0, 7000), 
+ (9300231, 4031992, 1, 1, 0, 7000), 
+-(4230115, 4030012, 1, 1, 0, 10000), 
+-(9300231, 4030012, 1, 1, 0, 10000), 
++(4230115, 4030012, 1, 1, 0, 125000), 
++(9300231, 4030012, 1, 1, 0, 125000), 
+ (4230115, 4130012, 1, 1, 0, 3000), 
+ (9300231, 4130012, 1, 1, 0, 3000), 
+ (4230115, 2000002, 1, 1, 0, 40000), 
+@@ -6998,10 +6993,10 @@ USE `heavenms`;
+ (4300009, 1472017, 1, 1, 0, 700), 
+ (4300009, 1482006, 1, 1, 0, 700), 
+ (4300009, 1492006, 1, 1, 0, 700), 
+-(4230121, 4030012, 1, 1, 0, 10000), 
+-(9300336, 4030012, 1, 1, 0, 10000), 
+-(9300337, 4030012, 1, 1, 0, 10000),
+-(9500370, 4030012, 1, 1, 0, 10000), 
++(4230121, 4030012, 1, 1, 0, 125000), 
++(9300336, 4030012, 1, 1, 0, 125000), 
++(9300337, 4030012, 1, 1, 0, 125000),
++(9500370, 4030012, 1, 1, 0, 125000), 
+ (4230121, 4131012, 1, 1, 0, 3000), 
+ (9300336, 4131012, 1, 1, 0, 3000), 
+ (9300337, 4131012, 1, 1, 0, 3000), 
+@@ -7150,9 +7145,9 @@ USE `heavenms`;
+ (4130104, 1060085, 1, 1, 0, 700), 
+ (4130102, 1060084, 1, 1, 0, 700), 
+ (4130104, 1060084, 1, 1, 0, 700), 
+-(4130103, 4030012, 1, 1, 0, 10000), 
+-(9300136, 4030012, 1, 1, 0, 10000), 
+-(9303006, 4030012, 1, 1, 0, 10000), 
++(4130103, 4030012, 1, 1, 0, 125000), 
++(9300136, 4030012, 1, 1, 0, 125000), 
++(9303006, 4030012, 1, 1, 0, 125000), 
+ (4130103, 2000002, 1, 4, 0, 40000), 
+ (9300136, 2000002, 1, 4, 0, 40000),
+ (9303006, 2000002, 1, 1, 0, 40000), 
+@@ -7248,7 +7243,7 @@ USE `heavenms`;
+ (9400101, 1040061, 1, 1, 0, 700), 
+ (9400101, 1061056, 1, 1, 0, 700), 
+ (4230505, 4000291, 1, 1, 0, 200000), 
+-(4230505, 4030012, 1, 1, 0, 10000), 
++(4230505, 4030012, 1, 1, 0, 125000), 
+ (4230505, 4130012, 1, 1, 0, 3000), 
+ (4230505, 2000002, 1, 1, 0, 40000), 
+ (4230505, 2000003, 1, 1, 0, 40000), 
+@@ -7264,7 +7259,7 @@ USE `heavenms`;
+ (4230505, 1002212, 1, 1, 0, 700), 
+ (4230505, 1052116, 1, 1, 0, 700), 
+ (9300255, 4000359, 1, 1, 0, 200000), 
+-(9300255, 4030012, 1, 1, 0, 10000), 
++(9300255, 4030012, 1, 1, 0, 125000), 
+ (9300255, 4130012, 1, 1, 0, 3000), 
+ (9300255, 2000002, 1, 1, 0, 40000), 
+ (9300255, 2000003, 1, 1, 0, 40000), 
+@@ -7548,10 +7543,10 @@ USE `heavenms`;
+ (9400502, 4000036, 1, 1, 0, 200000), 
+ (9500121, 4000036, 1, 1, 0, 200000), 
+ (9500156, 4000036, 1, 1, 0, 200000), 
+-(4230102, 4030012, 1, 1, 0, 10000), 
+-(9400502, 4030012, 1, 1, 0, 10000), 
+-(9500121, 4030012, 1, 1, 0, 10000),
+-(9500156, 4030012, 1, 1, 0, 10000), 
++(4230102, 4030012, 1, 1, 0, 125000), 
++(9400502, 4030012, 1, 1, 0, 125000), 
++(9500121, 4030012, 1, 1, 0, 125000),
++(9500156, 4030012, 1, 1, 0, 125000), 
+ (4230102, 4130018, 1, 1, 0, 3000), 
+ (9400502, 4130018, 1, 1, 0, 3000), 
+ (9500121, 4130018, 1, 1, 0, 3000), 
+@@ -7806,7 +7801,7 @@ USE `heavenms`;
+ (5100000, 1041096, 1, 1, 0, 700), 
+ (5130100, 4000030, 1, 1, 0, 200000), 
+ (5130100, 4000014, 1, 1, 0, 200000), 
+-(5130100, 4030012, 1, 1, 0, 10000), 
++(5130100, 4030012, 1, 1, 0, 125000), 
+ (5130100, 4001077, 1, 1, 0, 7000), 
+ (5130100, 2000002, 1, 1, 0, 40000), 
+ (5130100, 2002004, 1, 1, 0, 10000),
+@@ -7906,7 +7901,7 @@ USE `heavenms`;
+ (9400560, 1002183, 1, 1, 0, 700), 
+ (9400560, 1061077, 1, 1, 0, 700), 
+ (9420504, 4000377, 1, 1, 0, 200000), 
+-(9420504, 4030012, 1, 1, 0, 10000), 
++(9420504, 4030012, 1, 1, 0, 125000), 
+ (9420504, 2020028, 1, 1, 0, 3000), 
+ (9420504, 2000003, 1, 1, 0, 40000), 
+ (9420504, 2000002, 1, 1, 0, 40000), 
+@@ -8420,7 +8415,7 @@ USE `heavenms`;
+ (5120501, 1051041, 1, 1, 0, 700), 
+ (5120501, 1482008, 1, 1, 0, 700), 
+ (9420505, 4000378, 1, 1, 0, 200000), 
+-(9420505, 4030012, 1, 1, 0, 10000), 
++(9420505, 4030012, 1, 1, 0, 125000), 
+ (9420505, 2000003, 1, 1, 0, 40000), 
+ (9420505, 2002004, 1, 1, 0, 10000), 
+ (9420505, 2000004, 1, 1, 0, 40000), 
+@@ -8566,10 +8561,10 @@ USE `heavenms`;
+ (5130104, 1060086, 1, 1, 0, 700), 
+ (5130104, 1082075, 1, 1, 0, 700), 
+ (5130104, 1482007, 1, 1, 0, 700), 
+-(5300100, 4030012, 1, 1, 0, 10000), 
+-(9400200, 4030012, 1, 1, 0, 10000), 
+-(9400500, 4030012, 1, 1, 0, 10000), 
+-(9400644, 4030012, 1, 1, 0, 10000), 
++(5300100, 4030012, 1, 1, 0, 125000), 
++(9400200, 4030012, 1, 1, 0, 125000), 
++(9400500, 4030012, 1, 1, 0, 125000), 
++(9400644, 4030012, 1, 1, 0, 125000), 
+ (5300100, 2000002, 1, 1, 0, 40000), 
+ (9400200, 2000002, 1, 1, 0, 40000), 
+ (9400500, 2000002, 1, 4, 0, 40000),
+@@ -10257,7 +10252,7 @@ USE `heavenms`;
+ (9420533, 1041096, 1, 1, 0, 700), 
+ (9420533, 1082180, 1, 1, 0, 700), 
+ (6230100, 4000027, 1, 1, 0, 200000), 
+-(6230100, 4030012, 1, 1, 0, 10000), 
++(6230100, 4030012, 1, 1, 0, 125000), 
+ (6230100, 2000006, 1, 1, 0, 40000), 
+ (6230100, 2070004, 1, 1, 0, 400), 
+ (6230100, 2043201, 1, 1, 0, 750), 
+@@ -10434,7 +10429,7 @@ USE `heavenms`;
+ (6230400, 1492009, 1, 1, 0, 700), 
+ (9300316, 1492009, 1, 1, 0, 40000), 
+ (6230602, 4000207, 1, 1, 0, 200000), 
+-(6230602, 4030012, 1, 1, 0, 10000), 
++(6230602, 4030012, 1, 1, 0, 125000), 
+ (6230602, 2000002, 1, 1, 0, 40000), 
+ (6230602, 2000004, 1, 1, 0, 40000), 
+ (6230602, 2002000, 1, 1, 0, 10000), 
+@@ -10534,8 +10529,8 @@ USE `heavenms`;
+ (9500126, 4000185, 1, 1, 0, 200000), 
+ (6230600, 4000030, 1, 1, 0, 200000), 
+ (9500126, 4000030, 1, 1, 0, 200000), 
+-(6230600, 4030012, 1, 1, 0, 10000), 
+-(9500126, 4030012, 1, 1, 0, 10000), 
++(6230600, 4030012, 1, 1, 0, 125000), 
++(9500126, 4030012, 1, 1, 0, 125000), 
+ (6230600, 2000006, 1, 1, 0, 40000), 
+ (9500126, 2000006, 1, 1, 0, 40000), 
+ (6230600, 2000004, 1, 1, 0, 40000),
+@@ -11278,7 +11273,7 @@ USE `heavenms`;
+ (6400000, 1061099, 1, 1, 0, 700), 
+ (9500128, 1061099, 1, 1, 0, 700), 
+ (6230601, 4000030, 1, 1, 0, 200000), 
+-(6230601, 4030012, 1, 1, 0, 10000), 
++(6230601, 4030012, 1, 1, 0, 125000), 
+ (6230601, 2000002, 1, 1, 0, 40000), 
+ (6230601, 2000004, 1, 1, 0, 40000), 
+ (6230601, 2041043, 1, 1, 0, 750), 
+@@ -11376,7 +11371,7 @@ USE `heavenms`;
+ (6110301, 1472027, 1, 1, 0, 700), 
+ (6110301, 1072085, 1, 1, 0, 700),
+ (6110301, 1072309, 1, 1, 0, 700), 
+-(9420535, 4030009, 1, 1, 0, 10000), 
++(9420535, 4030009, 1, 1, 0, 28000), 
+ (9420535, 2000004, 1, 1, 0, 40000), 
+ (9420535, 1032020, 1, 1, 0, 700), 
+ (9420535, 1442009, 1, 1, 0, 700), 
+@@ -11942,8 +11937,8 @@ USE `heavenms`;
+ (9500312, 1082204, 1, 1, 0, 40000), 
+ (9500348, 1082204, 1, 1, 0, 40000), 
+ (9303008, 1082204, 1, 1, 0, 700), 
+-(7130402, 4030012, 1, 1, 0, 10000), 
+-(9500160, 4030012, 1, 1, 0, 10000), 
++(7130402, 4030012, 1, 1, 0, 125000), 
++(9500160, 4030012, 1, 1, 0, 125000), 
+ (7130402, 4006000, 1, 1, 0, 7000), 
+ (9500160, 4006000, 1, 1, 0, 7000), 
+ (7130402, 4130017, 1, 1, 0, 3000),
+@@ -12379,7 +12374,7 @@ USE `heavenms`;
+ (7130001, 1041095, 1, 1, 0, 700), 
+ (7130001, 1332015, 1, 1, 0, 700), 
+ (7130001, 1492009, 1, 1, 0, 700), 
+-(9400103, 4000137, 1, 1, 0, 200000), 
++(9400103, 4000137, 1, 1, 0, 400000), 
+ (9400103, 2001001, 1, 1, 0, 10000), 
+ (9400103, 2000011, 1, 1, 0, 40000), 
+ (9400103, 2002005, 1, 1, 0, 10000), 
+@@ -12404,7 +12399,7 @@ USE `heavenms`;
+ (9400103, 1332019, 1, 1, 0, 700), 
+ (9400103, 1061099, 1, 1, 0, 700), 
+ (9400103, 1092018, 1, 1, 0, 700), 
+-(7130002, 4030012, 1, 1, 0, 10000), 
++(7130002, 4030012, 1, 1, 0, 125000), 
+ (7130002, 2000006, 1, 1, 0, 40000), 
+ (7130002, 2000004, 1, 1, 0, 40000), 
+ (7130002, 2040801, 1, 1, 0, 750), 
+@@ -13004,7 +12999,7 @@ USE `heavenms`;
+ (8140300, 1041096, 1, 1, 0, 700), 
+ (8140300, 1061095, 1, 1, 0, 700),
+ (8140300, 1492009, 1, 1, 0, 700), 
+-(7130003, 4030012, 1, 1, 0, 10000), 
++(7130003, 4030012, 1, 1, 0, 125000), 
+ (7130003, 2000006, 1, 1, 0, 40000), 
+ (7130003, 2000004, 1, 1, 0, 40000), 
+ (7130003, 2070005, 1, 1, 0, 400), 
+@@ -13392,15 +13387,15 @@ USE `heavenms`;
+ (7120109, 1452010, 1, 1, 0, 700), 
+ (7120109, 1072161, 1, 1, 0, 700), 
+ (7120109, 1072312, 1, 1, 0, 700), 
+-(8130100, 4030012, 1, 1, 0, 10000), 
+-(9300203, 4030012, 1, 1, 0, 10000), 
+-(9300260, 4030012, 1, 1, 0, 10000), 
+-(9500139, 4030012, 1, 1, 0, 10000), 
+-(9500169, 4030012, 1, 1, 0, 10000), 
+-(9500327, 4030012, 1, 1, 0, 10000), 
+-(9500353, 4030012, 1, 1, 0, 10000),
+-(6400008, 4030012, 1, 1, 0, 10000), 
+-(9303010, 4030012, 1, 1, 0, 10000), 
++(8130100, 4030012, 1, 1, 0, 125000), 
++(9300203, 4030012, 1, 1, 0, 125000), 
++(9300260, 4030012, 1, 1, 0, 125000), 
++(9500139, 4030012, 1, 1, 0, 125000), 
++(9500169, 4030012, 1, 1, 0, 125000), 
++(9500327, 4030012, 1, 1, 0, 125000), 
++(9500353, 4030012, 1, 1, 0, 125000),
++(6400008, 4030012, 1, 1, 0, 125000), 
++(9303010, 4030012, 1, 1, 0, 125000), 
+ (8130100, 2000006, 1, 4, 0, 40000), 
+ (9300203, 2000006, 1, 4, 0, 40000), 
+ (9300260, 2000006, 1, 1, 0, 40000), 
+@@ -14243,7 +14238,7 @@ USE `heavenms`;
+ (7130010, 1082207, 1, 1, 0, 700), 
+ (9500135, 1082207, 1, 1, 0, 700),
+ (7130020, 4000179, 1, 1, 0, 200000), 
+-(7130020, 4030012, 1, 1, 0, 10000), 
++(7130020, 4030012, 1, 1, 0, 125000), 
+ (7130020, 2000002, 1, 1, 0, 40000), 
+ (7130020, 2000006, 1, 1, 0, 40000),
+ (7130020, 2050004, 1, 1, 0, 3000), 
+@@ -14270,7 +14265,7 @@ USE `heavenms`;
+ (7130020, 1072152, 1, 1, 0, 700), 
+ (7130020, 1472023, 1, 1, 0, 700), 
+ (7130020, 1072312, 1, 1, 0, 700), 
+-(8140110, 4030012, 1, 1, 0, 10000), 
++(8140110, 4030012, 1, 1, 0, 125000), 
+ (8140110, 2000002, 1, 1, 0, 40000), 
+ (8140110, 2000005, 1, 1, 0, 40000), 
+ (8140110, 4006000, 1, 1, 0, 7000), 
+@@ -14589,7 +14584,7 @@ USE `heavenms`;
+ (9420539, 1082099, 1, 1, 0, 700),
+ (9420539, 1082108, 1, 1, 0, 700), 
+ (9420539, 1002284, 1, 1, 0, 700), 
+-(8140111, 4030012, 1, 1, 0, 10000), 
++(8140111, 4030012, 1, 1, 0, 125000), 
+ (8140111, 2000006, 1, 1, 0, 40000), 
+ (8140111, 2000005, 1, 1, 0, 40000), 
+ (8140111, 2070006, 1, 1, 0, 400), 
+@@ -14700,9 +14695,9 @@ USE `heavenms`;
+ (9300096, 1002640, 1, 1, 0, 700), 
+ (9300261, 1002640, 1, 1, 0, 700), 
+ (9500164, 1002640, 1, 1, 0, 700), 
+-(8140102, 4030012, 1, 1, 0, 10000), 
+-(9300262, 4030012, 1, 1, 0, 10000), 
+-(9500165, 4030012, 1, 1, 0, 10000), 
++(8140102, 4030012, 1, 1, 0, 125000), 
++(9300262, 4030012, 1, 1, 0, 125000), 
++(9500165, 4030012, 1, 1, 0, 125000), 
+ (8140102, 4130013, 1, 1, 0, 3000), 
+ (9300262, 4130013, 1, 1, 0, 3000), 
+ (9500165, 4130013, 1, 1, 0, 3000), 
+@@ -15790,15 +15785,15 @@ USE `heavenms`;
+ (8143000, 1002328, 1, 1, 0, 700), 
+ (8143000, 1040116, 1, 1, 0, 700), 
+ (8143000, 1060105, 1, 1, 0, 700), 
+-(8150000, 4030012, 1, 1, 0, 10000), 
+-(9300210, 4030012, 1, 1, 0, 10000), 
+-(9500140, 4030012, 1, 1, 0, 10000), 
+-(9500171, 4030012, 1, 1, 0, 10000), 
+-(9500328, 4030012, 1, 1, 0, 10000), 
+-(9500358, 4030012, 1, 1, 0, 10000), 
+-(6400006, 4030012, 1, 1, 0, 10000), 
+-(6400009, 4030012, 1, 1, 0, 10000), 
+-(9303013, 4030012, 1, 1, 0, 10000), 
++(8150000, 4030012, 1, 1, 0, 125000), 
++(9300210, 4030012, 1, 1, 0, 125000), 
++(9500140, 4030012, 1, 1, 0, 125000), 
++(9500171, 4030012, 1, 1, 0, 125000), 
++(9500328, 4030012, 1, 1, 0, 125000), 
++(9500358, 4030012, 1, 1, 0, 125000), 
++(6400006, 4030012, 1, 1, 0, 125000), 
++(6400009, 4030012, 1, 1, 0, 125000), 
++(9303013, 4030012, 1, 1, 0, 125000), 
+ (8150000, 4031906, 1, 1, 0, 7000), 
+ (9300210, 4031906, 1, 1, 0, 7000), 
+ (9500140, 4031906, 1, 1, 0, 7000), 
+@@ -16054,7 +16049,7 @@ USE `heavenms`;
+ (9300094, 2280004, 1, 4, 0, 20000), 
+ (9300094, 2280006, 1, 4, 0, 20000), 
+ (8150100, 4000180, 1, 1, 0, 200000), 
+-(8150100, 4030012, 1, 1, 0, 10000), 
++(8150100, 4030012, 1, 1, 0, 125000), 
+ (8150100, 4130004, 1, 1, 0, 3000), 
+ (8150100, 4130006, 1, 1, 0, 3000), 
+ (8150100, 4006001, 1, 1, 0, 7000), 
+@@ -19608,7 +19603,7 @@ USE `heavenms`;
+ (9400588, 0, 210, 380, 0, 400000),
+ (9400583, 0, 562, 1096, 0, 400000),
+ (9400583, 4032031, 1, 1, 0, 80000),
+-(9400583, 4030012, 1, 1, 0, 300),
++(9400583, 4030012, 1, 1, 0, 125000),
+ (9400583, 4010006, 1, 1, 0, 40000),
+ (9400583, 4020007, 1, 1, 0, 40000),
+ (9400583, 4007004, 1, 1, 0, 10000),
+@@ -19940,8 +19935,8 @@ USE `heavenms`;
+ (7120105, 1452009, 1, 1, 0, 700), 
+ (7120105, 1082119, 1, 1, 0, 700), 
+ (7120105, 1332019, 1, 1, 0, 700),
+-(7120105, 4032513, 1, 1, 3722, 200000), 
+-(7120105, 4032513, 1, 1, 3722, 200000), 
++(7120103, 4032513, 1, 1, 3722, 200000), 
++(7120104, 4032513, 1, 1, 3722, 200000), 
+ (7120105, 4032513, 1, 1, 3722, 200000),
+ (7120106, 4032514, 1, 1, 3727, 60000), 
+ (7120107, 4032514, 1, 1, 3727, 60000),
+@@ -20274,7 +20269,12 @@ USE `heavenms`;
+ (9400507, 2020020, 1, 1, 0, 100000),
+ (9400507, 4031217, 1, 1, 0, 40000),
+ (9300085, 4031466, 1, 1, 6107, 40000),
+-(8170000, 4031448, 1, 1, 6134, 40000);
++(8170000, 4031448, 1, 1, 6134, 40000),
++(9400100, 4000089, 1, 1, 0, 400000),
++(9400101, 4000090, 1, 1, 0, 400000),
++(9400102, 4000091, 1, 1, 0, 400000),
++(9400110, 4000092, 1, 1, 0, 400000),
++(9400111, 4000093, 1, 1, 0, 400000);
+ 
+ # (dropperid, itemid, minqty, maxqty, questid, chance)
+ 
+@@ -20519,7 +20519,7 @@ USE `heavenms`;
+ (9420501, 1050058, 1, 1, 0, 1800),
+ (9420501, 1332020, 1, 1, 0, 1500),
+ (9420501, 4006001, 1, 1, 0, 5000),
+-(9420501, 4030012, 1, 1, 0, 300),
++(9420501, 4030012, 1, 1, 0, 125000),
+ (9420501, 1072297, 1, 1, 0, 2000),
+ (9420501, 1482001, 1, 1, 0, 2000),
+ (9420501, 1482005, 1, 1, 0, 2000),
+@@ -21471,8 +21471,8 @@ USE `heavenms`;
+ (9300343, 4000021, 1, 1, 0, 50000),
+ (9300343, 4010006, 1, 1, 0, 9000),
+ (9300343, 4020006, 1, 1, 0, 9000),
+-(9300343, 4030011, 1, 1, 0, 10000),
+-(9300343, 4030012, 1, 1, 0, 10000),
++(9300343, 4030011, 1, 1, 0, 77000),
++(9300343, 4030012, 1, 1, 0, 125000),
+ (9300343, 4031846, 1, 1, 2173, 50000),
+ (9300343, 4032130, 1, 1, 20707, 10000),
+ (9300343, 4032340, 1, 1, 21710, 200000),
+@@ -22186,6 +22186,33 @@ USE `heavenms`;
+     (6702012, 4031543, 2, -1),
+     (6702012, 4031544, 1, -1);
+ 
++  # adding themed buffs into Zakum Prequest boxes
++  INSERT INTO `reactordrops` (`reactorid`, `itemid`, `chance`, `questid`) VALUES
++    (2112000, 2022439, 43, -1),
++    (2112001, 2022439, 43, -1),
++    (2112003, 2022439, 43, -1),
++    (2112007, 2022439, 43, -1),
++    (2112008, 2022439, 43, -1),
++    (2112009, 2022439, 43, -1),
++    (2112010, 2022439, 43, -1),
++    (2112015, 2022439, 43, -1),
++    (2112000, 2022440, 4, -1),
++    (2112001, 2022440, 4, -1),
++    (2112003, 2022440, 4, -1),
++    (2112007, 2022440, 4, -1),
++    (2112008, 2022440, 4, -1),
++    (2112009, 2022440, 4, -1),
++    (2112010, 2022440, 4, -1),
++    (2112015, 2022440, 4, -1),
++    (2112000, 2022441, 15, -1),
++    (2112001, 2022441, 15, -1),
++    (2112003, 2022441, 15, -1),
++    (2112007, 2022441, 15, -1),
++    (2112008, 2022441, 15, -1),
++    (2112009, 2022441, 15, -1),
++    (2112010, 2022441, 15, -1),
++    (2112015, 2022441, 15, -1);
++
+   # updates info for all cards on monster book
+   DROP TABLE `monstercarddata`;
+   CREATE TABLE IF NOT EXISTS `monstercarddata` (
+diff --git a/sql/db_shopupdate.sql b/sql/db_shopupdate.sql
+index 5b4647eb1..de5286033 100644
+--- a/sql/db_shopupdate.sql
++++ b/sql/db_shopupdate.sql
+@@ -3,106 +3,106 @@
+ 
+ USE `heavenms`;
+ 
+-# Scroll shop at Spindle, chair shop at Kino Konoko, potion shop at T-1337
++# Scroll shop at Asia, chair shop at Kino Konoko, potion shop at T-1337
+ INSERT INTO `shops` (`shopid`,`npcid`) VALUES
++(2082014,2082014),
+ (9110002,9110002),
+-(9201082,9201082),
+ (9201101,9201101);
+ 
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+-(9201082, 2040004, 480000, 0, 1),
+-(9201082, 2040025, 500000, 0, 2),
+-(9201082, 2040029, 500000, 0, 3),
+-(9201082, 2040017, 500000, 0, 4),
+-(9201082, 2040301, 400000, 0, 5),
+-(9201082, 2040317, 400000, 0, 6),
+-(9201082, 2040321, 400000, 0, 7),
+-(9201082, 2040413, 400000, 0, 8),
+-(9201082, 2040418, 400000, 0, 9),
+-(9201082, 2040501, 250000, 0, 10),
+-(9201082, 2040513, 250000, 0, 11),
+-(9201082, 2040516, 250000, 0, 12),
+-(9201082, 2040532, 250000, 0, 13),
+-(9201082, 2040613, 400000, 0, 14),
+-(9201082, 2040701, 450000, 0, 15),
+-(9201082, 2040704, 450000, 0, 16),
+-(9201082, 2040707, 450000, 0, 17),
+-(9201082, 2040804, 550000, 0, 18),
+-(9201082, 2040817, 550000, 0, 19),
+-(9201082, 2040914, 480000, 0, 20),
+-(9201082, 2040919, 480000, 0, 21),
+-(9201082, 2041007, 470000, 0, 22),
+-(9201082, 2041010, 470000, 0, 23),
+-(9201082, 2041013, 500000, 0, 24),
+-(9201082, 2041016, 500000, 0, 25),
+-(9201082, 2041019, 500000, 0, 26),
+-(9201082, 2041022, 500000, 0, 27),
+-(9201082, 2044901, 520000, 0, 28),
+-(9201082, 2044701, 520000, 0, 29),
+-(9201082, 2043001, 520000, 0, 30),
+-(9201082, 2043801, 520000, 0, 31),
+-(9201082, 2044601, 520000, 0, 32),
+-(9201082, 2040727, 50000, 0, 33),
+-(9201082, 2041058, 50000, 0, 34),
+-(9201082, 2040807, 1000000, 0, 35),
+-(9201082, 2040005, 22000, 0, 36),
+-(9201082, 2040026, 23000, 0, 37),
+-(9201082, 2040031, 23000, 0, 38),
+-(9201082, 2040016, 23000, 0, 39),
+-(9201082, 2040302, 25000, 0, 40),
+-(9201082, 2040318, 25000, 0, 41),
+-(9201082, 2040323, 25000, 0, 42),
+-(9201082, 2040412, 20000, 0, 43),
+-(9201082, 2040419, 20000, 0, 44),
+-(9201082, 2040502, 25000, 0, 45),
+-(9201082, 2040514, 25000, 0, 46),
+-(9201082, 2040517, 25000, 0, 47),
+-(9201082, 2040534, 25000, 0, 48),
+-(9201082, 2040612, 20000, 0, 49),
+-(9201082, 2040702, 20000, 0, 50),
+-(9201082, 2040705, 25000, 0, 51),
+-(9201082, 2040708, 20000, 0, 52),
+-(9201082, 2040805, 100000, 0, 53),
+-(9201082, 2040816, 100000, 0, 54),
+-(9201082, 2040915, 55000, 0, 55),
+-(9201082, 2040920, 55000, 0, 56),
+-(9201082, 2041008, 38000, 0, 57),
+-(9201082, 2041011, 38000, 0, 58),
+-(9201082, 2041014, 40000, 0, 59),
+-(9201082, 2041017, 40000, 0, 60),
+-(9201082, 2041020, 40000, 0, 61),
+-(9201082, 2041023, 40000, 0, 62),
+-(9201082, 2044902, 50000, 0, 63),
+-(9201082, 2044702, 50000, 0, 64),
+-(9201082, 2043002, 50000, 0, 65),
+-(9201082, 2043802, 50000, 0, 66),
+-(9201082, 2044602, 50000, 0, 67),
+-(9201082, 2049200, 170000, 0, 68),
+-(9201082, 2049201, 220000, 0, 69),
+-(9201082, 2049202, 170000, 0, 70),
+-(9201082, 2049203, 220000, 0, 71),
+-(9201082, 2049204, 170000, 0, 72),
+-(9201082, 2049205, 220000, 0, 73),
+-(9201082, 2049206, 170000, 0, 74),
+-(9201082, 2049207, 220000, 0, 75),
+-(9201082, 2049208, 140000, 0, 76),
+-(9201082, 2049209, 170000, 0, 77),
+-(9201082, 2049210, 140000, 0, 78),
+-(9201082, 2049211, 170000, 0, 79),
+-(9201082, 2040101, 540000, 0, 80),
+-(9201082, 2040100, 700000, 0, 81),
+-(9201082, 2040106, 540000, 0, 82),
+-(9201082, 2040105, 700000, 0, 83),
+-(9201082, 2040201, 540000, 0, 84),
+-(9201082, 2040200, 700000, 0, 85),
+-(9201082, 2040206, 540000, 0, 86),
+-(9201082, 2040205, 700000, 0, 87),
+-(9201082, 2070016, 120000000, 0, 88),
+-(9201082, 2070018, 190000000, 0, 89),
+-(9201082, 2030007, 1800000, 0, 90),
+-(9201082, 4001017, 60000000, 0, 91);
++(2082014, 2040004, 480000, 0, 1),
++(2082014, 2040025, 500000, 0, 2),
++(2082014, 2040029, 500000, 0, 3),
++(2082014, 2040017, 500000, 0, 4),
++(2082014, 2040301, 400000, 0, 5),
++(2082014, 2040317, 400000, 0, 6),
++(2082014, 2040321, 400000, 0, 7),
++(2082014, 2040413, 400000, 0, 8),
++(2082014, 2040418, 400000, 0, 9),
++(2082014, 2040501, 250000, 0, 10),
++(2082014, 2040513, 250000, 0, 11),
++(2082014, 2040516, 250000, 0, 12),
++(2082014, 2040532, 250000, 0, 13),
++(2082014, 2040613, 400000, 0, 14),
++(2082014, 2040701, 450000, 0, 15),
++(2082014, 2040704, 450000, 0, 16),
++(2082014, 2040707, 450000, 0, 17),
++(2082014, 2040804, 550000, 0, 18),
++(2082014, 2040817, 550000, 0, 19),
++(2082014, 2040914, 480000, 0, 20),
++(2082014, 2040919, 480000, 0, 21),
++(2082014, 2041007, 470000, 0, 22),
++(2082014, 2041010, 470000, 0, 23),
++(2082014, 2041013, 500000, 0, 24),
++(2082014, 2041016, 500000, 0, 25),
++(2082014, 2041019, 500000, 0, 26),
++(2082014, 2041022, 500000, 0, 27),
++(2082014, 2044901, 520000, 0, 28),
++(2082014, 2044701, 520000, 0, 29),
++(2082014, 2043001, 520000, 0, 30),
++(2082014, 2043801, 520000, 0, 31),
++(2082014, 2044601, 520000, 0, 32),
++(2082014, 2040727, 50000, 0, 33),
++(2082014, 2041058, 50000, 0, 34),
++(2082014, 2040807, 1000000, 0, 35),
++(2082014, 2040005, 22000, 0, 36),
++(2082014, 2040026, 23000, 0, 37),
++(2082014, 2040031, 23000, 0, 38),
++(2082014, 2040016, 23000, 0, 39),
++(2082014, 2040302, 25000, 0, 40),
++(2082014, 2040318, 25000, 0, 41),
++(2082014, 2040323, 25000, 0, 42),
++(2082014, 2040412, 20000, 0, 43),
++(2082014, 2040419, 20000, 0, 44),
++(2082014, 2040502, 25000, 0, 45),
++(2082014, 2040514, 25000, 0, 46),
++(2082014, 2040517, 25000, 0, 47),
++(2082014, 2040534, 25000, 0, 48),
++(2082014, 2040612, 20000, 0, 49),
++(2082014, 2040702, 20000, 0, 50),
++(2082014, 2040705, 25000, 0, 51),
++(2082014, 2040708, 20000, 0, 52),
++(2082014, 2040805, 100000, 0, 53),
++(2082014, 2040816, 100000, 0, 54),
++(2082014, 2040915, 55000, 0, 55),
++(2082014, 2040920, 55000, 0, 56),
++(2082014, 2041008, 38000, 0, 57),
++(2082014, 2041011, 38000, 0, 58),
++(2082014, 2041014, 40000, 0, 59),
++(2082014, 2041017, 40000, 0, 60),
++(2082014, 2041020, 40000, 0, 61),
++(2082014, 2041023, 40000, 0, 62),
++(2082014, 2044902, 50000, 0, 63),
++(2082014, 2044702, 50000, 0, 64),
++(2082014, 2043002, 50000, 0, 65),
++(2082014, 2043802, 50000, 0, 66),
++(2082014, 2044602, 50000, 0, 67),
++(2082014, 2049200, 170000, 0, 68),
++(2082014, 2049201, 220000, 0, 69),
++(2082014, 2049202, 170000, 0, 70),
++(2082014, 2049203, 220000, 0, 71),
++(2082014, 2049204, 170000, 0, 72),
++(2082014, 2049205, 220000, 0, 73),
++(2082014, 2049206, 170000, 0, 74),
++(2082014, 2049207, 220000, 0, 75),
++(2082014, 2049208, 140000, 0, 76),
++(2082014, 2049209, 170000, 0, 77),
++(2082014, 2049210, 140000, 0, 78),
++(2082014, 2049211, 170000, 0, 79),
++(2082014, 2040101, 540000, 0, 80),
++(2082014, 2040100, 700000, 0, 81),
++(2082014, 2040106, 540000, 0, 82),
++(2082014, 2040105, 700000, 0, 83),
++(2082014, 2040201, 540000, 0, 84),
++(2082014, 2040200, 700000, 0, 85),
++(2082014, 2040206, 540000, 0, 86),
++(2082014, 2040205, 700000, 0, 87),
++(2082014, 2070016, 120000000, 0, 88),
++(2082014, 2070018, 190000000, 0, 89),
++(2082014, 2030007, 1800000, 0, 90),
++(2082014, 4001017, 60000000, 0, 91);
+ 
+-UPDATE shopitems SET price = 11*price WHERE (`position` >= 33 and `position` <= 79 and `shopid` = 9201082);
++UPDATE shopitems SET price = 11*price WHERE (`position` >= 33 and `position` <= 79 and `shopid` = 2082014);
+ 
+ INSERT IGNORE INTO `shopitems` (`shopid`, `itemid`, `price`, `pitch`, `position`) VALUES
+ (1031100, 3010015, 20000, 0, 100),
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 4516ec5b8..ad3ecc692 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -5230,6 +5230,14 @@ private long getNextBuybackTime() {
+         return lastBuyback + ServerConstants.BUYBACK_COOLDOWN_MINUTES * 60 * 1000;
+     }
+     
++    private int getBuybackFee() {
++        float fee = ServerConstants.BUYBACK_FEE;
++        int grade = Math.min(Math.max(level, 30), 120) - 30;
++        
++        fee += (grade * ServerConstants.BUYBACK_LEVEL_STACK_FEE);
++        return (int) Math.floor(fee);
++    }
++    
+     public boolean couldBuyback() {  // Ronan's buyback system
+         long timeNow = System.currentTimeMillis();
+         
+@@ -5249,7 +5257,7 @@ public boolean couldBuyback() {  // Ronan's buyback system
+         }
+         
+         boolean usingMesos = ServerConstants.USE_BUYBACK_WITH_MESOS;
+-        int fee = ServerConstants.BUYBACK_FEE;
++        int fee = getBuybackFee();
+         if(usingMesos) fee *= ServerConstants.BUYBACK_MESO_MULTIPLIER;
+         
+         if(!canBuyback(fee, usingMesos)) {
+@@ -5867,7 +5875,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             for (Pair<Item, MapleInventoryType> item : ItemFactory.INVENTORY.loadItems(ret.id, !channelserver)) {
+                 sandboxCheck |= item.getLeft().getFlag();
+                 
+-                ret.getInventory(item.getRight()).addFromDB(item.getLeft());
++                ret.getInventory(item.getRight()).addItemFromDB(item.getLeft());
+                 Item itemz = item.getLeft();
+                 if (itemz.getPetId() > -1) {
+                     MaplePet pet = itemz.getPet();
+@@ -7977,12 +7985,15 @@ public void unequipPet(MaplePet pet, boolean shift_left) {
+     }
+ 
+     public void unequipPet(MaplePet pet, boolean shift_left, boolean hunger) {
+-        if (this.getPet(this.getPetIndex(pet)) != null) {
+-            this.getPet(this.getPetIndex(pet)).setSummoned(false);
+-            this.getPet(this.getPetIndex(pet)).saveToDb();
++        byte petIdx = this.getPetIndex(pet);
++        MaplePet chrPet = this.getPet(petIdx);
++        
++        if (chrPet != null) {
++            chrPet.setSummoned(false);
++            chrPet.saveToDb();
+         }
+         
+-        this.getClient().getWorldServer().unregisterPetHunger(this, getPetIndex(pet));
++        this.getClient().getWorldServer().unregisterPetHunger(this, petIdx);
+         getMap().broadcastMessage(this, MaplePacketCreator.showPet(this, pet, true, hunger), true);
+         
+         removePet(pet, shift_left);
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 1831e1fac..a01deed9e 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -948,7 +948,7 @@ public final synchronized void disconnect(boolean shutdown, boolean cashshop) {/
+                 }
+ 	}
+ 
+-	private void clear() {  //usable when defining client = null shortly after
++	private void clear() {
+                 // player hard reference removal thanks to Steve (kaito1410)
+                 if (this.player != null) {
+                     this.player.empty(true); // clears schedules and stuff
+diff --git a/src/client/creator/CharacterFactory.java b/src/client/creator/CharacterFactory.java
+index d0e4287b0..1aa6198f0 100644
+--- a/src/client/creator/CharacterFactory.java
++++ b/src/client/creator/CharacterFactory.java
+@@ -60,25 +60,25 @@ protected synchronized static int createNewCharacter(MapleClient c, String name,
+                 if(top > 0) {
+                     Item eq_top = ii.getEquipById(top);
+                     eq_top.setPosition((byte) -5);
+-                    equipped.addFromDB(eq_top);
++                    equipped.addItemFromDB(eq_top);
+                 }
+                 
+                 if(bottom > 0) {
+                     Item eq_bottom = ii.getEquipById(bottom);
+                     eq_bottom.setPosition((byte) -6);
+-                    equipped.addFromDB(eq_bottom);
++                    equipped.addItemFromDB(eq_bottom);
+                 }
+                 
+                 if(shoes > 0) {
+                     Item eq_shoes = ii.getEquipById(shoes);
+                     eq_shoes.setPosition((byte) -7);
+-                    equipped.addFromDB(eq_shoes);
++                    equipped.addItemFromDB(eq_shoes);
+                 }
+                 
+                 if(weapon > 0) {
+                     Item eq_weapon = ii.getEquipById(weapon);
+                     eq_weapon.setPosition((byte) -11);
+-                    equipped.addFromDB(eq_weapon.copy());
++                    equipped.addItemFromDB(eq_weapon.copy());
+                 }
+                 
+                 if (!newchar.insertNewChar(recipe)) {
+diff --git a/src/client/inventory/MapleInventory.java b/src/client/inventory/MapleInventory.java
+index 38da7c02a..5024d77fd 100644
+--- a/src/client/inventory/MapleInventory.java
++++ b/src/client/inventory/MapleInventory.java
+@@ -214,20 +214,19 @@ public int compare(Item i1, Item i2) {
+     }
+ 
+     public short addItem(Item item) {
+-        short slotId = getNextFreeSlot();
+-        if (slotId < 0 || item == null) {
++        short slotId = addSlot(item);
++        if (slotId == -1) {
+             return -1;
+         }
+-        addSlot(slotId, item);
+         item.setPosition(slotId);
+         return slotId;
+     }
+ 
+-    public void addFromDB(Item item) {
++    public void addItemFromDB(Item item) {
+         if (item.getPosition() < 0 && !type.equals(MapleInventoryType.EQUIPPED)) {
+             return;
+         }
+-        addSlot(item.getPosition(), item);
++        addSlotFromDB(item.getPosition(), item);
+     }
+ 
+     private static boolean isSameOwner(Item source, Item target) {
+@@ -302,16 +301,39 @@ public void removeItem(short slot, short quantity, boolean allowZero) {
+         }
+     }
+ 
+-    public void addSlot(short slot, Item item) {
++    private short addSlot(Item item) {
++        if(item == null) {
++            return -1;
++        }
++        
+         lock.lock();
+         try {
+-            inventory.put(slot, item);
++            short slotId = getNextFreeSlot();
++            if (slotId < 0) {
++                return -1;
++            }
++            inventory.put(slotId, item);
++            
++            if(ItemConstants.isRateCoupon(item.getItemId())) {
++                owner.updateCouponRates();
++            }
++            
++            return slotId;
+         } finally {
+             lock.unlock();
+         }
+-        
+-        if(ItemConstants.isRateCoupon(item.getItemId())) {
+-            owner.updateCouponRates();
++    }
++    
++    private void addSlotFromDB(short slot, Item item) {
++        lock.lock();
++        try {
++            inventory.put(slot, item);
++            
++            if(ItemConstants.isRateCoupon(item.getItemId())) {
++                owner.updateCouponRates();
++            }
++        } finally {
++            lock.unlock();
+         }
+     }
+     
+diff --git a/src/client/inventory/manipulator/MapleInventoryManipulator.java b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+index d126ecbb3..d76ae9cde 100644
+--- a/src/client/inventory/manipulator/MapleInventoryManipulator.java
++++ b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+@@ -498,10 +498,10 @@ public static void equip(MapleClient c, short src, short dst) {
+         }
+         
+         source.setPosition(dst);
+-        c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addFromDB(source);
++        c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addItemFromDB(source);
+         if (target != null) {
+             target.setPosition(src);
+-            c.getPlayer().getInventory(MapleInventoryType.EQUIP).addFromDB(target);
++            c.getPlayer().getInventory(MapleInventoryType.EQUIP).addItemFromDB(target);
+         }
+         if (c.getPlayer().getBuffedValue(MapleBuffStat.BOOSTER) != null && ItemConstants.isWeapon(source.getItemId())) {
+             c.getPlayer().cancelBuffStats(MapleBuffStat.BOOSTER);
+@@ -536,10 +536,10 @@ public static void unequip(MapleClient c, short src, short dst) {
+             c.getPlayer().getInventory(MapleInventoryType.EQUIP).removeSlot(dst);
+         }
+         source.setPosition(dst);
+-        c.getPlayer().getInventory(MapleInventoryType.EQUIP).addFromDB(source);
++        c.getPlayer().getInventory(MapleInventoryType.EQUIP).addItemFromDB(source);
+         if (target != null) {
+             target.setPosition(src);
+-            c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addFromDB(target);
++            c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addItemFromDB(target);
+         }
+         c.announce(MaplePacketCreator.modifyInventory(true, Collections.singletonList(new ModifyInventory(2, source, src))));
+         c.getPlayer().equipChanged();
+diff --git a/src/client/processor/SpawnPetProcessor.java b/src/client/processor/SpawnPetProcessor.java
+new file mode 100644
+index 000000000..c45067106
+--- /dev/null
++++ b/src/client/processor/SpawnPetProcessor.java
+@@ -0,0 +1,99 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package client.processor;
++
++import client.MapleCharacter;
++import java.awt.Point;
++import client.MapleClient;
++import client.inventory.MapleInventoryType;
++import client.inventory.MaplePet;
++import client.SkillFactory;
++import provider.MapleDataTool;
++import client.inventory.manipulator.MapleInventoryManipulator;
++import java.io.File;
++import provider.MapleDataProvider;
++import provider.MapleDataProviderFactory;
++import tools.MaplePacketCreator;
++
++/**
++ *
++ * @author RonanLana (just added locking on OdinMS' SpawnPetHandler method body)
++ */
++public class SpawnPetProcessor {
++    private static MapleDataProvider dataRoot = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Item.wz"));
++    
++    public static void processSpawnPet(MapleClient c, byte slot, boolean lead) {
++        c.lockClient();
++        try {
++            MapleCharacter chr = c.getPlayer();
++            MaplePet pet = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getPet();
++            if (pet == null) return;
++
++            int petid = pet.getItemId();
++            if (petid == 5000028 || petid == 5000047) //Handles Dragon AND Robos
++            {
++                if (chr.haveItem(petid + 1)) {
++                    chr.dropMessage(5, "You can't hatch your " + (petid == 5000028 ? "Dragon egg" : "Robo egg") + " if you already have a Baby " + (petid == 5000028 ? "Dragon." : "Robo."));
++                    c.announce(MaplePacketCreator.enableActions());
++                    return;
++                } else {
++                    int evolveid = MapleDataTool.getInt("info/evol1", dataRoot.getData("Pet/" + petid + ".img"));
++                    int petId = MaplePet.createPet(evolveid);
++                    if (petId == -1) {
++                        return;
++                    }
++                    long expiration = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getExpiration();
++                    MapleInventoryManipulator.removeById(c, MapleInventoryType.CASH, petid, (short) 1, false, false);
++                    MapleInventoryManipulator.addById(c, evolveid, (short) 1, null, petId, expiration);
++                    pet.deleteFromDb();
++
++                    c.announce(MaplePacketCreator.enableActions());
++                    return;
++                }
++            }
++            if (chr.getPetIndex(pet) != -1) {
++                chr.unequipPet(pet, true);
++            } else {
++                if (chr.getSkillLevel(SkillFactory.getSkill(8)) == 0 && chr.getPet(0) != null) {
++                    chr.unequipPet(chr.getPet(0), false);
++                }
++                if (lead) {
++                    chr.shiftPetsRight();
++                }
++                Point pos = chr.getPosition();
++                pos.y -= 12;
++                pet.setPos(pos);
++                pet.setFh(chr.getMap().getFootholds().findBelow(pet.getPos()).getId());
++                pet.setStance(0);
++                pet.setSummoned(true);
++                pet.saveToDb();
++                chr.addPet(pet);
++                chr.getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.showPet(c.getPlayer(), pet, false, false), true);
++                c.announce(MaplePacketCreator.petStatUpdate(c.getPlayer()));
++                c.announce(MaplePacketCreator.enableActions());
++
++                chr.commitExcludedItems();
++                chr.getClient().getWorldServer().registerPetHunger(chr, chr.getPetIndex(pet));
++            }
++        } finally {
++            c.unlockClient();
++        }
++    }
++}
+diff --git a/src/constants/ServerConstants.java b/src/constants/ServerConstants.java
+index 8761c07d6..a76f8c4b2 100644
+--- a/src/constants/ServerConstants.java
++++ b/src/constants/ServerConstants.java
+@@ -105,7 +105,7 @@
+     public static String TIMEZONE = "-GMT3";
+     public static boolean USE_DISPLAY_NUMBERS_WITH_COMMA = true;        //Enforce comma on displayed strings (use this when USE_UNITPRICE_WITH_COMMA is active and you still want to display comma-separated values).
+     public static boolean USE_UNITPRICE_WITH_COMMA = true;              //Set this accordingly with the layout of the unitPrices on Item.wz XML's, whether it's using commas or dots to represent fractions.
+-    public static final byte MIN_UNDERLEVEL_TO_EXP_GAIN = 5;            //Characters are unable to get EXP from a mob if their level are under this threshold, only if "USE_ENFORCE_MOB_LEVEL_RANGE" is enabled. For bosses, this attribute is doubled.
++    public static final byte MIN_UNDERLEVEL_TO_EXP_GAIN = 20;           //Characters are unable to get EXP from a mob if their level are under this threshold, only if "USE_ENFORCE_MOB_LEVEL_RANGE" is enabled. For bosses, this attribute is doubled.
+     public static final byte MAX_MONITORED_BUFFSTATS = 5;               //Limits accounting for "dormant" buff effects, that should take place when stronger stat buffs expires.
+     public static final int MAX_AP = 32767;                             //Max AP allotted on the auto-assigner.
+     public static final int MAX_EVENT_LEVELS = 8;                       //Event has different levels of rewarding system.
+@@ -206,7 +206,8 @@
+ 
+     //Buyback Configuration
+     public static final boolean USE_BUYBACK_WITH_MESOS = true;  //Enables usage of either mesos or NX for the buyback fee.
+-    public static final int BUYBACK_FEE = 7770;                 //Sets the amount needed to buyback.
++    public static final float BUYBACK_FEE = 77.70f;             //Sets the base amount needed to buyback (level 30 or under will use the base value).
++    public static final float BUYBACK_LEVEL_STACK_FEE = 85.47f; //Sets the level-stacking portion of the amount needed to buyback (fee will sum up linearly until level 120, when it reaches the peak).
+     public static final int BUYBACK_MESO_MULTIPLIER = 1000;     //Sets a multiplier for the fee when using meso as the charge unit.
+     public static final int BUYBACK_RETURN_MINUTES = 1;         //Sets the maximum amount of time the player can wait before decide to buyback.
+     public static final int BUYBACK_COOLDOWN_MINUTES = 7;       //Sets the time the player must wait before using buyback again.
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index d8bb3416b..c123a4969 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -573,6 +573,7 @@ protected AttackInfo parseDamage(LittleEndianAccessor lea, MapleCharacter chr, b
+         } else {
+             ret.charge = 0;
+         }
++        
+         lea.skip(8);
+         ret.display = lea.readByte();
+         ret.direction = lea.readByte();
+@@ -674,10 +675,10 @@ protected AttackInfo parseDamage(LittleEndianAccessor lea, MapleCharacter chr, b
+                     calcDmgMax = (int) Math.round((chr.getTotalInt() * 4.8 + chr.getTotalLuk() * 4) * chr.getTotalMagic() / 1000);
+                     calcDmgMax = calcDmgMax * effect.getHp() / 100; 
+                 }
+-                } else if(ret.skill == Hermit.SHADOW_MESO) {
+-                    // Shadow Meso also has its own formula
+-                    calcDmgMax = effect.getMoneyCon() * 10;
+-                    calcDmgMax = (int) Math.floor(calcDmgMax * 1.5);
++            } else if(ret.skill == Hermit.SHADOW_MESO) {
++                // Shadow Meso also has its own formula
++                calcDmgMax = effect.getMoneyCon() * 10;
++                calcDmgMax = (int) Math.floor(calcDmgMax * 1.5);
+             } else {
+                 // Normal damage formula for skills
+                 calcDmgMax = calcDmgMax * effect.getDamage() / 100;
+@@ -812,6 +813,10 @@ else if(orbs >= 5)
+                             if(monster != null) {
+                                     calcDmgMax = monster.getHp() / (50 - chr.getSkillLevel(skill));
+                             }
++                    } else if(ret.skill == Hermit.SHADOW_MESO) {
++                            if(monster != null) {
++                                    monster.debuffMob(Hermit.SHADOW_MESO);
++                            }
+                     }
+             }
+             
+diff --git a/src/net/server/channel/handlers/MobDamageMobHandler.java b/src/net/server/channel/handlers/MobDamageMobHandler.java
+index 2e6b55f76..e3e11ceba 100644
+--- a/src/net/server/channel/handlers/MobDamageMobHandler.java
++++ b/src/net/server/channel/handlers/MobDamageMobHandler.java
+@@ -22,6 +22,7 @@
+ package net.server.channel.handlers;
+ 
+ import client.MapleClient;
++import client.MapleCharacter;
+ import net.AbstractMaplePacketHandler;
+ import server.maps.MapleMap;
+ import tools.MaplePacketCreator;
+@@ -39,9 +40,11 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         int to = slea.readInt();
+         slea.readByte();
+         int dmg = slea.readInt();
+-        MapleMap map = c.getPlayer().getMap();
++        MapleCharacter chr = c.getPlayer();
++        
++        MapleMap map = chr.getMap();
+         if (map.getMonsterByOid(from) != null && map.getMonsterByOid(to) != null) {
+-            map.damageMonster(c.getPlayer(), map.getMonsterByOid(to), dmg);
++            map.damageMonster(chr, map.getMonsterByOid(to), dmg);
+             map.broadcastMessage(MaplePacketCreator.damageMonster(to, dmg));
+         }
+     }
+diff --git a/src/net/server/channel/handlers/RangedAttackHandler.java b/src/net/server/channel/handlers/RangedAttackHandler.java
+index 73ba52fa2..e72b2cd9d 100644
+--- a/src/net/server/channel/handlers/RangedAttackHandler.java
++++ b/src/net/server/channel/handlers/RangedAttackHandler.java
+@@ -30,7 +30,6 @@
+ import client.MapleBuffStat;
+ import client.MapleCharacter;
+ import client.MapleClient;
+-import client.MapleJob;
+ import client.Skill;
+ import client.SkillFactory;
+ import client.inventory.Item;
+@@ -113,6 +112,20 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (effect.getCooldown() > 0) {
+                     c.announce(MaplePacketCreator.skillCooldown(attack.skill, effect.getCooldown()));
+                 }
++                
++                if(attack.skill == 4111004) {   // shadow meso
++                    bulletCount = 0;
++                    
++                    int money = effect.getMoneyCon();
++                    if (money != 0) {
++                        int moneyMod = money / 2;
++                        money += Randomizer.nextInt(moneyMod);
++                        if (money > chr.getMeso()) {
++                            money = chr.getMeso();
++                        }
++                        chr.gainMeso(-money, false);
++                    }
++                }
+             }
+             boolean hasShadowPartner = chr.getBuffedValue(MapleBuffStat.SHADOWPARTNER) != null;
+             if (hasShadowPartner) {
+@@ -165,7 +178,8 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     else MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, bulletConsume, false, true);
+                 }
+             }
+-            if (projectile != 0 || soulArrow || attack.skill == 11101004 || attack.skill == 15111007 || attack.skill == 14101006) {                
++            
++            if (projectile != 0 || soulArrow || attack.skill == 11101004 || attack.skill == 15111007 || attack.skill == 14101006 || attack.skill == 4111004) {
+             	int visProjectile = projectile; //visible projectile sent to players
+                 if (ItemConstants.isThrowingStar(projectile)) {
+                     MapleInventory cash = chr.getInventory(MapleInventoryType.CASH);
+@@ -178,10 +192,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             }
+                         }
+                     }
+-                } else //bow, crossbow
+-                if (soulArrow || attack.skill == 3111004 || attack.skill == 3211004 || attack.skill == 11101004 || attack.skill == 15111007 || attack.skill == 14101006) {
++                } else if (soulArrow || attack.skill == 3111004 || attack.skill == 3211004 || attack.skill == 11101004 || attack.skill == 15111007 || attack.skill == 14101006) {
+                     visProjectile = 0;
+                 }
++                
+                 byte[] packet;
+                 switch (attack.skill) {
+                     case 3121004: // Hurricane
+@@ -195,17 +209,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         break;
+                 }
+                 chr.getMap().broadcastMessage(chr, packet, false, true);
+-                if (effect != null) {
+-                    int money = effect.getMoneyCon();
+-                    if (money != 0) {
+-                        int moneyMod = money / 2;
+-                        money += Randomizer.nextInt(moneyMod);
+-                        if (money > chr.getMeso()) {
+-                            money = chr.getMeso();
+-                        }
+-                        chr.gainMeso(-money, false);
+-                    }
+-                }
++                
+                 if (attack.skill != 0) {
+                     Skill skill = SkillFactory.getSkill(attack.skill);
+                     MapleStatEffect effect_ = skill.getEffect(chr.getSkillLevel(skill));
+diff --git a/src/net/server/channel/handlers/SpawnPetHandler.java b/src/net/server/channel/handlers/SpawnPetHandler.java
+index 5110b53ff..6ebcff6dc 100644
+--- a/src/net/server/channel/handlers/SpawnPetHandler.java
++++ b/src/net/server/channel/handlers/SpawnPetHandler.java
+@@ -21,78 +21,20 @@
+ */
+ package net.server.channel.handlers;
+ 
+-import client.MapleCharacter;
+-import java.awt.Point;
+-import java.io.File;
+ import client.MapleClient;
+-import client.inventory.MapleInventoryType;
+-import client.inventory.MaplePet;
+-import client.SkillFactory;
++import client.processor.SpawnPetProcessor;
+ import net.AbstractMaplePacketHandler;
+-import provider.MapleDataProvider;
+-import provider.MapleDataProviderFactory;
+-import provider.MapleDataTool;
+-import client.inventory.manipulator.MapleInventoryManipulator;
+-import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class SpawnPetHandler extends AbstractMaplePacketHandler {
+-    private static MapleDataProvider dataRoot = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("wzpath") + "/Item.wz"));
+-
++    
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+-        MapleCharacter chr = c.getPlayer();
+         slea.readInt();
+         byte slot = slea.readByte();
+         slea.readByte();
+         boolean lead = slea.readByte() == 1;
+-        MaplePet pet = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getPet();
+-        if (pet == null) return;
+         
+-        int petid = pet.getItemId();
+-        if (petid == 5000028 || petid == 5000047) //Handles Dragon AND Robos
+-        {
+-            if (chr.haveItem(petid + 1)) {
+-                chr.dropMessage(5, "You can't hatch your " + (petid == 5000028 ? "Dragon egg" : "Robo egg") + " if you already have a Baby " + (petid == 5000028 ? "Dragon." : "Robo."));
+-                c.announce(MaplePacketCreator.enableActions());
+-                return;
+-            } else {
+-                int evolveid = MapleDataTool.getInt("info/evol1", dataRoot.getData("Pet/" + petid + ".img"));
+-                int petId = MaplePet.createPet(evolveid);
+-                if (petId == -1) {
+-                    return;
+-                }
+-                long expiration = chr.getInventory(MapleInventoryType.CASH).getItem(slot).getExpiration();
+-                MapleInventoryManipulator.removeById(c, MapleInventoryType.CASH, petid, (short) 1, false, false);
+-                MapleInventoryManipulator.addById(c, evolveid, (short) 1, null, petId, expiration);
+-                pet.deleteFromDb();
+-                
+-                c.announce(MaplePacketCreator.enableActions());
+-                return;
+-            }
+-        }
+-        if (chr.getPetIndex(pet) != -1) {
+-            chr.unequipPet(pet, true);
+-        } else {
+-            if (chr.getSkillLevel(SkillFactory.getSkill(8)) == 0 && chr.getPet(0) != null) {
+-                chr.unequipPet(chr.getPet(0), false);
+-            }
+-            if (lead) {
+-                chr.shiftPetsRight();
+-            }
+-            Point pos = chr.getPosition();
+-            pos.y -= 12;
+-            pet.setPos(pos);
+-            pet.setFh(chr.getMap().getFootholds().findBelow(pet.getPos()).getId());
+-            pet.setStance(0);
+-            pet.setSummoned(true);
+-            pet.saveToDb();
+-            chr.addPet(pet);
+-            chr.getMap().broadcastMessage(c.getPlayer(), MaplePacketCreator.showPet(c.getPlayer(), pet, false, false), true);
+-            c.announce(MaplePacketCreator.petStatUpdate(c.getPlayer()));
+-            c.announce(MaplePacketCreator.enableActions());
+-            
+-            chr.commitExcludedItems();
+-            chr.getClient().getWorldServer().registerPetHunger(chr, chr.getPetIndex(pet));
+-        }
++        SpawnPetProcessor.processSpawnPet(c, slot, lead);
+     }
+ }
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 7b71198af..6db9031a9 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -786,7 +786,7 @@ public void gainAndEquip(int itemid, short slot) {
+ 		}
+ 		final Item newItem = MapleItemInformationProvider.getInstance().getEquipById(itemid);
+ 		newItem.setPosition(slot);
+-		c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addFromDB(newItem);
++		c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).addItemFromDB(newItem);
+ 		c.announce(MaplePacketCreator.modifyInventory(false, Collections.singletonList(new ModifyInventory(0, newItem))));
+ 	}
+         
+diff --git a/src/scripting/AbstractScriptManager.java b/src/scripting/AbstractScriptManager.java
+index 85506a2b4..02c741ed5 100644
+--- a/src/scripting/AbstractScriptManager.java
++++ b/src/scripting/AbstractScriptManager.java
+@@ -52,7 +52,11 @@ protected Invocable getInvocable(String path, MapleClient c) {
+         path = "scripts/" + path;
+         engine = null;
+         if (c != null) {
+-            engine = c.getScriptEngine(path);
++            try {
++                engine = c.getScriptEngine(path);
++            } catch (NullPointerException npe) {
++                c = null;   // player disconnected
++            }
+         }
+         if (engine == null) {
+             File scriptFile = new File(path);
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index 20c91e155..1b2241ea4 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -265,9 +265,12 @@ public void hitMonsterWithReactor(int id, int hitsToKill) {  // until someone co
+         MapleMonster mm = map.getMonsterById(id);
+         if(mm != null) {
+             int damage = (int)Math.ceil(mm.getMaxHp() / hitsToKill);
++            MapleCharacter chr = this.getPlayer();
+             
+-            map.damageMonster(this.getPlayer(), mm, damage);
+-            map.broadcastMessage(MaplePacketCreator.damageMonster(mm.getObjectId(), damage));
++            if(chr != null) {
++                map.damageMonster(chr, mm, damage);
++                map.broadcastMessage(MaplePacketCreator.damageMonster(mm.getObjectId(), damage));
++            }
+         }
+     }
+ 
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 5f0108bb5..fe9449b7f 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -31,11 +31,12 @@
+ import client.status.MonsterStatusEffect;
+ import constants.ServerConstants;
+ import constants.skills.Crusader;
+-import constants.skills.DragonKnight;
+ import constants.skills.FPMage;
++import constants.skills.Hermit;
+ import constants.skills.ILMage;
+ import constants.skills.NightLord;
+ import constants.skills.NightWalker;
++import constants.skills.Priest;
+ import constants.skills.Shadower;
+ import constants.skills.WhiteKnight;
+ import java.awt.Point;
+@@ -999,29 +1000,38 @@ private void debuffMobStat(MonsterStatus stat) {
+             byte[] packet = MaplePacketCreator.cancelMonsterStatus(getObjectId(), oldEffect.getStati());
+             map.broadcastMessage(packet, getPosition());
+ 
+-            MapleCharacter controller = getController();
+-            if (controller != null && !controller.isMapObjectVisible(MapleMonster.this)) {
+-                controller.getClient().announce(packet);
++            MapleCharacter chrController = getController();
++            if (chrController != null && !chrController.isMapObjectVisible(MapleMonster.this)) {
++                chrController.getClient().announce(packet);
+             }
+             stati.remove(stat);
+         }
+     }
+     
+     public void debuffMob(int skillid) {
+-        MonsterStatus[] stats = {MonsterStatus.WEAPON_ATTACK_UP, MonsterStatus.WEAPON_DEFENSE_UP, MonsterStatus.MAGIC_ATTACK_UP};
++        MonsterStatus[] statups = {MonsterStatus.WEAPON_ATTACK_UP, MonsterStatus.WEAPON_DEFENSE_UP, MonsterStatus.MAGIC_ATTACK_UP, MonsterStatus.MAGIC_DEFENSE_UP};
+         statiLock.lock();
+         try {
+-            int i = (skillid == Crusader.ARMOR_CRASH ? 1 : (skillid == WhiteKnight.MAGIC_CRASH ? 2 : 0));
+-            debuffMobStat(stats[i]);
+-            
+-            if(ServerConstants.USE_ANTI_IMMUNITY_CRASH) {
+-                if (skillid == Crusader.ARMOR_CRASH) {
+-                    if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
+-                    if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
+-                } else if (skillid == WhiteKnight.MAGIC_CRASH) {
+-                    if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
+-                } else {
+-                    if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
++            if(skillid == Hermit.SHADOW_MESO) {
++                debuffMobStat(statups[1]);
++                debuffMobStat(statups[3]);
++            } else if(skillid == Priest.DISPEL) {
++                for(MonsterStatus ms : statups) {
++                    debuffMobStat(ms);
++                }
++            } else {    // is a crash skill
++                int i = (skillid == Crusader.ARMOR_CRASH ? 1 : (skillid == WhiteKnight.MAGIC_CRASH ? 2 : 0));
++                debuffMobStat(statups[i]);
++
++                if(ServerConstants.USE_ANTI_IMMUNITY_CRASH) {
++                    if (skillid == Crusader.ARMOR_CRASH) {
++                        if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
++                        if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
++                    } else if (skillid == WhiteKnight.MAGIC_CRASH) {
++                        if(!isBuffed(MonsterStatus.MAGIC_REFLECT)) debuffMobStat(MonsterStatus.MAGIC_IMMUNITY);
++                    } else {
++                        if(!isBuffed(MonsterStatus.WEAPON_REFLECT)) debuffMobStat(MonsterStatus.WEAPON_IMMUNITY);
++                    }
+                 }
+             }
+         } finally {
+diff --git a/src/server/quest/MapleQuest.java b/src/server/quest/MapleQuest.java
+index 6994c0e48..7037508c9 100644
+--- a/src/server/quest/MapleQuest.java
++++ b/src/server/quest/MapleQuest.java
+@@ -518,6 +518,9 @@ private MapleQuestAction getAction(MapleQuestActionType type, MapleData data) {
+ 			case SKILL:
+ 				ret = new SkillAction(this, data);
+ 				break;
++                        case PETTAMENESS:
++				ret = new PetTamenessAction(this, data);
++				break;
+ 			default:
+ 				//FilePrinter.printError(FilePrinter.EXCEPTION_CAUGHT, "Unhandled Action Type: " + type.toString() + " QuestID: " + this.getId());
+ 				break;
+diff --git a/src/server/quest/MapleQuestActionType.java b/src/server/quest/MapleQuestActionType.java
+index 684d7e9ba..170e71fa5 100644
+--- a/src/server/quest/MapleQuestActionType.java
++++ b/src/server/quest/MapleQuestActionType.java
+@@ -26,7 +26,7 @@
+  * @author Matze
+  */
+ public enum MapleQuestActionType {
+-    UNDEFINED(-1), EXP(0), ITEM(1), NEXTQUEST(2), MESO(3), QUEST(4), SKILL(5), FAME(6), BUFF(7), PETSKILL(8), YES(9), NO(10), NPC(11), MIN_LEVEL(12), NORMAL_AUTO_START(13), ZERO(14);
++    UNDEFINED(-1), EXP(0), ITEM(1), NEXTQUEST(2), MESO(3), QUEST(4), SKILL(5), FAME(6), BUFF(7), PETSKILL(8), YES(9), NO(10), NPC(11), MIN_LEVEL(12), NORMAL_AUTO_START(13), PETTAMENESS(14), ZERO(15);
+     final byte type;
+ 
+     private MapleQuestActionType(int type) {
+@@ -60,6 +60,8 @@ public static MapleQuestActionType getByWZName(String name) {
+             return MIN_LEVEL;
+         } else if (name.equals("normalAutoStart")) {
+             return NORMAL_AUTO_START;
++        } else if (name.equals("pettameness")) {
++            return PETTAMENESS;
+         } else if (name.equals("0")) {
+             return ZERO;
+         } else {
+diff --git a/src/server/quest/actions/PetTamenessAction.java b/src/server/quest/actions/PetTamenessAction.java
+new file mode 100644
+index 000000000..ff1b2bee9
+--- /dev/null
++++ b/src/server/quest/actions/PetTamenessAction.java
+@@ -0,0 +1,63 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package server.quest.actions;
++
++import client.MapleClient;
++import client.MapleCharacter;
++import client.inventory.MaplePet;
++import provider.MapleData;
++import provider.MapleDataTool;
++import server.quest.MapleQuest;
++import server.quest.MapleQuestActionType;
++
++/**
++ *
++ * @author Ronan
++ */
++public class PetTamenessAction extends MapleQuestAction {
++	int tameness;
++	
++	public PetTamenessAction(MapleQuest quest, MapleData data) {
++		super(MapleQuestActionType.PETTAMENESS, quest);
++		questID = quest.getId();
++		processData(data);
++	}
++	
++	
++	@Override
++	public void processData(MapleData data) {
++		tameness = MapleDataTool.getInt(data);
++	}
++	
++	@Override
++	public void run(MapleCharacter chr, Integer extSelection) {
++                MapleClient c = chr.getClient();
++                
++                MaplePet pet = chr.getPet(0);   // assuming here only the pet leader will gain tameness
++                if(pet == null) return;
++            
++                c.lockClient();
++                try {
++                    pet.gainClosenessFullness(chr, tameness, 0, 0);
++                } finally {
++                    c.unlockClient();
++                }
++	}
++} 
+diff --git a/wz/Character.wz/Cap/01002035.img.xml b/wz/Character.wz/Cap/01002035.img.xml
+index 46090053f..ccc86c5ae 100644
+--- a/wz/Character.wz/Cap/01002035.img.xml
++++ b/wz/Character.wz/Cap/01002035.img.xml
+@@ -19,8 +19,8 @@
+     <int name="incMDD" value="40"/>
+     <int name="incMHP" value="20"/>
+     <int name="tuc" value="7"/>
+-    <string name="price" value="15000"/>
+     <int name="cash" value="0"/>
++    <int name="price" value="15000"/>
+   </imgdir>
+   <imgdir name="default">
+     <canvas name="default" width="49" height="30">
+diff --git a/wz/Character.wz/Shoes/01072344.img.xml b/wz/Character.wz/Shoes/01072344.img.xml
+index 5e62db965..edeb16b24 100644
+--- a/wz/Character.wz/Shoes/01072344.img.xml
++++ b/wz/Character.wz/Shoes/01072344.img.xml
+@@ -20,8 +20,8 @@
+     <int name="incPAD" value="2"/>
+     <int name="tuc" value="5"/>
+     <int name="notSale" value="1"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Weapon/01402045.img.xml b/wz/Character.wz/Weapon/01402045.img.xml
+index 25cd3056d..8af29c009 100644
+--- a/wz/Character.wz/Weapon/01402045.img.xml
++++ b/wz/Character.wz/Weapon/01402045.img.xml
+@@ -24,10 +24,10 @@
+     <int name="incACC" value="8"/>
+     <int name="tuc" value="7"/>
+     <int name="attackSpeed" value="5"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
+     <int name="notSale" value="1"/>
+     <int name="incSpeed" value="2"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Weapon/01402048.img.xml b/wz/Character.wz/Weapon/01402048.img.xml
+index f88a4bf9d..89e547e65 100644
+--- a/wz/Character.wz/Weapon/01402048.img.xml
++++ b/wz/Character.wz/Weapon/01402048.img.xml
+@@ -23,9 +23,9 @@
+     <int name="incPAD" value="90"/>
+     <int name="incSTR" value="2"/>
+     <int name="attackSpeed" value="6"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
+     <int name="tuc" value="7"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Weapon/01402049.img.xml b/wz/Character.wz/Weapon/01402049.img.xml
+index 2e7e5f488..52c910f0b 100644
+--- a/wz/Character.wz/Weapon/01402049.img.xml
++++ b/wz/Character.wz/Weapon/01402049.img.xml
+@@ -23,9 +23,9 @@
+     <int name="incPAD" value="96"/>
+     <int name="incSTR" value="2"/>
+     <int name="attackSpeed" value="5"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
+     <int name="tuc" value="7"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Weapon/01402050.img.xml b/wz/Character.wz/Weapon/01402050.img.xml
+index a608e84fb..aba7a0247 100644
+--- a/wz/Character.wz/Weapon/01402050.img.xml
++++ b/wz/Character.wz/Weapon/01402050.img.xml
+@@ -23,9 +23,9 @@
+     <int name="incPAD" value="99"/>
+     <int name="incSTR" value="4"/>
+     <int name="attackSpeed" value="6"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
+     <int name="tuc" value="7"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Weapon/01402051.img.xml b/wz/Character.wz/Weapon/01402051.img.xml
+index 2dc9a30c8..a023a6e30 100644
+--- a/wz/Character.wz/Weapon/01402051.img.xml
++++ b/wz/Character.wz/Weapon/01402051.img.xml
+@@ -24,9 +24,9 @@
+     <int name="incSTR" value="3"/>
+     <int name="incACC" value="20"/>
+     <int name="attackSpeed" value="6"/>
+-    <string name="price" value="1"/>
+     <int name="cash" value="0"/>
+     <int name="tuc" value="7"/>
++    <int name="price" value="1"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Etc.wz/ItemMake.img.xml b/wz/Etc.wz/ItemMake.img.xml
+index 5a6e886d8..b87058d68 100644
+--- a/wz/Etc.wz/ItemMake.img.xml
++++ b/wz/Etc.wz/ItemMake.img.xml
+@@ -14084,7 +14084,7 @@
+       <int name="meso" value="119000"/>
+       <imgdir name="recipe">
+         <imgdir name="0">
+-          <int name="item" value="4007001"/>
++          <int name="item" value="4007003"/>
+           <int name="count" value="10"/>
+         </imgdir>
+         <imgdir name="1">
+diff --git a/wz/Item.wz/Consume/0202.img.xml b/wz/Item.wz/Consume/0202.img.xml
+index 000d0fbdf..f51b0a7ca 100644
+--- a/wz/Item.wz/Consume/0202.img.xml
++++ b/wz/Item.wz/Consume/0202.img.xml
+@@ -841,7 +841,7 @@
+       <canvas name="iconRaw" width="32" height="29">
+         <vector name="origin" x="0" y="31"/>
+       </canvas>
+-      <string name="price" value="675"/>
++      <int name="price" value="675"/>
+     </imgdir>
+     <imgdir name="spec">
+       <int name="hp" value="400"/>
+@@ -6267,8 +6267,8 @@
+       </canvas>
+     </imgdir>
+     <imgdir name="spec">
+-      <int name="jump" value="7"/>
+       <int name="time" value="900000"/>
++      <int name="jump" value="5"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="02022437">
+@@ -6281,8 +6281,8 @@
+       </canvas>
+     </imgdir>
+     <imgdir name="spec">
+-      <int name="speed" value="5"/>
+       <int name="time" value="900000"/>
++      <int name="speed" value="7"/>
+     </imgdir>
+   </imgdir>
+   <imgdir name="02022438">
+diff --git a/wz/Item.wz/Consume/0206.img.xml b/wz/Item.wz/Consume/0206.img.xml
+index 1158ab1a2..e44e08b99 100644
+--- a/wz/Item.wz/Consume/0206.img.xml
++++ b/wz/Item.wz/Consume/0206.img.xml
+@@ -34,7 +34,7 @@
+         <int name="z" value="0"/>
+       </canvas>
+       <int name="slotMax" value="800"/>
+-      <int name="incPAD" value="10"/>
++      <int name="incPAD" value="7"/>
+       <int name="reqLevel" value="10"/>
+       <int name="tradeBlock" value="1"/>
+     </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030001.img.xml b/wz/Map.wz/Map/Map9/970030001.img.xml
+index 1a1bde6ac..aad7df226 100644
+--- a/wz/Map.wz/Map/Map9/970030001.img.xml
++++ b/wz/Map.wz/Map/Map9/970030001.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030002.img.xml b/wz/Map.wz/Map/Map9/970030002.img.xml
+index c50f9a663..c57405921 100644
+--- a/wz/Map.wz/Map/Map9/970030002.img.xml
++++ b/wz/Map.wz/Map/Map9/970030002.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030003.img.xml b/wz/Map.wz/Map/Map9/970030003.img.xml
+index bea8b53e4..c5e390958 100644
+--- a/wz/Map.wz/Map/Map9/970030003.img.xml
++++ b/wz/Map.wz/Map/Map9/970030003.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030004.img.xml b/wz/Map.wz/Map/Map9/970030004.img.xml
+index 99fca005d..94ce432e4 100644
+--- a/wz/Map.wz/Map/Map9/970030004.img.xml
++++ b/wz/Map.wz/Map/Map9/970030004.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030005.img.xml b/wz/Map.wz/Map/Map9/970030005.img.xml
+index a8abdc590..67f016721 100644
+--- a/wz/Map.wz/Map/Map9/970030005.img.xml
++++ b/wz/Map.wz/Map/Map9/970030005.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030006.img.xml b/wz/Map.wz/Map/Map9/970030006.img.xml
+index 3fb1c0caf..49a55f525 100644
+--- a/wz/Map.wz/Map/Map9/970030006.img.xml
++++ b/wz/Map.wz/Map/Map9/970030006.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030007.img.xml b/wz/Map.wz/Map/Map9/970030007.img.xml
+index 535cb56f5..6b96e05f5 100644
+--- a/wz/Map.wz/Map/Map9/970030007.img.xml
++++ b/wz/Map.wz/Map/Map9/970030007.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030008.img.xml b/wz/Map.wz/Map/Map9/970030008.img.xml
+index c6acbee9c..6ae9043a5 100644
+--- a/wz/Map.wz/Map/Map9/970030008.img.xml
++++ b/wz/Map.wz/Map/Map9/970030008.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030009.img.xml b/wz/Map.wz/Map/Map9/970030009.img.xml
+index a4c3bed04..4fa5c6cf1 100644
+--- a/wz/Map.wz/Map/Map9/970030009.img.xml
++++ b/wz/Map.wz/Map/Map9/970030009.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Map.wz/Map/Map9/970030010.img.xml b/wz/Map.wz/Map/Map9/970030010.img.xml
+index 1d649e1f1..311101752 100644
+--- a/wz/Map.wz/Map/Map9/970030010.img.xml
++++ b/wz/Map.wz/Map/Map9/970030010.img.xml
+@@ -11,7 +11,7 @@
+     <string name="mapMark" value="Event"/>
+     <int name="swim" value="0"/>
+     <int name="hideMinimap" value="0"/>
+-    <int name="fieldLimit" value="794828"/>
++    <int name="fieldLimit" value="794876"/>
+     <int name="fly" value="0"/>
+     <string name="onFirstUserEnter" value=""/>
+   </imgdir>
+diff --git a/wz/Mob.wz/5090000.img.xml b/wz/Mob.wz/5090000.img.xml
+index 38e1225b2..61ebb55d4 100644
+--- a/wz/Mob.wz/5090000.img.xml
++++ b/wz/Mob.wz/5090000.img.xml
+@@ -4,7 +4,7 @@
+     <int name="boss" value="1"/>
+     <int name="bodyAttack" value="1"/>
+     <int name="level" value="56"/>
+-    <int name="maxHP" value="4800"/>
++    <int name="maxHP" value="30000"/>
+     <int name="maxMP" value="200"/>
+     <int name="speed" value="0"/>
+     <int name="PADamage" value="165"/>
+diff --git a/wz/Mob.wz/6090000.img.xml b/wz/Mob.wz/6090000.img.xml
+index 2f7ec12f6..2ba23d1b3 100644
+--- a/wz/Mob.wz/6090000.img.xml
++++ b/wz/Mob.wz/6090000.img.xml
+@@ -3,7 +3,7 @@
+   <imgdir name="info">
+     <int name="boss" value="1"/>
+     <int name="bodyAttack" value="1"/>
+-    <int name="level" value="65"/>
++    <int name="level" value="74"/>
+     <int name="maxHP" value="11000"/>
+     <int name="maxMP" value="500"/>
+     <int name="speed" value="-30"/>
+@@ -13,7 +13,7 @@
+     <int name="MDDamage" value="400"/>
+     <int name="acc" value="150"/>
+     <int name="eva" value="999"/>
+-    <int name="exp" value="160620"/>
++    <int name="exp" value="25000"/>
+     <int name="undead" value="1"/>
+     <int name="pushed" value="1000"/>
+     <float name="fs" value="10.0"/>
+diff --git a/wz/Mob.wz/6090002.img.xml b/wz/Mob.wz/6090002.img.xml
+index d5e0df00a..eff07768a 100644
+--- a/wz/Mob.wz/6090002.img.xml
++++ b/wz/Mob.wz/6090002.img.xml
+@@ -4,8 +4,8 @@
+     <int name="boss" value="1"/>
+     <int name="bodyAttack" value="1"/>
+     <int name="level" value="68"/>
+-    <int name="maxHP" value="13689000"/>
+-    <int name="maxMP" value="200000"/>
++    <int name="maxHP" value="86890"/>
++    <int name="maxMP" value="2000"/>
+     <int name="speed" value="-20"/>
+     <int name="PADamage" value="200"/>
+     <int name="PDDamage" value="190"/>
+@@ -13,7 +13,7 @@
+     <int name="MDDamage" value="270"/>
+     <int name="acc" value="130"/>
+     <int name="eva" value="70"/>
+-    <int name="exp" value="89928"/>
++    <int name="exp" value="17000"/>
+     <int name="undead" value="1"/>
+     <int name="pushed" value="1300"/>
+     <float name="fs" value="10.0"/>
+diff --git a/wz/Quest.wz/Act.img.xml b/wz/Quest.wz/Act.img.xml
+index 7911c2d9e..1d797c4c0 100644
+--- a/wz/Quest.wz/Act.img.xml
++++ b/wz/Quest.wz/Act.img.xml
+@@ -39258,130 +39258,138 @@
+           <int name="id" value="4000176"/>
+           <int name="count" value="-2"/>
+         </imgdir>
+-        <imgdir name="10">
++        <imgdir name="12">
+           <int name="id" value="4000175"/>
+           <int name="count" value="-2"/>
+         </imgdir>
+-        <imgdir name="11">
++        <imgdir name="13">
+           <int name="id" value="4000138"/>
+           <int name="count" value="-2"/>
+         </imgdir>
+-        <imgdir name="12">
++        <imgdir name="14">
+           <int name="id" value="4011007"/>
+           <int name="count" value="-2"/>
+         </imgdir>
+-        <imgdir name="13">
++        <imgdir name="15">
+           <int name="id" value="4021009"/>
+           <int name="count" value="-2"/>
+         </imgdir>
+-        <imgdir name="14">
++        <imgdir name="16">
+           <int name="id" value="4005000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="15">
++        <imgdir name="17">
+           <int name="id" value="4005001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="16">
++        <imgdir name="18">
+           <int name="id" value="4005002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="17">
++        <imgdir name="19">
+           <int name="id" value="4005003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="18">
++        <imgdir name="20">
+           <int name="id" value="4005004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="19">
++        <imgdir name="21">
+           <int name="id" value="4011000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="20">
++        <imgdir name="22">
+           <int name="id" value="4011001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="21">
++        <imgdir name="23">
+           <int name="id" value="4011002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="22">
++        <imgdir name="24">
+           <int name="id" value="4011003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="23">
++        <imgdir name="25">
+           <int name="id" value="4011004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="24">
++        <imgdir name="26">
+           <int name="id" value="4011005"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="25">
++        <imgdir name="27">
+           <int name="id" value="4011006"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="26">
++        <imgdir name="28">
+           <int name="id" value="4021000"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="27">
++        <imgdir name="29">
+           <int name="id" value="4021001"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="28">
++        <imgdir name="30">
+           <int name="id" value="4021002"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="29">
++        <imgdir name="31">
+           <int name="id" value="4021003"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="30">
++        <imgdir name="32">
+           <int name="id" value="4021004"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="31">
++        <imgdir name="33">
+           <int name="id" value="4021005"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="32">
++        <imgdir name="34">
+           <int name="id" value="4021006"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="33">
++        <imgdir name="35">
+           <int name="id" value="4021007"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="34">
++        <imgdir name="36">
+           <int name="id" value="4021008"/>
+           <int name="count" value="-5"/>
+         </imgdir>
+-        <imgdir name="35">
++        <imgdir name="37">
+           <int name="id" value="1442030"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="36">
++        <imgdir name="38">
+           <int name="id" value="1002033"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="37">
++        <imgdir name="39">
+           <int name="id" value="1050132"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="38">
++        <imgdir name="40">
+           <int name="id" value="1082002"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="39">
++        <imgdir name="41">
+           <int name="id" value="1072169"/>
+           <int name="count" value="-1"/>
+         </imgdir>
+-        <imgdir name="40">
++        <imgdir name="42">
+           <int name="id" value="2049100"/>
+           <int name="count" value="5"/>
+         </imgdir>
++        <imgdir name="10">
++          <int name="count" value="-2"/>
++          <int name="id" value="4000413"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="count" value="-2"/>
++          <int name="id" value="4000414"/>
++        </imgdir>
+       </imgdir>
+       <int name="exp" value="80000"/>
+       <int name="pop" value="5"/>
+@@ -39814,43 +39822,43 @@
+       <imgdir name="item">
+         <imgdir name="0">
+           <int name="id" value="4030000"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-16"/>
+         </imgdir>
+         <imgdir name="1">
+           <int name="id" value="4030001"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-16"/>
+         </imgdir>
+         <imgdir name="2">
+           <int name="id" value="4030010"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="3">
+           <int name="id" value="4030011"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="4">
+           <int name="id" value="4030013"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="5">
+           <int name="id" value="4030014"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="6">
+           <int name="id" value="4030015"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="7">
+           <int name="id" value="4030016"/>
+-          <int name="count" value="-15"/>
++          <int name="count" value="-32"/>
+         </imgdir>
+         <imgdir name="8">
+           <int name="id" value="4030009"/>
+-          <int name="count" value="-2"/>
++          <int name="count" value="-8"/>
+         </imgdir>
+         <imgdir name="9">
+           <int name="id" value="3010001"/>
+-          <int name="count" value="-4"/>
++          <int name="count" value="-16"/>
+         </imgdir>
+         <imgdir name="10">
+           <int name="id" value="2049100"/>
+@@ -39885,7 +39893,7 @@
+         </imgdir>
+         <imgdir name="4">
+           <int name="id" value="4030012"/>
+-          <int name="count" value="-200"/>
++          <int name="count" value="-250"/>
+         </imgdir>
+         <imgdir name="5">
+           <int name="id" value="1142099"/>
+diff --git a/wz/Quest.wz/Check.img.xml b/wz/Quest.wz/Check.img.xml
+index 0eba3c7dd..a16066f0d 100644
+--- a/wz/Quest.wz/Check.img.xml
++++ b/wz/Quest.wz/Check.img.xml
+@@ -62678,126 +62678,134 @@
+           <int name="id" value="4000176"/>
+           <int name="count" value="2"/>
+         </imgdir>
+-        <imgdir name="10">
++        <imgdir name="12">
+           <int name="id" value="4000175"/>
+           <int name="count" value="2"/>
+         </imgdir>
+-        <imgdir name="11">
++        <imgdir name="13">
+           <int name="id" value="4000138"/>
+           <int name="count" value="2"/>
+         </imgdir>
+-        <imgdir name="12">
++        <imgdir name="14">
+           <int name="id" value="4011007"/>
+           <int name="count" value="2"/>
+         </imgdir>
+-        <imgdir name="13">
++        <imgdir name="15">
+           <int name="id" value="4021009"/>
+           <int name="count" value="2"/>
+         </imgdir>
+-        <imgdir name="14">
++        <imgdir name="16">
+           <int name="id" value="4005000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="15">
++        <imgdir name="17">
+           <int name="id" value="4005001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="16">
++        <imgdir name="18">
+           <int name="id" value="4005002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="17">
++        <imgdir name="19">
+           <int name="id" value="4005003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="18">
++        <imgdir name="20">
+           <int name="id" value="4005004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="19">
++        <imgdir name="21">
+           <int name="id" value="4011000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="20">
++        <imgdir name="22">
+           <int name="id" value="4011001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="21">
++        <imgdir name="23">
+           <int name="id" value="4011002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="22">
++        <imgdir name="24">
+           <int name="id" value="4011003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="23">
++        <imgdir name="25">
+           <int name="id" value="4011004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="24">
++        <imgdir name="26">
+           <int name="id" value="4011005"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="25">
++        <imgdir name="27">
+           <int name="id" value="4011006"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="26">
++        <imgdir name="28">
+           <int name="id" value="4021000"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="27">
++        <imgdir name="29">
+           <int name="id" value="4021001"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="28">
++        <imgdir name="30">
+           <int name="id" value="4021002"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="29">
++        <imgdir name="31">
+           <int name="id" value="4021003"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="30">
++        <imgdir name="32">
+           <int name="id" value="4021004"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="31">
++        <imgdir name="33">
+           <int name="id" value="4021005"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="32">
++        <imgdir name="34">
+           <int name="id" value="4021006"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="33">
++        <imgdir name="35">
+           <int name="id" value="4021007"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="34">
++        <imgdir name="36">
+           <int name="id" value="4021008"/>
+           <int name="count" value="5"/>
+         </imgdir>
+-        <imgdir name="35">
++        <imgdir name="37">
+           <int name="id" value="1442030"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="36">
++        <imgdir name="38">
+           <int name="id" value="1002033"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="37">
++        <imgdir name="39">
+           <int name="id" value="1050132"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="38">
++        <imgdir name="40">
+           <int name="id" value="1082002"/>
+           <int name="count" value="1"/>
+         </imgdir>
+-        <imgdir name="39">
++        <imgdir name="41">
+           <int name="id" value="1072169"/>
+           <int name="count" value="1"/>
+         </imgdir>
++        <imgdir name="10">
++          <int name="count" value="2"/>
++          <int name="id" value="4000413"/>
++        </imgdir>
++        <imgdir name="11">
++          <int name="count" value="2"/>
++          <int name="id" value="4000414"/>
++        </imgdir>
+       </imgdir>
+     </imgdir>
+     <imgdir name="0">
+@@ -63538,43 +63546,43 @@
+       <imgdir name="item">
+         <imgdir name="0">
+           <int name="id" value="4030000"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="16"/>
+         </imgdir>
+         <imgdir name="1">
+           <int name="id" value="4030001"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="16"/>
+         </imgdir>
+         <imgdir name="2">
+           <int name="id" value="4030010"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="3">
+           <int name="id" value="4030011"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="4">
+           <int name="id" value="4030013"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="5">
+           <int name="id" value="4030014"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="6">
+           <int name="id" value="4030015"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="7">
+           <int name="id" value="4030016"/>
+-          <int name="count" value="15"/>
++          <int name="count" value="32"/>
+         </imgdir>
+         <imgdir name="8">
+           <int name="id" value="4030009"/>
+-          <int name="count" value="2"/>
++          <int name="count" value="8"/>
+         </imgdir>
+         <imgdir name="9">
+           <int name="id" value="3010001"/>
+-          <int name="count" value="4"/>
++          <int name="count" value="16"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+@@ -63601,7 +63609,7 @@
+         </imgdir>
+         <imgdir name="4">
+           <int name="id" value="4030012"/>
+-          <int name="count" value="200"/>
++          <int name="count" value="250"/>
+         </imgdir>
+       </imgdir>
+     </imgdir>
+diff --git a/wz/Quest.wz/QuestInfo.img.xml b/wz/Quest.wz/QuestInfo.img.xml
+index 454de13c4..6a50e7bcd 100644
+--- a/wz/Quest.wz/QuestInfo.img.xml
++++ b/wz/Quest.wz/QuestInfo.img.xml
+@@ -19525,7 +19525,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+   <imgdir name="8206">
+     <string name="name" value="Ace of Heart&apos;s Secret Ability"/>
+     <string name="0" value="#b#p2041017##k and his partner seems pretty busy recently. Should I check with them on what kind of business they are on now?"/>
+-    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4032474# #t4032474# #c4032474# / #r5#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000150# #t4000150# #c4000150# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
++    <string name="1" value="#b#p2041017##k said he can make a nice package for a chocolate... ...... Nope, not this time. Actually, he and his partner are providing a &quot;synthetizing on demand&quot; kind of service. Of #b#t2049100##k! By completing his quest, I am granted a fair amount of these scrolls. But LOOK AT THIS LIST:\n\n#i4032474# #t4032474# #c4032474# / #r5#k\n#i4000046# #t4000046# #c4000046# / #r50#k\n#i4000054# #t4000054# #c4000054# / #r50#k\n#i4000150# #t4000150# #c4000150# / #r50#k\n#i4000080# #t4000080# #c4000080# / #r50#k\n#i4000151# #t4000151# #c4000151# / #r5#k\n#i4000152# #t4000152# #c4000152# / #r5#k\n#i4031906# #t4031906# #c4031906# / #r5#k\n#i4000040# #t4000040# #c4000040# / #r2#k\n#i4000176# #t4000176# #c4000176# / #r2#k\n#i4000413# #t4000413# #c4000413# / #r2#k\n#i4000414# #t4000414# #c4000414# / #r2#k\n#i4000175# #t4000175# #c4000175# / #r2#k\n#i4000138# #t4000138# #c4000138# / #r2#k\n#i4011007# #t4011007# #c4011007# / #r2#k\n#i4021009# #t4021009# #c4021009# / #r2#k\n#i4005000# #t4005000# #c4005000# / #r5#k\n#i4005001# #t4005001# #c4005001# / #r5#k\n#i4005002# #t4005002# #c4005002# / #r5#k\n#i4005003# #t4005003# #c4005003# / #r5#k\n#i4005004# #t4005004# #c4005004# / #r5#k\n#i4011000# #t4011000# #c4011000# / #r5#k\n#i4011001# #t4011001# #c4011001# / #r5#k\n#i4011002# #t4011002# #c4011002# / #r5#k\n#i4011003# #t4011003# #c4011003# / #r5#k\n#i4011004# #t4011004# #c4011004# / #r5#k\n#i4011005# #t4011005# #c4011005# / #r5#k\n#i4011006# #t4011006# #c4011006# / #r5#k\n#i4021000# #t4021000# #c4021000# / #r5#k\n#i4021001# #t4021001# #c4021001# / #r5#k\n#i4021002# #t4021002# #c4021002# / #r5#k\n#i4021003# #t4021003# #c4021003# / #r5#k\n#i4021004# #t4021004# #c4021004# / #r5#k\n#i4021005# #t4021005# #c4021005# / #r5#k\n#i4021006# #t4021006# #c4021006# / #r5#k\n#i4021007# #t4021007# #c4021007# / #r5#k\n#i4021008# #t4021008# #c4021008# / #r5#k\n#i1442030# #t1442030# #c1442030# / #r1#k\n#i1002033# #t1002033# #c1002033# / #r1#k\n#i1050132# #t1050132# #c1050132# / #r1#k\n#i1082002# #t1082002# #c1082002# / #r1#k\n#i1072169# #t1072169# #c1072169# / #r1#k"/>
+     <string name="2" value="Ace of Hearts helped me make these scrolls... Geez, that was hard. It is repeatable within 3 days, huh?"/>
+     <int name="area" value="50"/>
+   </imgdir>
+@@ -19741,7 +19741,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+     <string name="parent" value="Maple 7th Day Market"/>
+     <int name="order" value="1"/>
+     <string name="0" value="The Maple 7th Day Market will open soon. Better check with #b#p9209001##k what&apos;s up."/>
+-    <string name="1" value="She needs some help collecting omok pieces for the entertainment of the folks, better gather them soon.\n\n#i4030000# #t4030000# #c4030000# / #r15#k\n#i4030001# #t4030001# #c4030001# / #r15#k\n#i4030010# #t4030010# #c4030010# / #r15#k\n#i4030011# #t4030011# #c4030011# / #r15#k\n#i4030013# #t4030013# #c4030013# / #r15#k\n#i4030014# #t4030014# #c4030014# / #r15#k\n#i4030015# #t4030015# #c4030015# / #r15#k\n#i4030016# #t4030016# #c4030016# / #r15#k\n#i4030009# #t4030009# #c4030009# / #r2#k\n#i3010001# #t3010001# #c3010001# / #r4#k\n"/>
++    <string name="1" value="She needs some help collecting omok pieces for the entertainment of the folks, better gather them soon.\n\n#i4030000# #t4030000# #c4030000# / #r16#k\n#i4030001# #t4030001# #c4030001# / #r16#k\n#i4030010# #t4030010# #c4030010# / #r32#k\n#i4030011# #t4030011# #c4030011# / #r32#k\n#i4030013# #t4030013# #c4030013# / #r32#k\n#i4030014# #t4030014# #c4030014# / #r32#k\n#i4030015# #t4030015# #c4030015# / #r32#k\n#i4030016# #t4030016# #c4030016# / #r32#k\n#i4030009# #t4030009# #c4030009# / #r8#k\n#i3010001# #t3010001# #c3010001# / #r16#k\n"/>
+     <string name="2" value="I completed #b#p9209001##k&apos;s first task. Turned out that the main event became even more attractive."/>
+     <int name="area" value="50"/>
+   </imgdir>
+@@ -19750,7 +19750,7 @@ Able to proceed to &apos;Merry-go-round in Kampung&apos; as next quest.
+     <string name="parent" value="Maple 7th Day Market"/>
+     <int name="order" value="2"/>
+     <string name="0" value="The time for the Maple 7th Day Market has come. #b#p9209001##k is preparing another event now."/>
+-    <string name="1" value="Now it is a Card-Game Convention she plans to host. As before, there is some great reward for the completion of this task.\n\n#i4000035# #t4000035# #c4000035# / #r10#k\n#i4000114# #t4000114# #c4000114# / #r10#k\n#i4030009# #t4030009# #c4030009# / #r10#k\n#i3010001# #t3010001# #c3010001# / #r20#k\n#i4030012# #t4030012# #c4030012# / #r200#k\n"/>
++    <string name="1" value="Now it is a Card-Game Convention she plans to host. As before, there is some great reward for the completion of this task.\n\n#i4000035# #t4000035# #c4000035# / #r10#k\n#i4000114# #t4000114# #c4000114# / #r10#k\n#i4030009# #t4030009# #c4030009# / #r10#k\n#i3010001# #t3010001# #c3010001# / #r20#k\n#i4030012# #t4030012# #c4030012# / #r250#k\n"/>
+     <string name="2" value="I completed #b#p9209001##k&apos;s final task. The public seems to have enjoyed a lot the events of the Maple 7th Day Market."/>
+     <int name="area" value="50"/>
+   </imgdir>
+diff --git a/wz/String.wz/Consume.img.xml b/wz/String.wz/Consume.img.xml
+index 1c3100271..1b75eb446 100644
+--- a/wz/String.wz/Consume.img.xml
++++ b/wz/String.wz/Consume.img.xml
+@@ -1409,11 +1409,11 @@
+   </imgdir>
+   <imgdir name="2022436">
+     <string name="name" value="Holiday Buff"/>
+-    <string name="desc" value="A Holiday present from the Snow Spirit. For 15 min., Speed +5."/>
++    <string name="desc" value="A Holiday present from the Snow Spirit. For 15 min., Jump +5."/>
+   </imgdir>
+   <imgdir name="2022437">
+     <string name="name" value="Holiday Buff"/>
+-    <string name="desc" value="A Holiday present from the Snow Spirit. For 15 min., Jump +7."/>
++    <string name="desc" value="A Holiday present from the Snow Spirit. For 15 min., Speed +7."/>
+   </imgdir>
+   <imgdir name="2022438">
+     <string name="name" value="Holiday Buff"/>
+diff --git a/wz/String.wz/Npc.img.xml b/wz/String.wz/Npc.img.xml
+index 8a32ff461..e8a85d6e4 100644
+--- a/wz/String.wz/Npc.img.xml
++++ b/wz/String.wz/Npc.img.xml
+@@ -5387,6 +5387,7 @@
+     <string name="n1" value="The Mushroom Shrine is always in spring..."/>
+     <string name="d0" value="Musssshhhhroooom Shrine~~~"/>
+     <string name="d1" value="It is just beautiful day~, isn&apos;t it?  I really want to go on a picnic!"/>
++    <string name="n2" value="Welcome to Mushroom Shrine!"/>
+   </imgdir>
+   <imgdir name="9110003">
+     <string name="name" value="Janken"/>
+diff --git a/wz/String.wz/Skill.img.xml b/wz/String.wz/Skill.img.xml
+index f7b13e952..463b05c8a 100644
+--- a/wz/String.wz/Skill.img.xml
++++ b/wz/String.wz/Skill.img.xml
+@@ -2163,7 +2163,7 @@
+     <string name="h17" value="Additionally recovering HP 51, MP 17 every 13 sec."/>
+     <string name="h18" value="Additionally recovering HP 54, MP 18 every 12 sec."/>
+     <string name="h19" value="Additionally recovering HP 57, MP 19 every 11 sec."/>
+-    <string name="h20" value="Additionally recovering HP 62, MP 20 every 10 sec."/>
++    <string name="h20" value="Additionally recovering HP 60, MP 20 every 10 sec."/>
+   </imgdir>
+   <imgdir name="4101003">
+     <string name="name" value="Claw Booster"/>

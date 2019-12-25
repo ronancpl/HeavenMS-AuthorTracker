@@ -1,0 +1,404 @@
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index c25e79516..393df4062 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -16590,6 +16590,16 @@ CREATE TABLE IF NOT EXISTS `queststatus` (
+   PRIMARY KEY (`queststatusid`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+ 
++# quickslot table, by Shavit
++CREATE TABLE `quickslotkeymapped` (
++  `accountid` INT NOT NULL,
++  `keymap` BIGINT NOT NULL DEFAULT 0,
++  PRIMARY KEY (`accountid`)
++);
++
++ALTER TABLE `quickslotkeymapped`
++  ADD CONSTRAINT `quickslotkeymapped_accountid_fk` FOREIGN KEY (`accountid`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
++
+ CREATE TABLE IF NOT EXISTS `reactordrops` (
+   `reactordropid` int(10) unsigned NOT NULL AUTO_INCREMENT,
+   `reactorid` int(11) NOT NULL,
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 406e9014a..f8f09d86a 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -123,6 +123,8 @@
+ import tools.packets.Wedding;
+ import client.autoban.AutobanManager;
+ import client.creator.CharacterFactoryRecipe;
++import client.keybind.MapleKeyBinding;
++import client.keybind.MapleQuickslotBinding;
+ import client.inventory.Equip;
+ import client.inventory.Equip.StatUpgrade;
+ import client.inventory.Item;
+@@ -175,8 +177,8 @@
+ import net.server.services.task.channel.FaceExpressionService;
+ import net.server.services.task.world.CharacterSaveService;
+ import net.server.services.type.WorldServices;
+-import org.apache.mina.core.session.IoSession;
+ import org.apache.mina.util.ConcurrentHashSet;
++import tools.LongTool;
+ 
+ public class MapleCharacter extends AbstractMapleCharacterObject {
+     private static final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+@@ -277,6 +279,8 @@
+     private Map<Integer, MapleSummon> summons = new LinkedHashMap<>();
+     private Map<Integer, MapleCoolDownValueHolder> coolDowns = new LinkedHashMap<>();
+     private EnumMap<MapleDisease, Pair<MapleDiseaseValueHolder, MobSkill>> diseases = new EnumMap<>(MapleDisease.class);
++    public byte[] m_aQuickslotLoaded;
++    public MapleQuickslotBinding m_pQuickslotKeyMapped;
+     private MapleDoor pdoor = null;
+     private Map<MapleQuest, Long> questExpirations = new LinkedHashMap<>();
+     private ScheduledFuture<?> dragonBloodSchedule;
+@@ -7496,6 +7500,17 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ret.maplemount.setTiredness(mounttiredness);
+             ret.maplemount.setActive(false);
+             
++            try (final PreparedStatement pSelectQuickslotKeyMapped = con.prepareStatement("SELECT keymap FROM quickslotkeymapped WHERE accountid = ?;")) {
++                pSelectQuickslotKeyMapped.setInt(1, ret.getAccountID());
++
++                try (final ResultSet pResultSet = pSelectQuickslotKeyMapped.executeQuery()) {
++                    if (pResultSet.next()) {
++                        ret.m_aQuickslotLoaded = LongTool.LongToBytes(pResultSet.getLong(1));
++                        ret.m_pQuickslotKeyMapped = new MapleQuickslotBinding(ret.m_aQuickslotLoaded);
++                    }
++                }
++            }
++            
+             con.close();
+             return ret;
+         } catch (SQLException | RuntimeException e) {
+@@ -8334,6 +8349,19 @@ public final boolean insertNewChar(CharacterFactoryRecipe recipe) {
+                 ps.execute();
+             }
+             ps.close();
++            
++            // No quickslots, or no change.
++            boolean bQuickslotEquals = this.m_pQuickslotKeyMapped == null || (this.m_aQuickslotLoaded != null && Arrays.equals(this.m_pQuickslotKeyMapped.m_aQuickslotKeyMapped, this.m_aQuickslotLoaded));
++            if (!bQuickslotEquals) {
++                long nQuickslotKeymapped = LongTool.BytesToLong(this.m_pQuickslotKeyMapped.m_aQuickslotKeyMapped);
++                
++                try (final PreparedStatement pInsertStatement = con.prepareStatement("INSERT INTO quickslotkeymapped (accountid, keymap) VALUES (?, ?) ON DUPLICATE KEY UPDATE keymap = ?;")) {
++                    pInsertStatement.setInt(1, this.getAccountID());
++                    pInsertStatement.setLong(2, nQuickslotKeymapped);
++                    pInsertStatement.setLong(3, nQuickslotKeymapped);
++                    pInsertStatement.executeUpdate();
++                }
++            }
+ 
+             itemsWithType = new ArrayList<>();
+             for (MapleInventory iv : inventory) {
+@@ -8587,6 +8615,19 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             ps.executeBatch();
+             ps.close();
+             
++            // No quickslots, or no change.
++            boolean bQuickslotEquals = this.m_pQuickslotKeyMapped == null || (this.m_aQuickslotLoaded != null && Arrays.equals(this.m_pQuickslotKeyMapped.m_aQuickslotKeyMapped, this.m_aQuickslotLoaded));
++            if (!bQuickslotEquals) {
++                long nQuickslotKeymapped = LongTool.BytesToLong(this.m_pQuickslotKeyMapped.m_aQuickslotKeyMapped);
++                
++                try (final PreparedStatement pInsertStatement = con.prepareStatement("INSERT INTO quickslotkeymapped (accountid, keymap) VALUES (?, ?) ON DUPLICATE KEY UPDATE keymap = ?;")) {
++                    pInsertStatement.setInt(1, this.getAccountID());
++                    pInsertStatement.setLong(2, nQuickslotKeymapped);
++                    pInsertStatement.setLong(3, nQuickslotKeymapped);
++                    pInsertStatement.executeUpdate();
++                }
++            }
++            
+             deleteWhereCharacterId(con, "DELETE FROM skillmacros WHERE characterid = ?");
+             ps = con.prepareStatement("INSERT INTO skillmacros (characterid, skill1, skill2, skill3, name, shout, position) VALUES (?, ?, ?, ?, ?, ?, ?)");
+             ps.setInt(1, getId());
+@@ -8824,6 +8865,17 @@ public void sendPolice(String text) {
+     public void sendKeymap() {
+         client.announce(MaplePacketCreator.getKeymap(keymap));
+     }
++    
++    public void sendQuickmap() {
++        // send quickslots to user
++        MapleQuickslotBinding pQuickslotKeyMapped = this.m_pQuickslotKeyMapped;
++
++        if (pQuickslotKeyMapped == null) {
++            pQuickslotKeyMapped = new MapleQuickslotBinding(MapleQuickslotBinding.DEFAULT_QUICKSLOTS);
++        }
++
++        this.announce(MaplePacketCreator.QuickslotMappedInit(pQuickslotKeyMapped));
++    }
+ 
+     public void sendMacros() {
+         // Always send the macro packet to fix a client side bug when switching characters.
+diff --git a/src/client/MapleKeyBinding.java b/src/client/keybind/MapleKeyBinding.java
+similarity index 98%
+rename from src/client/MapleKeyBinding.java
+rename to src/client/keybind/MapleKeyBinding.java
+index 77dee48d9..a2b3f23a4 100644
+--- a/src/client/MapleKeyBinding.java
++++ b/src/client/keybind/MapleKeyBinding.java
+@@ -19,7 +19,7 @@
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-package client;
++package client.keybind;
+ 
+ public class MapleKeyBinding {
+     private int type, action;
+diff --git a/src/client/keybind/MapleQuickslotBinding.java b/src/client/keybind/MapleQuickslotBinding.java
+new file mode 100644
+index 000000000..5dc6aad34
+--- /dev/null
++++ b/src/client/keybind/MapleQuickslotBinding.java
+@@ -0,0 +1,55 @@
++package client.keybind;
++
++import tools.data.output.MaplePacketLittleEndianWriter;
++
++import java.util.Arrays;
++
++/**
++ *
++ * @author Shavit
++ */
++public class MapleQuickslotBinding
++{
++    public static final int QUICKSLOT_SIZE = 8;
++
++    public static final byte[] DEFAULT_QUICKSLOTS =
++    {
++            0x2A, 0x52, 0x47, 0x49, 0x1D, 0x53, 0x4F, 0x51
++    };
++
++    public byte[] m_aQuickslotKeyMapped;
++
++    // Initializes quickslot object for the user.
++    // aKeys' length has to be 8.
++    public MapleQuickslotBinding(byte[] aKeys)
++    {
++        if(aKeys.length != QUICKSLOT_SIZE)
++        {
++            throw new IllegalArgumentException(String.format("aKeys' size should be %d", QUICKSLOT_SIZE));
++        }
++
++        this.m_aQuickslotKeyMapped = aKeys.clone();
++    }
++
++    public void Encode(MaplePacketLittleEndianWriter oPacket)
++    {
++        // Quickslots are default.
++        // The client will skip them and call CQuickslotKeyMappedMan::DefaultQuickslotKeyMap.
++        if(Arrays.equals(this.m_aQuickslotKeyMapped, DEFAULT_QUICKSLOTS))
++        {
++            oPacket.writeBool(false);
++
++            return;
++        }
++
++        oPacket.writeBool(true);
++
++        for(byte nKey : this.m_aQuickslotKeyMapped)
++        {
++            // For some reason Nexon sends these as integers, similar to CFuncKeyMappedMan.
++            // However there's no evidence any key can be above 0xFF anyhow.
++            // Regardless, we need to encode an integer to avoid an error 38 crash; as CFuncKeyMapped::m_aQuickslotKeyMapped is int[8].
++            oPacket.writeInt(nKey);
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/net/PacketProcessor.java b/src/net/PacketProcessor.java
+index ad7dade73..94e07b544 100644
+--- a/src/net/PacketProcessor.java
++++ b/src/net/PacketProcessor.java
+@@ -273,6 +273,7 @@ public void reset(int channel) {
+             registerHandler(RecvOpcode.MOVE_DRAGON, new MoveDragonHandler());
+             registerHandler(RecvOpcode.OPEN_ITEMUI, new RaiseUIStateHandler());
+             registerHandler(RecvOpcode.USE_ITEMUI, new RaiseIncExpHandler());
++            registerHandler(RecvOpcode.CHANGE_QUICKSLOT, new QuickslotKeyMappedModifiedHandler());
+         }
+     }
+ }
+\ No newline at end of file
+diff --git a/src/net/opcodes/RecvOpcode.java b/src/net/opcodes/RecvOpcode.java
+index 98fab2ed9..9fc6ae822 100644
+--- a/src/net/opcodes/RecvOpcode.java
++++ b/src/net/opcodes/RecvOpcode.java
+@@ -173,6 +173,7 @@
+     DAMAGE_SUMMON(0xB1),
+     BEHOLDER(0xB2),
+     MOVE_DRAGON(0xB5),
++    CHANGE_QUICKSLOT(0xB7),//CP_QuickslotKeyMappedModified
+     MOVE_LIFE(0xBC),
+     AUTO_AGGRO(0xBD),
+     FIELD_DAMAGE_MOB(0xBF),
+@@ -202,6 +203,7 @@
+     MTS_OPERATION(0xFD),
+     USE_MAPLELIFE(0x100),
+     USE_HAMMER(0x104);
++    
+     private int code = -2;
+ 
+     private RecvOpcode(int code) {
+diff --git a/src/net/opcodes/SendOpcode.java b/src/net/opcodes/SendOpcode.java
+index bcbeb2eb1..efdc46da2 100644
+--- a/src/net/opcodes/SendOpcode.java
++++ b/src/net/opcodes/SendOpcode.java
+@@ -188,6 +188,7 @@
+     ARIANT_ARENA_SHOW_RESULT(0x9B),
+     PYRAMID_GAUGE(0x9D),
+     PYRAMID_SCORE(0x9E),
++    QUICKSLOT_INIT(0x9F),//LP_QuickslotMappedInit
+     SPAWN_PLAYER(0xA0),
+     REMOVE_PLAYER_FROM_MAP(0xA1),
+     CHATTEXT(0xA2), //0
+diff --git a/src/net/server/channel/handlers/KeymapChangeHandler.java b/src/net/server/channel/handlers/KeymapChangeHandler.java
+index 7d97aa108..d4d4ac8aa 100644
+--- a/src/net/server/channel/handlers/KeymapChangeHandler.java
++++ b/src/net/server/channel/handlers/KeymapChangeHandler.java
+@@ -23,7 +23,7 @@
+ 
+ import constants.game.GameConstants;
+ import client.MapleClient;
+-import client.MapleKeyBinding;
++import client.keybind.MapleKeyBinding;
+ import client.Skill;
+ import client.SkillFactory;
+ import client.autoban.AutobanFactory;
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 137e48b2b..4a25fd4f1 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -53,7 +53,7 @@
+ import client.MapleDisease;
+ import client.MapleFamily;
+ import client.MapleFamilyEntry;
+-import client.MapleKeyBinding;
++import client.keybind.MapleKeyBinding;
+ import client.MapleMount;
+ import client.SkillFactory;
+ import client.inventory.Equip;
+@@ -239,6 +239,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+                 }
+                 player.sendKeymap();
++                player.sendQuickmap();
+                 player.sendMacros();
+ 
+                 // pot bindings being passed through other characters on the account detected thanks to Croosade dev team
+diff --git a/src/net/server/channel/handlers/QuickslotKeyMappedModifiedHandler.java b/src/net/server/channel/handlers/QuickslotKeyMappedModifiedHandler.java
+new file mode 100644
+index 000000000..2e1881c0b
+--- /dev/null
++++ b/src/net/server/channel/handlers/QuickslotKeyMappedModifiedHandler.java
+@@ -0,0 +1,34 @@
++package net.server.channel.handlers;
++
++import client.MapleClient;
++import client.keybind.MapleQuickslotBinding;
++import net.AbstractMaplePacketHandler;
++import tools.data.input.SeekableLittleEndianAccessor;
++
++/**
++ *
++ * @author Shavit
++ */
++public class QuickslotKeyMappedModifiedHandler extends AbstractMaplePacketHandler
++{
++    @Override
++    public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
++    {
++        // Invalid size for the packet.
++        if(slea.available() != MapleQuickslotBinding.QUICKSLOT_SIZE * Integer.BYTES ||
++        // not logged in-game
++            c.getPlayer() == null)
++        {
++            return;
++        }
++
++        byte[] aQuickslotKeyMapped = new byte[MapleQuickslotBinding.QUICKSLOT_SIZE];
++
++        for(int i = 0; i < MapleQuickslotBinding.QUICKSLOT_SIZE; i++)
++        {
++            aQuickslotKeyMapped[i] = (byte) slea.readInt();
++        }
++
++        c.getPlayer().m_pQuickslotKeyMapped = new MapleQuickslotBinding(aQuickslotKeyMapped);
++    }
++}
+diff --git a/src/tools/LongTool.java b/src/tools/LongTool.java
+new file mode 100644
+index 000000000..71eb5ba73
+--- /dev/null
++++ b/src/tools/LongTool.java
+@@ -0,0 +1,41 @@
++package tools;
++
++/**
++ *
++ * @author Shavit
++ */
++public class LongTool {
++    
++    // Converts 8 bytes to a long.
++    public static long BytesToLong(byte[] aToConvert)
++    {
++        if(aToConvert.length != Long.BYTES)
++        {
++            throw new IllegalArgumentException(String.format("Size of input should be %d", (Long.SIZE / 8)));
++        }
++
++        long nResult = 0;
++
++        for(int i = 0; i < Long.BYTES; i++)
++        {
++            nResult <<= Byte.SIZE;
++            nResult |= (aToConvert[i] & 0xFF);
++        }
++
++        return nResult;
++    }
++
++    // Converts a long to 8 bytes.
++    public static byte[] LongToBytes(long nToConvert)
++    {
++        byte[] aBytes = new byte[Long.BYTES];
++
++        for(int i = aBytes.length - 1; i >= 0; i--)
++        {
++            aBytes[i] = (byte) (nToConvert & 0xFF);
++            nToConvert >>= Byte.SIZE;
++        }
++
++        return aBytes;
++    }
++}
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 333b68a14..ee0e25d53 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -43,7 +43,8 @@
+ import client.MapleDisease;
+ import client.MapleFamilyEntitlement;
+ import client.MapleFamilyEntry;
+-import client.MapleKeyBinding;
++import client.keybind.MapleKeyBinding;
++import client.keybind.MapleQuickslotBinding;
+ import client.MapleMount;
+ import client.MapleQuestStatus;
+ import client.MapleRing;
+@@ -3614,6 +3615,16 @@ private static void writeLongMaskChair(final MaplePacketLittleEndianWriter mplew
+                 }
+                 return mplew.getPacket();
+         }
++        
++        public static byte[] QuickslotMappedInit(MapleQuickslotBinding pQuickslot)
++        {
++                final MaplePacketLittleEndianWriter pOutPacket = new MaplePacketLittleEndianWriter();
++
++                pOutPacket.writeShort(SendOpcode.QUICKSLOT_INIT.getValue());
++                pQuickslot.Encode(pOutPacket);
++
++                return pOutPacket.getPacket();
++        }
+ 
+         public static byte[] getWhisper(String sender, int channel, String text) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();

@@ -1,0 +1,1870 @@
+diff --git a/README.md b/README.md
+index ab6a6c6fc..c03774e7f 100644
+--- a/README.md
++++ b/README.md
+@@ -31,7 +31,7 @@ Java 8 SDK & NetBeans bundle: https://www.oracle.com/technetwork/pt/java/javase/
+ 
+ **Change log:**
+ 
+-  * Fixed Monster Magnet crashing the caster when trying to pull bosses.
++  * Fixed Monster Magnet crashing the caster when trying to pull bosses. Drawback: Dojo HPBar becomes unavailable.
+ 
+   * Fixed some 'rn' problems with quest icons & removed "tab" from party leader changed message. https://hostr.co/tsYsQzzV6xT0
+ 
+diff --git a/docs/area_bosses/BossEvent.js b/docs/area_bosses/AreaBoss.js
+similarity index 100%
+rename from docs/area_bosses/BossEvent.js
+rename to docs/area_bosses/AreaBoss.js
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 461deea15..c876cdebb 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -2014,4 +2014,39 @@ Revisado limite de dano aplicável por alguns summons, cujo valor limite estava
+ Implementado normalização de fuso horário em pacotes enviados ao cliente. Agora o sistema utiliza mesmo fuso horário definido nas flags do servidor.
+ Corrigido certos casos onde grupos dentro de lobby de CPQ não conseguiam ser desafiados, geralmente ocorrendo ao se desconectar após o desafio ter sido aceito e antes de começar a instância.
+ Revisado script de créditos.
+-Adicionado checagem por GM's no método de autoban de jogador.
+\ No newline at end of file
++Adicionado checagem por GM's no método de autoban de jogador.
++
++17 Julho 2019,
++Corrigido drops de reatores não utilizando o sistema de drops sequenciais.
++Revisado uso de sincronizações em vários métodos do sistema, tais como nos métodos de colocação de novos itens no mapa, detecção de toque em reatores, tabela de convidados em casamento, aplicação de dano de jogadores em mobs, recepção de pacotes.
++
++18 Julho 2019,
++Corrigido aplicação indevida de requisição de palavra-chave que prosseguia quest em uma das quests na questline de Aran.
++Corrigido nome errado em coluna da tabela "reports".
++Corrigido uso de NPC default na conversa padrão que ocorre ao se utilizar o comando "startquest" e "completequest".
++
++19 Julho 2019,
++Corrigido quest onde mobs podem aparecer na área do NPC Grendel permitindo repetir os ganhos de quest tanto quanto respawn de mobs à vontade.
++Corrigido robes de sauna e outros, que permitem ganhos bônus de HP, gerando ganhos 10x maiores que o esperado.
++Ajustado limites para recuperação de HP de forma a permitir ganhos em vários casos onde há a aplicação de bônus, tais como usando sauna robe, Endure skill.
++
++22 Julho 2019,
++Corrigido atributo de contagem de dano em mob aliado da HenesysPQ não instanciado.
++Corrigido skill "Combat Step" sendo considerado um "buff" pelo sistema do servidor. Isso implicava em duplicação de efeito visual para outros jogadores.
++
++26 - 27 Julho 2019,
++Corrigido problemas de cast de tipos que passou a ocorrer após trocar para Java 8.
++Ajustado flag que permite jogadores a ganhar EXP de mob independente de diferenças de nível.
++Corrigido Gaviota não sumindo após lançar ataque.
++Corrigido funcionalidade de ignorar items de pets não se mantendo após trocar de mapas.
++Corrigido CPQ1 campo 3 e 4 não permitindo jogadores a usar summons/protectors em campo.
++Corrigido líderes de expedição recebendo pacote de timer para fase de registro em casos onde a expedição falhou em ser iniciada.
++Corrigido problema de locking ocorrendo recentemente ao tentar rodar limpeza de itens no mapa (ocorre ao realizar drops de vários itens, mais antigos imediatamente sumindo), problema ocorrendo devido a um caso de loop infinito.
++Corrigido várias skills de summons não utilizando o ícone de buff no canto superior direito da tela.
++Corrigido alguns danos de summons sendo calculados extremamente baixos quando o jogador não equipa uma arma ou o mesmo não possui pelo menos uma dezena em ataque.
++
++28 Julho 2019,
++Corrigido funcionalidade de loot explosivo de mobs não aplicando devidamente.
++Corrigido linguagens, bastante usado na MCPQ, não utilizando o valor requisitado pelo jogador ao logar/trocar de canais.
++Corrigido casos de NPE ao tentar realizar updates de posição lado-servidor em alguns summons de jogador.
++Revisado reset de reatores em reatores que estão desaparecidos por um tempo, para retornar de imediato.
+\ No newline at end of file
+diff --git a/launch.bat b/launch.bat
+index 076a28d63..52b0eafef 100644
+--- a/launch.bat
++++ b/launch.bat
+@@ -1,6 +1,6 @@
+ @echo off
+ @title HeavenMS
+-set PATH=C:\Program Files\Java\jdk1.7.0_79\bin;%PATH%
++set PATH=C:\Program Files\Java\jdk1.8.0_211\bin;%PATH%
+ set CLASSPATH=.;dist\*
+ java -Xmx2048m -Dwzpath=wz\ net.server.Server
+ pause
+\ No newline at end of file
+diff --git a/nbproject/build-impl.xml b/nbproject/build-impl.xml
+index 6fd0f0e47..d08448f6c 100644
+--- a/nbproject/build-impl.xml
++++ b/nbproject/build-impl.xml
+@@ -46,51 +46,15 @@ is divided into following sections:
+         <property file="${user.properties.file}"/>
+         <!-- The two properties below are usually overridden -->
+         <!-- by the active platform. Just a fallback. -->
+-        <property name="default.javac.source" value="1.4"/>
+-        <property name="default.javac.target" value="1.4"/>
++        <property name="default.javac.source" value="1.6"/>
++        <property name="default.javac.target" value="1.6"/>
+     </target>
+     <target depends="-pre-init,-init-private,-init-user" name="-init-project">
+         <property file="nbproject/configs/${config}.properties"/>
+         <property file="nbproject/project.properties"/>
+     </target>
+     <target depends="-pre-init,-init-private,-init-user,-init-project,-init-macrodef-property" name="-do-init">
+-        <j2seproject1:property name="platform.home" value="platforms.${platform.active}.home"/>
+-        <j2seproject1:property name="platform.bootcp" value="platforms.${platform.active}.bootclasspath"/>
+-        <j2seproject1:property name="platform.compiler" value="platforms.${platform.active}.compile"/>
+-        <j2seproject1:property name="platform.javac.tmp" value="platforms.${platform.active}.javac"/>
+-        <condition property="platform.javac" value="${platform.home}/bin/javac">
+-            <equals arg1="${platform.javac.tmp}" arg2="$${platforms.${platform.active}.javac}"/>
+-        </condition>
+-        <property name="platform.javac" value="${platform.javac.tmp}"/>
+-        <j2seproject1:property name="platform.java.tmp" value="platforms.${platform.active}.java"/>
+-        <condition property="platform.java" value="${platform.home}/bin/java">
+-            <equals arg1="${platform.java.tmp}" arg2="$${platforms.${platform.active}.java}"/>
+-        </condition>
+-        <property name="platform.java" value="${platform.java.tmp}"/>
+-        <j2seproject1:property name="platform.javadoc.tmp" value="platforms.${platform.active}.javadoc"/>
+-        <condition property="platform.javadoc" value="${platform.home}/bin/javadoc">
+-            <equals arg1="${platform.javadoc.tmp}" arg2="$${platforms.${platform.active}.javadoc}"/>
+-        </condition>
+-        <property name="platform.javadoc" value="${platform.javadoc.tmp}"/>
+-        <condition property="platform.invalid" value="true">
+-            <or>
+-                <contains string="${platform.javac}" substring="$${platforms."/>
+-                <contains string="${platform.java}" substring="$${platforms."/>
+-                <contains string="${platform.javadoc}" substring="$${platforms."/>
+-            </or>
+-        </condition>
+-        <fail unless="platform.home">Must set platform.home</fail>
+-        <fail unless="platform.bootcp">Must set platform.bootcp</fail>
+-        <fail unless="platform.java">Must set platform.java</fail>
+-        <fail unless="platform.javac">Must set platform.javac</fail>
+-        <fail if="platform.invalid">
+- The J2SE Platform is not correctly set up.
+- Your active platform is: ${platform.active}, but the corresponding property "platforms.${platform.active}.home" is not found in the project's properties files. 
+- Either open the project in the IDE and setup the Platform with the same name or add it manually.
+- For example like this:
+-     ant -Duser.properties.file=&lt;path_to_property_file&gt; jar (where you put the property "platforms.${platform.active}.home" in a .properties file)
+-  or ant -Dplatforms.${platform.active}.home=&lt;path_to_JDK_home&gt; jar (where no properties file is used) 
+-  </fail>
++        <property name="platform.java" value="${java.home}/bin/java"/>
+         <available file="${manifest.file}" property="manifest.available"/>
+         <condition property="splashscreen.available">
+             <and>
+@@ -112,7 +76,7 @@ is divided into following sections:
+             <and>
+                 <isset property="javac.profile"/>
+                 <length length="0" string="${javac.profile}" when="greater"/>
+-                <matches pattern="1\.[89](\..*)?" string="${javac.source}"/>
++                <matches pattern="((1\.[89])|9)(\..*)?" string="${javac.source}"/>
+             </and>
+         </condition>
+         <condition property="do.archive">
+@@ -190,6 +154,7 @@ is divided into following sections:
+         <property name="application.args" value=""/>
+         <property name="source.encoding" value="${file.encoding}"/>
+         <property name="runtime.encoding" value="${source.encoding}"/>
++        <property name="manifest.encoding" value="${source.encoding}"/>
+         <condition property="javadoc.encoding.used" value="${javadoc.encoding}">
+             <and>
+                 <isset property="javadoc.encoding"/>
+@@ -217,6 +182,20 @@ is divided into following sections:
+         <condition else="" property="javac.profile.cmd.line.arg" value="-profile ${javac.profile}">
+             <isset property="profile.available"/>
+         </condition>
++        <condition else="false" property="jdkBug6558476">
++            <and>
++                <matches pattern="1\.[56]" string="${java.specification.version}"/>
++                <not>
++                    <os family="unix"/>
++                </not>
++            </and>
++        </condition>
++        <condition else="false" property="javac.fork">
++            <or>
++                <istrue value="${jdkBug6558476}"/>
++                <istrue value="${javac.external.vm}"/>
++            </or>
++        </condition>
+         <property name="jar.index" value="false"/>
+         <property name="jar.index.metainf" value="${jar.index}"/>
+         <property name="copylibs.rebase" value="true"/>
+@@ -242,6 +221,7 @@ is divided into following sections:
+         <condition else="" property="testng.debug.mode" value="-mixed">
+             <istrue value="${junit+testng.available}"/>
+         </condition>
++        <property name="java.failonerror" value="true"/>
+     </target>
+     <target name="-post-init">
+         <!-- Empty placeholder for easier customization. -->
+@@ -284,7 +264,7 @@ is divided into following sections:
+                 <property location="${build.dir}/empty" name="empty.dir"/>
+                 <mkdir dir="${empty.dir}"/>
+                 <mkdir dir="@{apgeneratedsrcdir}"/>
+-                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" fork="${javac.fork}" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
+                     <src>
+                         <dirset dir="@{gensrcdir}" erroronmissingdir="false">
+                             <include name="*"/>
+@@ -324,7 +304,7 @@ is divided into following sections:
+             <sequential>
+                 <property location="${build.dir}/empty" name="empty.dir"/>
+                 <mkdir dir="${empty.dir}"/>
+-                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" executable="${platform.javac}" fork="yes" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
++                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" fork="${javac.fork}" includeantruntime="false" includes="@{includes}" source="${javac.source}" sourcepath="@{sourcepath}" srcdir="@{srcdir}" target="${javac.target}" tempdir="${java.io.tmpdir}">
+                     <src>
+                         <dirset dir="@{gensrcdir}" erroronmissingdir="false">
+                             <include name="*"/>
+@@ -405,7 +385,7 @@ is divided into following sections:
+             <element name="customize" optional="true"/>
+             <sequential>
+                 <property name="junit.forkmode" value="perTest"/>
+-                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" showoutput="true" tempdir="${build.dir}">
+                     <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
+                     <syspropertyset>
+                         <propertyref prefix="test-sys-prop."/>
+@@ -428,7 +408,7 @@ is divided into following sections:
+             <element name="customize" optional="true"/>
+             <sequential>
+                 <property name="junit.forkmode" value="perTest"/>
+-                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" showoutput="true" tempdir="${build.dir}">
+                     <batchtest todir="${build.test.results.dir}">
+                         <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
+                             <filename name="${test.binarytestincludes}"/>
+@@ -460,7 +440,7 @@ is divided into following sections:
+                 </condition>
+                 <union id="test.set"/>
+                 <taskdef classname="org.testng.TestNGAntTask" classpath="${run.test.classpath}" name="testng"/>
+-                <testng classfilesetref="test.set" failureProperty="tests.failed" jvm="${platform.java}" listeners="org.testng.reporters.VerboseReporter" methods="${testng.methods.arg}" mode="${testng.mode}" outputdir="${build.test.results.dir}" suitename="HeavenMS" testname="TestNG tests" workingDir="${work.dir}">
++                <testng classfilesetref="test.set" failureProperty="tests.failed" listeners="org.testng.reporters.VerboseReporter" methods="${testng.methods.arg}" mode="${testng.mode}" outputdir="${build.test.results.dir}" suitename="HeavenMS" testname="TestNG tests" workingDir="${work.dir}">
+                     <xmlfileset dir="${build.test.classes.dir}" includes="@{testincludes}"/>
+                     <propertyset>
+                         <propertyref prefix="test-sys-prop."/>
+@@ -540,7 +520,7 @@ is divided into following sections:
+             <element name="customize" optional="true"/>
+             <sequential>
+                 <property name="junit.forkmode" value="perTest"/>
+-                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" showoutput="true" tempdir="${build.dir}">
+                     <test methods="@{testmethods}" name="@{testincludes}" todir="${build.test.results.dir}"/>
+                     <syspropertyset>
+                         <propertyref prefix="test-sys-prop."/>
+@@ -565,7 +545,7 @@ is divided into following sections:
+             <element name="customize" optional="true"/>
+             <sequential>
+                 <property name="junit.forkmode" value="perTest"/>
+-                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" jvm="${platform.java}" showoutput="true" tempdir="${build.dir}">
++                <junit dir="${work.dir}" errorproperty="tests.failed" failureproperty="tests.failed" fork="true" forkmode="${junit.forkmode}" showoutput="true" tempdir="${build.dir}">
+                     <batchtest todir="${build.test.results.dir}">
+                         <fileset dir="${build.test.classes.dir}" excludes="@{excludes},${excludes},${test.binaryexcludes}" includes="${test.binaryincludes}">
+                             <filename name="${test.binarytestincludes}"/>
+@@ -707,7 +687,7 @@ is divided into following sections:
+             <sequential>
+                 <property environment="env"/>
+                 <resolve name="profiler.current.path" value="${profiler.info.pathvar}"/>
+-                <java classname="@{classname}" dir="${profiler.info.dir}" fork="true" jvm="${profiler.info.jvm}">
++                <java classname="@{classname}" dir="${profiler.info.dir}" failonerror="${java.failonerror}" fork="true" jvm="${profiler.info.jvm}">
+                     <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
+                     <jvmarg value="${profiler.info.jvmargs.agent}"/>
+                     <jvmarg line="${profiler.info.jvmargs}"/>
+@@ -742,9 +722,6 @@ is divided into following sections:
+                     <classpath>
+                         <path path="@{classpath}"/>
+                     </classpath>
+-                    <bootclasspath>
+-                        <path path="${platform.bootcp}"/>
+-                    </bootclasspath>
+                 </nbjpdastart>
+             </sequential>
+         </macrodef>
+@@ -760,9 +737,7 @@ is divided into following sections:
+         </macrodef>
+     </target>
+     <target name="-init-debug-args">
+-        <exec executable="${platform.java}" outputproperty="version-output">
+-            <arg value="-version"/>
+-        </exec>
++        <property name="version-output" value="java version &quot;${ant.java.version}"/>
+         <condition property="have-jdk-older-than-1.4">
+             <or>
+                 <contains string="${version-output}" substring="java version &quot;1.0"/>
+@@ -787,7 +762,7 @@ is divided into following sections:
+             <attribute default="${debug.classpath}" name="classpath"/>
+             <element name="customize" optional="true"/>
+             <sequential>
+-                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                <java classname="@{classname}" dir="${work.dir}" failonerror="${java.failonerror}" fork="true">
+                     <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
+                     <jvmarg line="${debug-args-line}"/>
+                     <jvmarg value="-Xrunjdwp:transport=${debug-transport},address=${jpda.address}"/>
+@@ -814,7 +789,7 @@ is divided into following sections:
+             <attribute default="jvm" name="jvm"/>
+             <element name="customize" optional="true"/>
+             <sequential>
+-                <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
++                <java classname="@{classname}" dir="${work.dir}" failonerror="${java.failonerror}" fork="true">
+                     <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
+                     <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
+                     <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
+@@ -853,7 +828,7 @@ is divided into following sections:
+                     </chainedmapper>
+                 </pathconvert>
+                 <taskdef classname="org.netbeans.modules.java.j2seproject.copylibstask.CopyLibs" classpath="${libs.CopyLibs.classpath}" name="copylibs"/>
+-                <copylibs compress="${jar.compress}" excludeFromCopy="${copylibs.excludes}" index="${jar.index}" indexMetaInf="${jar.index.metainf}" jarfile="${dist.jar}" manifest="@{manifest}" rebase="${copylibs.rebase}" runtimeclasspath="${run.classpath.without.build.classes.dir}">
++                <copylibs compress="${jar.compress}" excludeFromCopy="${copylibs.excludes}" index="${jar.index}" indexMetaInf="${jar.index.metainf}" jarfile="${dist.jar}" manifest="@{manifest}" manifestencoding="UTF-8" rebase="${copylibs.rebase}" runtimeclasspath="${run.classpath.without.build.classes.dir}">
+                     <fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
+                     <manifest>
+                         <attribute name="Class-Path" value="${jar.classpath}"/>
+@@ -865,7 +840,7 @@ is divided into following sections:
+     </target>
+     <target name="-init-presetdef-jar">
+         <presetdef name="jar" uri="http://www.netbeans.org/ns/j2se-project/1">
+-            <jar compress="${jar.compress}" index="${jar.index}" jarfile="${dist.jar}">
++            <jar compress="${jar.compress}" index="${jar.index}" jarfile="${dist.jar}" manifestencoding="UTF-8">
+                 <j2seproject1:fileset dir="${build.classes.dir}" excludes="${dist.archive.excludes}"/>
+             </jar>
+         </presetdef>
+@@ -988,15 +963,15 @@ is divided into following sections:
+     </target>
+     <target depends="init" if="do.archive+manifest.available" name="-do-jar-copy-manifest">
+         <tempfile deleteonexit="true" destdir="${build.dir}" property="tmp.manifest.file"/>
+-        <copy file="${manifest.file}" tofile="${tmp.manifest.file}"/>
++        <copy encoding="${manifest.encoding}" file="${manifest.file}" outputencoding="UTF-8" tofile="${tmp.manifest.file}"/>
+     </target>
+     <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+main.class.available" name="-do-jar-set-mainclass">
+-        <manifest file="${tmp.manifest.file}" mode="update">
++        <manifest encoding="UTF-8" file="${tmp.manifest.file}" mode="update">
+             <attribute name="Main-Class" value="${main.class}"/>
+         </manifest>
+     </target>
+     <target depends="init,-do-jar-create-manifest,-do-jar-copy-manifest" if="do.archive+profile.available" name="-do-jar-set-profile">
+-        <manifest file="${tmp.manifest.file}" mode="update">
++        <manifest encoding="UTF-8" file="${tmp.manifest.file}" mode="update">
+             <attribute name="Profile" value="${javac.profile}"/>
+         </manifest>
+     </target>
+@@ -1004,7 +979,7 @@ is divided into following sections:
+         <basename file="${application.splash}" property="splashscreen.basename"/>
+         <mkdir dir="${build.classes.dir}/META-INF"/>
+         <copy failonerror="false" file="${application.splash}" todir="${build.classes.dir}/META-INF"/>
+-        <manifest file="${tmp.manifest.file}" mode="update">
++        <manifest encoding="UTF-8" file="${tmp.manifest.file}" mode="update">
+             <attribute name="SplashScreen-Image" value="META-INF/${splashscreen.basename}"/>
+         </manifest>
+     </target>
+@@ -1012,7 +987,7 @@ is divided into following sections:
+         <j2seproject3:copylibs manifest="${tmp.manifest.file}"/>
+         <echo level="info">To run this application from the command line without Ant, try:</echo>
+         <property location="${dist.jar}" name="dist.jar.resolved"/>
+-        <echo level="info">${platform.java} -jar "${dist.jar.resolved}"</echo>
++        <echo level="info">java -jar "${dist.jar.resolved}"</echo>
+     </target>
+     <target depends="init,compile,-pre-pre-jar,-pre-jar,-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen" if="do.archive" name="-do-jar-jar" unless="do.mkdist">
+         <j2seproject1:jar manifest="${tmp.manifest.file}"/>
+@@ -1199,7 +1174,7 @@ is divided into following sections:
+     <target depends="-profile-check" description="Profile a selected class in the IDE." if="profiler.configured" name="profile-test-with-main">
+         <fail unless="run.class">Must select one file in the IDE or set run.class</fail>
+         <startprofiler/>
+-        <antcal target="run-test-with-main"/>
++        <antcall target="run-test-with-main"/>
+     </target>
+     <target depends="-profile-check,-profile-applet-pre72" if="profiler.configured" name="profile-applet" unless="profiler.info.jvmargs.agent">
+         <fail unless="applet.url">Must select one file in the IDE or set applet.url</fail>
+@@ -1221,13 +1196,10 @@ is divided into following sections:
+                 </not>
+             </and>
+         </condition>
+-        <exec executable="${platform.java}" failonerror="false" outputproperty="platform.version.output">
+-            <arg value="-version"/>
+-        </exec>
+         <condition else="" property="bug5101868workaround" value="*.java">
+-            <matches multiline="true" pattern="1\.[56](\..*)?" string="${platform.version.output}"/>
++            <matches pattern="1\.[56](\..*)?" string="${java.version}"/>
+         </condition>
+-        <javadoc additionalparam="-J-Dfile.encoding=${file.encoding} ${javadoc.additionalparam}" author="${javadoc.author}" charset="UTF-8" destdir="${dist.javadoc.dir}" docencoding="UTF-8" encoding="${javadoc.encoding.used}" executable="${platform.javadoc}" failonerror="true" noindex="${javadoc.noindex}" nonavbar="${javadoc.nonavbar}" notree="${javadoc.notree}" private="${javadoc.private}" source="${javac.source}" splitindex="${javadoc.splitindex}" use="${javadoc.use}" useexternalfile="true" version="${javadoc.version}" windowtitle="${javadoc.windowtitle}">
++        <javadoc additionalparam="-J-Dfile.encoding=${file.encoding} ${javadoc.additionalparam}" author="${javadoc.author}" charset="UTF-8" destdir="${dist.javadoc.dir}" docencoding="UTF-8" encoding="${javadoc.encoding.used}" failonerror="true" noindex="${javadoc.noindex}" nonavbar="${javadoc.nonavbar}" notree="${javadoc.notree}" private="${javadoc.private}" source="${javac.source}" splitindex="${javadoc.splitindex}" use="${javadoc.use}" useexternalfile="true" version="${javadoc.version}" windowtitle="${javadoc.windowtitle}">
+             <classpath>
+                 <path path="${javac.classpath}"/>
+             </classpath>
+diff --git a/nbproject/genfiles.properties b/nbproject/genfiles.properties
+index 4d5b6615f..6db8caa01 100644
+--- a/nbproject/genfiles.properties
++++ b/nbproject/genfiles.properties
+@@ -1,8 +1,8 @@
+-build.xml.data.CRC32=92113194
++build.xml.data.CRC32=92efccf9
+ build.xml.script.CRC32=ff13faf5
+-build.xml.stylesheet.CRC32=8064a381@1.75.2.48
++build.xml.stylesheet.CRC32=8064a381@1.80.1.48
+ # This file is used by a NetBeans-based IDE to track changes in generated files such as build-impl.xml.
+ # Do not edit this file. You may delete it but then the IDE will never regenerate such files for you.
+-nbproject/build-impl.xml.data.CRC32=92113194
+-nbproject/build-impl.xml.script.CRC32=cef58264
+-nbproject/build-impl.xml.stylesheet.CRC32=876e7a8f@1.75.2.48
++nbproject/build-impl.xml.data.CRC32=92efccf9
++nbproject/build-impl.xml.script.CRC32=8cda444e
++nbproject/build-impl.xml.stylesheet.CRC32=830a3534@1.80.1.48
+diff --git a/nbproject/private/private.properties b/nbproject/private/private.properties
+index 67c9c2796..c1164614b 100644
+--- a/nbproject/private/private.properties
++++ b/nbproject/private/private.properties
+@@ -3,4 +3,4 @@ do.depend=false
+ do.jar=true
+ javac.debug=true
+ javadoc.preview=true
+-user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.0.2\\build.properties
++user.properties.file=C:\\Users\\RonanLana\\AppData\\Roaming\\NetBeans\\8.2\\build.properties
+diff --git a/nbproject/project.properties b/nbproject/project.properties
+index 861f8eb51..db7c8c2d8 100644
+--- a/nbproject/project.properties
++++ b/nbproject/project.properties
+@@ -47,10 +47,11 @@ javac.classpath=\
+ # Space-separated list of extra javac options
+ javac.compilerargs=
+ javac.deprecation=false
++javac.external.vm=false
+ javac.processorpath=\
+     ${javac.classpath}
+-javac.source=1.7
+-javac.target=1.7
++javac.source=1.8
++javac.target=1.8
+ javac.test.classpath=\
+     ${javac.classpath}:\
+     ${build.classes.dir}
+@@ -84,7 +85,7 @@ manifest.custom.permissions=
+ manifest.file=manifest.mf
+ meta.inf.dir=${src.dir}/META-INF
+ mkdist.disabled=false
+-platform.active=JDK_1.7
++platform.active=default_platform
+ project.license=gpl30_msv2
+ project.licensePath=./nbproject/licenseheader.txt
+ run.classpath=\
+diff --git a/nbproject/project.xml b/nbproject/project.xml
+index aed1c5635..980f89761 100644
+--- a/nbproject/project.xml
++++ b/nbproject/project.xml
+@@ -4,7 +4,6 @@
+     <configuration>
+         <data xmlns="http://www.netbeans.org/ns/j2se-project/3">
+             <name>HeavenMS</name>
+-            <explicit-platform explicit-source-supported="true"/>
+             <source-roots>
+                 <root id="src.dir"/>
+             </source-roots>
+diff --git a/scripts/event/HenesysPQ.js b/scripts/event/HenesysPQ.js
+index cc4ebb506..18decbfa3 100644
+--- a/scripts/event/HenesysPQ.js
++++ b/scripts/event/HenesysPQ.js
+@@ -106,7 +106,7 @@ function setup(level, lobbyid) {
+         eim.setProperty("level", level);
+         eim.setProperty("stage", "0");
+         eim.setProperty("bunnyCake", "0");
+-        eim.setProperty("bunnyDamage", "0");
++        eim.setProperty("bunnyDamaged", "0");
+         
+         eim.getInstanceMap(910010000).resetPQ(level);
+         eim.getInstanceMap(910010000).allowSummonState(false);
+diff --git a/scripts/npc/1032109.js b/scripts/npc/1032109.js
+index 80c74e25b..a21274ad5 100644
+--- a/scripts/npc/1032109.js
++++ b/scripts/npc/1032109.js
+@@ -9,6 +9,11 @@ var status;
+ var mobId = 2220100; //Blue Mushroom
+ 
+ function start(){
++        if (!cm.isQuestStarted(20718)) {    // thanks Stray, Ari
++                cm.dispose();
++                return;
++        }
++
+ 	status = -1;
+ 	action(1, 0, 0);
+ }
+diff --git a/scripts/quest/21738.js b/scripts/quest/21738.js
+index 5e19fd7a2..04eb91b52 100644
+--- a/scripts/quest/21738.js
++++ b/scripts/quest/21738.js
+@@ -34,17 +34,22 @@ function start(mode, type, selection) {
+         else
+             status--;
+         
+-        if (status == 0) {
+-            qm.sendGetText("Hm, what do you want?");
++        if (status == 0) {  // thanks ZERO傑洛 for noticing this quest shouldn't need a pw -- GMS-like string data thanks to skycombat
++            qm.sendNext("What is it? I usually don't welcome uninvited guests, but you have a mysterious aura that makes me curious about what you have to say.", 9);
+         } else if (status == 1) {
+-            var text = qm.getText();
+-            
+-            if(text != "There's something strange going on in Orbis....") {
+-                qm.sendNext("No business to deal with? I won't brook loitering around here, go away.");
+-                qm.dispose();
+-            } else {
+-                qm.sendNext("Oh, that's right. I can sense the power emanating from you, as well. So I shall entrust something to you.");
+-            }
++            qm.sendNext("(You tell her about Giant Nependeath.)", 3);
++        } else if (status == 2) {
++            qm.sendNext("Giant Nependeath? It's definitely a big problem, but I don't think it's enough to really affect Orbis. Wait, where did you say the Giant Nependeath was, again?", 9);
++        } else if (status == 3) {
++            qm.sendNext("Neglected Strolling Path.", 3);
++        } else if (status == 4) {
++            qm.sendNext("...Neglected Strolling Path? If Giant Nependeath is there, someone is trying to enter Sealed Garden! But why? And more importantly, who?", 9);
++        } else if (status == 5) {
++            qm.sendNext("Sealed Garden?", 3);
++        } else if (status == 6) {
++            qm.sendAcceptDecline("I can't tell you about Sealed Garden. If you want to find out, I must first see whether you are worthy of the information. Do you mind if I look into your fate?", 9);
++        } else if (status == 7) {
++            qm.sendOk("Well, now let's look into your fate. Give me a second.");
+         } else {
+             qm.forceStartQuest();
+             qm.dispose();
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 6bd401458..3f106d8c6 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -17406,7 +17406,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
+   `victimid` int(11) NOT NULL,
+   `reason` tinyint(4) NOT NULL,
+   `chatlog` text NOT NULL,
+-  `status` text NOT NULL,
++  `description` text NOT NULL,  # correct field name, thanks resinate
+   PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+ 
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 1eb2a6c28..ba413682f 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -792,28 +792,31 @@ public static boolean ban(String id, String reason, boolean accountId) {
+         }
+         return false;
+     }
++    
++    public int calculateMaxBaseDamage(int watk, MapleWeaponType weapon) {
++        int mainstat, secondarystat;
++        if (getJob().isA(MapleJob.THIEF) && weapon == MapleWeaponType.DAGGER_OTHER) {
++            weapon = MapleWeaponType.DAGGER_THIEVES;
++        }
++
++        if (weapon == MapleWeaponType.BOW || weapon == MapleWeaponType.CROSSBOW || weapon == MapleWeaponType.GUN) {
++            mainstat = localdex;
++            secondarystat = localstr;
++        } else if (weapon == MapleWeaponType.CLAW || weapon == MapleWeaponType.DAGGER_THIEVES) {
++            mainstat = localluk;
++            secondarystat = localdex + localstr;
++        } else {
++            mainstat = localstr;
++            secondarystat = localdex;
++        }
++        return (int) (((weapon.getMaxDamageMultiplier() * mainstat + secondarystat) / 100.0) * watk);
++    }
+ 
+     public int calculateMaxBaseDamage(int watk) {
+         int maxbasedamage;
+         Item weapon_item = getInventory(MapleInventoryType.EQUIPPED).getItem((short) -11);
+         if (weapon_item != null) {
+-            MapleWeaponType weapon = ii.getWeaponType(weapon_item.getItemId());
+-            int mainstat, secondarystat;
+-            if (getJob().isA(MapleJob.THIEF) && weapon == MapleWeaponType.DAGGER_OTHER) {
+-                weapon = MapleWeaponType.DAGGER_THIEVES;
+-            }
+-
+-            if (weapon == MapleWeaponType.BOW || weapon == MapleWeaponType.CROSSBOW || weapon == MapleWeaponType.GUN) {
+-                mainstat = localdex;
+-                secondarystat = localstr;
+-            } else if (weapon == MapleWeaponType.CLAW || weapon == MapleWeaponType.DAGGER_THIEVES) {
+-                mainstat = localluk;
+-                secondarystat = localdex + localstr;
+-            } else {
+-                mainstat = localstr;
+-                secondarystat = localdex;
+-            }
+-            maxbasedamage = (int) (((weapon.getMaxDamageMultiplier() * mainstat + secondarystat) / 100.0) * watk);
++            maxbasedamage = calculateMaxBaseDamage(watk, ii.getWeaponType(weapon_item.getItemId()));
+         } else {
+             if (job.isA(MapleJob.PIRATE) || job.isA(MapleJob.THUNDERBREAKER1)) {
+                 double weapMulti = 3;
+@@ -830,8 +833,8 @@ public int calculateMaxBaseDamage(int watk) {
+         return maxbasedamage;
+     }
+     
+-    public int calculateMaxBaseMagicDamage() {
+-        int maxbasedamage = getTotalMagic();
++    public int calculateMaxBaseMagicDamage(int matk) {
++        int maxbasedamage = matk;
+         int totalint = getTotalInt();
+         
+         if (totalint > 2000) {
+@@ -1110,6 +1113,29 @@ public void setMasteries(int jobId) {
+             }
+         }
+     }
++    
++    private void broadcastChangeJob() {
++        for (MapleCharacter chr : map.getAllPlayers()) {
++            MapleClient chrC = chr.getClient();
++
++            if (chrC != null) {     // propagate new job 3rd-person effects (FJ, Aran 1st strike, etc)
++                this.sendDestroyData(chrC);
++                this.sendSpawnData(chrC);
++            }
++        }
++        
++        TimerManager.getInstance().schedule(new Runnable() {    // need to delay to ensure clientside has finished reloading character data
++            @Override
++            public void run() {
++                MapleCharacter thisChr = MapleCharacter.this;
++                MapleMap map = thisChr.getMap();
++                
++                if (map != null) {
++                    map.broadcastMessage(thisChr, MaplePacketCreator.showForeignEffect(thisChr.getId(), 8), false);
++                }
++            }
++        }, 777);
++    }
+ 
+     public synchronized void changeJob(MapleJob newJob) {
+         if (newJob == null) {
+@@ -1222,7 +1248,7 @@ public synchronized void changeJob(MapleJob newJob) {
+         setMasteries(this.job.getId());
+         guildUpdate();
+         
+-        getMap().broadcastMessage(this, MaplePacketCreator.showForeignEffect(this.getId(), 8), false);
++        broadcastChangeJob();
+         
+         if (GameConstants.hasSPTable(newJob) && newJob.getId() != 2001) {
+             if (getBuffedValue(MapleBuffStat.MONSTER_RIDING) != null) {
+@@ -7064,7 +7090,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             }
+             rs.close();
+             ps.close();
+-            ps = con.prepareStatement("SELECT name, characterslots FROM accounts WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
++            ps = con.prepareStatement("SELECT name, characterslots, language FROM accounts WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
+             ps.setInt(1, ret.accountid);
+             rs = ps.executeQuery();
+             if (rs.next()) {
+@@ -7072,6 +7098,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+                 
+                 retClient.setAccountName(rs.getString("name"));
+                 retClient.setCharacterSlots(rs.getByte("characterslots"));
++                retClient.setLanguage(rs.getInt("language"));   // thanks Zein for noticing user language not overriding default once player is in-game
+             }
+             rs.close();
+             ps.close();
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 67589efab..149e8b88b 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -1285,12 +1285,18 @@ public void releaseClient() {
+                 actionsSemaphore.release();
+         }
+         
+-        public void lockEncoder() {
+-                encoderLock.lock();
++        public boolean tryacquireEncoder() {
++                if (actionsSemaphore.tryAcquire()) {
++                        encoderLock.lock();
++                        return true;
++                } else {
++                        return false;
++                }
+ 	}
+         
+         public void unlockEncoder() {
+                 encoderLock.unlock();
++                actionsSemaphore.release();
+ 	}
+ 
+ 	private static class CharNameAndId {
+diff --git a/src/client/SkillFactory.java b/src/client/SkillFactory.java
+index 8e0e5398c..1bd4aa0c6 100644
+--- a/src/client/SkillFactory.java
++++ b/src/client/SkillFactory.java
+@@ -180,6 +180,7 @@ private static Skill loadFromData(int id, MapleData data) {
+                 case NightWalker.POISON_BOMB:
+                 case NightWalker.VAMPIRE:
+                 case ChiefBandit.CHAKRA:
++                case Aran.COMBAT_STEP:
+                 case Evan.RECOVERY_AURA:
+                     isBuff = false;
+                     break;
+diff --git a/src/client/command/CommandsExecutor.java b/src/client/command/CommandsExecutor.java
+index b9d6e0fc6..547f21c77 100644
+--- a/src/client/command/CommandsExecutor.java
++++ b/src/client/command/CommandsExecutor.java
+@@ -265,6 +265,7 @@ private void registerLv2Commands(){
+         addCommand("unbug", 2, UnBugCommand.class);
+         addCommand("id", 2, IdCommand.class);
+         addCommand("gachalist", GachaListCommand.class);
++        addCommand("loot", LootCommand.class);
+         
+         commandsNameDesc.add(levelCommandsCursor);
+     }
+diff --git a/src/client/command/commands/gm3/QuestCompleteCommand.java b/src/client/command/commands/gm3/QuestCompleteCommand.java
+index 3ea851b0f..358d6642d 100644
+--- a/src/client/command/commands/gm3/QuestCompleteCommand.java
++++ b/src/client/command/commands/gm3/QuestCompleteCommand.java
+@@ -26,6 +26,7 @@
+ import client.command.Command;
+ import client.MapleClient;
+ import client.MapleCharacter;
++import server.quest.MapleQuest;
+ 
+ public class QuestCompleteCommand extends Command {
+     {
+@@ -44,7 +45,13 @@ public void execute(MapleClient c, String[] params) {
+         int questId = Integer.parseInt(params[0]);
+ 
+         if (player.getQuestStatus(questId) == 1) {
+-            c.getAbstractPlayerInteraction().forceCompleteQuest(questId);
++            MapleQuest quest = MapleQuest.getInstance(questId);
++            if (quest != null && quest.getNpcRequirement(true) != -1) {
++                c.getAbstractPlayerInteraction().forceCompleteQuest(questId, quest.getNpcRequirement(true));
++            } else {
++                c.getAbstractPlayerInteraction().forceCompleteQuest(questId);
++            }
++            
+             player.dropMessage(5, "QUEST " + questId + " completed.");
+         } else {
+             player.dropMessage(5, "QUESTID " + questId + " not started or already completed.");
+diff --git a/src/client/command/commands/gm3/QuestStartCommand.java b/src/client/command/commands/gm3/QuestStartCommand.java
+index c609e66d6..831ab05b2 100644
+--- a/src/client/command/commands/gm3/QuestStartCommand.java
++++ b/src/client/command/commands/gm3/QuestStartCommand.java
+@@ -26,6 +26,7 @@
+ import client.command.Command;
+ import client.MapleClient;
+ import client.MapleCharacter;
++import server.quest.MapleQuest;
+ 
+ public class QuestStartCommand extends Command {
+     {
+@@ -44,7 +45,13 @@ public void execute(MapleClient c, String[] params) {
+         int questid = Integer.parseInt(params[0]);
+ 
+         if (player.getQuestStatus(questid) == 0) {
+-            c.getAbstractPlayerInteraction().forceStartQuest(questid);
++            MapleQuest quest = MapleQuest.getInstance(questid);
++            if (quest != null && quest.getNpcRequirement(false) != -1) {
++                c.getAbstractPlayerInteraction().forceStartQuest(questid, quest.getNpcRequirement(false));
++            } else {
++                c.getAbstractPlayerInteraction().forceStartQuest(questid);
++            }
++            
+             player.dropMessage(5, "QUEST " + questid + " started.");
+         } else {
+             player.dropMessage(5, "QUESTID " + questid + " already started/completed.");
+diff --git a/src/constants/skills/Aran.java b/src/constants/skills/Aran.java
+index 75a857c2b..7a61ceedd 100644
+--- a/src/constants/skills/Aran.java
++++ b/src/constants/skills/Aran.java
+@@ -29,6 +29,7 @@
+     public static final int DOUBLE_SWING = 21000002;
+     public static final int TRIPLE_SWING = 21100001;
+     public static final int COMBO_ABILITY = 21000000;
++    public static final int COMBAT_STEP = 21001001;
+     public static final int POLEARM_BOOSTER = 21001003;
+     public static final int MAPLE_WARRIOR = 21121000;
+     public static final int FREEZE_STANDING = 21121003;
+diff --git a/src/net/mina/MaplePacketEncoder.java b/src/net/mina/MaplePacketEncoder.java
+index 9887244c1..cad289e16 100644
+--- a/src/net/mina/MaplePacketEncoder.java
++++ b/src/net/mina/MaplePacketEncoder.java
+@@ -24,7 +24,6 @@
+ import constants.ServerConstants;
+ import client.MapleClient;
+ import constants.OpcodeConstants;
+-import net.opcodes.SendOpcode;
+ import net.server.coordinator.MapleSessionCoordinator;
+ import org.apache.mina.core.buffer.IoBuffer;
+ import org.apache.mina.core.session.IoSession;
+@@ -43,40 +42,41 @@ public void encode(final IoSession session, final Object message, final Protocol
+         final MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+ 
+         try {
+-            client.lockEncoder();
+-            try {
+-                final MapleAESOFB send_crypto = client.getSendCrypto();
+-                final byte[] input = (byte[]) message;
+-                if (ServerConstants.USE_DEBUG_SHOW_PACKET) {
+-                    int packetLen = input.length;
+-                    int pHeader = readFirstShort(input);
+-                    String pHeaderStr = Integer.toHexString(pHeader).toUpperCase();
+-                    String op = lookupRecv(pHeader);
+-                    String Recv = "ServerSend:" + op + " [" + pHeaderStr + "] (" + packetLen + ")\r\n";
+-                    if (packetLen <= 50000) {
+-                        String RecvTo = Recv + HexTool.toString(input) + "\r\n" + HexTool.toStringFromAscii(input);
+-                        System.out.println(RecvTo);
+-                        if (op == null) {
+-                            System.out.println("UnknownPacket:" + RecvTo);
++            if (client.tryacquireEncoder()) {
++                try {
++                    final MapleAESOFB send_crypto = client.getSendCrypto();
++                    final byte[] input = (byte[]) message;
++                    if (ServerConstants.USE_DEBUG_SHOW_PACKET) {
++                        int packetLen = input.length;
++                        int pHeader = readFirstShort(input);
++                        String pHeaderStr = Integer.toHexString(pHeader).toUpperCase();
++                        String op = lookupRecv(pHeader);
++                        String Recv = "ServerSend:" + op + " [" + pHeaderStr + "] (" + packetLen + ")\r\n";
++                        if (packetLen <= 50000) {
++                            String RecvTo = Recv + HexTool.toString(input) + "\r\n" + HexTool.toStringFromAscii(input);
++                            System.out.println(RecvTo);
++                            if (op == null) {
++                                System.out.println("UnknownPacket:" + RecvTo);
++                            }
++                        } else {
++                            FilePrinter.print(FilePrinter.PACKET_STREAM + MapleSessionCoordinator.getSessionRemoteAddress(session) + ".txt", HexTool.toString(new byte[]{input[0], input[1]}) + " ...");
+                         }
+-                    } else {
+-                        FilePrinter.print(FilePrinter.PACKET_STREAM + MapleSessionCoordinator.getSessionRemoteAddress(session) + ".txt", HexTool.toString(new byte[]{input[0], input[1]}) + " ...");
+                     }
++
++                    final byte[] unencrypted = new byte[input.length];
++                    System.arraycopy(input, 0, unencrypted, 0, input.length);
++                    final byte[] ret = new byte[unencrypted.length + 4];
++                    final byte[] header = send_crypto.getPacketHeader(unencrypted.length);
++                    MapleCustomEncryption.encryptData(unencrypted);
++
++                    send_crypto.crypt(unencrypted);
++                    System.arraycopy(header, 0, ret, 0, 4);
++                    System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
++
++                    out.write(IoBuffer.wrap(ret));
++                } finally {
++                    client.unlockEncoder();
+                 }
+-                
+-                final byte[] unencrypted = new byte[input.length];
+-                System.arraycopy(input, 0, unencrypted, 0, input.length);
+-                final byte[] ret = new byte[unencrypted.length + 4];
+-                final byte[] header = send_crypto.getPacketHeader(unencrypted.length);
+-                MapleCustomEncryption.encryptData(unencrypted);
+-            
+-                send_crypto.crypt(unencrypted);
+-                System.arraycopy(header, 0, ret, 0, 4);
+-                System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
+-                
+-                out.write(IoBuffer.wrap(ret));
+-            } finally {
+-                client.unlockEncoder();
+             }
+ //            System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length);
+ //            out.write(ByteBuffer.wrap(ret));
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index 1c14e708b..4433d65d4 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -460,6 +460,7 @@ public boolean addExpedition(MapleExpedition exped) {
+             }
+             
+             expeditions.put(exped.getType(), exped);
++            exped.beginRegistration();  // thanks Conrad for noticing leader still receiving packets on failure-to-register cases
+             return true;
+         }
+     }
+diff --git a/src/net/server/channel/handlers/AbstractDealDamageHandler.java b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+index 99f92ffbb..8162296a1 100644
+--- a/src/net/server/channel/handlers/AbstractDealDamageHandler.java
++++ b/src/net/server/channel/handlers/AbstractDealDamageHandler.java
+@@ -134,8 +134,9 @@ public MapleStatEffect getAttackEffect(MapleCharacter chr, Skill theSkill) {
+         }
+     }
+ 
+-    protected synchronized void applyAttack(AttackInfo attack, final MapleCharacter player, int attackCount) {
+-        if (player.getMap().isOwnershipRestricted(player)) {
++    protected void applyAttack(AttackInfo attack, final MapleCharacter player, int attackCount) {
++        final MapleMap map = player.getMap();
++        if (map.isOwnershipRestricted(player)) {
+             return;
+         }
+         
+@@ -150,7 +151,7 @@ protected synchronized void applyAttack(AttackInfo attack, final MapleCharacter
+                 theSkill = SkillFactory.getSkill(GameConstants.getHiddenSkill(attack.skill)); //returns back the skill id if its not a hidden skill so we are gucci
+                 attackEffect = attack.getAttackEffect(player, theSkill);
+                 if (attackEffect == null) {
+-                    player.getClient().announce(MaplePacketCreator.enableActions());
++                    player.announce(MaplePacketCreator.enableActions());
+                     return;
+                 }
+ 
+@@ -176,7 +177,7 @@ protected synchronized void applyAttack(AttackInfo attack, final MapleCharacter
+                             }
+                         }
+                     } else {
+-                        player.getClient().announce(MaplePacketCreator.enableActions());
++                        player.announce(MaplePacketCreator.enableActions());
+                     }
+                 }
+                 
+@@ -195,7 +196,6 @@ protected synchronized void applyAttack(AttackInfo attack, final MapleCharacter
+             }*/
+             
+             int totDamage = 0;
+-            final MapleMap map = player.getMap();
+ 
+             if (attack.skill == ChiefBandit.MESO_EXPLOSION) {
+                 int delay = 0;
+@@ -308,7 +308,7 @@ else if(attack.skill == Shadower.BOOMERANG_STEP)
+                                     TimerManager.getInstance().schedule(new Runnable() {
+                                         @Override
+                                         public void run() {
+-                                            player.getMap().spawnMesoDrop(Math.min((int) Math.max(((double) eachdf / (double) 20000) * (double) maxmeso, (double) 1), maxmeso), new Point((int) (monster.getPosition().getX() + Randomizer.nextInt(100) - 50), (int) (monster.getPosition().getY())), monster, player, true, (byte) 2);
++                                            map.spawnMesoDrop(Math.min((int) Math.max(((double) eachdf / (double) 20000) * (double) maxmeso, (double) 1), maxmeso), new Point((int) (monster.getPosition().getX() + Randomizer.nextInt(100) - 50), (int) (monster.getPosition().getY())), monster, player, true, (byte) 2);
+                                         }
+                                     }, delay);
+                                     delay += 100;
+@@ -333,7 +333,7 @@ public void run() {
+                                     List<MonsterDropEntry> toSteal = new ArrayList<>();
+                                     toSteal.add(mi.retrieveDrop(monster.getId()).get(i));
+                                     
+-                                    player.getMap().dropItemsFromMonster(toSteal, player, monster);
++                                    map.dropItemsFromMonster(toSteal, player, monster);
+                                     monster.addStolen(toSteal.get(0).itemId);
+                                 }
+                             }
+diff --git a/src/net/server/channel/handlers/HealOvertimeHandler.java b/src/net/server/channel/handlers/HealOvertimeHandler.java
+index 70c5157c4..dec1b5c1b 100644
+--- a/src/net/server/channel/handlers/HealOvertimeHandler.java
++++ b/src/net/server/channel/handlers/HealOvertimeHandler.java
+@@ -25,6 +25,7 @@
+ import client.MapleClient;
+ import client.autoban.AutobanFactory;
+ import client.autoban.AutobanManager;
++import constants.GameConstants;
+ import net.AbstractMaplePacketHandler;
+ import net.server.Server;
+ import server.maps.MapleMapFactory;
+@@ -46,7 +47,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             abm.setTimestamp(8, timestamp, 28);  // thanks Vcoc & Thora for pointing out d/c happening here
+             if ((abm.getLastSpam(0) + 1500) > timestamp) AutobanFactory.FAST_HP_HEALING.addPoint(abm, "Fast hp healing");
+             
+-            int abHeal = 120 + (int)(20 * MapleMapFactory.getMapRecoveryRate(chr.getMapId())); // Sleepywood sauna and showa spa...
++            int abHeal = (int)(77 * MapleMapFactory.getMapRecoveryRate(chr.getMapId()) * 1.5); // thanks Ari for noticing players not getting healed in sauna in certain cases
+             if (healHP > abHeal) {
+                 AutobanFactory.HIGH_HP_HEALING.autoban(chr, "Healing: " + healHP + "; Max is " + abHeal + ".");
+                 return;
+diff --git a/src/net/server/channel/handlers/MoveDragonHandler.java b/src/net/server/channel/handlers/MoveDragonHandler.java
+index 16c842240..0b8bb9f09 100644
+--- a/src/net/server/channel/handlers/MoveDragonHandler.java
++++ b/src/net/server/channel/handlers/MoveDragonHandler.java
+@@ -37,14 +37,16 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         final Point startPos = new Point(slea.readShort(), slea.readShort());
+         long movementDataStart = slea.getPosition();
+         final MapleDragon dragon = chr.getDragon();
+-        updatePosition(slea, dragon, 0);
+-        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+-        if (dragon != null && movementDataLength > 0) {
+-            slea.seek(movementDataStart);
+-            if (chr.isHidden()) {
+-                chr.getMap().broadcastGMMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength));
+-            } else {
+-                chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength), dragon.getPosition());
++        if (dragon != null) {
++            updatePosition(slea, dragon, 0);
++            long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
++            if (movementDataLength > 0) {
++                slea.seek(movementDataStart);
++                if (chr.isHidden()) {
++                    chr.getMap().broadcastGMMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength));
++                } else {
++                    chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveDragon(dragon, startPos, slea, movementDataLength), dragon.getPosition());
++                }
+             }
+         }
+     }
+diff --git a/src/net/server/channel/handlers/MoveLifeHandler.java b/src/net/server/channel/handlers/MoveLifeHandler.java
+index 245d18279..67d6704ed 100644
+--- a/src/net/server/channel/handlers/MoveLifeHandler.java
++++ b/src/net/server/channel/handlers/MoveLifeHandler.java
+@@ -143,14 +143,15 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 		Point startPos = new Point(start_x, start_y - 2);
+ 		Point serverStartPos = new Point(monster.getPosition());
+ 		long movementDataStart = slea.getPosition();
+-        updatePosition(slea, monster, -2);
+-        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+-		
+-        Boolean aggro = monster.aggroMoveLifeUpdate(player);
+-        if (aggro == null) return;
+-        
+-        if (nextUse != null) {
+-            c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro, nextSkillId, nextSkillLevel));
++                
++                updatePosition(slea, monster, -2);  // Thanks Doodle and ZERO傑洛 for noticing sponge-based bosses moving out of stage in case of no-offset applied
++                long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
++
++                Boolean aggro = monster.aggroMoveLifeUpdate(player);
++                if (aggro == null) return;
++
++                if (nextUse != null) {
++                        c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro, nextSkillId, nextSkillLevel));
+ 		} else {
+ 			c.announce(MaplePacketCreator.moveMonsterResponse(objectid, moveid, mobMp, aggro));
+ 		}
+diff --git a/src/net/server/channel/handlers/MoveSummonHandler.java b/src/net/server/channel/handlers/MoveSummonHandler.java
+index 3ea5c0118..911ffd2ce 100644
+--- a/src/net/server/channel/handlers/MoveSummonHandler.java
++++ b/src/net/server/channel/handlers/MoveSummonHandler.java
+@@ -44,10 +44,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 break;
+             }
+         }
+-        long movementDataStart = slea.getPosition();
+-        updatePosition(slea, summon, 0);
+-        long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+         if (summon != null) {
++            long movementDataStart = slea.getPosition();
++            updatePosition(slea, summon, 0);
++            long movementDataLength = slea.getPosition() - movementDataStart; //how many bytes were read by updatePosition
+             slea.seek(movementDataStart);
+             player.getMap().broadcastMessage(player, MaplePacketCreator.moveSummon(player.getId(), oid, startPos, slea, movementDataLength), summon.getPosition());
+         }
+diff --git a/src/net/server/channel/handlers/PetExcludeItemsHandler.java b/src/net/server/channel/handlers/PetExcludeItemsHandler.java
+index 4b1842c51..b0619ac4f 100644
+--- a/src/net/server/channel/handlers/PetExcludeItemsHandler.java
++++ b/src/net/server/channel/handlers/PetExcludeItemsHandler.java
+@@ -33,6 +33,8 @@
+  * @author Ronan
+  */
+ public final class PetExcludeItemsHandler extends AbstractMaplePacketHandler {
++    
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         final int petId = slea.readInt();
+         slea.skip(4);
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index b51161b6c..1698aa373 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -203,6 +203,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+                 
+                 if (!newcomer) {
++                    c.setLanguage(player.getClient().getLanguage());
+                     c.setCharacterSlots((byte) player.getClient().getCharacterSlots());
+                     player.newClient(c);
+                 }
+diff --git a/src/net/server/channel/handlers/SummonDamageHandler.java b/src/net/server/channel/handlers/SummonDamageHandler.java
+index 08315c3a0..4972eefa7 100644
+--- a/src/net/server/channel/handlers/SummonDamageHandler.java
++++ b/src/net/server/channel/handlers/SummonDamageHandler.java
+@@ -26,9 +26,14 @@
+ import client.Skill;
+ import client.SkillFactory;
+ import client.autoban.AutobanFactory;
++import client.inventory.Item;
++import client.inventory.MapleInventoryType;
++import client.inventory.MapleWeaponType;
+ import client.status.MonsterStatusEffect;
++import constants.skills.Outlaw;
+ import java.util.ArrayList;
+ import java.util.List;
++import server.MapleItemInformationProvider;
+ import server.MapleStatEffect;
+ import server.life.MapleMonster;
+ import server.life.MapleMonsterInformationProvider;
+@@ -115,15 +120,29 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+                 player.getMap().damageMonster(player, target, damage);
+             }
+         }
++        
++        if (summon.getSkill() == Outlaw.GAVIOTA) {  // thanks Periwinks for noticing Gaviota not cancelling after grenade toss
++            player.cancelEffect(summonEffect, false, -1);
++        }
+     }
+     
+     private static int calcMaxDamage(MapleStatEffect summonEffect, MapleCharacter player, boolean magic) {
+         double maxDamage;
+         
+         if (magic) {
+-            maxDamage = player.calculateMaxBaseMagicDamage() * (0.05 * summonEffect.getMatk());
++            int matk = Math.max(player.getTotalMagic(), 14);
++            maxDamage = player.calculateMaxBaseMagicDamage(matk) * (0.05 * summonEffect.getMatk());
+         } else {
+-            int maxBaseDmg = player.calculateMaxBaseDamage(player.getTotalWatk());  // thanks Conrad for detecting some summons legitimately hitting over the calculated limit
++            int watk = Math.max(player.getTotalWatk(), 14);
++            Item weapon_item = player.getInventory(MapleInventoryType.EQUIPPED).getItem((short) -11);
++            
++            int maxBaseDmg;  // thanks Conrad, Atoot for detecting some summons legitimately hitting over the calculated limit
++            if (weapon_item != null) {
++                maxBaseDmg = player.calculateMaxBaseDamage(watk, MapleItemInformationProvider.getInstance().getWeaponType(weapon_item.getItemId()));
++            } else {
++                maxBaseDmg = player.calculateMaxBaseDamage(watk, MapleWeaponType.SWORD1H);
++            }
++            
+             float summonDmgMod = (maxBaseDmg >= 438) ? 0.054f : 0.077f;
+             maxDamage = maxBaseDmg * (summonDmgMod * summonEffect.getWatk());
+         }
+diff --git a/src/net/server/coordinator/MapleMatchCheckerCoordinator.java b/src/net/server/coordinator/MapleMatchCheckerCoordinator.java
+index a50fe4ac3..79cef2740 100644
+--- a/src/net/server/coordinator/MapleMatchCheckerCoordinator.java
++++ b/src/net/server/coordinator/MapleMatchCheckerCoordinator.java
+@@ -300,7 +300,7 @@ public boolean createMatchConfirmation(MatchCheckerType matchType, int world, in
+     }
+     
+     private void disposeMatchElement(MapleMatchCheckingElement mmce) {
+-        Set<Integer> matchPlayers = mmce.getMatchPlayers();
++        Set<Integer> matchPlayers = mmce.getMatchPlayers();     // thanks Ai for noticing players getting match-stuck on certain cases
+         while (!poolMatchPlayers(matchPlayers)) {
+             try {
+                 Thread.sleep(1000);
+diff --git a/src/net/server/world/World.java b/src/net/server/world/World.java
+index 8fdaaa4c3..fa1df90ca 100644
+--- a/src/net/server/world/World.java
++++ b/src/net/server/world/World.java
+@@ -47,6 +47,7 @@
+ import java.util.Map.Entry;
+ import java.util.SortedMap;
+ import java.util.TreeMap;
++import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+@@ -130,7 +131,7 @@
+     
+     private Set<Integer> queuedGuilds = new HashSet<>();
+     private Map<Integer, Pair<Pair<Boolean, Boolean>, Pair<Integer, Integer>>> queuedMarriages = new HashMap<>();
+-    private Map<Integer, Set<Integer>> marriageGuests = new HashMap<>();
++    private Map<Integer, Set<Integer>> marriageGuests = new ConcurrentHashMap<>();
+     
+     private Map<Integer, Integer> partyChars = new HashMap<>();
+     private Map<Integer, MapleParty> parties = new HashMap<>();
+@@ -720,7 +721,7 @@ public void putMarriageQueued(int marriageId, boolean cathedral, boolean premium
+         return new Pair<>(type, guests);
+     }
+     
+-    public synchronized boolean addMarriageGuest(int marriageId, int playerId) {
++    public boolean addMarriageGuest(int marriageId, int playerId) {
+         Set<Integer> guests = marriageGuests.get(marriageId);
+         if(guests != null) {
+             if(guests.contains(playerId)) return false;
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index 63177dc9e..b6f8c031a 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -236,25 +236,43 @@ public boolean canHold(int itemid, int quantity, int removeItemid, int removeQua
+                 return canHoldAllAfterRemoving(Collections.singletonList(itemid), Collections.singletonList(quantity), Collections.singletonList(removeItemid), Collections.singletonList(removeQuantity));
+         }
+         
+-        private List<Integer> convertToIntegerArray(List<Double> list) {
+-                List<Integer> intList = new LinkedList<>();
+-                for(Double d: list) {
+-                        intList.add(d.intValue());
++        private List<Integer> convertToIntegerArray(List<Object> list) {
++                List<Integer> intList = new ArrayList<>();      // JAVA 7 Rhino script engine. Thanks Bruno, felipepm10 for noticing a typecast issue here.
++                
++                if (ServerConstants.JAVA_8) {
++                        for (Object d: list) {
++                                intList.add(((Integer) d).intValue());
++                        }
++                } else {
++                        for (Object d: list) {
++                                intList.add(((Double) d).intValue());
++                        }
+                 }
+ 
+                 return intList;
+         }
+         
+-        public boolean canHoldAll(List<Double> itemids) {
+-                List<Double> quantity = new LinkedList<>();
+-                for (int i = 0; i < itemids.size(); i++) {
+-                        quantity.add(1.0);
++        public boolean canHoldAll(List<Object> itemids) {
++                List<Object> quantity = new LinkedList<>();
++                
++                if (ServerConstants.JAVA_8) {
++                        Integer intOne = 1;
++                    
++                        for (int i = 0; i < itemids.size(); i++) {
++                                quantity.add(intOne);
++                        }
++                } else {
++                        Double doubleOne = 1.0;
++                    
++                        for (int i = 0; i < itemids.size(); i++) {
++                                quantity.add(doubleOne);
++                        }
+                 }
+-            
++                
+                 return canHoldAll(itemids, quantity);
+         }
+         
+-        public boolean canHoldAll(List<Double> itemids, List<Double> quantity) {
++        public boolean canHoldAll(List<Object> itemids, List<Object> quantity) {
+                 return canHoldAll(convertToIntegerArray(itemids), convertToIntegerArray(quantity), true);
+         }
+         
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index f70b46868..bce4b556d 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -911,24 +911,28 @@ public MapleMonster getMonster(int mid) {
+                 return(MapleLifeFactory.getMonster(mid));
+         }
+         
+-        private List<Integer> convertToIntegerArray(List<Double> list) {
+-            List<Integer> intList;
+-            if(ServerConstants.JAVA_8)
+-                 intList=new ArrayList<Integer> (new ArrayList(java.util.Arrays.asList(list.toArray())));
+-            else
+-            {
+-                 intList = new ArrayList<>();
+-                for(Double d: list) intList.add(d.intValue());
++        private List<Integer> convertToIntegerArray(List<Object> list) {
++            List<Integer> intList = new ArrayList<>();
++            
++            if (ServerConstants.JAVA_8) {
++                for (Object d: list) {
++                    intList.add(((Integer) d).intValue());
++                }
++            } else {
++                for (Object d: list) {
++                    intList.add(((Double) d).intValue());
++                }
+             }
+-                return intList;
++            
++            return intList;
+         }
+         
+-        public void setEventClearStageExp(List<Double> gain) {
++        public void setEventClearStageExp(List<Object> gain) {
+                 onMapClearExp.clear();
+                 onMapClearExp.addAll(convertToIntegerArray(gain));
+         }
+         
+-        public void setEventClearStageMeso(List<Double> gain) {
++        public void setEventClearStageMeso(List<Object> gain) {
+                 onMapClearMeso.clear();
+                 onMapClearMeso.addAll(convertToIntegerArray(gain));
+         }
+@@ -959,7 +963,7 @@ private void dropExclusiveItems(MapleCharacter chr) {
+                 }
+         }
+         
+-        public final void setExclusiveItems(List<Double> items) {
++        public final void setExclusiveItems(List<Object> items) {
+                 List<Integer> exclusive = convertToIntegerArray(items);
+                 
+                 wL.lock();
+@@ -972,19 +976,19 @@ public final void setExclusiveItems(List<Double> items) {
+                 }
+         }
+         
+-        public final void setEventRewards(List<Double> rwds, List<Double> qtys, int expGiven) {
++        public final void setEventRewards(List<Object> rwds, List<Object> qtys, int expGiven) {
+                 setEventRewards(1, rwds, qtys, expGiven);
+         }
+         
+-        public final void setEventRewards(List<Double> rwds, List<Double> qtys) {
++        public final void setEventRewards(List<Object> rwds, List<Object> qtys) {
+                 setEventRewards(1, rwds, qtys);
+         }
+         
+-        public final void setEventRewards(int eventLevel, List<Double> rwds, List<Double> qtys) {
++        public final void setEventRewards(int eventLevel, List<Object> rwds, List<Object> qtys) {
+                 setEventRewards(eventLevel, rwds, qtys, 0);
+         }
+         
+-        public final void setEventRewards(int eventLevel, List<Double> rwds, List<Double> qtys, int expGiven) {
++        public final void setEventRewards(int eventLevel, List<Object> rwds, List<Object> qtys, int expGiven) {
+                 // fixed EXP will be rewarded at the same time the random item is given
+ 
+                 if(eventLevel <= 0 || eventLevel > ServerConstants.MAX_EVENT_LEVELS) return;
+diff --git a/src/scripting/event/EventManager.java b/src/scripting/event/EventManager.java
+index 42f591163..2a15dc294 100644
+--- a/src/scripting/event/EventManager.java
++++ b/src/scripting/event/EventManager.java
+@@ -167,10 +167,19 @@ private void emptyLocks() {
+         startLock = startLock.dispose();
+     }
+     
+-    private List<Integer> convertToIntegerArray(List<Double> list) {
++    private List<Integer> convertToIntegerArray(List<Object> list) {
+         List<Integer> intList = new ArrayList<>();
+-        for(Double d: list) intList.add(d.intValue());
+-
++        
++        if (ServerConstants.JAVA_8) {
++            for (Object d: list) {
++                intList.add(((Integer) d).intValue());
++            }
++        } else {
++            for (Object d: list) {
++                intList.add(((Double) d).intValue());
++            }
++        }
++        
+         return intList;
+     }
+     
+@@ -181,7 +190,7 @@ public long getLobbyDelay() {
+     private List<Integer> getLobbyRange() {
+         try {
+             if (!ServerConstants.JAVA_8) {
+-                return convertToIntegerArray((List<Double>)iv.invokeFunction("setLobbyRange", (Object) null));
++                return convertToIntegerArray((List<Object>)iv.invokeFunction("setLobbyRange", (Object) null));
+             } else {  // java 8 support here thanks to MedicOP
+                 ScriptObjectMirror object = (ScriptObjectMirror) iv.invokeFunction("setLobbyRange", (Object) null);
+                 int[] to = object.to(int[].class);
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index f1a38d836..c84b5e251 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -35,6 +35,7 @@
+ import scripting.AbstractPlayerInteraction;
+ import server.MapleItemInformationProvider;
+ import server.MapleStatEffect;
++import server.MapleShop;
+ import server.MapleShopFactory;
+ import server.events.gm.MapleEvent;
+ import server.gachapon.MapleGachapon;
+@@ -83,6 +84,7 @@
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
++import tools.FilePrinter;
+ 
+ /**
+  *
+@@ -400,7 +402,14 @@ public void resetStats() {
+ 	}
+         
+         public void openShopNPC(int id) {
+-            MapleShopFactory.getInstance().getShop(id).sendShop(c);
++            MapleShop shop = MapleShopFactory.getInstance().getShop(id);
++            
++            if (shop != null) {
++                shop.sendShop(c);
++            } else {    // check for missing shopids thanks to resinate
++                FilePrinter.printError(FilePrinter.NPC_UNCODED, "Shop ID: " + id + " is missing from database.");
++                MapleShopFactory.getInstance().getShop(11000).sendShop(c);
++            }
+         }
+ 
+ 	public void maxMastery() {
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index ffbd02227..89ff6c338 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -105,7 +105,7 @@ public void dropItems(boolean meso, int mesoChance, int minMeso, int maxMeso, in
+     }
+ 
+     public void dropItems(int posX, int posY, boolean meso, int mesoChance, int minMeso, int maxMeso, int minItems) {
+-        dropItems(false, posX, posY, meso, mesoChance, minMeso, maxMeso, minItems);
++        dropItems(true, posX, posY, meso, mesoChance, minMeso, maxMeso, minItems);  // all reactors actually drop items sequentially... thanks inhyuk for pointing this out!
+     }
+     
+     public void dropItems(boolean delayed, int posX, int posY, boolean meso, int mesoChance, final int minMeso, final int maxMeso, int minItems) {
+diff --git a/src/scripting/reactor/ReactorScriptManager.java b/src/scripting/reactor/ReactorScriptManager.java
+index 45e61feed..6e06f41ee 100644
+--- a/src/scripting/reactor/ReactorScriptManager.java
++++ b/src/scripting/reactor/ReactorScriptManager.java
+@@ -114,7 +114,7 @@ public void untouch(MapleClient c, MapleReactor reactor) {
+         touching(c, reactor, false);
+     }
+ 
+-    public synchronized void touching(MapleClient c, MapleReactor reactor, boolean touching) {
++    private void touching(MapleClient c, MapleReactor reactor, boolean touching) {
+         try {
+             Invocable iv = getInvocable("reactor/" + reactor.getId() + ".js", c);
+             if (iv == null) return;
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index ec718cd60..64f9e7240 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -1340,7 +1340,7 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+         if (localstatups.size() > 0) {
+             byte[] buff = null;
+             byte[] mbuff = null;
+-            if (getSummonMovementType() == null && this.isActive(applyto)) {
++            if (this.isActive(applyto)) {
+                 buff = MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), localDuration, localstatups);
+             }
+             if (isDash()) {
+@@ -1390,11 +1390,10 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+             }
+ 
+             if (buff != null) {
+-                if (!hasNoIcon()) { //Thanks flav for such a simple release! :)
+-                    applyto.announce(buff);
+-                } else {
+-                    System.out.println("<Error> NO buff icon for id " + sourceid);
+-                }
++                //Thanks flav for such a simple release! :)
++                //Thanks Conrad, Atoot for noticing summons not using buff icon
++                
++                applyto.announce(buff);
+             }
+ 
+             long starttime = Server.getInstance().getCurrentTime();
+@@ -1820,16 +1819,6 @@ private SummonMovementType getSummonMovementType() {
+         return null;
+     }
+ 
+-    public boolean hasNoIcon() {
+-        return (sourceid == 3111002 || sourceid == 3211002 || + // puppet, puppet
+-                sourceid == 3211005 || + // golden eagle
+-                sourceid == 2121005 || sourceid == 2221005 || + // elquines, ifrit
+-                sourceid == 2321003 || sourceid == 3121006 || + // bahamut, phoenix
+-                sourceid == 3221005 || sourceid == 3111005 || + // frostprey, silver hawk
+-                sourceid == 2311006 || sourceid == 5220002 || + // summon dragon, wrath of the octopi
+-                sourceid == 5211001 || sourceid == 5211002); // octopus, gaviota
+-    }
+-
+     public boolean isSkill() {
+         return skill;
+     }
+diff --git a/src/server/expeditions/MapleExpedition.java b/src/server/expeditions/MapleExpedition.java
+index fef1ee2f1..17335dd10 100644
+--- a/src/server/expeditions/MapleExpedition.java
++++ b/src/server/expeditions/MapleExpedition.java
+@@ -109,7 +109,6 @@ public MapleExpedition(MapleCharacter player, MapleExpeditionType met, boolean s
+                 minSize = (minPlayers != 0) ? minPlayers : type.getMinSize();
+                 maxSize = (maxPlayers != 0) ? maxPlayers : type.getMaxSize();
+ 		bossLogs = new CopyOnWriteArrayList<>();
+-		beginRegistration();
+ 	}
+         
+         public int getMinSize() {
+@@ -120,7 +119,7 @@ public int getMaxSize() {
+                 return maxSize;
+         }
+ 
+-	private void beginRegistration() {
++	public void beginRegistration() {
+ 		registering = true;
+                 leader.announce(MaplePacketCreator.getClock(type.getRegistrationTime() * 60));
+ 		if (!silent) {
+diff --git a/src/server/life/MapleMonster.java b/src/server/life/MapleMonster.java
+index 797eed98f..0bb34c0d7 100644
+--- a/src/server/life/MapleMonster.java
++++ b/src/server/life/MapleMonster.java
+@@ -548,14 +548,21 @@ private void distributePartyExperience(Map<MapleCharacter, Long> partyParticipat
+         int totalPartyLevel = 0;
+         
+         // thanks G h o s t, Alfred, Vcoc, BHB for poiting out a bug in detecting party members after membership transactions in a party took place
+-        for (MapleCharacter member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
+-            if (!leechInterval.inInterval(member.getLevel())) {
+-                underleveled.add(member);
+-                continue;
++        if (!ServerConstants.USE_ENFORCE_MOB_LEVEL_RANGE) {
++            for (MapleCharacter member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
++                if (!leechInterval.inInterval(member.getLevel())) {
++                    underleveled.add(member);
++                    continue;
++                }
++
++                totalPartyLevel += member.getLevel();
++                expMembers.add(member);
++            }
++        } else {    // thanks Ari for noticing unused server flag after EXP system overhaul
++            for (MapleCharacter member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
++                totalPartyLevel += member.getLevel();
++                expMembers.add(member);
+             }
+-            
+-            totalPartyLevel += member.getLevel();
+-            expMembers.add(member);
+         }
+         
+         int membersSize = expMembers.size();
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index f92f1bf3e..98eca8265 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -387,9 +387,10 @@ public void addPlayerNPCMapObject(MaplePlayerNPC pnpcobject) {
+     }
+     
+     public void addMapObject(MapleMapObject mapobject) {
++        int curOID = getUsableOID();
++        
+         objectWLock.lock();
+         try {
+-            int curOID = getUsableOID();
+             mapobject.setObjectId(curOID);
+             this.mapobjects.put(curOID, mapobject);
+         } finally {
+@@ -413,11 +414,11 @@ private void spawnAndAddRangedMapObject(MapleMapObject mapobject, DelayedPacketC
+ 
+     private void spawnAndAddRangedMapObject(MapleMapObject mapobject, DelayedPacketCreation packetbakery, SpawnCondition condition) {
+         List<MapleCharacter> inRangeCharacters = new LinkedList<>();
++        int curOID = getUsableOID();
+         
+         chrRLock.lock();
+         objectWLock.lock();
+         try {
+-            int curOID = getUsableOID();
+             mapobject.setObjectId(curOID);
+             this.mapobjects.put(curOID, mapobject);
+             for (MapleCharacter chr : characters) {
+@@ -896,15 +897,16 @@ public int getDroppedItemCount() {
+         return droppedItemCount.get();
+     }
+     
+-    private synchronized void instantiateItemDrop(MapleMapItem mdrop) {
++    private void instantiateItemDrop(MapleMapItem mdrop) {
+         if(droppedItemCount.get() >= ServerConstants.ITEM_LIMIT_ON_MAP) {
+             MapleMapObject mapobj;
+             
+             do {
++                mapobj = null;
++                
+                 objectWLock.lock();
+                 try {
+-                    mapobj = registeredDrops.remove(0).get();
+-                    while(mapobj == null) {
++                    while (mapobj == null) {
+                         if (registeredDrops.isEmpty()) {
+                             break;
+                         }
+@@ -1576,18 +1578,11 @@ public final void destroyReactors(final int first, final int last) {
+ 
+     public void destroyReactor(int oid) {
+         final MapleReactor reactor = getReactorByOid(oid);
+-        broadcastMessage(MaplePacketCreator.destroyReactor(reactor));
+-        reactor.cancelReactorTimeout();
+-        reactor.setAlive(false);
+-        removeMapObject(reactor);
+         
+-        if (reactor.getDelay() > 0) {
+-            registerMapSchedule(new Runnable() {
+-                @Override
+-                public void run() {
+-                    respawnReactor(reactor);
+-                }
+-            }, reactor.getDelay());
++        if (reactor != null) {
++            if (reactor.destroy()) {
++                removeMapObject(reactor);
++            }
+         }
+     }
+ 
+@@ -1611,9 +1606,14 @@ public void resetReactors() {
+     
+     public final void resetReactors(List<MapleReactor> list) {
+         for (MapleReactor r : list) {
++            if (r.forceDelayedRespawn()) {  // thanks Conrad for suggesting reactor with delay respawning immediately
++                continue;
++            }
++            
+             r.lockReactor();
+             try {
+                 r.resetReactorActions(0);
++                r.setAlive(true);
+                 broadcastMessage(MaplePacketCreator.triggerReactor(r, 0));
+             } finally {
+                 r.unlockReactor();
+@@ -1742,7 +1742,7 @@ public boolean containsNPC(int npcid) {
+     
+     public void destroyNPC(int npcid) {     // assumption: there's at most one of the same NPC in a map.
+         List<MapleMapObject> npcs = getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.NPC));
+-
++        
+         chrRLock.lock();
+         objectWLock.lock();
+         try {
+@@ -2106,19 +2106,6 @@ public void sendPackets(MapleClient c) {
+                 c.announce(reactor.makeSpawnData());
+             }
+         });
+-
+-    }
+-
+-    private void respawnReactor(final MapleReactor reactor) {
+-        reactor.lockReactor();
+-        try {
+-            reactor.resetReactorActions(0);
+-            reactor.setAlive(true);
+-        } finally {
+-            reactor.unlockReactor();
+-        }
+-        
+-        spawnReactor(reactor);
+     }
+ 
+     public void spawnDoor(final MapleDoorObject door) {
+@@ -2587,6 +2574,7 @@ public void run() {
+                 break;
+             }
+         }
++        chr.commitExcludedItems();  // thanks OishiiKawaiiDesu for noticing pet item ignore registry erasing upon changing maps
+         
+         if (chr.getMonsterCarnival() != null) {
+             chr.getClient().announce(MaplePacketCreator.getClock(chr.getMonsterCarnival().getTimeLeftSeconds()));
+@@ -3555,6 +3543,7 @@ public void run() {
+                                         reactor.lockReactor();
+                                         try {
+                                             reactor.resetReactorActions(0);
++                                            reactor.setAlive(true);
+                                             broadcastMessage(MaplePacketCreator.triggerReactor(reactor, 0));
+                                         } finally {
+                                             reactor.unlockReactor();
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index 761cda393..036bd7757 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -278,10 +278,10 @@ public static MapleMap loadMapFromWz(int mapid, int world, int channel, EventIns
+             MapleData mcData = mapData.getChildByPath("monsterCarnival");
+             if (mcData != null) {
+                 map.setDeathCP(MapleDataTool.getIntConvert("deathCP", mcData, 0));
+-                map.setMaxMobs(MapleDataTool.getIntConvert("mobGenMax", mcData, 0));
++                map.setMaxMobs(MapleDataTool.getIntConvert("mobGenMax", mcData, Integer.MAX_VALUE));    // thanks Atoot for noticing CPQ1 bf. 3 & 4 not accepting spawns due to undefined limits
+                 map.setTimeDefault(MapleDataTool.getIntConvert("timeDefault", mcData, 0));
+                 map.setTimeExpand(MapleDataTool.getIntConvert("timeExpand", mcData, 0));
+-                map.setMaxReactors(MapleDataTool.getIntConvert("guardianGenMax", mcData, 0));
++                map.setMaxReactors(MapleDataTool.getIntConvert("guardianGenMax", mcData, Integer.MAX_VALUE));
+                 MapleData guardianGenData = mcData.getChildByPath("guardianGenPos");
+                 for (MapleData node : guardianGenData.getChildren()) {
+                     GuardianSpawnPoint pt = new GuardianSpawnPoint(new Point(MapleDataTool.getIntConvert("x", node), MapleDataTool.getIntConvert("y", node)));
+diff --git a/src/server/maps/MapleReactor.java b/src/server/maps/MapleReactor.java
+index 38f2128d7..68ef3c9e0 100644
+--- a/src/server/maps/MapleReactor.java
++++ b/src/server/maps/MapleReactor.java
+@@ -57,6 +57,7 @@
+     private boolean shouldCollect;
+     private boolean attackHit;
+     private ScheduledFuture<?> timeoutTask = null;
++    private Runnable delayedRespawnRun = null;
+     private GuardianSpawnPoint guardian = null;
+     private byte facingDirection = 0;
+     private Lock reactorLock = MonitoredReentrantLockFactory.createLock(MonitoredLockType.REACTOR, true);
+@@ -165,7 +166,9 @@ public void sendDestroyData(MapleClient client) {
+ 
+     @Override
+     public void sendSpawnData(MapleClient client) {
+-        client.announce(makeSpawnData());
++        if (this.isAlive()) {
++            client.announce(makeSpawnData());
++        }
+     }
+ 
+     public final byte[] makeSpawnData() {
+@@ -318,6 +321,71 @@ public void hitReactor(boolean wHit, int charPos, short stance, int skillid, Map
+             e.printStackTrace();
+         }
+     }
++    
++    public boolean destroy() {
++        if (reactorLock.tryLock()) {
++            try {
++                boolean alive = this.isAlive();
++                if (alive) {
++                    this.setAlive(false);
++                    this.cancelReactorTimeout();
++
++                    if (this.getDelay() > 0) {
++                        this.delayedRespawn();
++                    }
++                } else if (this.inDelayedRespawn()) {
++                    return false;
++                } else {
++                    return true;    // reactor neither alive nor in delayed respawn, remove map object allowed
++                }
++            } finally {
++                reactorLock.unlock();
++            }
++        }
++        
++        map.broadcastMessage(MaplePacketCreator.destroyReactor(this));
++        return false;
++    }
++    
++    private void respawn() {
++        this.lockReactor();
++        try {
++            this.resetReactorActions(0);
++            this.setAlive(true);
++        } finally {
++            this.unlockReactor();
++        }
++        
++        map.broadcastMessage(this.makeSpawnData());
++    }
++    
++    public void delayedRespawn() {
++        Runnable r = new Runnable() {
++            @Override
++            public void run() {
++                delayedRespawnRun = null;
++                respawn();
++            }
++        };
++        
++        delayedRespawnRun = r;
++        map.getChannelServer().registerOverallAction(map.getId(), r, this.getDelay());
++    }
++    
++    public boolean forceDelayedRespawn() {
++        Runnable r = delayedRespawnRun;
++        
++        if (r != null) {
++            map.getChannelServer().forceRunOverallAction(map.getId(), r);
++            return true;
++        } else {
++            return false;
++        }
++    }
++    
++    public boolean inDelayedRespawn() {
++        return delayedRespawnRun != null;
++    }
+ 
+     public Rectangle getArea() {
+         return new Rectangle(getPosition().x + stats.getTL().x, getPosition().y + stats.getTL().y, stats.getBR().x - stats.getTL().x, stats.getBR().y - stats.getTL().y);
+diff --git a/src/server/partyquest/MonsterCarnival.java b/src/server/partyquest/MonsterCarnival.java
+index 19ecefd21..76630bb3d 100644
+--- a/src/server/partyquest/MonsterCarnival.java
++++ b/src/server/partyquest/MonsterCarnival.java
+@@ -94,7 +94,7 @@ public MonsterCarnival(MapleParty p1, MapleParty p2, int mapid, boolean cpq1, in
+                 public void run() {
+                     timeUp();
+                 }
+-            }, (map.getTimeDefault() - 10) * 1000);
++            }, map.getTimeDefault() * 1000); // thanks Atoot for noticing an irregular "event extended" issue here
+             effectTimer = TimerManager.getInstance().schedule(new Runnable() {
+                 @Override
+                 public void run() {
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index fb9eb0231..a2f6c124f 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -337,7 +337,7 @@ private static void addCharEntry(final MaplePacketLittleEndianWriter mplew, Mapl
+                 if (!viewall) {
+                         mplew.write(0);
+                 }
+-                if (chr.isGM()) {
++                if (chr.isGM() || chr.isGmJob()) {  // thanks Egg Daddy (Ubaware), resinate for noticing GM jobs crashing on non-GM players account
+                         mplew.write(0);
+                         return;
+                 }
+@@ -1811,6 +1811,11 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+         }
+ 
+         public static byte[] dropItemFromMapObject(MapleCharacter player, MapleMapItem drop, Point dropfrom, Point dropto, byte mod) {
++                int dropType = drop.getDropType();
++                if (drop.hasClientsideOwnership(player) && dropType < 3) {
++                    dropType = 2;
++                }
++            
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.DROP_ITEM_FROM_MAPOBJECT.getValue());
+                 mplew.write(mod);
+@@ -1818,7 +1823,7 @@ private static void encodeParentlessMobSpawnEffect(MaplePacketLittleEndianWriter
+                 mplew.writeBool(drop.getMeso() > 0); // 1 mesos, 0 item, 2 and above all item meso bag,
+                 mplew.writeInt(drop.getItemId()); // drop object ID
+                 mplew.writeInt(drop.getClientsideOwnerId()); // owner charid/partyid :)
+-                mplew.write(drop.hasClientsideOwnership(player) ? 2 : drop.getDropType()); // 0 = timeout for non-owner, 1 = timeout for non-owner's party, 2 = FFA, 3 = explosive/FFA
++                mplew.write(dropType); // 0 = timeout for non-owner, 1 = timeout for non-owner's party, 2 = FFA, 3 = explosive/FFA
+                 mplew.writePos(dropto);
+                 mplew.writeInt(drop.getDropper().getObjectId()); // dropper oid, found thanks to Li Jixue
+ 
+diff --git a/wz/Character.wz/Longcoat/01050018.img.xml b/wz/Character.wz/Longcoat/01050018.img.xml
+index 3edf4f7ef..41f946814 100644
+--- a/wz/Character.wz/Longcoat/01050018.img.xml
++++ b/wz/Character.wz/Longcoat/01050018.img.xml
+@@ -20,7 +20,6 @@
+     <int name="tuc" value="10"/>
+     <int name="price" value="15000"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <imgdir name="level">
+       <imgdir name="info">
+         <imgdir name="1">
+@@ -115,6 +114,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Longcoat/01050100.img.xml b/wz/Character.wz/Longcoat/01050100.img.xml
+index 27bac3d90..e6aed8455 100644
+--- a/wz/Character.wz/Longcoat/01050100.img.xml
++++ b/wz/Character.wz/Longcoat/01050100.img.xml
+@@ -16,7 +16,6 @@
+     <int name="reqINT" value="0"/>
+     <int name="reqLUK" value="0"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <int name="tuc" value="10"/>
+     <int name="incPDD" value="20"/>
+     <int name="incSpeed" value="10"/>
+@@ -115,6 +114,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Longcoat/01050127.img.xml b/wz/Character.wz/Longcoat/01050127.img.xml
+index 849fcfbe0..54650795e 100644
+--- a/wz/Character.wz/Longcoat/01050127.img.xml
++++ b/wz/Character.wz/Longcoat/01050127.img.xml
+@@ -16,7 +16,6 @@
+     <int name="reqINT" value="0"/>
+     <int name="reqLUK" value="0"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <int name="tuc" value="10"/>
+     <int name="incPDD" value="20"/>
+     <int name="incSpeed" value="5"/>
+@@ -116,6 +115,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Longcoat/01051017.img.xml b/wz/Character.wz/Longcoat/01051017.img.xml
+index d5cfcf06f..9304c640c 100644
+--- a/wz/Character.wz/Longcoat/01051017.img.xml
++++ b/wz/Character.wz/Longcoat/01051017.img.xml
+@@ -20,7 +20,6 @@
+     <int name="tuc" value="10"/>
+     <int name="price" value="15000"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <imgdir name="level">
+       <imgdir name="info">
+         <imgdir name="1">
+@@ -115,6 +114,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Longcoat/01051098.img.xml b/wz/Character.wz/Longcoat/01051098.img.xml
+index 726035089..fa0c2cdfe 100644
+--- a/wz/Character.wz/Longcoat/01051098.img.xml
++++ b/wz/Character.wz/Longcoat/01051098.img.xml
+@@ -16,7 +16,6 @@
+     <int name="reqINT" value="0"/>
+     <int name="reqLUK" value="0"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <int name="tuc" value="10"/>
+     <int name="incPDD" value="20"/>
+     <int name="incSpeed" value="10"/>
+@@ -115,6 +114,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">
+diff --git a/wz/Character.wz/Longcoat/01051140.img.xml b/wz/Character.wz/Longcoat/01051140.img.xml
+index d3c52a705..c5c97730e 100644
+--- a/wz/Character.wz/Longcoat/01051140.img.xml
++++ b/wz/Character.wz/Longcoat/01051140.img.xml
+@@ -16,7 +16,6 @@
+     <int name="reqINT" value="0"/>
+     <int name="reqLUK" value="0"/>
+     <int name="cash" value="0"/>
+-    <float name="recovery" value="15.0"/>
+     <int name="tuc" value="10"/>
+     <int name="incPDD" value="20"/>
+     <int name="incSpeed" value="5"/>
+@@ -116,6 +115,7 @@
+         </imgdir>
+       </imgdir>
+     </imgdir>
++    <double name="recovery" value="1,5"/>
+   </imgdir>
+   <imgdir name="walk1">
+     <imgdir name="0">

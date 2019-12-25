@@ -1,0 +1,644 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index e3fa0db24..1324c9912 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -720,5 +720,7 @@ Corrigido 3o job de Cygnus.
+ Removido UI que aponta erroneamente "Stat Upgrade" nos níveis 15, 20, 25 e 30.
+ Adicionado comando "droplimit", cuja funcionalidade é informar ao jogador a quantidade de drops no mapa em contraste com o limite permitido.
+ 
+-11 Dezembro 2017,
+-Resolvido bug onde contador do drops do mapa não atualizaria seu valor em casos onde reatores consomem itens ou ao se aplicar comandos como "cleardrops".
+\ No newline at end of file
++11 - 12 Dezembro 2017,
++Resolvido bug onde contador do drops do mapa não atualizaria seu valor em casos onde reatores consomem itens ou ao se aplicar comandos como "cleardrops".
++Corrigido server enviando packets com BroadcastMessage somente para o world 0, ao invés de ser para o world alvo.
++MapleQuestItemFetcher agora mostra quests já expiradas no relatório.
+\ No newline at end of file
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 286896d6d..430964850 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -6606,8 +6606,8 @@ public void run() {
+ 
+     public void sendPolice(String text) {
+         String message = getName() + " received this - " + text;
+-        if (Server.getInstance().isGmOnline()) { //Alert and log if a GM is online
+-            Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip(message));
++        if (Server.getInstance().isGmOnline(this.getWorld())) { //Alert and log if a GM is online
++            Server.getInstance().broadcastGMMessage(this.getWorld(), MaplePacketCreator.sendYellowTip(message));
+             FilePrinter.printError("autobanwarning.txt", message + "\r\n");
+         } else { //Auto DC and log if no GM is online
+             client.disconnect(false, false);
+@@ -7656,7 +7656,8 @@ public void run() {
+                 client.disconnect(false, false);
+             }
+         }, 5000);
+-        Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, MapleCharacter.makeMapleReadable(this.name) + " was autobanned for " + reason));
++        
++        Server.getInstance().broadcastGMMessage(this.getWorld(), MaplePacketCreator.serverNotice(6, MapleCharacter.makeMapleReadable(this.name) + " was autobanned for " + reason));
+     }
+ 
+     public void block(int reason, int days, String desc) {
+diff --git a/src/client/autoban/AutobanFactory.java b/src/client/autoban/AutobanFactory.java
+index 66e166a8f..1d385a587 100644
+--- a/src/client/autoban/AutobanFactory.java
++++ b/src/client/autoban/AutobanFactory.java
+@@ -91,7 +91,7 @@ public void alert(MapleCharacter chr, String reason) {
+ 		if (chr != null && MapleLogger.ignored.contains(chr.getName())){
+ 			return;
+ 		}
+-		Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip((chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason));
++		Server.getInstance().broadcastGMMessage((chr != null ? chr.getWorld() : 0), MaplePacketCreator.sendYellowTip((chr != null ? MapleCharacter.makeMapleReadable(chr.getName()) : "") + " caused " + this.name() + " " + reason));
+             }
+ 	}
+ 	
+diff --git a/src/client/command/Commands.java b/src/client/command/Commands.java
+index d219193b8..a13cb42af 100644
+--- a/src/client/command/Commands.java
++++ b/src/client/command/Commands.java
+@@ -551,8 +551,8 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+ 				break;
+ 			}
+ 			String message = joinStringFrom(sub, 1);
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip("[GM MESSAGE]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(1, message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[GM MESSAGE]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(1, message));
+ 			FilePrinter.printError("gm.txt", MapleCharacter.makeMapleReadable(player.getName()) + ": " + message + "\r\n");
+ 			player.dropMessage(5, "Your message '" + message + "' was sent to GMs.");
+ 			player.dropMessage(5, tips[Randomizer.nextInt(tips.length)]);
+@@ -565,8 +565,8 @@ public static boolean executeHeavenMsCommandLv0(Channel cserv, Server srv, Maple
+ 				break;
+ 			}
+ 			message = joinStringFrom(sub, 1);
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip("[BUG]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(1, message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[BUG]:" + MapleCharacter.makeMapleReadable(player.getName()) + ": " + message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(1, message));
+ 			FilePrinter.printError("bug.txt", MapleCharacter.makeMapleReadable(player.getName()) + ": " + message + "\r\n");
+ 			player.dropMessage(5, "Your bug '" + message + "' was submitted successfully to our developers. Thank you!");
+ 			break;
+@@ -881,7 +881,7 @@ public static boolean executeHeavenMsCommandLv2(Channel cserv, Server srv, Maple
+                                 
+                                 if(victim != null) {
+                                         victim.getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(9300166), victim.getPosition());
+-                                        Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(5, player.getName() + " used !bomb on " + victim.getName()));
++                                        Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, player.getName() + " used !bomb on " + victim.getName()));
+                                 } else {
+                                         player.message("Player '" + sub[1] + "' could not be found on this world.");
+                                 }
+@@ -1598,7 +1598,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 			}
+ 			player.yellowMessage(victim.getName() + " is " + (!monitored ? "now being monitored." : "no longer being monitored."));
+ 			String message = player.getName() + (!monitored ? " has started monitoring " : " has stopped monitoring ") + victim.getName() + ".";
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(5, message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, message));
+                     break;
+                     
+ 		case "monitors":
+@@ -1625,7 +1625,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+ 			}
+ 			player.yellowMessage(victim.getName() + " is " + (!monitored_ ? "now being ignored." : "no longer being ignored."));
+ 			String message_ = player.getName() + (!monitored_ ? " has started ignoring " : " has stopped ignoring ") + victim.getName() + ".";
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(5, message_));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, message_));
+                     break;
+                     
+ 		case "ignored":
+@@ -1754,7 +1754,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                     break;
+                     
+ 		case "expeds":
+-			for (Channel ch : Server.getInstance().getChannelsFromWorld(0)) {
++			for (Channel ch : Server.getInstance().getChannelsFromWorld(c.getWorld())) {
+ 				if (ch.getExpeditions().size() == 0) {
+ 					player.yellowMessage("No Expeditions in Channel " + ch.getId());
+ 					continue;
+@@ -1789,7 +1789,7 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                         victim = cserv.getPlayerStorage().getCharacterByName(sub[1]);
+                         if(victim != null) {
+                                 victim.setHpMp(0);
+-                                Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(5, player.getName() + " used !kill on " + victim.getName()));
++                                Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, player.getName() + " used !kill on " + victim.getName()));
+                         } else {
+                                 player.message("Player '" + sub[1] + "' could not be found on this channel.");
+                         }
+@@ -1831,11 +1831,11 @@ public static boolean executeHeavenMsCommandLv3(Channel cserv, Server srv, Maple
+                     break;
+            
+ 		case "notice":
+-			Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(6, "[Notice] " + joinStringFrom(sub, 1)));
++			Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, "[Notice] " + joinStringFrom(sub, 1)));
+                     break;
+                     
+ 		case "rip":
+-			Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(6, "[RIP]: " + joinStringFrom(sub, 1)));
++			Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, "[RIP]: " + joinStringFrom(sub, 1)));
+                     break;
+                     
+ 		case "openportal":
+@@ -1964,10 +1964,10 @@ public void run() {
+ 						rip.getClient().disconnect(false, false);
+ 					}
+ 				}, 5000); //5 Seconds
+-				Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(6, "[RIP]: " + ign + " has been banned."));
++				Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, "[RIP]: " + ign + " has been banned."));
+ 			} else if (MapleCharacter.ban(ign, reason, false)) {
+ 				c.announce(MaplePacketCreator.getGMEffect(4, (byte) 0));
+-				Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(6, "[RIP]: " + ign + " has been banned."));
++				Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, "[RIP]: " + ign + " has been banned."));
+ 			} else {
+ 				c.announce(MaplePacketCreator.getGMEffect(6, (byte) 1));
+ 			}
+@@ -2513,7 +2513,7 @@ public static boolean executeHeavenMsCommandLv6(Channel cserv, Server srv, Maple
+ 				}
+ 			}
+ 			String message = player.getName() + " used !saveall.";
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(5, message));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(5, message));
+ 			player.message("All players saved successfully.");
+ 			break;
+                     
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 70d4d57e3..0282c68fb 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -688,20 +688,20 @@ public void reloadGuildCharacters(int world) {
+         worlda.reloadGuildSummary();
+     }
+ 
+-    public void broadcastMessage(final byte[] packet) {
+-        for (Channel ch : getChannelsFromWorld(0)) {
++    public void broadcastMessage(int world, final byte[] packet) {
++        for (Channel ch : getChannelsFromWorld(world)) {
+             ch.broadcastPacket(packet);
+         }
+     }
+ 
+-    public void broadcastGMMessage(final byte[] packet) {
+-        for (Channel ch : getChannelsFromWorld(0)) {
++    public void broadcastGMMessage(int world, final byte[] packet) {
++        for (Channel ch : getChannelsFromWorld(world)) {
+             ch.broadcastGMPacket(packet);
+         }
+     }
+     
+-    public boolean isGmOnline() {
+-        for (Channel ch : getChannelsFromWorld(0)) {
++    public boolean isGmOnline(int world) {
++        for (Channel ch : getChannelsFromWorld(world)) {
+         	for (MapleCharacter player : ch.getPlayerStorage().getAllCharacters()) {
+         		if (player.isGM()){
+         			return true;
+diff --git a/src/net/server/channel/handlers/ItemRewardHandler.java b/src/net/server/channel/handlers/ItemRewardHandler.java
+index eecdd3bbd..1d40cf261 100644
+--- a/src/net/server/channel/handlers/ItemRewardHandler.java
++++ b/src/net/server/channel/handlers/ItemRewardHandler.java
+@@ -67,7 +67,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     String msg = reward.worldmsg;
+                     msg.replaceAll("/name", c.getPlayer().getName());
+                     msg.replaceAll("/item", ii.getName(reward.itemid));
+-                    Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(6, msg));
++                    Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, msg));
+                 }
+                 break;
+             }
+diff --git a/src/net/server/channel/handlers/PlayerLoggedinHandler.java b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+index 79a4ad6f9..1446ea5e9 100644
+--- a/src/net/server/channel/handlers/PlayerLoggedinHandler.java
++++ b/src/net/server/channel/handlers/PlayerLoggedinHandler.java
+@@ -281,7 +281,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             }
+                     */
+             if (player.isGM()){
+-            	Server.getInstance().broadcastGMMessage(MaplePacketCreator.earnTitleMessage((player.gmLevel() < 6 ? "GM " : "Admin ") + player.getName() + " has logged in"));
++            	Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.earnTitleMessage((player.gmLevel() < 6 ? "GM " : "Admin ") + player.getName() + " has logged in"));
+             }
+             
+         }
+diff --git a/src/net/server/channel/handlers/ReportHandler.java b/src/net/server/channel/handlers/ReportHandler.java
+index 4493b0682..17a28596d 100644
+--- a/src/net/server/channel/handlers/ReportHandler.java
++++ b/src/net/server/channel/handlers/ReportHandler.java
+@@ -58,7 +58,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 				c.announce(MaplePacketCreator.reportResponse((byte) 2));
+ 				return;
+ 			}
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, victim + " was reported for: " + description));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, victim + " was reported for: " + description));
+ 			addReport(c.getPlayer().getId(), MapleCharacter.getIdByName(victim), 0, description, null);
+ 		} else if (type == 1) {
+ 			String chatlog = slea.readMapleAsciiString();
+@@ -74,10 +74,10 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 					return;
+ 				}
+ 			}
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, victim + " was reported for: " + description));
+-			addReport(c.getPlayer().getId() ,MapleCharacter.getIdByName(victim), reason, description, chatlog);
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, victim + " was reported for: " + description));
++			addReport(c.getPlayer().getId(), MapleCharacter.getIdByName(victim), reason, description, chatlog);
+ 		} else {
+-			Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, c.getPlayer().getName() + " is probably packet editing. Got unknown report type, which is impossible."));
++			Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.serverNotice(6, c.getPlayer().getName() + " is probably packet editing. Got unknown report type, which is impossible."));
+ 		}
+ 	}
+ 
+diff --git a/src/net/server/channel/handlers/UseCashItemHandler.java b/src/net/server/channel/handlers/UseCashItemHandler.java
+index 8e1159c58..727027178 100644
+--- a/src/net/server/channel/handlers/UseCashItemHandler.java
++++ b/src/net/server/channel/handlers/UseCashItemHandler.java
+@@ -277,7 +277,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+                     break;
+                 case 2: // Super megaphone
+-                    Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(3, c.getChannel(), medal + player.getName() + " : " + slea.readMapleAsciiString(), (slea.readByte() != 0)));
++                    Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(3, c.getChannel(), medal + player.getName() + " : " + slea.readMapleAsciiString(), (slea.readByte() != 0)));
+                     break;
+                 case 5: // Maple TV
+                     int tvType = itemId % 10;
+@@ -309,7 +309,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+                     slea.readInt();
+                     if (megassenger) {
+-                        Server.getInstance().broadcastMessage(MaplePacketCreator.serverNotice(3, c.getChannel(), medal + player.getName() + " : " + builder.toString(), ear));
++                        Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.serverNotice(3, c.getChannel(), medal + player.getName() + " : " + builder.toString(), ear));
+                     }
+                     if (!MapleTVEffect.isActive()) {
+                         new MapleTVEffect(player, victim, messages, tvType);
+@@ -334,7 +334,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                             return;
+                         }
+                     }
+-                    Server.getInstance().broadcastMessage(MaplePacketCreator.itemMegaphone(msg, whisper, c.getChannel(), item));
++                    Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.itemMegaphone(msg, whisper, c.getChannel(), item));
+                     break;
+                 case 7: //triple megaphone
+                     int lines = slea.readByte();
+@@ -347,7 +347,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                         msg2[i] = medal + c.getPlayer().getName() + " : " + slea.readMapleAsciiString();
+                     }
+                     whisper = slea.readByte() == 1;
+-                    Server.getInstance().broadcastMessage(MaplePacketCreator.getMultiMegaphone(msg2, c.getChannel(), whisper));
++                    Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.getMultiMegaphone(msg2, c.getChannel(), whisper));
+                     break;
+             }
+             remove(c, itemId);
+@@ -475,11 +475,13 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+             for (int i = 0; i < 4; i++) {
+                 lines.add(slea.readMapleAsciiString());
+             }
+-            Server.getInstance().broadcastMessage(MaplePacketCreator.getAvatarMega(c.getPlayer(), medal, c.getChannel(), itemId, lines, (slea.readByte() != 0)));
++            
++            final int world = c.getWorld();
++            Server.getInstance().broadcastMessage(world, MaplePacketCreator.getAvatarMega(c.getPlayer(), medal, c.getChannel(), itemId, lines, (slea.readByte() != 0)));
+             TimerManager.getInstance().schedule(new Runnable() {
+             	@Override
+             	public void run() {
+-            		Server.getInstance().broadcastMessage(MaplePacketCreator.byeAvatarMega());
++            		Server.getInstance().broadcastMessage(world, MaplePacketCreator.byeAvatarMega());
+             	}
+             }, 1000 * 10);
+             remove(c, itemId);
+diff --git a/src/net/server/handlers/login/CreateCharHandler.java b/src/net/server/handlers/login/CreateCharHandler.java
+index 53dd4b6c1..010126b24 100644
+--- a/src/net/server/handlers/login/CreateCharHandler.java
++++ b/src/net/server/handlers/login/CreateCharHandler.java
+@@ -131,6 +131,6 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+ 			return;
+ 		}
+ 		c.announce(MaplePacketCreator.addNewCharEntry(newchar));
+-		Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip("[NEW CHAR]: " + c.getAccountName() + " has created a new character with IGN " + name));
++		Server.getInstance().broadcastGMMessage(c.getWorld(), MaplePacketCreator.sendYellowTip("[NEW CHAR]: " + c.getAccountName() + " has created a new character with IGN " + name));
+ 	}
+ }
+\ No newline at end of file
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index 0303ce66b..090d06319 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -385,7 +385,7 @@ public void doGachapon() {
+ 		LogHelper.logGacha(getPlayer(), item.getId(), map);
+ 		
+ 		if (item.getTier() > 0){ //Uncommon and Rare
+-			Server.getInstance().broadcastMessage(MaplePacketCreator.gachaponMessage(itemGained, map, getPlayer()));
++			Server.getInstance().broadcastMessage(c.getWorld(), MaplePacketCreator.gachaponMessage(itemGained, map, getPlayer()));
+ 		}
+ 	}
+         
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 6c8c6935a..20cc97940 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -1488,7 +1488,7 @@ public boolean canWearEquipment(MapleCharacter chr, Equip equip, int dst) {
+         if (!EquipSlot.getFromTextSlot(islot).isAllowed(dst, isCash(id))) {
+             equip.wear(false);
+             String itemName = MapleItemInformationProvider.getInstance().getName(equip.getItemId());
+-            Server.getInstance().broadcastGMMessage(MaplePacketCreator.sendYellowTip("[WARNING]: " + chr.getName() + " tried to equip " + itemName + " into slot " + dst + "."));
++            Server.getInstance().broadcastGMMessage(chr.getWorld(), MaplePacketCreator.sendYellowTip("[WARNING]: " + chr.getName() + " tried to equip " + itemName + " into slot " + dst + "."));
+             AutobanFactory.PACKET_EDIT.alert(chr, chr.getName() + " tried to forcibly equip an item.");
+             FilePrinter.printError(FilePrinter.EXPLOITS + chr.getName() + ".txt", chr.getName() + " tried to equip " + itemName + " into " + dst + " slot.\r\n");      	
+             return false;
+diff --git a/src/server/expeditions/MapleExpedition.java b/src/server/expeditions/MapleExpedition.java
+index 317cac29d..2b8634332 100644
+--- a/src/server/expeditions/MapleExpedition.java
++++ b/src/server/expeditions/MapleExpedition.java
+@@ -133,7 +133,7 @@ public void start(){
+ 		broadcastExped(MaplePacketCreator.removeClock());
+ 		broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] The expedition has started! Good luck, brave heroes!"));
+ 		startTime = System.currentTimeMillis();
+-		Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, "[Expedition] " + type.toString() + " Expedition started with leader: " + leader.getName()));
++		Server.getInstance().broadcastGMMessage(leader.getWorld(), MaplePacketCreator.serverNotice(6, "[Expedition] " + type.toString() + " Expedition started with leader: " + leader.getName()));
+ 	}
+ 
+ 	public String addMember(MapleCharacter player) {
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 58897f640..0ef92dc95 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -708,21 +708,22 @@ public int getDroppedItemCount() {
+         return droppedItemCount.get();
+     }
+     
+-    private void instantiateItemDrop(MapleMapItem mdrop) {
++    private synchronized void instantiateItemDrop(MapleMapItem mdrop) {
+         if(droppedItemCount.get() >= ServerConstants.ITEM_LIMIT_ON_MAP) {
+             MapleMapObject mapobj;
+             
+-            objectWLock.lock();
+-            try {
+-                mapobj = registeredDrops.remove(0).get();
+-                while(mapobj == null) {
++            do {
++                objectWLock.lock();
++                try {
+                     mapobj = registeredDrops.remove(0).get();
++                    while(mapobj == null) {
++                        if(registeredDrops.isEmpty()) break;
++                        mapobj = registeredDrops.remove(0).get();
++                    }
++                } finally {
++                    objectWLock.unlock();
+                 }
+-            } finally {
+-                objectWLock.unlock();
+-            }
+-
+-            makeDisappearItemFromMap(mapobj);
++            } while (!makeDisappearItemFromMap(mapobj));
+         }
+         
+         objectWLock.lock();
+@@ -2806,24 +2807,30 @@ public MapleCharacter getCharacterByName(String name) {
+         return null;
+     }
+     
+-    public void makeDisappearItemFromMap(MapleMapObject mapobj) {
++    public boolean makeDisappearItemFromMap(MapleMapObject mapobj) {
+         if(mapobj instanceof MapleMapItem) {
+-            makeDisappearItemFromMap((MapleMapItem) mapobj);
++            return makeDisappearItemFromMap((MapleMapItem) mapobj);
++        } else {
++            return mapobj == null;  // no drop to make disappear...
+         }
+     }
+     
+-    public void makeDisappearItemFromMap(MapleMapItem mapitem) {
++    public boolean makeDisappearItemFromMap(MapleMapItem mapitem) {
+         if (mapitem != null && mapitem == getMapObject(mapitem.getObjectId())) {
+             mapitem.lockItem();
+             try {
+                 if (mapitem.isPickedUp()) {
+-                    return;
++                    return true;
+                 }
++                
+                 MapleMap.this.pickItemDrop(MaplePacketCreator.removeItemFromMap(mapitem.getObjectId(), 0, 0), mapitem);
++                return true;
+             } finally {
+                 mapitem.unlockItem();
+             }
+         }
++        
++        return false;
+     }
+ 
+     private class ActivateItemReactor implements Runnable {
+diff --git a/src/server/maps/MapleTVEffect.java b/src/server/maps/MapleTVEffect.java
+index 6a01fd427..f11d3090d 100644
+--- a/src/server/maps/MapleTVEffect.java
++++ b/src/server/maps/MapleTVEffect.java
+@@ -57,8 +57,8 @@ private void broadcastTV(boolean activity) {
+ 		Server server = Server.getInstance();
+ 		ACTIVE = activity;
+ 		if (ACTIVE) {
+-			server.broadcastMessage(MaplePacketCreator.enableTV());
+-			server.broadcastMessage(MaplePacketCreator.sendTV(user, message, type <= 2 ? type : type - 3, partner));
++			server.broadcastMessage(user.getWorld(), MaplePacketCreator.enableTV());
++			server.broadcastMessage(user.getWorld(), MaplePacketCreator.sendTV(user, message, type <= 2 ? type : type - 3, partner));
+ 			int delay = 15000;
+ 			if (type == 4) {
+ 				delay = 30000;
+@@ -72,7 +72,7 @@ public void run() {
+ 				}
+ 			}, delay);
+ 		} else {
+-			server.broadcastMessage(MaplePacketCreator.removeTV());
++			server.broadcastMessage(user.getWorld(), MaplePacketCreator.removeTV());
+ 		}
+ 	}
+ }
+diff --git a/src/tools/LogHelper.java b/src/tools/LogHelper.java
+index e7e80c1bb..39903c369 100644
+--- a/src/tools/LogHelper.java
++++ b/src/tools/LogHelper.java
+@@ -36,7 +36,7 @@ public static void logTrade(MapleTrade trade1, MapleTrade trade2) {
+ 	}
+ 
+ 	public static void logExpedition(MapleExpedition expedition) {
+-		Server.getInstance().broadcastGMMessage(MaplePacketCreator.serverNotice(6, expedition.getType().toString() + " Expedition with leader " + expedition.getLeader().getName() + " finished after " + getTimeString(expedition.getStartTime())));
++		Server.getInstance().broadcastGMMessage(expedition.getLeader().getWorld(), MaplePacketCreator.serverNotice(6, expedition.getType().toString() + " Expedition with leader " + expedition.getLeader().getName() + " finished after " + getTimeString(expedition.getStartTime())));
+ 
+ 		String log = expedition.getType().toString() + " EXPEDITION\r\n";
+ 		log += getTimeString(expedition.getStartTime()) + "\r\n";
+diff --git a/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar b/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar
+index 59e6ab4f3..eecb39f11 100644
+Binary files a/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar and b/tools/MapleQuestItemFetcher/dist/MapleQuestItemFetcher.jar differ
+diff --git a/tools/MapleQuestItemFetcher/lib/QuestReport.txt b/tools/MapleQuestItemFetcher/lib/QuestReport.txt
+index b25e0da53..23c39d930 100644
+--- a/tools/MapleQuestItemFetcher/lib/QuestReport.txt
++++ b/tools/MapleQuestItemFetcher/lib/QuestReport.txt
+@@ -29,6 +29,7 @@ INCORRECT QUESTIDS ON DB
+ 4031860 : 6944 -> 6945
+ 4031861 : 6944 -> 6945
+ 4031871 : 6350 -> 28344
++4032324 : 21736 -> 21737
+ 4032339 : 0 -> 21303
+ 
+ 
+@@ -110,7 +111,7 @@ ITEMS WITH NO QUEST DROP DATA ON DB
+ 4031220 - 9210
+ 4031225 - 3606
+ 4031226 - 9321
+-4031227 - 4103
++4031227 - 4103 EXPIRED
+ 4031230 - 3619
+ 4031231 - 3620
+ 4031235 - 3607
+@@ -233,6 +234,7 @@ ITEMS WITH NO QUEST DROP DATA ON DB
+ 4031812 - 4950
+ 4031833 - 9946
+ 4031837 - 9945
++4031839 - 2162
+ 4031881 - 4484
+ 4031894 - 2214
+ 4031921 - 4646
+@@ -288,8 +290,6 @@ ITEMS WITH NO QUEST DROP DATA ON DB
+ 4032318 - 21718
+ 4032319 - 21723
+ 4032321 - 21727
+-4032322 - 21731
+-4032324 - 21737
+ 4032325 - 21752
+ 4032326 - 21752
+ 4032331 - 21601
+@@ -313,13 +313,7 @@ ITEMS WITH NO QUEST DROP DATA ON DB
+ 4032437 - 28321
+ 4032443 - 28317
+ 4032496 - 28238
+-4032511 - 3718
+ 4032512 - 3720
+-4032513 - 3722
+-4032514 - 3727
+-4032516 - 3735
+-4032517 - 3740
+-4032518 - 3743
+ 4161000 - 9322
+ 
+ 
+@@ -340,12 +334,6 @@ COMPLETE QUEST ITEMS WITH ZERO QUANTITY
+ 2054:
+   4031028
+ 
+-2162:
+-  4031839
+-
+-2164:
+-  4031840
+-
+ 2167:
+   4031841
+ 
+diff --git a/tools/MapleQuestItemFetcher/nbproject/private/private.xml b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+index 6807a2ba1..531edc487 100644
+--- a/tools/MapleQuestItemFetcher/nbproject/private/private.xml
++++ b/tools/MapleQuestItemFetcher/nbproject/private/private.xml
+@@ -2,6 +2,8 @@
+ <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+-        <group/>
++        <group>
++            <file>file:/C:/Nexon/MapleSolaxia/HeavenMS/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java</file>
++        </group>
+     </open-files>
+ </project-private>
+diff --git a/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java b/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
+index 5986f3e5b..8231c3858 100644
+--- a/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
++++ b/tools/MapleQuestItemFetcher/src/maplequestitemfetcher/MapleQuestItemFetcher.java
+@@ -61,7 +61,7 @@ This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
+  * 
+  * Running it should generate a report file under "lib" folder with the search results.
+  * 
+- * Estimated parse time: 1.5 minute
++ * Estimated parse time: 1 minute
+  */
+ public class MapleQuestItemFetcher {
+     static MapleItemInformationProvider ii;
+@@ -91,6 +91,7 @@ This file is part of the HeavenMS (MapleSolaxiaV2) MapleStory Server
+     static Map<Integer, Set<Integer>> zeroedStartQuestItems = new HashMap<>();
+     static Map<Integer, Set<Integer>> zeroedCompleteQuestItems = new HashMap<>();
+     static Map<Integer, int[]> mixedQuestidItems = new HashMap<>();
++    static Set<Integer> limitedQuestids = new HashSet<>();
+     
+     static byte status = 0;
+     static int questId = -1;
+@@ -103,11 +104,13 @@ private static String getName(String token) {
+         int i, j;
+         char[] dest;
+         String d;
+-
++        
+         i = token.lastIndexOf("name");
+         i = token.indexOf("\"", i) + 1; //lower bound of the string
+         j = token.indexOf("\"", i);     //upper bound
+ 
++        if(j < i) return "0";           //node value containing 'name' in it's scope, cheap fix since we don't deal with strings anyway
++        
+         dest = new char[initialStringLength];
+         token.getChars(i, j, dest, 0);
+ 
+@@ -245,8 +248,15 @@ else if(status == 3) {
+             }
+ 
+             status += 1;
+-        }
++        } else {
++            if(status == 3) {
++                d = getName(token);
+ 
++                if(d.equals("end")) {
++                    limitedQuestids.add(questId);
++                }
++            }
++        }
+     }
+ 
+     private static void calculateQuestItemDiff() {
+@@ -414,6 +424,10 @@ public int compare(Pair<Integer, List<Integer>> o1, Pair<Integer, List<Integer>>
+         return list;
+     }
+     
++    private static String getExpiredStringLabel(int questid) {
++        return (!limitedQuestids.contains(questid) ? "" : " EXPIRED");
++    }
++    
+     private static void ReportQuestItemData() {
+         // This will reference one line at a time
+         String line = null;
+@@ -460,7 +474,7 @@ private static void ReportQuestItemData() {
+                 printWriter.println("INCORRECT QUESTIDS ON DB");
+                 for(Entry<Integer, int[]> emqi : getSortedMapEntries1(mixedQuestidItems)) {
+                     int[] mqi = emqi.getValue();
+-                    printWriter.println(mqi[0] + " : " + mqi[1] + " -> " + mqi[2]);
++                    printWriter.println(mqi[0] + " : " + mqi[1] + " -> " + mqi[2] + getExpiredStringLabel(mqi[2]));
+                 }
+                 printWriter.println("\n\n\n\n\n");
+             }
+@@ -473,7 +487,7 @@ private static void ReportQuestItemData() {
+                 
+                 printWriter.println("ITEMS WITH NO QUEST DROP DATA ON DB");
+                 for(Entry<Integer, Integer> iwq : getSortedMapEntries0(mapIwq)) {
+-                    printWriter.println(iwq.getKey() + " - " + iwq.getValue());
++                    printWriter.println(iwq.getKey() + " - " + iwq.getValue() + getExpiredStringLabel(iwq.getValue()));
+                 }
+                 printWriter.println("\n\n\n\n\n");
+             }
+@@ -482,7 +496,7 @@ private static void ReportQuestItemData() {
+                 if(!zeroedStartQuestItems.isEmpty()) {
+                     printWriter.println("START QUEST ITEMS WITH ZERO QUANTITY");
+                     for(Pair<Integer, List<Integer>> iwq : getSortedMapEntries2(zeroedStartQuestItems)) {
+-                        printWriter.println(iwq.getLeft() + ":");
++                        printWriter.println(iwq.getLeft() + getExpiredStringLabel(iwq.getLeft()) + ":");
+                         for(Integer i : iwq.getRight()) {
+                             printWriter.println("  " + i);
+                         }
+@@ -494,7 +508,7 @@ private static void ReportQuestItemData() {
+                 if(!zeroedCompleteQuestItems.isEmpty()) {
+                     printWriter.println("COMPLETE QUEST ITEMS WITH ZERO QUANTITY");
+                     for(Pair<Integer, List<Integer>> iwq : getSortedMapEntries2(zeroedCompleteQuestItems)) {
+-                        printWriter.println(iwq.getLeft() + ":");
++                        printWriter.println(iwq.getLeft() + getExpiredStringLabel(iwq.getLeft()) + ":");
+                         for(Integer i : iwq.getRight()) {
+                             printWriter.println("  " + i);
+                         }

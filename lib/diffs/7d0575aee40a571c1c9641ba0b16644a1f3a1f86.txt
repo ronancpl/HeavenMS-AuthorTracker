@@ -1,0 +1,3231 @@
+diff --git a/docs/mychanges_ptbr.txt b/docs/mychanges_ptbr.txt
+index 318d857b5..c99613399 100644
+--- a/docs/mychanges_ptbr.txt
++++ b/docs/mychanges_ptbr.txt
+@@ -1794,4 +1794,17 @@ Ajustado moderadamente drop rate de vários equipamentos na DB.
+ 06 Abril 2019,
+ Corrigido loot de party não funcionando adequadamente após updates recentes.
+ Implementado loot de party agora atualizando também loots de jogadores ao entrar numa party (pronta permissão de coleta de loots de outros membros da party).
+-Corrigido cooldown de skills de mob não atuando adequadamente.
+\ No newline at end of file
++Corrigido cooldown de skills de mob não atuando adequadamente.
++
++15 Abril 2019,
++Iniciado operação de introdução da AriantPQ no fonte, a partir do pull request feito pelo Dragohe4rt.
++Ajustado Dimensional Door, agora permitindo jogadores a entrar no saguão de entrada da AriantPQ.
++Refatorado diversos módulos referentes à AriantPQ para uma nova classe, semelhante ao modelo usado pela MCPQ.
++
++19 Abril 2019,
++Ajustado limites de spawn de objetos em instâncias de MCPQ, agora utilizando dados previstos pelo WZ.
++Adicionado mecânica de número de jogadores requerido pelo líder de um lobby na AriantPQ.
++Corrigido jogadores podendo criar/entrar em party dentro de instâncias da AriantPQ.
++Ajustado instância da AriantPQ para perdurar após o fim das batalhas (acesso a King's room ainda faz parte da instância, para adquirir os valores dos resultados do evento).
++Ajustado drops de mobs, agora sendo buscado na DB.
++Ajustado diversas mecânicas da AriantPQ, tais como update visual da pontuação de jogadores (ao dropar itens, ganhar itens, acessar mapa de evento), pontos de batalha persistindo na DB, etc.
+\ No newline at end of file
+diff --git a/launch_server_linux.sh b/launch_server_linux.sh
+new file mode 100644
+index 000000000..57d9b2d6e
+--- /dev/null
++++ b/launch_server_linux.sh
+@@ -0,0 +1,3 @@
++#!/bin/sh
++export CLASSPATH=".:dist/*" 
++java -Xmx2048m -Dwzpath=wz/ net.server.Server
+\ No newline at end of file
+diff --git a/scripts/event/AirPlane.js b/scripts/event/AirPlane.js
+index f530de71b..a075c820e 100644
+--- a/scripts/event/AirPlane.js
++++ b/scripts/event/AirPlane.js
+@@ -15,7 +15,7 @@ var  rideTime = 1 * 60 * 1000; //The time that require move to destination
+ function init() {
+     closeTime = em.getTransportationTime(closeTime);
+     beginTime = em.getTransportationTime(beginTime);
+-     rideTime = em.getTransportationTime(rideTime);
++    rideTime = em.getTransportationTime(rideTime);
+     
+     KC_bfd = em.getChannelServer().getMapFactory().getMap(540010100);
+     CBD_bfd = em.getChannelServer().getMapFactory().getMap(540010001);
+diff --git a/scripts/npc/1061014.js b/scripts/npc/1061014.js
+index ce3cd86ff..0ce5d4545 100644
+--- a/scripts/npc/1061014.js
++++ b/scripts/npc/1061014.js
+@@ -99,8 +99,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/2030013.js b/scripts/npc/2030013.js
+index 15af48201..db793791d 100644
+--- a/scripts/npc/2030013.js
++++ b/scripts/npc/2030013.js
+@@ -106,8 +106,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/2083004.js b/scripts/npc/2083004.js
+index 7960c49c4..c8bb6c019 100644
+--- a/scripts/npc/2083004.js
++++ b/scripts/npc/2083004.js
+@@ -98,8 +98,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/2101014.js b/scripts/npc/2101014.js
+index 69dcacd2b..54a97819b 100644
+--- a/scripts/npc/2101014.js
++++ b/scripts/npc/2101014.js
+@@ -1,108 +1,178 @@
+-/*
+-    This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-    Matthias Butz <matze@odinms.de>
+-    Jan Christian Meyer <vimes@odinms.de>
++/*2101014.js - Lobby and Entrance
++ * @author Jvlaple
++ * For Jvlaple's AriantPQ
++ */
+ 
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
++importPackage(Packages.server.expeditions);
+ 
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+-    See the GNU Affero General Public License for more details.
+-
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-/*
+-	NPC NAME: Cesar (2)
+-	NPC ID: 2101014
+-	Author: Vcoc
+-	Function: AriantPQ
+-*/
+-
+-status = -1;
+-var sel;
+-empty = [false, false, false];
++var status = 0;
++var toBan = -1;
++var choice;
++var arenaType;
++var arena;
++var arenaName;
++var type;
++var map;
++var exped = MapleExpeditionType.ARIANT;
++var exped1 = MapleExpeditionType.ARIANT1;
++var exped2 = MapleExpeditionType.ARIANT2;
+ 
+ function start() {
+-    if((cm.getPlayer().getLevel() < 19 || cm.getPlayer().getLevel() > 30) && !cm.getPlayer().isGM()){
+-        cm.sendNext("You're not between level 20 and 30. Sorry, you may not participate.");
+-        cm.dispose();
+-        return;
+-    }
+-    var text = "What do you want?#b";
+-    for(var i = 0; i < 3; i += 1)
+-        if (cm.getPlayerCount(980010100 + (i * 100)) > 0)
+-            if(cm.getPlayerCount(980010101 + (i * 100)) > 0)
+-                continue;
+-            else
+-                text += "\r\n#L" + i + "# Battle Arena " + (i + 1) + "([" + cm.getPlayerCount(980010100 + (i * 100)) + "/" + cm.getPlayer().getAriantSlotsRoom(i) + "]  users: " + cm.getPlayer().getAriantRoomLeaderName(i) + ")#l";
+-        else{
+-            empty[i] = true;
+-            text += "\r\n#L" + i + "# Battle Arena " + (i + 1) + "( Empty )#l";
+-            if(cm.getPlayer().getAriantRoomLeaderName(i) != "")
+-                cm.getPlayer().removeAriantRoom(i);
+-        }
+-    cm.sendSimple(text + "\r\n#L3# I'd like to know more about the competition.#l");
++    status = -1;
++    action(1, 0, 0);
+ }
+ 
+-function action(mode, type, selection){
+-    status++;
+-    if(mode != 1){
+-        if(mode == 0 && type == 0)
+-            status -= 2;
+-        else{
++function action(mode, type, selection) {
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        if (mode == 0 && status == 0) {
+             cm.dispose();
+             return;
+         }
+-    }
+-    if (status == 0){
+-        if(sel == undefined)
+-            sel = selection;
+-        if(sel == 3)
+-            cm.sendNext("What do you need to do? You must be new to this. Allow me explain in detail.");
+-        else{
+-            if(cm.getPlayer().getAriantRoomLeaderName(sel) != "" && empty[sel])
+-                empty[sel] = false;
+-            else if(cm.getPlayer().getAriantRoomLeaderName(sel) != ""){
+-                cm.warp(980010100 + (sel * 100));
++        if (mode == 1) {
++            status++;
++        } else {
++            status--;
++        }
++        if (cm.getPlayer().getMapId() == 980010000) {
++            if (cm.getLevel() > 30) {
++                cm.sendOk("You are already over #rlevel 30#k, therefore you can't participate in this instance anymore.");
+                 cm.dispose();
+                 return;
+             }
+-            if(!empty[sel]){
+-                cm.sendNext("Another combatant has created the battle arena first. I advise you to either set up a new one, or join the battle arena that's already been set up.");
+-                cm.dispose();
+-                return;
++            
++            if (status == 0) {
++                var expedicao = cm.getExpedition(exped);
++                var expedicao1 = cm.getExpedition(exped1);
++                var expedicao2 = cm.getExpedition(exped2);
++                
++                var channelMaps = cm.getClient().getChannelServer().getMapFactory();
++                var startSnd = "Voc� gostaria de participar do Desafio #eAriant Coliseu#n?\r\n\r\n#e#r       (Escolha uma arena)#n#k\r\n#b";
++                var toSnd = startSnd;
++
++                if (expedicao == null) {
++                    toSnd += "#L0#Comece Ariant Coliseu (1)#l\r\n";
++                } else if (channelMaps.getMap(980010101).getCharacters().isEmpty()) {
++                    toSnd += "#L0#Junte-se ao Ariant Coliseu (1)  Dono (" + expedicao.getLeader().getName() + ")" + " Membros Atuais: " + cm.getExpeditionMemberNames(exped) + "\r\n";
++                }
++                if (expedicao1 == null) {
++                    toSnd += "#L1#Comece Ariant Coliseu (2)#l\r\n";
++                } else if (channelMaps.getMap(980010201).getCharacters().isEmpty()) {
++                    toSnd += "#L1#Junte-se ao Ariant Coliseu (2)  Dono (" + expedicao1.getLeader().getName() + ")" + " Membros Atuais: " + cm.getExpeditionMemberNames(exped1) + "\r\n";
++                }
++                if (expedicao2 == null) {
++                    toSnd += "#L2#Comece Ariant Coliseu (3)#l\r\n";
++                } else if (channelMaps.getMap(980010301).getCharacters().isEmpty()) {
++                    toSnd += "#L2#Junte-se ao Ariant Coliseu (3)  Dono (" + expedicao2.getLeader().getName() + ")" + " Membros Atuais: " + cm.getExpeditionMemberNames(exped2) + "\r\n";
++                }
++                if (toSnd.equals(startSnd)) {
++                    cm.sendOk("Todas as arenas esta ocupadas agora. Eu sugiro que voc� volte mais tarde ou mudar de canal.");
++                    cm.dispose();
++                } else {
++                    cm.sendSimple(toSnd);
++                }
++            } else if (status == 1) {
++                arenaType = selection;
++                expedicao = fetchArenaType();
++                if (expedicao == "") {
++                    cm.dispose();
++                    return;
++                }
++                
++                if (expedicao != null) {
++                    enterArena(-1);
++                } else {
++                    cm.sendGetText("Quantos jogadores voce quer em sua instancia?");
++                }
++            } else if (status == 2) {
++                var players = parseInt(cm.getText());   // AriantPQ option limit found thanks to NarutoFury (iMrSiN)
++                if (isNaN(players)) {
++                    cm.sendNext("Por favor insira um valor numérico de limite de jogadores permitidos em sua instancia.");
++                    status = 0;
++                } else if (players < 2) {
++                    cm.sendNext("Sua instancia precisa ter ao menos 2 jogadores.");
++                    status = 0;
++                } else {
++                    enterArena(players);
++                } 
+             }
+-            cm.sendGetNumber("Up to how many participants can join in this match? (2~6 ppl)", 0, 2, 6);
+         }
+-    }else if (status == 1){
+-        if(sel == 3)
+-            cm.sendNextPrev("It's really simple, actually. You'll receive #b#t2270002##k from me, and your task is to eliminate a set amount of HP from the monster, then use #b#t2270002##k to absorb its monstrous power.");
+-        else{
+-            if(cm.getPlayer().getAriantRoomLeaderName(sel) != "" && empty[sel])
+-                empty[sel] = false;
+-            if(!empty[sel]){
+-                cm.sendNext("Another combatant has created the battle arena first. I advise you to either set up a new one, or join the battle arena that's already been set up.");
+-                cm.dispose();
+-                return;
++    }
++}
++
++function fetchArenaType() {
++    switch (arenaType) {
++        case 0 :
++            exped = MapleExpeditionType.ARIANT;
++            expedicao = cm.getExpedition(exped);
++            map = 980010100;
++            break;
++        case 1 :
++            exped = MapleExpeditionType.ARIANT1;
++            expedicao = cm.getExpedition(exped);
++            map = 980010200;
++            break;
++        case 2 :
++            exped = MapleExpeditionType.ARIANT2;
++            expedicao = cm.getExpedition(exped);
++            map = 980010300;
++            break;
++        default :
++            exped = null;
++            map = 0;
++            expedicao = "";
++    }
++    
++    return expedicao;
++}
++
++function enterArena(arenaPlayers) {
++    expedicao = fetchArenaType();
++    if (expedicao == "") {
++        cm.dispose();
++        return;
++    } else if (expedicao == null) {
++        if (arenaPlayers != -1) {
++            if (cm.createExpedition(exped, true, 0, arenaPlayers)) {
++                cm.warp(map, 0);
++                cm.getPlayer().dropMessage("Sua Arena foi criada. Aguarde as pessoas entrarem agora!");
++            } else {
++                cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
+             }
+-            cm.getPlayer().setAriantRoomLeader(sel, cm.getPlayer().getName());
+-            cm.getPlayer().setAriantSlotRoom(sel, selection);
+-            cm.warp(980010100 + (sel * 100));
+-            cm.dispose();
++        } else {
++            cm.sendOk("An unexpected error has occurred when locating the expedition, please try again later.");
+         }
+-    }else if (status == 2)
+-        cm.sendNextPrev("It's simple. If you absorb the power of the monster #b#t2270002##k, then you'll make #b#t4031868##k, which is something Queen Areda loves. The combatant with the most jewels wins the match. It's actually a smart idea to prevent others from absorbing in order to win.");
+-    else if (status == 3)
+-        cm.sendNextPrev("One thing. Using #b#t2100067##k, you can steal #b#t4031868##k from your enemies. Warning: #rYou may not use pets for this.#k Understood?!");
+-    else if (status == 4)
++        
+         cm.dispose();
++    } else {
++        if (playerAlreadyInLobby(cm.getPlayer())) {
++            cm.sendOk("Desculpe, você já pertence a alguma Lobby.");
++            cm.dispose();
++            return;
++        }
++
++        var playerAdd = expedicao.addMemberInt(cm.getPlayer());
++        if (playerAdd == 3) {
++            cm.sendOk("Desculpe, a Lobby esta cheia agora.");
++            cm.dispose();
++        } else {
++            if (playerAdd == 0) {
++                cm.warp(map, 0);
++                cm.dispose();
++            } else if (playerAdd == 2) {
++                cm.sendOk("Desculpe, mas o l�der pediu para nao ser autorizado a entrar.");
++                cm.dispose();
++            } else {
++                cm.sendOk("erro.");
++                cm.dispose();
++            }
++        }
++    }
+ }
++
++function playerAlreadyInLobby(player) {
++    return cm.getExpedition(MapleExpeditionType.ARIANT) != null && cm.getExpedition(MapleExpeditionType.ARIANT).contains(player) ||
++            cm.getExpedition(MapleExpeditionType.ARIANT1) != null && cm.getExpedition(MapleExpeditionType.ARIANT1).contains(player) ||
++            cm.getExpedition(MapleExpeditionType.ARIANT2) != null && cm.getExpedition(MapleExpeditionType.ARIANT2).contains(player);
++}
+\ No newline at end of file
+diff --git a/scripts/npc/2101015.js b/scripts/npc/2101015.js
+new file mode 100644
+index 000000000..418bf8b33
+--- /dev/null
++++ b/scripts/npc/2101015.js
+@@ -0,0 +1,63 @@
++var arena;
++var status = 0;
++
++importPackage(Packages.client);
++
++function start() {
++    arena = cm.getPlayer().getAriantColiseum();
++    if (arena == null) {
++        cm.sendOk("Ei, não vi você em campo durante as atividades do coliseu! O que você está fazendo aqui?");
++        cm.dispose();
++        return;
++    }
++    
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        if (mode == 0 && status == 0) {
++            cm.dispose();
++            return;
++        }
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        if (status == 0) {
++            menuStr = generateSelectionMenu(["Gostaria de verificar meus pontos de batalha / adquirir a minha Cadeira de Praia com Palmeira", "Gostaria de saber mais sobre os pontos da Arena de Batalha"]);
++            cm.sendSimple("Olá, o que posso fazer por você?\r\n\r\n" + menuStr);
++        } else if (status == 1) {
++            if (selection == 0) {
++                apqpoints = cm.getPlayer().getAriantPoints();
++                if (apqpoints < 100) {
++                    cm.sendOk("A sua Pontua��o de Arena de Batalha � #b" + apqpoints + "#k Pontos. Voc� precisa ultrapassar os #b100 Pontos#k para que eu possa lhe dar a #bCadeira de Praia com Palmeira#k. Fale comigo novamente somente quando voc� tiver pontos suficientes.");
++                    cm.dispose();
++                } else if (apqpoints + arena.getAriantRewardTier(cm.getPlayer()) >= 100) {
++                    cm.sendOk("A sua Pontua��o de Arena de Batalha � #b" + apqpoints + "#k Pontos, e voc� praticamente já possui essa pontuação! Converse com minha esposa, #p2101016#, para adquiri-los e então torne a conversar comigo!");
++                    cm.dispose();
++                } else {
++                    cm.sendNext("Uaaau, parece que voc� conseguiu os #b100 Pontos#k necess�rios para troca, vamos l�?!");
++                }
++            } else if (selection == 1) {
++                cm.sendOk("O objetivo maior das Arenas de Batalha é permitir ao jogador acumular pontos para então trocá-los honrosamente pelo prêmio maior: a #bCadeira de Praia com Palmeira#k. Acumule pontos durante as batalhas e fale comigo quando chegar a hora de adquirir seu item.\r\n\r\nEm cada batalha, é dado ao jogador a oportunidade de #bsomar pontos baseando-se na quantidade de joias#k que o jogador possui ao final. Contudo tome cuidado! Se sua distância de pontos dentre os outros jogadores #rfor muito alto#k, isso terá sido tudo por nada e você ganhará mero #r1 ponto#k.");
++                cm.dispose();
++            }
++        } else if (status == 2) {
++            cm.getPlayer().gainAriantPoints(-100);
++            cm.gainItem(3010018, 1);
++            cm.dispose();
++        }
++    }
++}
++
++function generateSelectionMenu(array) {     // nice tool for generating a string for the sendSimple functionality
++    var menu = "";
++    for (var i = 0; i < array.length; i++) {
++        menu += "#L" + i + "##b" + array[i] + "#l#k\r\n";
++    }
++    return menu;
++}
+\ No newline at end of file
+diff --git a/scripts/npc/2101016.js b/scripts/npc/2101016.js
+new file mode 100644
+index 000000000..2e6070a93
+--- /dev/null
++++ b/scripts/npc/2101016.js
+@@ -0,0 +1,50 @@
++var arena;
++var status = 0;
++
++importPackage(Packages.client);
++
++function start() {
++    arena = cm.getPlayer().getAriantColiseum();
++    if (arena == null) {
++        cm.sendOk("Ei, não vi você em campo durante as atividades do coliseu! O que você está fazendo aqui?");
++        cm.dispose();
++        return;
++    }
++    
++    status = -1;
++    action(1, 0, 0);
++}
++
++function action(mode, type, selection) {
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        if (mode == 0 && status == 0) {
++            cm.dispose();
++            return;
++        }
++        if (mode == 1)
++            status++;
++        else
++            status--;
++        if (status == 0) {
++            copns = arena.getAriantScore(cm.getPlayer());
++            if (copns < 1 && !cm.getPlayer().isGM()) {
++                cm.sendOk("Que pena, voc� nao conseguiu nenhuma j�ia!");
++                cm.dispose();
++            } else {
++                cm.sendNext("Ok, vamos ver...Voc� foi muito bem, e voc� trouxe #b" + copns + "#k j�ias que eu adoro. Como voc� completou a partida, vou recompens�-lo com a pontua��o da Arena de Batalhas de #b" + arena.getAriantRewardTier(cm.getPlayer()) + " Pontos#k. Se voc� quiser saber mais sobre a pontua��o de Arena de Batalha, ent�o fale com #b#p2101015##k.");
++            }
++        } else if (status == 1) {
++            //cm.warp(980010020, 0);
++            copns = arena.getAriantRewardTier(cm.getPlayer());
++            arena.clearAriantRewardTier(cm.getPlayer());
++            arena.clearAriantScore(cm.getPlayer());
++            cm.removeAll(4031868);
++            
++            cm.getPlayer().gainExp(92.7 * cm.getPlayer().getExpRate() * copns, true, true);
++            cm.getPlayer().gainAriantPoints(copns);
++            cm.dispose();
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/scripts/npc/2101017.js b/scripts/npc/2101017.js
+index 51c9ad5cf..acc2fab71 100644
+--- a/scripts/npc/2101017.js
++++ b/scripts/npc/2101017.js
+@@ -1,150 +1,150 @@
+-/*
+-    This file is part of the OdinMS Maple Story Server
+-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+-    Matthias Butz <matze@odinms.de>
+-    Jan Christian Meyer <vimes@odinms.de>
++/*2101017.js
++ *Cesar
++ *@author Jvlaple
++ */
+ 
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU Affero General Public License as
+-    published by the Free Software Foundation version 3 as published by
+-    the Free Software Foundation. You may not use, modify or distribute
+-    this program under any other version of the GNU Affero General Public
+-    License.
++importPackage(Packages.server.expeditions);
+ 
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+-    See the GNU Affero General Public License for more details.
+ 
+-    You should have received a copy of the GNU Affero General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-*/
+-
+-/*
+-	NPC NAME: Cesar (3)
+-	NPC ID: 2101017
+-	Author: Vcoc
+-	Function: AriantPQ
+-*/
+-
+-importPackage(Packages.tools);
+-importPackage(Packages.client);
+-
+-status = -1;
+-var sel;
++var status = 0;
++var toBan = -1;
++var choice;
++var arena;
++var arenaName;
++var type;
++var map;
++var exped;
++var expedicao;
++var expedMembers;
+ 
+ function start() {
+-    if((cm.getPlayer().getLevel() < 19 || cm.getPlayer().getLevel() > 30) && !cm.getPlayer().isGM()){
+-        cm.sendNext("You're not between level 20 and 30. Sorry, you may not participate.");
+-        cm.dispose();
+-        return;
+-    }
+-    if(cm.getPlayer().getMapId() % 10 == 1)
+-        cm.sendSimple("Do you have a request for me?\r\n#b#L0# Give me #t2270002# and #t2100067#.#l\r\n#L1# What should I do?#l\r\n#L2# Get me out of here.#l");
+-    else
+-        cm.sendSimple(cm.getPlayer().getAriantRoomLeaderName(((cm.getPlayer().getMapId() / 100) % 10) - 1) == cm.getPlayer().getName() ? "Would you like to start the match?#b\r\n#b#L3# Ready to enter the Battle Arena!!#l\r\n#L1# I'd like to kick another character.#l\r\n#L2# Get me out of here.#l" : "What do you want?#b\r\n#L2# Get me out of here.#l");
++    action(1, 0, 0);
+ }
+ 
+-function action(mode, type, selection){
+-    status++;
+-    if(mode != 1){
+-        if(mode == 0 && type == 0)
+-            status -= 2;
+-        else{
++function action(mode, type, selection) {
++    
++    if (mode == -1) {
++        cm.dispose();
++    } else {
++        if (mode == 0) {
+             cm.dispose();
+             return;
+         }
+-    }
+-    if(cm.getPlayer().getMapId() % 10 == 1){
+-        if (status == 0){
+-            if (sel == undefined)
+-                sel = selection;
+-            if(sel == 0){
+-                if(cm.haveItem(2270002))
+-                    cm.sendNext("You already have #b#t2270002##k.");
+-            else if(cm.canHold(2270002) && cm.canHold(2100067)){
+-                if(cm.haveItem(2100067))
+-                    cm.removeAll(2100067);
+-                    cm.gainItem(2270002, 50);
+-                    cm.gainItem(2100067, 5);
+-                    cm.sendNext("Now lower the HP of the monsters, and use #b#t2270002##k to absorb their power!");
+-                }else
+-                    cm.sendNext("Check and see if your Use inventory is full or not");
+-                cm.dispose();
+-            }else if(sel == 1)
+-                cm.sendNext("What do you need to do? You must be new to this. Allow me explain in detail.");
+-            else
+-                cm.sendYesNo("Are you sure you want to leave?"); //No GMS like.
+-        } else if (status == 1){
+-            if(type == 1){
+-                cm.removeAll(4031868);
+-                cm.removeAll(2270002);
+-                cm.removeAll(2100067);
+-                cm.warp(980010020);
++
++        if (cm.getPlayer().getMapId() == 980010100 || cm.getPlayer().getMapId() == 980010200 || cm.getPlayer().getMapId() == 980010300) {
++            if (cm.getPlayer().getMapId() == 980010100) {
++                exped = MapleExpeditionType.ARIANT;
++                expedicao = cm.getExpedition(exped);
++
++            } else if (cm.getPlayer().getMapId() == 980010200) {
++                exped = MapleExpeditionType.ARIANT1;
++                expedicao = cm.getExpedition(exped);
++            } else {
++                exped = MapleExpeditionType.ARIANT2;
++                expedicao = cm.getExpedition(exped);
++            }
++            
++            if (expedicao == null) {
+                 cm.dispose();
+                 return;
+             }
+-            cm.sendNextPrev("It's really simple, actually. You'll receive #b#t2270002##k from me, and your task is to eliminate a set amount of HP from the monster, then use #b#t2270002##k to absorb its monstrous power.");
+-        } else if (status == 2)
+-            cm.sendNextPrev("It's simple. If you absorb the power of the monster #b#t2270002##k, then you'll make #b#t4031868##k, which is something Queen Areda loves. The combatant with the most jewels wins the match. It's actually a smart idea to prevent others from absorbing in order to win.");
+-        else if (status == 3)
+-            cm.sendNextPrev("One thing. Using #b#t2100067##k, you can steal #b#t4031868##k from your enemies. Warning: #rYou may not use pets for this.#k Understood?!");
+-        else if (status == 4)
+-            cm.dispose();
+-    }else{
+-        var nextchar = cm.getMap(cm.getPlayer().getMapId()).getCharacters().iterator();
+-        if(status == 0){
+-            if (sel == undefined)
+-                sel = selection;
+-            if(sel == 1)
+-                if(cm.getPlayerCount(cm.getPlayer().getMapId()) > 1){
+-                    var text = "Who would you like to kick from room?"; //Not GMS like text
+-                    var name;
+-                    for(var i = 0; nextchar.hasNext(); i++){
+-                        name = nextchar.next().getName();
+-                        if(!cm.getPlayer().getAriantRoomLeaderName(((cm.getPlayer().getMapId() / 100) % 10) - 1).equals(name))
+-                            text += "\r\n#b#L" + i + "#" + name + "#l";
++            
++            expedMembers = expedicao.getMemberList();
++            if (status == 0) {
++                if (cm.isLeaderExpedition(exped)) {
++                    cm.sendSimple("O que voce gostaria de fazer?#b\r\n\r\n#L1#Ver registro atual da arena!#l\r\n#L2#Banir player!#l\r\n#L3#Comece a luta!#l\r\n#L4#Sair desta arena!#l");
++                    status = 1;
++                } else {
++                    var toSend = "Voce tem atualmente essas pessoas em sua arena :\r\n#b";
++                    toSend += cm.getExpeditionMemberNames(exped);
++                    cm.sendOk(toSend);
++                    cm.dispose();
++                }
++            } else if (status == 1) {
++                if (selection == 1) {
++                    var toSend = "Voce tem atualmente essas pessoas em sua arena :\r\n#b";
++                    toSend += cm.getExpeditionMemberNames(exped);
++                    cm.sendOk(toSend);
++                    cm.dispose();
++                } else if (selection == 2) {
++                    var size = expedMembers.size();
++                    if (size == 1) {
++                        cm.sendOk("You are the only member of the expedition.");
++                        cm.dispose();
++                        return;
++                    }
++                    var text = "The following members make up your expedition (Click on them to expel them):\r\n";
++                    text += "\r\n\t\t1." + expedicao.getLeader().getName();
++                    for (var i = 1; i < size; i++) {
++                        text += "\r\n#b#L" + (i + 1) + "#" + (i + 1) + ". " + expedMembers.get(i).getValue() + "#l\n";
+                     }
+                     cm.sendSimple(text);
+-                }else{
+-                    cm.sendNext("There's no character that can be kicked right now.");
++                    status = 6;
++                } else if (selection == 3) {
++                    if (expedicao.getMembers().size() < 1) {
++                        cm.sendOk("Voc� precisa de mais que 2 jogadores para iniciar.");
++                        cm.dispose();
++                    } else {
++                        if (cm.getParty() != null) {
++                            cm.sendOk("Voc� n�o pode entrar na batalha em um grupo.");
++                            cm.dispose();
++                            return;
++                        }
++                        
++                        var errorMsg = cm.startAriantBattle(exped, cm.getPlayer().getMapId());
++                        if (errorMsg != "") {
++                            cm.sendOk(errorMsg);
++                        }
++                        
++                        cm.dispose();
++                    }
++                } else if (selection == 4) {
++                    cm.mapMessage(5, "O lider da Arena saiu.");
++                    expedicao.warpExpeditionTeam(980010000);
++                    cm.endExpedition(expedicao);
+                     cm.dispose();
+                 }
+-            else if(sel == 2){
+-                if(cm.getPlayer().getAriantRoomLeaderName(((cm.getPlayer().getMapId() / 100) % 10) - 1) == cm.getPlayer().getName())
+-                    cm.sendYesNo("Are you sure you want to leave? You're the leader of the Arena, so if you leave, the whole Battle Arena will close.");
+-                else
+-                    cm.sendYesNo("Are you sure you want to leave?"); //No GMS like.
+-            }else if(sel == 3)
+-                if(cm.getPlayerCount(cm.getPlayer().getMapId()) > 1)
+-                    cm.sendYesNo("The room is all set, and no other character may join this Battle Arena. Do you want to start the game right now?");
+-                else{
+-                    cm.sendNext("You'll need at least 2 participants inside in order to start the match.");
++            } else if (status == 6) {
++                if (selection > 0) {
++                    var banned = expedMembers.get(selection - 1);
++                    expedicao.ban(banned);
++                    cm.sendOk("You have banned " + banned.getValue() + " from the expedition.");
+                     cm.dispose();
++                } else {
++                    cm.sendSimple(list);
++                    status = 2;
+                 }
+-        }else if (status == 1){
+-            if(sel == 1){
+-                for(var i = 0; nextchar.hasNext(); i++)
+-                    if(i == selection){
+-                        nextchar.next().changeMap(cm.getMap(980010000));
+-                        break;
+-                    }else
+-                        nextchar.next();
+-                cm.sendNext("Player have been kicked out of the Arena."); //Not GMS like
+-            }else if(sel == 2){
+-                if(cm.getPlayer().getAriantRoomLeaderName(((cm.getPlayer().getMapId() / 100) % 10) - 1) != cm.getPlayer().getName())
+-                    cm.warp(980010000);
+-                else{
+-                    cm.getPlayer().removeAriantRoom((cm.getPlayer().getMapId() / 100) % 10);
+-                    cm.mapMessage(6, cm.getPlayer().getName() + " has left the Arena, so the Arena will now close.");
+-                    cm.warpMap(980010000);
++            }
++        } else if (Packages.constants.GameConstants.isAriantColiseumArena(cm.getPlayer().getMapId())) {
++            if (cm.getPlayer().getMapId() == 980010101) {
++                exped = MapleExpeditionType.ARIANT;
++                expedicao = cm.getExpedition(exped);
++            } else if (cm.getPlayer().getMapId() == 980010201) {
++                exped = MapleExpeditionType.ARIANT1;
++                expedicao = cm.getExpedition(exped);
++            } else {
++                exped = MapleExpeditionType.ARIANT2;
++                expedicao = cm.getExpedition(exped);
++            }
++            if (status == 0) {
++                var gotTheBombs = expedicao.getProperty("gotBomb" + cm.getChar().getId());
++                if (gotTheBombs != null) {
++                    cm.sendOk("Eu ja lhe dei as bombas, por favor, mate os #eEscorpioes#n para conseguir mais delas!");
++                    cm.dispose();
++                } else if (cm.canHoldAll([2270002, 2100067], [50, 5])) {
++                    cm.sendOk("Eu lhe dei (5) #b#eBombas#k#n e (50) #b#eRochas Elementais#k#n.\r\nUse as rochas elementais para capturar os escorpioes para Sra.#r#eSpirit Jewels#k#n!");
++                    expedicao.setProperty("gotBomb" + cm.getChar().getId(), "1");
++                    cm.gainItem(2270002, 50);
++                    cm.gainItem(2100067, 5);
++                    cm.dispose();
++                } else {
++                    cm.sendOk("Por favor encontre 2 espaços no seu inventário de USE antes de receber seus itens!");
++                    cm.dispose();
+                 }
+-            }else{
+-                cm.warpMap(cm.getPlayer().getMapId() + 1);
+-            //}
+-            //cm.getPlayer().getMap().broadcastMessage(MaplePacketCreator.updateAriantPQRanking(cm.getPlayer().getName(), 0, true));
+             }
++        } else {
++            cm.sendOk("Olá, já ouviu falar da Ariant Coliseum Battle Arena? É um evento competitivo disponível para jogadores entre níveis 20 a 30.");
+             cm.dispose();
+-        }
++        } 
+     }
+ }
+diff --git a/scripts/npc/2141001.js b/scripts/npc/2141001.js
+index e0336c958..77bbe35f6 100644
+--- a/scripts/npc/2141001.js
++++ b/scripts/npc/2141001.js
+@@ -101,8 +101,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/9010022.js b/scripts/npc/9010022.js
+index 495425e7f..a7c160e6e 100644
+--- a/scripts/npc/9010022.js
++++ b/scripts/npc/9010022.js
+@@ -20,14 +20,14 @@ function action(mode, type, selection) {
+         else 
+             status--; 
+             if (status == 0) { 
+-            if (cm.getLevel() < 25) { 
++            if (cm.getLevel() < 20) { 
+                 cm.sendDimensionalMirror("#-1# There is no place for you to transport to from here."); 
+                 cm.dispose(); 
+             } else { 
+                 var selStr = ""; 
+-                /*if (cm.getLevel() >= 20 && cm.getLevel() <= 30) { NOT IMPLEMENTED
++                if (cm.getLevel() >= 20 && cm.getLevel() <= 30) {
+                     selStr += "#0# Ariant Coliseum"; 
+-                } */
++                }
+ 
+                 if (cm.getLevel() >= 25) { 
+                     selStr += "#1# Mu Lung Dojo"; 
+diff --git a/scripts/npc/9120201.js b/scripts/npc/9120201.js
+index 275acfa41..ac660b742 100644
+--- a/scripts/npc/9120201.js
++++ b/scripts/npc/9120201.js
+@@ -105,8 +105,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/9201113.js b/scripts/npc/9201113.js
+index 4c9621d43..67f6147b2 100644
+--- a/scripts/npc/9201113.js
++++ b/scripts/npc/9201113.js
+@@ -89,8 +89,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(cwkpq);
+-                cm.sendOk("The #rCrimsonwood Keep Party Quest Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(cwkpq)) {
++                    cm.sendOk("The #rCrimsonwood Keep Party Quest Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/9270047.js b/scripts/npc/9270047.js
+index 6b3418ca4..1f1a74555 100644
+--- a/scripts/npc/9270047.js
++++ b/scripts/npc/9270047.js
+@@ -106,8 +106,12 @@ function action(mode, type, selection) {
+                     return;
+                 }
+                 
+-                cm.createExpedition(exped);
+-                cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                if (cm.createExpedition(exped)) {
++                    cm.sendOk("The #r" + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team, or start the fight!");
++                } else {
++                    cm.sendOk("An unexpected error has occurred when starting the expedition, please try again later.");
++                }
++                
+                 cm.dispose();
+                 return;
+             } else if (selection == 2) {
+diff --git a/scripts/npc/9977777.js b/scripts/npc/9977777.js
+index cb2379c31..7692ad766 100644
+--- a/scripts/npc/9977777.js
++++ b/scripts/npc/9977777.js
+@@ -47,6 +47,7 @@ function writeFeatureTab_PQs() {
+         addFeature("Brand-new PQs: BossRushPQ, CafePQ.");
+         addFeature("Mu Lung Dojo.");
+         addFeature("Monster Carnival 1 & 2 - thanks Dragohe4rt & Jayd!");
++        addFeature("AriantPQ - thanks Dragohe4rt!");
+         addFeature("Capt. Latanica with party fighting the boss.");
+         addFeature("Filled up missing obligatory event script methods.");
+         addFeature("Secured uniquety of active lobby-name instances.");
+@@ -207,6 +208,7 @@ function writeFeatureTab_Serverpotentials() {
+         addFeature("Custom jail system.");
+         addFeature("Custom buyback system, uses mesos / NX, via MTS.");
+         addFeature("Custom fishing system having 'seasonal' catch times.");
++        addFeature("Actual fishing handling w/ F. Net - thanks Dragohe4rt!");
+         addFeature("Custom map leasing system.");
+         addFeature("Delete Character.");
+         addFeature("Smooth view-all-char, now showing all account chars.");
+diff --git a/sql/db_database.sql b/sql/db_database.sql
+index 34e3c0b88..eab384ba1 100644
+--- a/sql/db_database.sql
++++ b/sql/db_database.sql
+@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS `characters` (
+   `monsterbookcover` int(11) NOT NULL DEFAULT '0',
+   `allianceRank` int(10) NOT NULL DEFAULT '5',
+   `vanquisherStage` int(11) unsigned NOT NULL DEFAULT '0',
++  `ariantPoints` int(11) unsigned NOT NULL DEFAULT '0',
+   `dojoPoints` int(11) unsigned NOT NULL DEFAULT '0',
+   `lastDojoStage` int(10) unsigned NOT NULL DEFAULT '0',
+   `finishedDojoTutorial` tinyint(1) unsigned NOT NULL DEFAULT '0',
+diff --git a/sql/db_drops.sql b/sql/db_drops.sql
+index 687eb7f70..910413bf4 100644
+--- a/sql/db_drops.sql
++++ b/sql/db_drops.sql
+@@ -21092,6 +21092,14 @@ DELETE FROM temp_data WHERE dropperid >= 9300315 AND dropperid <= 9300324;
+ (9300324, 2022178, 1, 1, 0, 200000),
+ (9300324, 4001129, 1, 1, 0, 12987);
+ 
++# add AriantPQ items, AriantPQ specific items found thanks to Dragohe4rt
++  INSERT IGNORE INTO temp_data (`dropperid`, `itemid`, `minimum_quantity`, `maximum_quantity`, `questid`, `chance`) VALUES
++(9300157, 2100067, 1, 1, 0, 100000),
++(9300157, 2022266, 1, 1, 0, 200000),
++(9300157, 2022267, 1, 1, 0, 200000),
++(9300157, 2022268, 1, 1, 0, 200000),
++(9300157, 2022269, 1, 1, 0, 200000);
++
+   CREATE TABLE IF NOT EXISTS `drop_data` (
+     `id` bigint(20) NOT NULL AUTO_INCREMENT,
+     `dropperid` int(11) NOT NULL,
+diff --git a/src/client/MapleBuffStat.java b/src/client/MapleBuffStat.java
+index aea3ca13e..57d368991 100644
+--- a/src/client/MapleBuffStat.java
++++ b/src/client/MapleBuffStat.java
+@@ -47,6 +47,7 @@
+     GHOST_MORPH(0x20000L),
+     AURA(0x40000L),
+     CONFUSE(0x80000L),
++    ARIANT_PQ_SHIELD(0x40000L),
+     
+     // ------ COUPON feature ------
+     
+diff --git a/src/client/MapleCharacter.java b/src/client/MapleCharacter.java
+index 9b63d8fca..7e9facfa6 100644
+--- a/src/client/MapleCharacter.java
++++ b/src/client/MapleCharacter.java
+@@ -100,6 +100,7 @@
+ import server.life.MonsterDropEntry;
+ import server.maps.SavedLocation;
+ import server.maps.SavedLocationType;
++import server.partyquest.AriantColiseum;
+ import server.partyquest.MonsterCarnival;
+ import server.partyquest.MonsterCarnivalParty;
+ import server.partyquest.PartyQuest;
+@@ -131,7 +132,6 @@
+ import constants.ExpTable;
+ import constants.GameConstants;
+ import constants.ItemConstants;
+-import constants.LanguageConstants;
+ import constants.ServerConstants;
+ import constants.skills.Aran;
+ import constants.skills.Beginner;
+@@ -166,7 +166,6 @@
+ import server.maps.MapleMapItem;
+ import net.server.audit.locks.MonitoredLockType;
+ import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+-import scripting.AbstractPlayerInteraction;
+ 
+ public class MapleCharacter extends AbstractMapleCharacterObject {
+     private static final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+@@ -196,7 +195,7 @@
+     private int battleshipHp = 0;
+     private int mesosTraded = 0;
+     private int possibleReports = 10;
+-    private int dojoPoints, vanquisherStage, dojoStage, dojoEnergy, vanquisherKills;
++    private int ariantPoints, dojoPoints, vanquisherStage, dojoStage, dojoEnergy, vanquisherKills;
+     private int expRate = 1, mesoRate = 1, dropRate = 1, expCoupon = 1, mesoCoupon = 1, dropCoupon = 1;
+     private int omokwins, omokties, omoklosses, matchcardwins, matchcardties, matchcardlosses;
+     private int owlSearch;
+@@ -1979,13 +1978,14 @@ public final void pickupItem(MapleMapObject ob, int petIndex) {     // yes, one
+                         showHint("You have earned #e#b" + nxGain + " NX#k#n. (" + this.getCashShop().getCash(1) + " NX)", 300);
+                     } else if (applyConsumeOnPickup(mItem.getItemId())) {
+                     } else if (MapleInventoryManipulator.addFromDrop(client, mItem, true)) {
+-                    } else if (mItem.getItemId() == 4031868) {
+-                        this.getMap().broadcastMessage(MaplePacketCreator.updateAriantPQRanking(this.getName(), this.getItemQuantity(4031868, false), false));
++                        if (mItem.getItemId() == 4031868) {
++                            updateAriantScore();
++                        }
+                     } else {
+                         client.announce(MaplePacketCreator.enableActions());
+                         return;
+                     }
+-                    
++
+                     this.getMap().pickItemDrop(pickupPacket, mapitem);
+                 } else if(!hasSpaceInventory) {
+                     client.announce(MaplePacketCreator.getInventoryFull());
+@@ -3175,6 +3175,21 @@ public static String getAriantRoomLeaderName(int room) {
+     public static int getAriantSlotsRoom(int room) {
+         return ariantroomslot[room];
+     }
++    
++    public void updateAriantScore() {
++        updateAriantScore(0);
++    }
++    
++    public void updateAriantScore(int dropQty) {
++        AriantColiseum arena = this.getAriantColiseum();
++        if (arena != null) {
++            arena.updateAriantScore(this, countItem(4031868));
++            
++            if (dropQty > 0) {
++                arena.addLostShards(dropQty);
++            }
++        }
++    }
+ 
+     public int getBattleshipHp() {
+         return battleshipHp;
+@@ -5894,6 +5909,11 @@ public void leaveMap() {
+         if (map.unclaimOwnership(this)) {
+             map.dropMessage(5, "This lawn is now free real estate.");
+         }
++        
++        AriantColiseum arena = this.getAriantColiseum();
++        if (arena != null) {
++            arena.leaveArena(this);
++        }
+     }
+     
+     private int getChangedJobSp(MapleJob newJob) {
+@@ -6685,6 +6705,7 @@ public static MapleCharacter loadCharFromDB(int charid, MapleClient client, bool
+             ret.monsterbook = new MonsterBook();
+             ret.monsterbook.loadCards(charid);
+             ret.vanquisherStage = rs.getInt("vanquisherStage");
++            ret.ariantPoints = rs.getInt("ariantPoints");
+             ret.dojoPoints = rs.getInt("dojoPoints");
+             ret.dojoStage = rs.getInt("lastDojoStage");
+             ret.dataString = rs.getString("dataString");
+@@ -7137,12 +7158,12 @@ public void mount(int id, int skillid) {
+ 
+     private void playerDead() {
+         if (this.getMap().isCPQMap()) {
+-            int lost = getCP();
+-            if (lost > 6) {
+-                lost = 6;
++            int losing = getMap().getDeathCP();
++            if (getCP() < losing) {
++                losing = getCP();
+             }
+-            getMap().broadcastMessage(MaplePacketCreator.playerDiedMessage(getName(), lost, getTeam()));
+-            gainCP(-lost);
++            getMap().broadcastMessage(MaplePacketCreator.playerDiedMessage(getName(), losing, getTeam()));
++            gainCP(-losing);
+             return;
+         }
+         
+@@ -7952,7 +7973,7 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+             con.setAutoCommit(false);
+             PreparedStatement ps;
+-            ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, gachaexp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpMpUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, messengerid = ?, messengerposition = ?, mountlevel = ?, mountexp = ?, mounttiredness= ?, equipslots = ?, useslots = ?, setupslots = ?, etcslots = ?,  monsterbookcover = ?, vanquisherStage = ?, dojoPoints = ?, lastDojoStage = ?, finishedDojoTutorial = ?, vanquisherKills = ?, matchcardwins = ?, matchcardlosses = ?, matchcardties = ?, omokwins = ?, omoklosses = ?, omokties = ?, dataString = ?, fquest = ?, jailexpire = ?, partnerId = ?, marriageItemId = ?, lastExpGainTime = ? WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
++            ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, gachaexp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpMpUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, messengerid = ?, messengerposition = ?, mountlevel = ?, mountexp = ?, mounttiredness= ?, equipslots = ?, useslots = ?, setupslots = ?, etcslots = ?,  monsterbookcover = ?, vanquisherStage = ?, dojoPoints = ?, lastDojoStage = ?, finishedDojoTutorial = ?, vanquisherKills = ?, matchcardwins = ?, matchcardlosses = ?, matchcardties = ?, omokwins = ?, omoklosses = ?, omokties = ?, dataString = ?, fquest = ?, jailexpire = ?, partnerId = ?, marriageItemId = ?, lastExpGainTime = ?, ariantPoints = ? WHERE id = ?", Statement.RETURN_GENERATED_KEYS);
+             if (gmLevel < 1 && level > 199) {
+                 ps.setInt(1, isCygnus() ? 120 : 200);
+             } else {
+@@ -8066,7 +8087,8 @@ public synchronized void saveCharToDB(boolean notAutosave) {
+             ps.setInt(51, partnerId);
+             ps.setInt(52, marriageItemid);
+             ps.setTimestamp(53, new Timestamp(lastExpGainTime));
+-            ps.setInt(54, id);
++            ps.setInt(54, ariantPoints);
++            ps.setInt(55, id);
+ 
+             int updateRows = ps.executeUpdate();
+             ps.close();
+@@ -10231,13 +10253,16 @@ public void setLastSnowballAttack(long time) {
+     
+     // MCPQ
+     
+-    private int cp = 0;
+-    private int totCP = 0;
++    public AriantColiseum ariantColiseum;
+     private MonsterCarnival monsterCarnival;
+     private MonsterCarnivalParty monsterCarnivalParty = null;
++    
++    private int cp = 0;
++    private int totCP = 0;
+     private int FestivalPoints;
+     private boolean challenged = false;
+-
++    public short totalCP, availableCP;
++    
+     public void gainFestivalPoints(int gain) {
+         this.FestivalPoints += gain;
+     }
+@@ -10254,8 +10279,6 @@ public int getCP() {
+         return cp;
+     }
+ 
+-    public short totalCP, availableCP;
+-
+     public void addCP(int ammount) {
+         totalCP += ammount;
+         availableCP += ammount;
+@@ -10318,6 +10341,14 @@ public void setMonsterCarnival(MonsterCarnival monsterCarnival) {
+         this.monsterCarnival = monsterCarnival;
+     }
+     
++    public AriantColiseum getAriantColiseum() {
++        return ariantColiseum;
++    }
++
++    public void setAriantColiseum(AriantColiseum ariantColiseum) {
++        this.ariantColiseum = ariantColiseum;
++    }
++    
+     public MonsterCarnivalParty getMonsterCarnivalParty() {
+         return this.monsterCarnivalParty;
+     }
+@@ -10333,6 +10364,14 @@ public boolean isChallenged() {
+     public void setChallenged(boolean challenged) {
+         this.challenged = challenged;
+     }
++    
++    public void gainAriantPoints(int points) {
++        this.ariantPoints += points;
++    }
++    
++    public int getAriantPoints() {
++        return this.ariantPoints;
++    }
+ 
+     public void setLanguage(int num) {
+         getClient().setLanguage(num);
+@@ -10354,4 +10393,4 @@ public int getLanguage() {
+         return getClient().getLanguage();
+     }
+     
+-}
+\ No newline at end of file
++}
+diff --git a/src/client/MapleClient.java b/src/client/MapleClient.java
+index 224f8db0c..66d36d495 100644
+--- a/src/client/MapleClient.java
++++ b/src/client/MapleClient.java
+@@ -901,6 +901,10 @@ private void removePlayer(World wserv, boolean serverTransition) {
+                                 if (player.getMonsterCarnival() != null) {
+                                         player.getMonsterCarnival().playerDisconnected(getPlayer().getId());
+                                 }
++                                
++                                if (player.getAriantColiseum() != null) {
++                                        player.getAriantColiseum().playerDisconnected(getPlayer());
++                                }
+                         }
+                         
+                         if (player.getMap() != null) {
+diff --git a/src/client/MapleDisease.java b/src/client/MapleDisease.java
+index e9daf175d..14984e729 100644
+--- a/src/client/MapleDisease.java
++++ b/src/client/MapleDisease.java
+@@ -29,7 +29,7 @@
+     SEDUCE(0x80, 128),
+     FISHABLE(0x100),
+     ZOMBIFY(0x4000),
+-    CONFUSE(0x80000),
++    CONFUSE(0x80000, 132),
+     STUN(0x2000000000000L, 123),
+     POISON(0x4000000000000L, 125),
+     SEAL(0x8000000000000L, 120),
+diff --git a/src/client/command/commands/gm1/BossHpCommand.java b/src/client/command/commands/gm1/BossHpCommand.java
+index 6040abd57..5174fa903 100644
+--- a/src/client/command/commands/gm1/BossHpCommand.java
++++ b/src/client/command/commands/gm1/BossHpCommand.java
+@@ -36,7 +36,7 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+-        for(MapleMonster monster : player.getMap().getMonsters()) {
++        for(MapleMonster monster : player.getMap().getAllMonsters()) {
+             if(monster != null && monster.isBoss() && monster.getHp() > 0) {
+                 long percent = monster.getHp() * 100L / monster.getMaxHp();
+                 String bar = "[";
+diff --git a/src/client/command/commands/gm1/MobHpCommand.java b/src/client/command/commands/gm1/MobHpCommand.java
+index b8c9dcaef..3398dfd1f 100644
+--- a/src/client/command/commands/gm1/MobHpCommand.java
++++ b/src/client/command/commands/gm1/MobHpCommand.java
+@@ -36,7 +36,7 @@
+     @Override
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+-        for(MapleMonster monster : player.getMap().getMonsters()) {
++        for(MapleMonster monster : player.getMap().getAllMonsters()) {
+             if (monster != null && monster.getHp() > 0) {
+                 player.yellowMessage(monster.getName() + " (" + monster.getId() + ") has " + monster.getHp() + " / " + monster.getMaxHp() + " HP.");
+ 
+diff --git a/src/client/command/commands/gm3/ExpedsCommand.java b/src/client/command/commands/gm3/ExpedsCommand.java
+index f01e12f38..b8eda3c1a 100644
+--- a/src/client/command/commands/gm3/ExpedsCommand.java
++++ b/src/client/command/commands/gm3/ExpedsCommand.java
+@@ -30,6 +30,7 @@
+ import net.server.channel.Channel;
+ import server.expeditions.MapleExpedition;
+ 
++import java.util.List;
+ import java.util.Map.Entry;
+ 
+ public class ExpedsCommand extends Command {
+@@ -41,13 +42,14 @@
+     public void execute(MapleClient c, String[] params) {
+         MapleCharacter player = c.getPlayer();
+         for (Channel ch : Server.getInstance().getChannelsFromWorld(c.getWorld())) {
+-            if (ch.getExpeditions().isEmpty()) {
++            List<MapleExpedition> expeds = ch.getExpeditions();
++            if (expeds.isEmpty()) {
+                 player.yellowMessage("No Expeditions in Channel " + ch.getId());
+                 continue;
+             }
+             player.yellowMessage("Expeditions in Channel " + ch.getId());
+             int id = 0;
+-            for (MapleExpedition exped : ch.getExpeditions()) {
++            for (MapleExpedition exped : expeds) {
+                 id++;
+                 player.yellowMessage("> Expedition " + id);
+                 player.yellowMessage(">> Type: " + exped.getType().toString());
+diff --git a/src/client/command/commands/gm4/ForceVacCommand.java b/src/client/command/commands/gm4/ForceVacCommand.java
+index 6508ae7a7..0c7f9da63 100644
+--- a/src/client/command/commands/gm4/ForceVacCommand.java
++++ b/src/client/command/commands/gm4/ForceVacCommand.java
+@@ -64,8 +64,10 @@ public void execute(MapleClient c, String[] params) {
+                         continue;
+                     }
+                     MapleInventoryManipulator.addById(c, mapItem.getItem().getItemId(), mapItem.getItem().getQuantity(), null, petId);
+-                } else {
+-                    MapleInventoryManipulator.addFromDrop(c, mapItem.getItem(), true);
++                } else if (MapleInventoryManipulator.addFromDrop(c, mapItem.getItem(), true)) {
++                    if (mapItem.getItemId() == 4031868) {
++                        player.updateAriantScore();
++                    }
+                 }
+ 
+                 player.getMap().pickItemDrop(MaplePacketCreator.removeItemFromMap(mapItem.getObjectId(), 2, player.getId()), mapItem);
+diff --git a/src/client/inventory/manipulator/MapleInventoryManipulator.java b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+index 77c89044b..a3fe13d19 100644
+--- a/src/client/inventory/manipulator/MapleInventoryManipulator.java
++++ b/src/client/inventory/manipulator/MapleInventoryManipulator.java
+@@ -658,14 +658,6 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+         }
+         
+         MapleMap map = chr.getMap();
+-        if (chr.getItemEffect() == itemId && source.getQuantity() == 1) {
+-            chr.setItemEffect(0);
+-            map.broadcastMessage(MaplePacketCreator.itemEffect(chr.getId(), 0));
+-        } else if (itemId == 5370000 || itemId == 5370001) {
+-            if (chr.getItemQuantity(itemId, false) == 1) {
+-                chr.setChalkboard(null);
+-            }
+-        }
+         if ((!ItemConstants.isRechargeable(itemId) && source.getQuantity() < quantity) || quantity < 0) {
+             return;
+         }
+@@ -735,6 +727,20 @@ public static void drop(MapleClient c, MapleInventoryType type, short src, short
+                 map.spawnItemDrop(chr, chr, source, dropPos, true, true);
+             }
+         }
++        
++        int quantityNow = chr.getItemQuantity(itemId, false);
++        if (itemId == chr.getItemEffect()) {
++            if (quantityNow <= 0) {
++                chr.setItemEffect(0);
++                map.broadcastMessage(MaplePacketCreator.itemEffect(chr.getId(), 0));
++            }
++        } else if (itemId == 5370000 || itemId == 5370001) {
++            if (source.getQuantity() <= 0) {
++                chr.setChalkboard(null);
++            }
++        } else if (itemId == 4031868) {
++            chr.updateAriantScore(quantityNow);
++        }
+     }
+ 
+     private static boolean isDroppedItemRestricted(Item it) {
+diff --git a/src/constants/GameConstants.java b/src/constants/GameConstants.java
+index 2c57b219a..75c7e0395 100644
+--- a/src/constants/GameConstants.java
++++ b/src/constants/GameConstants.java
+@@ -21,6 +21,7 @@
+ public class GameConstants {
+     public static String[] WORLD_NAMES = {"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcenia", "Kastia", "Judis", "Plana", "Kalluna", "Stius", "Croa", "Medere"};
+     public static final int[]  OWL_DATA = new int[]{1082002, 2070005, 2070006, 1022047, 1102041, 2044705, 2340000, 2040017, 1092030, 2040804};
++    public static final String[] stats = {"tuc", "reqLevel", "reqJob", "reqSTR", "reqDEX", "reqINT", "reqLUK", "reqPOP", "cash", "cursed", "success", "setItemID", "equipTradeBlock", "durability", "randOption", "randStat", "masterLevel", "reqSkillLevel", "elemDefault", "incRMAS", "incRMAF", "incRMAI", "incRMAL", "canLevel", "skill", "charmEXP"};
+     public static final int[] CASH_DATA = new int[]{50200004, 50200069, 50200117, 50100008, 50000047};
+     
+     // Ronan's rates upgrade system
+@@ -592,6 +593,16 @@ public static boolean isPyramid(int mapid) {
+     	return mapid >= 926010010 & mapid <= 930010000;
+     }
+     
++    public static boolean isAriantColiseumLobby(int mapid) {
++        int mapbranch = mapid / 1000;
++    	return mapbranch == 980010 && mapid % 10 == 0;
++    }
++    
++    public static boolean isAriantColiseumArena(int mapid) {
++        int mapbranch = mapid / 1000;
++    	return mapbranch == 980010 && mapid % 10 == 1;
++    }
++    
+     public static boolean isPqSkillMap(int mapid) {
+     	return isDojo(mapid) || isPyramid(mapid);
+     }
+diff --git a/src/net/server/Server.java b/src/net/server/Server.java
+index 0e7485931..cf3032cdf 100644
+--- a/src/net/server/Server.java
++++ b/src/net/server/Server.java
+@@ -927,8 +927,7 @@ public void init() {
+         System.out.println("Skills loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds");
+ 
+         timeToTake = System.currentTimeMillis();
+-        //MapleItemInformationProvider.getInstance().getAllItems(); //unused, rofl
+-
++        
+         CashItemFactory.getSpecialCashItems();
+         System.out.println("Items loaded in " + ((System.currentTimeMillis() - timeToTake) / 1000.0) + " seconds");
+         
+diff --git a/src/net/server/channel/Channel.java b/src/net/server/channel/Channel.java
+index dc3c97b01..76fdf66f4 100644
+--- a/src/net/server/channel/Channel.java
++++ b/src/net/server/channel/Channel.java
+@@ -100,7 +100,7 @@
+     private Map<Integer, MapleHiredMerchant> hiredMerchants = new HashMap<>();
+     private final Map<Integer, Integer> storedVars = new HashMap<>();
+     private Set<Integer> playersAway = new HashSet<>();
+-    private List<MapleExpedition> expeditions = new ArrayList<>();
++    private Map<MapleExpeditionType, MapleExpedition> expeditions = new HashMap<>();
+     private List<MapleExpeditionType> expedType = new ArrayList<>();
+     private Set<MapleMap> ownedMaps = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<MapleMap, Boolean>()));
+     private MapleEvent event;
+@@ -468,8 +468,31 @@ public void removeHiredMerchant(int chrid) {
+         return retArr;
+     }
+     
++    public boolean addExpedition(MapleExpedition exped) {
++        synchronized (expeditions) {
++            if (expeditions.containsKey(exped.getType())) {
++                return false;
++            }
++            
++            expeditions.put(exped.getType(), exped);
++            return true;
++        }
++    }
++    
++    public void removeExpedition(MapleExpedition exped) {
++        synchronized (expeditions) {
++            expeditions.remove(exped.getType());
++        }
++    }
++    
++    public MapleExpedition getExpedition(MapleExpeditionType type) {
++        return expeditions.get(type);
++    }
++    
+     public List<MapleExpedition> getExpeditions() {
+-    	return expeditions;
++        synchronized (expeditions) {
++            return new ArrayList<>(expeditions.values());
++        }
+     }
+     
+     public boolean isConnected(String name) {
+diff --git a/src/net/server/channel/handlers/MonsterCarnivalHandler.java b/src/net/server/channel/handlers/MonsterCarnivalHandler.java
+index 4156bdfc3..9c5aaace6 100644
+--- a/src/net/server/channel/handlers/MonsterCarnivalHandler.java
++++ b/src/net/server/channel/handlers/MonsterCarnivalHandler.java
+@@ -63,13 +63,13 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+ 
+                         final MapleMonster mob = MapleLifeFactory.getMonster(mobs.get(num).left);
+                         MonsterCarnival mcpq = c.getPlayer().getMonsterCarnival();
+-                        if (mcpq != null) {                        
++                        if (mcpq != null) {
+                             if (!mcpq.canSummonR() && c.getPlayer().getTeam() == 0 || !mcpq.canSummonB() && c.getPlayer().getTeam() == 1) {
+                                 c.announce(MaplePacketCreator.CPQMessage((byte) 2));
+                                 c.announce(MaplePacketCreator.enableActions());
+                                 return;
+                             }
+-
++                            
+                             if (c.getPlayer().getTeam() == 0) {
+                                 mcpq.summonR();
+                             } else {
+@@ -135,19 +135,34 @@ public void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+                             c.announce(MaplePacketCreator.enableActions());
+                             return;
+                         }
+-                        int success = c.getPlayer().getMap().spawnGuardian(c.getPlayer().getTeam(), num);
+-                        if (success == -1 || success == 0 || success == 2) {
+-                            if (success == -1) {
+-                                c.announce(MaplePacketCreator.CPQMessage((byte) 3));
+-                            } else if (success == 0) {
+-                                c.announce(MaplePacketCreator.CPQMessage((byte) 4));
+-                            } else if (success == 2) {
+-                                c.announce(MaplePacketCreator.CPQMessage((byte) 3));
++                        
++                        MonsterCarnival mcpq = c.getPlayer().getMonsterCarnival();
++                        if (mcpq != null) {
++                            if (!mcpq.canGuardianR() && c.getPlayer().getTeam() == 0 || !mcpq.canGuardianB() && c.getPlayer().getTeam() == 1) {
++                                c.announce(MaplePacketCreator.CPQMessage((byte) 2));
++                                c.announce(MaplePacketCreator.enableActions());
++                                return;
++                            }
++
++                            int success = c.getPlayer().getMap().spawnGuardian(c.getPlayer().getTeam(), num);
++                            if (success != 1) {
++                                switch (success) {
++                                    case -1:
++                                        c.announce(MaplePacketCreator.CPQMessage((byte) 3));
++                                        break;
++
++                                    case 0:
++                                        c.announce(MaplePacketCreator.CPQMessage((byte) 4));
++                                        break;
++
++                                    default:
++                                        c.announce(MaplePacketCreator.CPQMessage((byte) 3));
++                                }
++                                c.announce(MaplePacketCreator.enableActions());
++                                return;
++                            } else {
++                                neededCP = skill.cpLoss;
+                             }
+-                            c.announce(MaplePacketCreator.enableActions());
+-                            return;
+-                        } else {
+-                            neededCP = skill.cpLoss;
+                         }
+                     }
+                     c.getPlayer().gainCP(-neededCP);
+diff --git a/src/net/server/channel/handlers/TakeDamageHandler.java b/src/net/server/channel/handlers/TakeDamageHandler.java
+index 9a67b895a..4dc7677ed 100644
+--- a/src/net/server/channel/handlers/TakeDamageHandler.java
++++ b/src/net/server/channel/handlers/TakeDamageHandler.java
+@@ -27,6 +27,7 @@
+ import client.Skill;
+ import client.SkillFactory;
+ import client.inventory.Item;
++import client.inventory.MapleInventory;
+ import client.inventory.MapleInventoryType;
+ import client.status.MonsterStatus;
+ import client.status.MonsterStatusEffect;
+@@ -34,7 +35,6 @@
+ import constants.ItemConstants;
+ import constants.ServerConstants;
+ import constants.skills.Aran;
+-import constants.skills.Corsair;
+ 
+ import java.awt.Point;
+ import java.util.Collections;
+@@ -44,6 +44,7 @@
+ import net.AbstractMaplePacketHandler;
+ import client.inventory.manipulator.MapleInventoryManipulator;
+ import server.MapleStatEffect;
++import server.life.MapleLifeFactory;
+ import server.life.MapleLifeFactory.loseItem;
+ import server.life.MapleMonster;
+ import server.life.MobAttackInfo;
+@@ -87,39 +88,65 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                     }
+                 }
+                 
++                if (monsteridfrom == 9300166 && attacker == null) {
++                    if (c.tryacquireClient()) {
++                        try {
++                            attacker = MapleLifeFactory.getMonster(monsteridfrom);
++                        } finally {
++                            c.releaseClient();
++                        }
++                    }
++                }
++                
+                 if (attacker != null) {
+-                    List<loseItem> loseItems;
+-                    
+                     if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
+                         return;
+                     }
++                    
++                    List<loseItem> loseItems;
+                     if (damage > 0) {
+-                        MapleMonster assaulter = map.getMonsterById(monsteridfrom);
+-                        
+-                        if(assaulter != null) {
+-                            loseItems = assaulter.getStats().loseItem();
+-                            if (loseItems != null) {
++                        loseItems = attacker.getStats().loseItem();
++                        if (loseItems != null) {
++                            if (chr.getBuffEffect(MapleBuffStat.ARIANT_PQ_SHIELD) == null) {
+                                 MapleInventoryType type;
+                                 final int playerpos = chr.getPosition().x;
+                                 byte d = 1;
+                                 Point pos = new Point(0, chr.getPosition().y);
+                                 for (loseItem loseItem : loseItems) {
+                                     type = ItemConstants.getInventoryType(loseItem.getId());
+-                                    for (byte b = 0; b < loseItem.getX(); b++) {//LOL?
++                                    
++                                    int dropCount = 0;
++                                    for (byte b = 0; b < loseItem.getX(); b++) {
+                                         if (Randomizer.nextInt(100) < loseItem.getChance()) {
+-                                            if (chr.haveItem(loseItem.getId())) {
+-                                                pos.x = (int) (playerpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
+-                                                MapleInventoryManipulator.removeById(c, type, loseItem.getId(), 1, false, false);
+-                                                map.spawnItemDrop(chr, chr, new Item(loseItem.getId(), (short) 0, (short) 1), map.calcDropPos(pos, chr.getPosition()), true, true);
+-                                                d++;
+-                                            } else {
+-                                                break;
+-                                            }
++                                            dropCount += 1;
++                                        }
++                                    }
++                                    
++                                    if (dropCount > 0) {
++                                        int qty;
++                                    
++                                        MapleInventory inv = chr.getInventory(type);
++                                        inv.lockInventory();
++                                        try {
++                                            qty = Math.min(chr.countItem(loseItem.getId()), dropCount);
++                                            MapleInventoryManipulator.removeById(c, type, loseItem.getId(), qty, false, false);
++                                        } finally {
++                                            inv.unlockInventory();
++                                        }
++                                        
++                                        if (loseItem.getId() == 4031868) {
++                                            chr.updateAriantScore();
++                                        }
++
++                                        for (byte b = 0; b < qty; b++) {
++                                            pos.x = (int) (playerpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
++                                            map.spawnItemDrop(chr, chr, new Item(loseItem.getId(), (short) 0, (short) 1), map.calcDropPos(pos, chr.getPosition()), true, true);
++                                            d++;
+                                         }
+                                     }
+                                 }
+-                                map.removeMapObject(attacker);
+                             }
++                            map.removeMapObject(attacker);
+                         }
+                     }
+                 } else {
+diff --git a/src/net/server/channel/handlers/UseCatchItemHandler.java b/src/net/server/channel/handlers/UseCatchItemHandler.java
+index 753fefbe6..97e55b0ff 100644
+--- a/src/net/server/channel/handlers/UseCatchItemHandler.java
++++ b/src/net/server/channel/handlers/UseCatchItemHandler.java
+@@ -29,6 +29,7 @@
+ import net.AbstractMaplePacketHandler;
+ import net.server.Server;
+ import client.inventory.manipulator.MapleInventoryManipulator;
++import server.MapleItemInformationProvider;
+ import server.life.MapleMonster;
+ import tools.MaplePacketCreator;
+ import tools.data.input.SeekableLittleEndianAccessor;
+@@ -47,7 +48,7 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+         slea.readShort();
+         int itemId = slea.readInt();
+         int monsterid = slea.readInt();
+-
++        
+         MapleMonster mob = chr.getMap().getMonsterByOid(monsterid);
+         if (chr.getInventory(ItemConstants.getInventoryType(itemId)).countById(itemId) <= 0) {
+            return;
+@@ -85,20 +86,25 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 if (mob.getId() == 9300157) {
+                     if ((abm.getLastSpam(10) + 800) < currentServerTime()) {
+                         if (mob.getHp() < ((mob.getMaxHp() / 10) * 4)) {
+-                            if (Math.random() < 0.5) { // 50% chance
+-                                chr.getMap().broadcastMessage(MaplePacketCreator.catchMonster(monsterid, itemId, (byte) 1));
+-                                mob.getMap().killMonster(mob, null, false);
+-                                MapleInventoryManipulator.removeById(c, MapleInventoryType.USE, itemId, 1, true, true);
+-                                MapleInventoryManipulator.addById(c, 4031868, (short) 1, "", -1);
++                            if (chr.canHold(4031868, 1)) {
++                                if (Math.random() < 0.5) { // 50% chance
++                                    chr.getMap().broadcastMessage(MaplePacketCreator.catchMonster(monsterid, itemId, (byte) 1));
++                                    mob.getMap().killMonster(mob, null, false);
++                                    MapleInventoryManipulator.removeById(c, MapleInventoryType.USE, itemId, 1, true, true);
++                                    MapleInventoryManipulator.addById(c, 4031868, (short) 1, "", -1);
++                                } else {
++                                    chr.getMap().broadcastMessage(MaplePacketCreator.catchMonster(monsterid, itemId, (byte) 0));
++                                }
+                             } else {
+-                                chr.getMap().broadcastMessage(MaplePacketCreator.catchMonster(monsterid, itemId, (byte) 0));
++                                chr.dropMessage(5, "Make a ETC slot available before using this item.");
+                             }
++                            
+                             abm.spam(10);
+                         } else {
+                             c.announce(MaplePacketCreator.catchMessage(0));
+                         }
+                     }
+-                c.announce(MaplePacketCreator.enableActions());
++                    c.announce(MaplePacketCreator.enableActions());
+                 }
+                 break;
+             case 2270003:
+@@ -181,7 +187,35 @@ public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c)
+                 }
+                 break;
+             default:
+-               // System.out.println("UseCatchItemHandler: \r\n" + slea.toString());
++                // proper Fish catch, thanks to Dragohe4rt
++                
++                MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
++                int itemGanho = ii.getCreateItem(itemId);
++                int mobItem = ii.getMobItem(itemId);
++                
++                if (itemGanho != 0 && mobItem == mob.getId()) {
++                    int timeCatch = ii.getUseDelay(itemId);
++                    int mobHp = ii.getMobHP(itemId);
++                    
++                    if (timeCatch != 0 && (abm.getLastSpam(10) + timeCatch) < currentServerTime()) {
++                        if (mobHp != 0 && mob.getHp() < ((mob.getMaxHp() / 100) * mobHp)) {
++                            chr.getMap().broadcastMessage(MaplePacketCreator.catchMonster(monsterid, itemId, (byte) 1));
++                            mob.getMap().killMonster(mob, null, false);
++                            MapleInventoryManipulator.removeById(c, MapleInventoryType.USE, itemId, 1, true, true);
++                            MapleInventoryManipulator.addById(c, itemGanho, (short) 1, "", -1);
++                        } else if (mob.getId() != 9500336) {
++                            if (mobHp != 0) {
++                                abm.spam(10);
++                                c.announce(MaplePacketCreator.catchMessage(0));
++                            }
++                        } else {
++                            chr.message("You cannot use the Fishing Net yet.");
++                        }
++                    }
++                }
++                c.announce(MaplePacketCreator.enableActions());
++                
++                // System.out.println("UseCatchItemHandler: \r\n" + slea.toString());
+         }
+     }
+ }
+diff --git a/src/net/server/channel/handlers/UseDeathItemHandler.java b/src/net/server/channel/handlers/UseDeathItemHandler.java
+index b07ffa91a..d750301b4 100644
+--- a/src/net/server/channel/handlers/UseDeathItemHandler.java
++++ b/src/net/server/channel/handlers/UseDeathItemHandler.java
+@@ -27,6 +27,7 @@
+ import tools.data.input.SeekableLittleEndianAccessor;
+ 
+ public final class UseDeathItemHandler extends AbstractMaplePacketHandler {
++    @Override
+     public final void handlePacket(SeekableLittleEndianAccessor slea, MapleClient c) {
+         int itemId = slea.readInt();
+         c.getPlayer().setItemEffect(itemId);
+diff --git a/src/net/server/world/MapleParty.java b/src/net/server/world/MapleParty.java
+index fa9724a97..714710596 100644
+--- a/src/net/server/world/MapleParty.java
++++ b/src/net/server/world/MapleParty.java
+@@ -327,9 +327,12 @@ public boolean equals(Object obj) {
+     public static boolean createParty(MapleCharacter player, boolean silentCheck) {
+         MapleParty party = player.getParty();
+         if (party == null) {
+-            if(player.getLevel() < 10 && !ServerConstants.USE_PARTY_FOR_STARTERS) {
++            if (player.getLevel() < 10 && !ServerConstants.USE_PARTY_FOR_STARTERS) {
+                 player.announce(MaplePacketCreator.partyStatusMessage(10));
+                 return false;
++            } else if (player.getAriantColiseum() != null) {
++                player.dropMessage(5, "You cannot request a party creation while participating the Ariant Battle Arena.");
++                return false;
+             }
+ 
+             MaplePartyCharacter partyplayer = new MaplePartyCharacter(player);
+diff --git a/src/provider/MapleDataTool.java b/src/provider/MapleDataTool.java
+index 25f4c7f81..f06412de2 100644
+--- a/src/provider/MapleDataTool.java
++++ b/src/provider/MapleDataTool.java
+@@ -72,6 +72,25 @@ public static int getIntConvert(MapleData data) {
+             return getInt(data);
+         }
+     }
++    
++    public static int getIntConvert(MapleData data, int def) {
++        if (data == null) {
++            return def;
++        }
++        if (data.getType() == MapleDataType.STRING) {
++	    String dd = getString(data);
++	    if (dd.endsWith("%")) {
++		dd = dd.substring(0, dd.length() - 1);
++	    }
++            try {
++                return Integer.parseInt(dd);
++            } catch (NumberFormatException nfe) {
++                return def;
++            }
++        } else {
++            return getInt(data, def);
++        }
++    }
+ 
+     public static int getIntConvert(String path, MapleData data) {
+         MapleData d = data.getChildByPath(path);
+diff --git a/src/scripting/AbstractPlayerInteraction.java b/src/scripting/AbstractPlayerInteraction.java
+index b108af418..1d118e8c6 100644
+--- a/src/scripting/AbstractPlayerInteraction.java
++++ b/src/scripting/AbstractPlayerInteraction.java
+@@ -1009,25 +1009,38 @@ public Pyramid getPyramid() {
+ 		return (Pyramid) getPlayer().getPartyQuest();
+ 	}
+ 
+-	public void createExpedition(MapleExpeditionType type) {
+-		MapleExpedition exped = new MapleExpedition(getPlayer(), type);
+-		getPlayer().getClient().getChannelServer().getExpeditions().add(exped);
++        public boolean createExpedition(MapleExpeditionType type) {
++                return createExpedition(type, false, 0, 0);
++        }
++        
++	public boolean createExpedition(MapleExpeditionType type, boolean silent, int minPlayers, int maxPlayers) {
++		MapleExpedition exped = new MapleExpedition(getPlayer(), type, silent, minPlayers, maxPlayers);
++		return getPlayer().getClient().getChannelServer().addExpedition(exped);
+ 	}
+ 
+ 	public void endExpedition(MapleExpedition exped) {
+ 		exped.dispose(true);
+-		getPlayer().getClient().getChannelServer().getExpeditions().remove(exped);
++		getPlayer().getClient().getChannelServer().removeExpedition(exped);
+ 	}
+ 
+ 	public MapleExpedition getExpedition(MapleExpeditionType type) {
+-		for (MapleExpedition exped : getPlayer().getClient().getChannelServer().getExpeditions()) {
+-			if (exped.getType().equals(type)) {
+-				return exped;
+-			}
+-		}
+-		return null;
++                return getPlayer().getClient().getChannelServer().getExpedition(type);
+ 	}
+         
++        public String getExpeditionMemberNames(MapleExpeditionType type) {
++                String members = "";
++                MapleExpedition exped = getExpedition(type);
++                for (String memberName : exped.getMembers().values()) {
++                       members += "" + memberName + ", ";
++                }
++                return members;
++        }
++
++        public boolean isLeaderExpedition(MapleExpeditionType type) {
++                MapleExpedition exped = getExpedition(type);
++                return exped.isLeader(getPlayer());
++        }
++        
+         public long getJailTimeLeft() {
+                 return getPlayer().getJailExpirationTimeLeft();
+         }
+diff --git a/src/scripting/event/EventInstanceManager.java b/src/scripting/event/EventInstanceManager.java
+index 74b1c5ab7..9c327273a 100644
+--- a/src/scripting/event/EventInstanceManager.java
++++ b/src/scripting/event/EventInstanceManager.java
+@@ -1065,7 +1065,7 @@ private void disposeExpedition() {
+                         
+                         sL.lock();
+                         try {
+-                                em.getChannelServer().getExpeditions().remove(expedition);
++                                em.getChannelServer().removeExpedition(expedition);
+                         } finally {
+                                 sL.unlock();
+                         }
+diff --git a/src/scripting/npc/NPCConversationManager.java b/src/scripting/npc/NPCConversationManager.java
+index 267b83352..fa110996f 100644
+--- a/src/scripting/npc/NPCConversationManager.java
++++ b/src/scripting/npc/NPCConversationManager.java
+@@ -67,6 +67,9 @@
+ import server.TimerManager;
+ import server.maps.MapleMapObject;
+ import server.maps.MapleMapObjectType;
++import server.expeditions.MapleExpedition;
++import server.expeditions.MapleExpeditionType;
++import server.partyquest.AriantColiseum;
+ import server.partyquest.MonsterCarnival;
+ import tools.packets.Wedding;
+ 
+@@ -1000,6 +1003,56 @@ public void challengeParty(int field) {
+             }
+         }
+         
++        private synchronized boolean setupAriantBattle(MapleExpedition exped, int mapid) {
++            MapleMap arenaMap = this.getMap().getChannelServer().getMapFactory().getMap(mapid + 1);
++            if (!arenaMap.getAllPlayers().isEmpty()) {
++                return false;
++            }
++            
++            new AriantColiseum(arenaMap, exped);
++            return true;
++        }
++        
++        public String startAriantBattle(MapleExpeditionType expedType, int mapid) {
++            if (!GameConstants.isAriantColiseumLobby(mapid)) {
++                return "You cannot start an Ariant tournament from outside the Battle Arena Entrance.";
++            }
++            
++            MapleExpedition exped = this.getMap().getChannelServer().getExpedition(expedType);
++            if (exped == null) {
++                return "Please register on an expedition before attempting to start an Ariant tournament.";
++            }
++            
++            List<MapleCharacter> players = exped.getActiveMembers();
++            
++            int playersSize = players.size();
++            if (!(playersSize >= exped.getMinSize() && playersSize <= exped.getMaxSize())) {
++                return "Make sure there are between #r" + exped.getMinSize() + " ~ " + exped.getMaxSize() + " players#k in this room to start the battle.";
++            }
++            
++            MapleMap leaderMap = this.getMap();
++            for (MapleCharacter mc : players) {
++                if (mc.getMap() != leaderMap) {
++                    return "All competing players should be on this area to start the battle.";
++                }
++                
++                if (mc.getParty() != null) {
++                    return "All competing players must not be on a party to start the battle.";
++                }
++                
++                int level = mc.getLevel();
++                if (!(level >= expedType.getMinLevel() && level <= expedType.getMaxLevel())) {
++                    return "There are competing players outside of the acceptable level range in this room. All players must be on #blevel between 20~30#k to start the battle.";
++                }
++            }
++            
++            if (setupAriantBattle(exped, mapid)) {
++                return "";
++            } else {
++                return "Other players are already competing on the Ariant tournament in this room. Please wait a while until the arena becomes available again.";
++            }
++        }
++        
+         public void sendMarriageWishlist(boolean groom) {
+             MapleCharacter player = this.getPlayer();
+             MapleMarriage marriage = player.getMarriageInstance();
+diff --git a/src/scripting/reactor/ReactorActionManager.java b/src/scripting/reactor/ReactorActionManager.java
+index 267282c7d..44237c563 100644
+--- a/src/scripting/reactor/ReactorActionManager.java
++++ b/src/scripting/reactor/ReactorActionManager.java
+@@ -317,7 +317,7 @@ public void run() {
+     public void dispelAllMonsters(int num, int team) { //dispels all mobs, cpq
+         final MCSkill skil = MapleCarnivalFactory.getInstance().getGuardian(num);
+         if (skil != null) {
+-            for (MapleMonster mons : getMap().getMonsters()) {
++            for (MapleMonster mons : getMap().getAllMonsters()) {
+                 if(mons.getTeam() == team) {
+                     mons.dispelSkill(skil.getSkill());
+                 }
+diff --git a/src/server/MapleItemInformationProvider.java b/src/server/MapleItemInformationProvider.java
+index 0ce3949a2..319107234 100644
+--- a/src/server/MapleItemInformationProvider.java
++++ b/src/server/MapleItemInformationProvider.java
+@@ -116,6 +116,10 @@ public static MapleItemInformationProvider getInstance() {
+     protected Map<Integer, Boolean> karmaCache = new HashMap<>();
+     protected Map<Integer, Integer> triggerItemCache = new HashMap<>();
+     protected Map<Integer, Integer> expCache = new HashMap<>();
++    protected Map<Integer, Integer> createItem = new HashMap<>();
++    protected Map<Integer, Integer> mobItem = new HashMap<>();
++    protected Map<Integer, Integer> useDelay = new HashMap<>();
++    protected Map<Integer, Integer> mobHP = new HashMap<>();
+     protected Map<Integer, Integer> levelCache = new HashMap<>();
+     protected Map<Integer, Pair<Integer, List<RewardItem>>> rewardCache = new HashMap<>();
+     protected List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
+@@ -150,40 +154,6 @@ private MapleItemInformationProvider() {
+         isPartyQuestItemCache.put(0, false);
+     }
+ 
+-//    public MapleInventoryType getInventoryType(int itemId) {
+-//        if (inventoryTypeCache.containsKey(itemId)) {
+-//            return inventoryTypeCache.get(itemId);
+-//        }
+-//        MapleInventoryType ret;
+-//        String idStr = "0" + String.valueOf(itemId);
+-//        MapleDataDirectoryEntry root = itemData.getRoot();
+-//        for (MapleDataDirectoryEntry topDir : root.getSubdirectories()) {
+-//            for (MapleDataFileEntry iFile : topDir.getFiles()) {
+-//                if (iFile.getName().equals(idStr.substring(0, 4) + ".img")) {
+-//                    ret = MapleInventoryType.getByWZName(topDir.getName());
+-//                    inventoryTypeCache.put(itemId, ret);
+-//                    return ret;
+-//                } else if (iFile.getName().equals(idStr.substring(1) + ".img")) {
+-//                    ret = MapleInventoryType.getByWZName(topDir.getName());
+-//                    inventoryTypeCache.put(itemId, ret);
+-//                    return ret;
+-//                }
+-//            }
+-//        }
+-//        root = equipData.getRoot();
+-//        for (MapleDataDirectoryEntry topDir : root.getSubdirectories()) {
+-//            for (MapleDataFileEntry iFile : topDir.getFiles()) {
+-//                if (iFile.getName().equals(idStr + ".img")) {
+-//                    ret = MapleInventoryType.EQUIP;
+-//                    inventoryTypeCache.put(itemId, ret);
+-//                    return ret;
+-//                }
+-//            }
+-//        }
+-//        ret = MapleInventoryType.UNDEFINED;
+-//        inventoryTypeCache.put(itemId, ret);
+-//        return ret;
+-//    }
+ 
+     public List<Pair<Integer, String>> getAllItems() {
+         if (!itemNameCache.isEmpty()) {
+@@ -1176,7 +1146,10 @@ public MapleStatEffect getItemEffect(int itemId) {
+             if (item == null) {
+                 return null;
+             }
+-            MapleData spec = item.getChildByPath("spec");
++            MapleData spec = item.getChildByPath("specEx");
++            if (spec == null) {
++                spec = item.getChildByPath("spec");
++            }
+             ret = MapleStatEffect.loadItemEffectFromData(spec, itemId);
+             itemEffects.put(Integer.valueOf(itemId), ret);
+         }
+@@ -1479,6 +1452,46 @@ public int getStateChangeItem(int itemId) {
+             return triggerItem;
+         }
+     }
++    
++    public int getCreateItem(int itemId) {
++        if (createItem.containsKey(itemId)) {
++            return createItem.get(itemId);
++        } else {
++            int itemFrom = MapleDataTool.getIntConvert("info/create", getItemData(itemId), 0);
++            createItem.put(itemId, itemFrom);
++            return itemFrom;
++        }
++    }
++    
++    public int getMobItem(int itemId) {
++        if (mobItem.containsKey(itemId)) {
++            return mobItem.get(itemId);
++        } else {
++            int mobItemCatch = MapleDataTool.getIntConvert("info/mob", getItemData(itemId), 0);
++            mobItem.put(itemId, mobItemCatch);
++            return mobItemCatch;
++        }
++    }
++    
++    public int getUseDelay(int itemId) {
++        if (useDelay.containsKey(itemId)) {
++            return useDelay.get(itemId);
++        } else {
++            int mobUseDelay = MapleDataTool.getIntConvert("info/useDelay", getItemData(itemId), 0);
++            useDelay.put(itemId, mobUseDelay);
++            return mobUseDelay;
++        }
++    }
++    
++    public int getMobHP(int itemId) {
++        if (mobHP.containsKey(itemId)) {
++            return mobHP.get(itemId);
++        } else {
++            int mobHPItem = MapleDataTool.getIntConvert("info/mobHP", getItemData(itemId), 0);
++            mobHP.put(itemId, mobHPItem);
++            return mobHPItem;
++        }
++    }
+ 
+     public int getExpById(int itemId) {
+         if (expCache.containsKey(itemId)) {
+diff --git a/src/server/MapleStatEffect.java b/src/server/MapleStatEffect.java
+index 10b003ece..2c08b7354 100644
+--- a/src/server/MapleStatEffect.java
++++ b/src/server/MapleStatEffect.java
+@@ -112,6 +112,8 @@
+ import constants.skills.WindArcher;
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
++import server.life.MobSkill;
++import server.life.MobSkillFactory;
+ import server.partyquest.MapleCarnivalFactory;
+ import server.partyquest.MapleCarnivalFactory.MCSkill;
+ 
+@@ -125,10 +127,10 @@
+     private short watk, matk, wdef, mdef, acc, avoid, speed, jump;
+     private short hp, mp;
+     private double hpR, mpR;
+-    private short mhpRRate, mmpRRate;
++    private short mhpRRate, mmpRRate, mobSkill, mobSkillLevel;
+     private byte mhpR, mmpR;
+     private short mpCon, hpCon;
+-    private int duration;
++    private int duration, target, barrier, mob;
+     private boolean overTime, repeatEffect;
+     private int sourceid;
+     private int moveTo;
+@@ -208,6 +210,23 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+         ret.fatigue = MapleDataTool.getInt("incFatigue", source, 0);
+         ret.repeatEffect = MapleDataTool.getInt("repeatEffect", source, 0) > 0;
+ 
++        MapleData mdd = source.getChildByPath("0");
++        if (mdd != null && mdd.getChildren().size() > 0) {
++            ret.mobSkill = (short) MapleDataTool.getInt("mobSkill", mdd, 0);
++            ret.mobSkillLevel = (short) MapleDataTool.getInt("level", mdd, 0);
++            ret.target = MapleDataTool.getInt("target", mdd, 0);
++        } else {
++            ret.mobSkill = 0;
++            ret.mobSkillLevel = 0;
++            ret.target = 0;
++        }
++        
++        MapleData mdds = source.getChildByPath("mob");
++        if (mdds != null) {
++            if (mdds.getChildren()!= null && mdds.getChildren().size() > 0) {
++                ret.mob = MapleDataTool.getInt("mob", mdds, 0);
++            }
++        }
+         ret.sourceid = sourceid;
+         ret.skill = skill;
+         if (!ret.skill && ret.duration > -1) {
+@@ -228,9 +247,12 @@ private static MapleStatEffect loadFromData(MapleData source, int sourceid, bool
+         ret.speed = (short) MapleDataTool.getInt("speed", source, 0);
+         ret.jump = (short) MapleDataTool.getInt("jump", source, 0);
+ 
++        ret.barrier = MapleDataTool.getInt("barrier", source, 0);
++        addBuffStatPairToListIfNotZero(statups, MapleBuffStat.ARIANT_PQ_SHIELD, ret.barrier);
++        
+         ret.mapProtection = mapProtection(sourceid);
+         addBuffStatPairToListIfNotZero(statups, MapleBuffStat.MAP_PROTECTION, Integer.valueOf(ret.mapProtection));
+-
++        
+         if (ret.overTime && ret.getSummonMovementType() == null) {
+             if (!skill) {
+                 if (isPyramidBuff(sourceid)) {
+@@ -978,8 +1000,20 @@ private boolean applyTo(MapleCharacter applyfrom, MapleCharacter applyto, boolea
+                     applyfrom.dispelDebuff(debuff);
+                 }
+             }
++        } else if (mobSkill > 0 && mobSkillLevel > 0) {
++            MobSkill ms = MobSkillFactory.getMobSkill(mobSkill, mobSkillLevel);
++            MapleDisease dis = MapleDisease.getBySkill(mobSkill);
++            
++            if (target > 0) {
++                for (MapleCharacter chr : applyto.getMap().getAllPlayers()) {
++                    if (chr.getId() != applyto.getId()) {
++                        chr.giveDebuff(dis, ms);
++                    }
++                }
++            } else {
++                applyto.giveDebuff(dis, ms);
++            }
+         }
+-
+         return true;
+     }
+ 
+@@ -1204,7 +1238,6 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+ 
+                     localstatups = statups;
+                 }
+-
+                 buff = MaplePacketCreator.giveBuff(localsourceid, localDuration, localstatups);
+                 mbuff = MaplePacketCreator.showMonsterRiding(applyto.getId(), givemount);
+                 localDuration = duration;
+@@ -1219,6 +1252,9 @@ private void applyBuffEffect(MapleCharacter applyfrom, MapleCharacter applyto, b
+             } else if (isMorph()) {
+                 List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.MORPH, Integer.valueOf(getMorph(applyto))));
+                 mbuff = MaplePacketCreator.giveForeignBuff(applyto.getId(), stat);
++            } else if (isAriantShield()) {
++                List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.ARIANT_PQ_SHIELD, 1));
++                mbuff = MaplePacketCreator.giveForeignBuff(applyto.getId(), stat);
+             }
+ 
+             if (buff != null) {
+@@ -1455,6 +1491,10 @@ public static boolean isRateCoupon(int sourceid) {
+     public static boolean isExpIncrease(int sourceid) {
+         return sourceid >= 2022450 && sourceid <= 2022452;
+     }
++    
++    public static boolean isAriantShield(int sourceid) {
++        return sourceid == 2022269;
++    }
+ 
+     private boolean isDs() {
+         return skill && (sourceid == Rogue.DARK_SIGHT || sourceid == NightWalker.DARK_SIGHT);
+@@ -1487,6 +1527,11 @@ private boolean isChakra() {
+     private boolean isCouponBuff() {
+         return isRateCoupon(sourceid);
+     }
++    
++    private boolean isAriantShield() {
++        int itemid = sourceid;
++        return isAriantShield(itemid);
++    }
+ 
+     private boolean isMysticDoor() {
+         return skill && sourceid == Priest.MYSTIC_DOOR;
+diff --git a/src/server/expeditions/MapleExpedition.java b/src/server/expeditions/MapleExpedition.java
+index 8e55b12f9..5a3c0dab0 100644
+--- a/src/server/expeditions/MapleExpedition.java
++++ b/src/server/expeditions/MapleExpedition.java
+@@ -41,6 +41,11 @@
+ import tools.LogHelper;
+ import tools.MaplePacketCreator;
+ import client.MapleCharacter;
++import java.util.Iterator;
++import java.util.Properties;
++import net.server.audit.locks.MonitoredLockType;
++import net.server.audit.locks.MonitoredReentrantLock;
++import net.server.audit.locks.factory.MonitoredReentrantLockFactory;
+ 
+ /**
+  *
+@@ -89,21 +94,38 @@
+ 	private Map<Integer, String> members = new ConcurrentHashMap<>();
+ 	private List<Integer> banned = new CopyOnWriteArrayList<>();
+ 	private long startTime;
++        private Properties props = new Properties();
++        private boolean silent;
++        private int minSize, maxSize;
++        private MonitoredReentrantLock pL = MonitoredReentrantLockFactory.createLock(MonitoredLockType.EIM_PARTY, true);
+ 
+-	public MapleExpedition(MapleCharacter player, MapleExpeditionType met) {
++	public MapleExpedition(MapleCharacter player, MapleExpeditionType met, boolean sil, int minPlayers, int maxPlayers) {
+ 		leader = player;
+ 		members.put(player.getId(), player.getName());
+                 startMap = player.getMap();
+ 		type = met;
++                silent = sil;
++                minSize = (minPlayers != 0) ? minPlayers : type.getMinSize();
++                maxSize = (maxPlayers != 0) ? maxPlayers : type.getMaxSize();
+ 		bossLogs = new CopyOnWriteArrayList<>();
+ 		beginRegistration();
+ 	}
++        
++        public int getMinSize() {
++                return minSize;
++        }
++        
++        public int getMaxSize() {
++                return maxSize;
++        }
+ 
+ 	private void beginRegistration() {
+ 		registering = true;
+                 leader.announce(MaplePacketCreator.getClock(type.getRegistrationTime() * 60));
+-		startMap.broadcastMessage(leader, MaplePacketCreator.serverNotice(6, "[Expedition] " + leader.getName() + " has been declared the expedition captain. Please register for the expedition."), false);
+-                leader.announce(MaplePacketCreator.serverNotice(6, "[Expedition] You have become the expedition captain. Gather enough people for your team then talk to the NPC to start."));
++		if (!silent) {
++                        startMap.broadcastMessage(leader, MaplePacketCreator.serverNotice(6, "[Expedition] " + leader.getName() + " has been declared the expedition captain. Please register for the expedition."), false);
++                        leader.announce(MaplePacketCreator.serverNotice(6, "[Expedition] You have become the expedition captain. Gather enough people for your team then talk to the NPC to start."));
++                }
+ 		scheduleRegistrationEnd();
+ 	}
+ 
+@@ -115,8 +137,8 @@ private void scheduleRegistrationEnd() {
+ 			@Override
+ 			public void run() {
+ 				if (registering){
+-                                        startMap.getChannelServer().getExpeditions().remove(exped);
+-					startMap.broadcastMessage(MaplePacketCreator.serverNotice(6, "[Expedition] The time limit has been reached. Expedition has been disbanded."));
++                                        startMap.getChannelServer().removeExpedition(exped);
++					if (!silent) startMap.broadcastMessage(MaplePacketCreator.serverNotice(6, "[Expedition] The time limit has been reached. Expedition has been disbanded."));
+                                         
+                                         dispose(false);
+ 				}
+@@ -134,11 +156,15 @@ public void dispose(boolean log){
+ 			LogHelper.logExpedition(this);
+ 		}
+ 	}
++        
++        public void finishRegistration() {
++                registering = false;
++        }
+ 
+ 	public void start(){
+-		registering = false;
++		finishRegistration();
+ 		broadcastExped(MaplePacketCreator.removeClock());
+-		broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] The expedition has started! Good luck, brave heroes!"));
++		if (!silent) broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] The expedition has started! Good luck, brave heroes!"));
+ 		startTime = System.currentTimeMillis();
+ 		Server.getInstance().broadcastGMMessage(startMap.getWorld(), MaplePacketCreator.serverNotice(6, "[Expedition] " + type.toString() + " Expedition started with leader: " + leader.getName()));
+ 	}
+@@ -150,15 +176,32 @@ public String addMember(MapleCharacter player) {
+ 		if (banned.contains(player.getId())){
+ 			return "Sorry, you've been banned from this expedition by #b" + leader.getName() + "#k.";
+ 		}
+-		if (members.size() >= type.getMaxSize()){ //Would be a miracle if anybody ever saw this
++		if (members.size() >= this.getMaxSize()){ //Would be a miracle if anybody ever saw this
+ 			return "Sorry, this expedition is full!";
+ 		}
+                 
+                 members.put(player.getId(), player.getName());
+                 player.announce(MaplePacketCreator.getClock((int)(startTime - System.currentTimeMillis()) / 1000));
+-                broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + player.getName() + " has joined the expedition!"));
++                if (!silent) broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + player.getName() + " has joined the expedition!"));
+                 return "You have registered for the expedition successfully!";
+ 	}
++        
++        public int addMemberInt(MapleCharacter player) {
++                if (!registering) {
++                        return 1; //"Sorry, this expedition is already underway. Registration is closed!";
++                }
++                if (banned.contains(player.getId())) {
++                        return 2; //"Sorry, you've been banned from this expedition by #b" + leader.getName() + "#k.";
++                }
++                if (members.size() >= this.getMaxSize()) { //Would be a miracle if anybody ever saw this
++                       return 3; //"Sorry, this expedition is full!";
++                }
++
++                members.put(player.getId(), player.getName());
++                player.announce(MaplePacketCreator.getClock((int) (startTime - System.currentTimeMillis()) / 1000));
++                if (!silent) broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + player.getName() + " has joined the expedition!"));
++                return 0; //"You have registered for the expedition successfully!";
++        }
+ 
+ 	private void broadcastExped(byte[] packet){
+ 		for (MapleCharacter chr : getActiveMembers()){
+@@ -169,13 +212,62 @@ private void broadcastExped(byte[] packet){
+ 	public boolean removeMember(MapleCharacter chr) {
+ 		if(members.remove(chr.getId()) != null) {
+                     chr.announce(MaplePacketCreator.removeClock());
+-                    broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + chr.getName() + " has left the expedition."));
+-                    chr.dropMessage(6, "[Expedition] You have left this expedition.");
++                    if (!silent) {
++                        broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + chr.getName() + " has left the expedition."));
++                        chr.dropMessage(6, "[Expedition] You have left this expedition.");
++                    }
+                     return true;
+                 }
+                 
+                 return false;
+ 	}
++        
++        public void ban(Entry<Integer, String> chr) {
++            int cid = chr.getKey();
++            if (!banned.contains(cid)) {
++                banned.add(cid);
++                members.remove(cid);
++
++                if (!silent) broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + chr.getValue() + " has been banned from the expedition."));
++
++                MapleCharacter player = startMap.getWorldServer().getPlayerStorage().getCharacterById(cid);
++                if (player != null && player.isLoggedinWorld()) {
++                    player.announce(MaplePacketCreator.removeClock());
++                    if (!silent) player.dropMessage(6, "[Expedition] You have been banned from this expedition.");
++                    if (MapleExpeditionType.ARIANT.equals(type) || MapleExpeditionType.ARIANT1.equals(type) || MapleExpeditionType.ARIANT2.equals(type)) {
++                        player.changeMap(980010000);
++                    }
++                }
++            }
++        }
++
++        public void monsterKilled(MapleCharacter chr, MapleMonster mob) {
++            for (int i = 0; i < EXPEDITION_BOSSES.length; i++) {
++                if (mob.getId() == EXPEDITION_BOSSES[i]) { //If the monster killed was a boss
++                    String timeStamp = new SimpleDateFormat("HH:mm:ss").format(new Date());
++                    bossLogs.add(">" + mob.getName() + " was killed after " + LogHelper.getTimeString(startTime) + " - " + timeStamp + "\r\n");
++                    return;
++                }
++            }
++        }
++
++        public void setProperty(String key, String value) {
++            pL.lock();
++            try {
++                props.setProperty(key, value);
++            } finally {
++                pL.unlock();
++            }
++        }
++
++        public String getProperty(String key) {
++            pL.lock();
++            try {
++                return props.getProperty(key);
++            } finally {
++                pL.unlock();
++            }
++        }
+ 
+ 	public MapleExpeditionType getType() {
+ 		return type;
+@@ -217,6 +309,56 @@ public MapleExpeditionType getType() {
+             
+                 return memberList;
+ 	}
++        
++        public final boolean isExpeditionTeamTogether() {
++                List<MapleCharacter> chars = getActiveMembers();
++                if(chars.size() <= 1) return true;
++
++                Iterator<MapleCharacter> iterator = chars.iterator();
++                MapleCharacter mc = iterator.next();
++                int mapId = mc.getMapId();
++
++                for (; iterator.hasNext();) {
++                        mc = iterator.next();
++                        if(mc.getMapId() != mapId) return false;
++                }
++
++                return true;
++        }
++        
++        public final void warpExpeditionTeam(int warpFrom, int warpTo) {
++                List<MapleCharacter> players = getActiveMembers();
++                
++                for (MapleCharacter chr : players) {
++                        if(chr.getMapId() == warpFrom)
++                                chr.changeMap(warpTo);
++                }
++        }
++        
++        public final void warpExpeditionTeam(int warpTo) {
++                List<MapleCharacter> players = getActiveMembers();
++                
++                for (MapleCharacter chr : players) {
++                        chr.changeMap(warpTo);
++                }
++        }
++        
++        public final void warpExpeditionTeamToMapSpawnPoint(int warpFrom, int warpTo, int toSp) {
++                List<MapleCharacter> players = getActiveMembers();
++                
++                for (MapleCharacter chr : players) {
++                        if(chr.getMapId() == warpFrom)
++                                chr.changeMap(warpTo, toSp);
++                }
++        }
++        
++        public final void warpExpeditionTeamToMapSpawnPoint(int warpTo, int toSp) {
++                List<MapleCharacter> players = getActiveMembers();
++                
++                for (MapleCharacter chr : players) {
++                        chr.changeMap(warpTo, toSp);
++                }
++        }
+ 
+ 	public MapleCharacter getLeader(){
+ 		return leader;
+@@ -245,24 +387,7 @@ public boolean isRegistering(){
+ 	public boolean isInProgress(){
+ 		return !registering;
+ 	}
+-
+-	public void ban(Entry<Integer, String> chr) {
+-                int cid = chr.getKey();
+-                
+-		if (!banned.contains(cid)) {
+-			banned.add(cid);
+-			members.remove(cid);
+-                        
+-                        broadcastExped(MaplePacketCreator.serverNotice(6, "[Expedition] " + chr.getValue() + " has been banned from the expedition."));
+-                        
+-                        MapleCharacter player = startMap.getWorldServer().getPlayerStorage().getCharacterById(cid);
+-                        if (player != null && player.isLoggedinWorld()) {
+-                                player.announce(MaplePacketCreator.removeClock());
+-                                player.dropMessage(6, "[Expedition] You have been banned from this expedition.");
+-                        }
+-		}
+-	}
+-
++        
+ 	public long getStartTime(){
+ 		return startTime;
+ 	}
+@@ -270,14 +395,4 @@ public long getStartTime(){
+ 	public List<String> getBossLogs(){
+ 		return bossLogs;
+ 	}
+-	
+-	public void monsterKilled(MapleCharacter chr, MapleMonster mob) {
+-		for (int i = 0; i < EXPEDITION_BOSSES.length; i++){
+-			if (mob.getId() == EXPEDITION_BOSSES[i]){ //If the monster killed was a boss
+-				String timeStamp = new SimpleDateFormat("HH:mm:ss").format(new Date());
+-				bossLogs.add(">" + mob.getName() + " was killed after " + LogHelper.getTimeString(startTime) + " - " + timeStamp + "\r\n");
+-				return;
+-			}
+-		}
+-	}
+ }
+diff --git a/src/server/expeditions/MapleExpeditionType.java b/src/server/expeditions/MapleExpeditionType.java
+index 393ce34b1..c94007f17 100644
+--- a/src/server/expeditions/MapleExpeditionType.java
++++ b/src/server/expeditions/MapleExpeditionType.java
+@@ -39,6 +39,9 @@
+     HORNTAIL(6, 30, 100, 255, 5),
+     CHAOS_ZAKUM(6, 30, 120, 255, 5),
+     CHAOS_HORNTAIL(6, 30, 120, 255, 5),
++    ARIANT(2, 7, 20, 30, 5),
++    ARIANT1(2, 7, 20, 30, 5),
++    ARIANT2(2, 7, 20, 30, 5),
+     PINKBEAN(6, 30, 120, 255, 5),
+     CWKPQ(6, 30, 90, 255, 5);   // CWKPQ min-level 90, found thanks to Cato
+     
+diff --git a/src/server/life/Element.java b/src/server/life/Element.java
+index 063447f6c..9d22fd9b8 100644
+--- a/src/server/life/Element.java
++++ b/src/server/life/Element.java
+@@ -22,8 +22,23 @@
+ package server.life;
+ 
+ public enum Element {
+-    NEUTRAL, FIRE, ICE, LIGHTING, POISON, HOLY, DARK;
++    NEUTRAL(0), PHYSICAL(1), FIRE(2, true), ICE(3, true), LIGHTING(4), POISON(5), HOLY(6, true), DARKNESS(7);
+ 
++    private int value;
++    private boolean special = false;
++    private Element(int v) {
++	this.value = v;
++    }
++
++    private Element(int v, boolean special) {
++	this.value = v;
++	this.special = special;
++    }
++
++    public boolean isSpecial() {
++	return special;
++    }
++    
+     public static Element getFromChar(char c) {
+         switch (Character.toUpperCase(c)) {
+             case 'F':
+@@ -37,10 +52,14 @@ public static Element getFromChar(char c) {
+             case 'H':
+                 return HOLY;
+             case 'D':
+-            	return DARK;
++            	return DARKNESS;
+             case 'P':
+                 return NEUTRAL;
+         }
+         throw new IllegalArgumentException("unknown elemnt char " + c);
+     }
++    
++    public int getValue() {
++	return value;
++    }
+ }
+diff --git a/src/server/maps/MapleMap.java b/src/server/maps/MapleMap.java
+index 1d9e2ce00..aa3031585 100644
+--- a/src/server/maps/MapleMap.java
++++ b/src/server/maps/MapleMap.java
+@@ -85,9 +85,9 @@
+ import server.life.MonsterGlobalDropEntry;
+ import server.life.SpawnPoint;
+ import scripting.event.EventInstanceManager;
++import server.expeditions.MapleExpedition;
++import server.expeditions.MapleExpeditionType;
+ import server.life.MaplePlayerNPC;
+-import server.life.MobSkill;
+-import server.life.MobSkillFactory;
+ import server.life.MonsterListener;
+ import server.partyquest.GuardianSpawnPoint;
+ import server.partyquest.MapleCarnivalFactory;
+@@ -166,6 +166,13 @@
+     private MapleSnowball snowball1 = null;
+     private MapleCoconut coconut;
+     
++    //CPQ
++    private int maxMobs;
++    private int maxReactors;
++    private int deathCP;
++    private int timeDefault;
++    private int timeExpand;
++
+     //locks
+     private ReadLock chrRLock;
+     private WriteLock chrWLock;
+@@ -1009,6 +1016,17 @@ private void spawnMobItemDrops() {
+         }
+     }
+     
++    public int getDroppedItemsCountById(int itemid) {
++        int count = 0;
++        for (MapleMapItem mmi : getDroppedItems()) {
++            if (mmi.getItemId() == itemid) {
++                count++;
++            }
++        }
++        
++        return count;
++    }
++    
+     public void pickItemDrop(byte[] pickupPacket, MapleMapItem mdrop) { // mdrop must be already locked and not-pickedup checked by now
+         broadcastMessage(pickupPacket, mdrop.getPosition());
+         
+@@ -1200,6 +1218,28 @@ public int countReactors() {
+         return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.REACTOR));
+     }
+     
++    public final List<MapleMapObject> getMonsters() {
++        return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.MONSTER));
++    }
++    
++    public final List<MapleReactor> getAllReactors() {
++        List<MapleReactor> list = new LinkedList<>();
++        for (MapleMapObject mmo : getReactors()) {
++            list.add((MapleReactor) mmo);
++        }
++        
++        return list;
++    }
++    
++    public final List<MapleMonster> getAllMonsters() {
++        List<MapleMonster> list = new LinkedList<>();
++        for (MapleMapObject mmo : getMonsters()) {
++            list.add((MapleMonster) mmo);
++        }
++        
++        return list;
++    }
++    
+     public int countItems() {
+         return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapleMapObjectType.ITEM)).size();
+     }
+@@ -1284,16 +1324,6 @@ public boolean damageMonster(final MapleCharacter chr, final MapleMonster monste
+         }
+         return false;
+     }
+-
+-    public List<MapleMonster> getMonsters() {
+-        List<MapleMonster> mobs = new ArrayList<>();
+-        for (MapleMapObject object : this.getMapObjects()) {
+-            if (object instanceof MapleMonster) {
+-                mobs.add((MapleMonster)object);
+-            }
+-        }
+-        return mobs;
+-    }
+     
+     public void broadcastBalrogVictory(String leaderName) {
+         getWorldServer().dropMessage(6, "[Victory] " + leaderName + "'s party has successfully defeated the Balrog! Praise to them, they finished with " + countAlivePlayers() + " players alive.");
+@@ -1429,7 +1459,7 @@ public void killFriendlies(MapleMonster mob) {
+ 
+     public void killMonster(int mobId) {
+         MapleCharacter chr = (MapleCharacter) getPlayers().get(0);
+-        List<MapleMonster> mobList = getMonsters();
++        List<MapleMonster> mobList = getAllMonsters();
+         
+         for (MapleMonster mob : mobList) {    
+             if (mob.getId() == mobId) {
+@@ -1443,7 +1473,7 @@ public void killMonsterWithDrops(int mobId) {
+         
+         if(!mapChars.isEmpty()) {
+             MapleCharacter defaultChr = mapChars.entrySet().iterator().next().getValue();
+-            List<MapleMonster> mobList = getMonsters();
++            List<MapleMonster> mobList = getAllMonsters();
+             
+             for (MapleMonster mob : mobList) {
+                 if (mob.getId() == mobId) {
+@@ -2539,6 +2569,9 @@ public void run() {
+             if (mmd != null) {
+                 mmd.registerPlayer(chr);
+             }
++        } else if (GameConstants.isAriantColiseumArena(mapid)) {
++            int pqTimer = (10 * 60 * 1000);
++            chr.announce(MaplePacketCreator.getClock(pqTimer / 1000));
+         }
+         
+         MaplePet[] pets = chr.getPets();
+@@ -2738,13 +2771,13 @@ public MaplePortal findMarketPortal() {
+     */
+     
+     public void addPlayerPuppet(MapleCharacter player) {
+-        for (MapleMonster mm : this.getMonsters()) {
++        for (MapleMonster mm : this.getAllMonsters()) {
+             mm.aggroAddPuppet(player);
+         }
+     }
+     
+     public void removePlayerPuppet(MapleCharacter player) {
+-        for (MapleMonster mm : this.getMonsters()) {
++        for (MapleMonster mm : this.getAllMonsters()) {
+             mm.aggroRemovePuppet(player);
+         }
+     }
+@@ -4459,7 +4492,7 @@ public boolean isCPQLoserMap() {
+     }
+     
+     public void dispose() {
+-        for(MapleMonster mm : this.getMonsters()) {
++        for(MapleMonster mm : this.getAllMonsters()) {
+             mm.dispose();
+         }
+         
+@@ -4498,4 +4531,45 @@ public void dispose() {
+             chrWLock.unlock();
+         }
+     }
+-}
+\ No newline at end of file
++    
++    public int getMaxMobs() {
++        return maxMobs;
++    }
++
++    public void setMaxMobs(int maxMobs) {
++        this.maxMobs = maxMobs;
++    }
++
++    public int getMaxReactors() {
++        return maxReactors;
++    }
++
++    public void setMaxReactors(int maxReactors) {
++        this.maxReactors = maxReactors;
++    }
++
++    public int getDeathCP() {
++        return deathCP;
++    }
++
++    public void setDeathCP(int deathCP) {
++        this.deathCP = deathCP;
++    }
++
++    public int getTimeDefault() {
++        return timeDefault;
++    }
++
++    public void setTimeDefault(int timeDefault) {
++        this.timeDefault = timeDefault;
++    }
++
++    public int getTimeExpand() {
++        return timeExpand;
++    }
++
++    public void setTimeExpand(int timeExpand) {
++        this.timeExpand = timeExpand;
++    }
++
++}
+diff --git a/src/server/maps/MapleMapFactory.java b/src/server/maps/MapleMapFactory.java
+index c1955e030..8da376a8f 100644
+--- a/src/server/maps/MapleMapFactory.java
++++ b/src/server/maps/MapleMapFactory.java
+@@ -94,12 +94,12 @@ private void loadLifeFromWz(MapleMap map, MapleData mapData) {
+             String type = MapleDataTool.getString(life.getChildByPath("type"));
+             int team = MapleDataTool.getInt("team", life, -1);
+             if (map.isCPQMap2() && type.equals("m")) {
+-                if((Integer.parseInt(life.getName()) % 2) == 0)  {
++                if ((Integer.parseInt(life.getName()) % 2) == 0) {
+                     team = 0;
+                 } else {
+                     team = 1;
+                 }
+-            } 
++            }
+             int cy = MapleDataTool.getInt(life.getChildByPath("cy"));
+             MapleData dF = life.getChildByPath("f");
+             int f = (dF != null) ? MapleDataTool.getInt(dF) : 0;
+@@ -214,7 +214,7 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid, boolean c
+         MapleData timeMob = infoData.getChildByPath("timeMob");
+         if (timeMob != null) {
+             map.timeMob(MapleDataTool.getInt(timeMob.getChildByPath("id")),
+-                    MapleDataTool.getString(timeMob.getChildByPath("message")));
++            MapleDataTool.getString(timeMob.getChildByPath("message")));
+         }
+ 
+         int bounds[] = new int[4];
+@@ -315,6 +315,11 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid, boolean c
+         if (map.isCPQMap()) {
+             MapleData mcData = mapData.getChildByPath("monsterCarnival");
+             if (mcData != null) {
++                map.setDeathCP(MapleDataTool.getIntConvert("deathCP", mcData, 0));
++                map.setMaxMobs(MapleDataTool.getIntConvert("mobGenMax", mcData, 0));
++                map.setTimeDefault(MapleDataTool.getIntConvert("timeDefault", mcData, 0));
++                map.setTimeExpand(MapleDataTool.getIntConvert("timeExpand", mcData, 0));
++                map.setMaxReactors(MapleDataTool.getIntConvert("guardianGenMax", mcData, 0));
+                 MapleData guardianGenData = mcData.getChildByPath("guardianGenPos");
+                 for (MapleData node : guardianGenData.getChildren()) {
+                     GuardianSpawnPoint pt = new GuardianSpawnPoint(new Point(MapleDataTool.getIntConvert("x", node), MapleDataTool.getIntConvert("y", node)));
+@@ -322,18 +327,19 @@ private synchronized MapleMap loadMapFromWz(int mapid, Integer omapid, boolean c
+                     pt.setTaken(false);
+                     map.addGuardianSpawnPoint(pt);
+                 }
+-            }
+-            if (mcData.getChildByPath("skill") != null) {
+-                for (MapleData area : mcData.getChildByPath("skill")) {
+-                    map.addSkillId(MapleDataTool.getInt(area));
++                if (mcData.getChildByPath("skill") != null) {
++                    for (MapleData area : mcData.getChildByPath("skill")) {
++                        map.addSkillId(MapleDataTool.getInt(area));
++                    }
+                 }
+-            }
+-            
+-            if (mcData.getChildByPath("mob") != null) {
+-                for (MapleData area : mcData.getChildByPath("mob")) {
+-                    map.addMobSpawn(MapleDataTool.getInt(area.getChildByPath("id")), MapleDataTool.getInt(area.getChildByPath("spendCP")));
++
++                if (mcData.getChildByPath("mob") != null) {
++                    for (MapleData area : mcData.getChildByPath("mob")) {
++                        map.addMobSpawn(MapleDataTool.getInt(area.getChildByPath("id")), MapleDataTool.getInt(area.getChildByPath("spendCP")));
++                    }
+                 }
+             }
++
+         }
+ 
+         if (mapData.getChildByPath("reactor") != null) {
+diff --git a/src/server/partyquest/AriantColiseum.java b/src/server/partyquest/AriantColiseum.java
+new file mode 100644
+index 000000000..ea9653678
+--- /dev/null
++++ b/src/server/partyquest/AriantColiseum.java
+@@ -0,0 +1,302 @@
++/*
++    This file is part of the HeavenMS MapleStory Server
++    Copyleft (L) 2016 - 2018 RonanLana
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU Affero General Public License as
++    published by the Free Software Foundation version 3 as published by
++    the Free Software Foundation. You may not use, modify or distribute
++    this program under any other version of the GNU Affero General Public
++    License.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU Affero General Public License for more details.
++
++    You should have received a copy of the GNU Affero General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++*/
++package server.partyquest;
++
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.concurrent.ScheduledFuture;
++import client.MapleCharacter;
++import constants.GameConstants;
++import server.TimerManager;
++import server.expeditions.MapleExpedition;
++import server.expeditions.MapleExpeditionType;
++import server.maps.MapleMap;
++import tools.MaplePacketCreator;
++
++/**
++ *
++ * @author Ronan
++ */
++public class AriantColiseum {
++    
++    private MapleExpedition exped;
++    private MapleMap map;
++    
++    private Map<MapleCharacter, Integer> score;
++    private Map<MapleCharacter, Integer> rewardTier;
++    private boolean scoreDirty = false;
++    
++    private ScheduledFuture<?> ariantUpdate;
++    private ScheduledFuture<?> ariantFinish;
++    private ScheduledFuture<?> ariantScoreboard;
++    
++    private int lostShards = 0;
++    
++    private boolean eventClear = false;
++    
++    public AriantColiseum(MapleMap eventMap, MapleExpedition expedition) {
++        exped = expedition;
++        exped.finishRegistration();
++        
++        map = eventMap;
++        map.resetFully();
++        
++        int pqTimer = 10 * 60 * 1000;
++        int pqTimerBoard = (9 * 60 * 1000) + 50 * 1000;
++        
++        List<MapleCharacter> players = exped.getActiveMembers();
++        score = new HashMap<>();
++        rewardTier = new HashMap<>();
++        for (MapleCharacter mc : players) {
++            mc.changeMap(map, 0);
++            mc.setAriantColiseum(this);
++            mc.updateAriantScore();
++            rewardTier.put(mc, 0);
++        }
++        
++        for (MapleCharacter mc : players) {
++            mc.announce(MaplePacketCreator.updateAriantPQRanking(score));
++        }
++        
++        setAriantScoreBoard(TimerManager.getInstance().schedule(new Runnable() {
++            @Override
++            public void run() {
++                showArenaResults();
++            }
++        }, pqTimerBoard));
++        
++        setArenaFinish(TimerManager.getInstance().schedule(new Runnable() {
++            @Override
++            public void run() {
++                enterKingsRoom();
++            }
++        }, pqTimer));
++        
++        setArenaUpdate(TimerManager.getInstance().register(new Runnable() {
++            @Override
++            public void run() {
++                broadcastAriantScoreUpdate();
++            }
++        }, 500, 500));
++    }
++    
++    private void setArenaUpdate(ScheduledFuture<?> ariantUpdate) {
++        this.ariantUpdate = ariantUpdate;
++    }
++    
++    private void setArenaFinish(ScheduledFuture<?> arenaFinish) {
++        this.ariantFinish = arenaFinish;
++    }
++    
++    private void setAriantScoreBoard(ScheduledFuture<?> ariantScore) {
++        this.ariantScoreboard = ariantScore;
++    }
++    
++    private void cancelArenaUpdate() {
++        if (ariantUpdate != null) {
++            ariantUpdate.cancel(true);
++            ariantUpdate = null;
++        }
++    }
++    
++    private void cancelArenaFinish() {
++        if (ariantFinish != null) {
++            ariantFinish.cancel(true);
++            ariantFinish = null;
++        }
++    }
++    
++    private void cancelAriantScoreBoard() {
++        if (ariantScoreboard != null) {
++            ariantScoreboard.cancel(true);
++            ariantScoreboard = null;
++        }
++    }
++    
++    private void cancelAriantSchedules() {
++        cancelArenaUpdate();
++        cancelArenaFinish();
++        cancelAriantScoreBoard();
++    }
++    
++    public int getAriantScore(MapleCharacter chr) {
++        Integer chrScore = score.get(chr);
++        return chrScore != null ? chrScore : 0;
++    }
++    
++    public void clearAriantScore(MapleCharacter chr) {
++        score.remove(chr);
++    }
++    
++    public void updateAriantScore(MapleCharacter chr, int points) {
++        if (map != null) {
++            score.put(chr, points);
++            scoreDirty = true;
++        }
++    }
++    
++    private void broadcastAriantScoreUpdate() {
++        if (scoreDirty) {
++            for (MapleCharacter chr : score.keySet()) {
++                chr.announce(MaplePacketCreator.updateAriantPQRanking(score));
++            }
++            scoreDirty = false;
++        }
++    }
++    
++    public int getAriantRewardTier(MapleCharacter chr) {
++        Integer reward = rewardTier.get(chr);
++        return reward != null ? reward : 0;
++    }
++    
++    public void clearAriantRewardTier(MapleCharacter chr) {
++        rewardTier.remove(chr);
++    }
++    
++    public void addLostShards(int quantity) {
++        lostShards += quantity;
++    }
++    
++    public void leaveArena(MapleCharacter chr) {
++        if (!(eventClear && GameConstants.isAriantColiseumArena(chr.getMapId()))) {
++            leaveArenaInternal(chr);
++        }
++    }
++    
++    private synchronized void leaveArenaInternal(MapleCharacter chr) {
++        if (exped != null) {
++            if (exped.removeMember(chr)) {
++                int minSize = eventClear ? 1 : 2;
++                if (exped.getActiveMembers().size() < minSize) {
++                    dispose();
++                }
++                chr.setAriantColiseum(null);
++                
++                int shards = chr.countItem(4031868);
++                chr.getClient().getAbstractPlayerInteraction().removeAll(4031868);
++                chr.updateAriantScore(shards);
++            }
++        }
++    }
++    
++    public void playerDisconnected(MapleCharacter chr) {
++        leaveArenaInternal(chr);
++    }
++    
++    private void showArenaResults() {
++        eventClear = true;
++        
++        if (map != null) {
++            map.broadcastMessage(MaplePacketCreator.showAriantScoreBoard());
++            map.killAllMonsters();
++            
++            distributeAriantPoints();
++        }
++    }
++    
++    private static boolean isUnfairMatch(Integer winnerScore, Integer secondScore, Integer lostShardsScore, List<Integer> runnerupsScore) {
++        if (winnerScore <= 0) {
++            return false;
++        }
++        
++        double runnerupsScoreCount = 0;
++        for (Integer i : runnerupsScore) {
++            runnerupsScoreCount += i;
++        }
++        
++        runnerupsScoreCount += lostShardsScore;
++        secondScore += lostShardsScore;
++        
++        double matchRes = runnerupsScoreCount / winnerScore;
++        double runnerupRes = ((double) secondScore) / winnerScore;
++        
++        return matchRes < 0.81770726891980117713114871015349 && (runnerupsScoreCount < 7 || runnerupRes < 0.5929);
++    }
++    
++    public void distributeAriantPoints() {
++        Integer firstTop = -1, secondTop = -1;
++        MapleCharacter winner = null;
++        List<Integer> runnerups = new ArrayList<>();
++        
++        for (Entry<MapleCharacter, Integer> e : score.entrySet()) {
++            Integer s = e.getValue();
++            if (s > firstTop) {
++                secondTop = firstTop;
++                firstTop = s;
++                winner = e.getKey();
++            } else if (s > secondTop) {
++                secondTop = s;
++            }
++            
++            runnerups.add(s);
++            rewardTier.put(e.getKey(), (int) Math.floor(s / 10));
++        }
++        
++        runnerups.remove(firstTop);
++        if (isUnfairMatch(firstTop, secondTop, map.getDroppedItemsCountById(4031868) + lostShards, runnerups)) {
++            rewardTier.put(winner, 1);
++        }
++    }
++    
++    private MapleExpeditionType getExpeditionType() {
++        MapleExpeditionType type;
++        if (map.getId() == 980010101) {
++            type = MapleExpeditionType.ARIANT;
++        } else if (map.getId() == 980010201) {
++            type = MapleExpeditionType.ARIANT1;
++        } else {
++            type = MapleExpeditionType.ARIANT2;
++        }
++        
++        return type;
++    }
++    
++    private void enterKingsRoom() {
++        map.getChannelServer().removeExpedition(exped);
++        cancelAriantSchedules();
++        
++        for (MapleCharacter chr : map.getAllPlayers()) {
++            chr.changeMap(980010010, 0);
++        }
++    }
++    
++    private synchronized void dispose() {
++        if (exped != null) {
++            exped.dispose(false);
++            
++            for (MapleCharacter chr : exped.getActiveMembers()) {
++                chr.setAriantColiseum(null);
++                chr.changeMap(980010000, 0);
++            }
++            
++            map.getWorldServer().registerTimedMapObject(new Runnable() {
++                @Override
++                public void run() {
++                    score.clear();
++                    exped = null;
++                    map = null;
++                }
++            }, 5 * 60 * 1000);
++        }
++    }
++}
+diff --git a/src/server/partyquest/MonsterCarnival.java b/src/server/partyquest/MonsterCarnival.java
+index 26bff2ec1..5fde37b3a 100644
+--- a/src/server/partyquest/MonsterCarnival.java
++++ b/src/server/partyquest/MonsterCarnival.java
+@@ -1,5 +1,6 @@
+ package server.partyquest;
+ 
++import java.util.List;
+ import java.util.concurrent.ScheduledFuture;
+ import client.MapleCharacter;
+ import constants.LanguageConstants;
+@@ -9,13 +10,15 @@
+ import net.server.world.MapleParty;
+ import net.server.world.MaplePartyCharacter;
+ import server.TimerManager;
++import server.life.MapleMonster;
+ import server.maps.MapleMap;
++import server.maps.MapleMapObject;
++import server.maps.MapleReactor;
+ import tools.MaplePacketCreator;
+ 
+ /**
+  * @author Drago/Dragohe4rt
+  */
+-
+ public class MonsterCarnival {
+ 
+     public static int D = 3;
+@@ -27,7 +30,7 @@
+     private MapleMap map;
+     private ScheduledFuture<?> timer, effectTimer, respawnTask;
+     private long startTime = 0;
+-    private int summonsR = 8, summonsB = 8, room = 0;
++    private int summonsR = 0, summonsB = 0, room = 0;
+     private MapleCharacter leader1, leader2, Grupo1, Grupo2;
+     private int redCP, blueCP, redTotalCP, blueTotalCP, redTimeupCP, blueTimeupCP;
+     private boolean cpq1;
+@@ -94,13 +97,13 @@ public MonsterCarnival(MapleParty p1, MapleParty p2, int mapid, boolean cpq1, in
+                 public void run() {
+                     timeUp();
+                 }
+-            }, 10 * 60 * 1000);
++            }, (map.getTimeDefault() - 10) * 1000);
+             effectTimer = TimerManager.getInstance().schedule(new Runnable() {
+                 @Override
+                 public void run() {
+                     complete();
+                 }
+-            }, 10 * 60 * 1000 - 10 * 1000);
++            }, map.getTimeDefault() * 1000 - 10 * 1000);
+             respawnTask = TimerManager.getInstance().register(new Runnable() {
+                 @Override
+                 public void run() {
+@@ -160,20 +163,42 @@ protected void dispose() {
+         dispose(false);
+     }
+ 
++    public boolean canSummonR() {
++        return summonsR < map.getMaxMobs();
++    }
++    
+     public void summonR() {
+-        this.summonsR--;
++        summonsR++;
+     }
+ 
+-    public boolean canSummonR() {
+-        return this.summonsR > 0;
++    public boolean canSummonB() {
++        return summonsB < map.getMaxMobs();
+     }
+-
++    
+     public void summonB() {
+-        this.summonsB--;
++        summonsB++;
+     }
+-
+-    public boolean canSummonB() {
+-        return this.summonsB > 0;
++    
++    public boolean canGuardianR() {
++        int teamReactors = 0;
++        for (MapleReactor react : map.getAllReactors()) {
++            if (react.getName().substring(0, 1).contentEquals("0")) {
++                teamReactors += 1;
++            }
++        }
++        
++        return teamReactors < map.getMaxReactors();
++    }
++    
++    public boolean canGuardianB() {
++        int teamReactors = 0;
++        for (MapleReactor react : map.getAllReactors()) {
++            if (react.getName().substring(0, 1).contentEquals("1")) {
++                teamReactors += 1;
++            }
++        }
++        
++        return teamReactors < map.getMaxReactors();
+     }
+ 
+     protected void dispose(boolean warpout) {
+@@ -337,13 +362,14 @@ private void extendTime() {
+             public void run() {
+                 timeUp();
+             }
+-        }, 3 * 60 * 1000);
++        }, map.getTimeExpand() * 1000);
+         effectTimer = TimerManager.getInstance().schedule(new Runnable() {
+             @Override
+             public void run() {
+                 complete();
+             }
+-        }, 3 * 60 * 1000 - 10 * 1000); // thanks Vcoc for noticing a time set issue here
++
++        }, map.getTimeExpand() * 1000 - 10 * 1000); // thanks Vcoc for noticing a time set issue here
+     }
+ 
+     public void complete() {
+diff --git a/src/tools/MaplePacketCreator.java b/src/tools/MaplePacketCreator.java
+index 5f84838ec..83cffa4be 100644
+--- a/src/tools/MaplePacketCreator.java
++++ b/src/tools/MaplePacketCreator.java
+@@ -405,7 +405,7 @@ protected static void addItemInfo(final MaplePacketLittleEndianWriter mplew, Ite
+                         mplew.writeShort(pet.getCloseness());
+                         mplew.write(pet.getFullness());
+                         addExpirationTime(mplew, item.getExpiration());
+-                        mplew.writeInt(pet.getPetFlag());  /* pet flags found by -- Irenex & Spoon */
++                        mplew.writeInt(pet.getPetFlag());  /* pet flags found by -- lrenex & Spoon */
+                         
+                         mplew.write(new byte[]{(byte) 0x50, (byte) 0x46}); //wonder what this is
+                         mplew.writeInt(0);
+@@ -2534,7 +2534,46 @@ private static int doubleToShortBits(double d) {
+                 mplew.writeInt(cid);
+                 return mplew.getPacket();
+         }
++        
++        public static byte[] catchMessage(int message) { // not done, I guess
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.BRIDLE_MOB_CATCH_FAIL.getValue());
++                mplew.write(message); // 1 = too strong, 2 = Elemental Rock
++                mplew.writeInt(0);//Maybe itemid?
++                mplew.writeInt(0);
++                return mplew.getPacket();
++        }
+ 
++        public static byte[] showAllCharacter(int chars, int unk) {
++                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter(11);
++                mplew.writeShort(SendOpcode.VIEW_ALL_CHAR.getValue());
++                mplew.write(chars > 0 ? 1 : 5); // 2: already connected to server, 3 : unk error (view-all-characters), 5 : cannot find any
++                mplew.writeInt(chars);
++                mplew.writeInt(unk);
++                return mplew.getPacket();
++        }
++        
++        public static byte[] showAriantScoreBoard() {   // thanks lrenex for pointing match's end scoreboard packet
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.ARIANT_ARENA_SHOW_RESULT.getValue());
++                return mplew.getPacket();
++        }
++        
++        public static byte[] updateAriantPQRanking(final MapleCharacter chr, final int score) {
++                return updateAriantPQRanking(new LinkedHashMap<MapleCharacter, Integer>(){{put(chr, score);}});
++        }
++        
++        public static byte[] updateAriantPQRanking(Map<MapleCharacter, Integer> playerScore) {
++                MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
++                mplew.writeShort(SendOpcode.ARIANT_ARENA_USER_SCORE.getValue());
++                mplew.write(playerScore.size());
++                for (Entry<MapleCharacter, Integer> e : playerScore.entrySet()) {
++                        mplew.writeMapleAsciiString(e.getKey().getName());
++                        mplew.writeInt(e.getValue());
++                }
++                return mplew.getPacket();
++        }
++        
+         public static byte[] silentRemoveItemFromMap(int oid) {
+                 return removeItemFromMap(oid, 1, 0);
+         }
+@@ -5015,35 +5054,6 @@ private static void addPetInfo(final MaplePacketLittleEndianWriter mplew, MapleP
+                 return mplew.getPacket();
+         }
+ 
+-        public static byte[] updateAriantPQRanking(String name, int score, boolean empty) {
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.ARIANT_SCORE.getValue());
+-                mplew.write(empty ? 0 : 1);
+-                if (!empty) {
+-                        mplew.writeMapleAsciiString(name);
+-                        mplew.writeInt(score);
+-                }
+-                return mplew.getPacket();
+-        }
+-
+-        public static byte[] catchMessage(int message) { // not done, I guess
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+-                mplew.writeShort(SendOpcode.BRIDLE_MOB_CATCH_FAIL.getValue());
+-                mplew.write(message); // 1 = too strong, 2 = Elemental Rock
+-                mplew.writeInt(0);//Maybe itemid?
+-                mplew.writeInt(0);
+-                return mplew.getPacket();
+-        }
+-
+-        public static byte[] showAllCharacter(int chars, int unk) {
+-                final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter(11);
+-                mplew.writeShort(SendOpcode.VIEW_ALL_CHAR.getValue());
+-                mplew.write(chars > 0 ? 1 : 5); // 2: already connected to server, 3 : unk error (view-all-characters), 5 : cannot find any
+-                mplew.writeInt(chars);
+-                mplew.writeInt(unk);
+-                return mplew.getPacket();
+-        }
+-
+         public static byte[] showAllCharacterInfo(int worldid, List<MapleCharacter> chars, boolean usePic) {
+                 final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+                 mplew.writeShort(SendOpcode.VIEW_ALL_CHAR.getValue());
